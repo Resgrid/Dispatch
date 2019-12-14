@@ -1,0 +1,41 @@
+
+<ion-content no-padding>
+  <div class="main">
+    <ion-card no-margin class="card">
+      <ion-card-content>
+          <ion-row class="row">
+            <div class="fire-logo">
+              <img src="assets/images/Resgrid_JustText.png" class="img-logo">
+              <ion-text><h2 no-margin margin-vertical text-center>Dispatch Sign In</h2></ion-text>
+            </div>
+          </ion-row>
+          <ion-row>
+              <ion-col>
+                <ion-input clearInput type="email" placeholder="Username" [(ngModel)]="email" class="input" padding-horizontal clear-input="true"></ion-input>
+              </ion-col>
+            </ion-row>
+            <ion-row>
+              <ion-col>
+                <ion-input clearInput type="password" placeholder="Password" [(ngModel)]="password" class="input" padding-horizontal clear-input="true"></ion-input>
+              </ion-col>
+            </ion-row>
+            <ion-row>
+              <ion-col>
+                <ion-text float-end color="medium" ><h6 no-margin text-end class="small">Forgot Password?</h6></ion-text>
+              </ion-col>
+            </ion-row>
+            <ion-row>
+              <ion-col>
+                <ion-button expand="block" color="primary">Sign In</ion-button>
+              </ion-col>
+            </ion-row>
+            <div class="line"></div>
+            <ion-row>
+              <ion-col>
+                <ion-button expand="block" fill="outline" color="secondary">New? Create an Account</ion-button>
+              </ion-col>
+            </ion-row>
+      </ion-card-content>
+    </ion-card>
+  </div>
+</ion-content>
