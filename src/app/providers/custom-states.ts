@@ -1,5 +1,4 @@
 import { Injectable } from '@angular/core';
-import 'rxjs/add/operator/map';
 
 import { Consts } from '../consts';
 import { DataProvider } from './data';

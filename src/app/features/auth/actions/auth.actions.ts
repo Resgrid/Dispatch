@@ -1,5 +1,6 @@
 import {Action} from '@ngrx/store';
 import { LoginPayload } from '../models/loginPayload';
+import { UserInfo } from 'src/app/models/userInfo';
 
 // [AUTH] Auth module
 export enum LoginActionTypes {
@@ -17,6 +18,7 @@ export class Login implements Action {
 
 export class LoginSuccess implements Action {
   readonly type = LoginActionTypes.LOGIN_SUCCESS;
+  constructor(public user: UserInfo) {}
 }
 
 export class LoginFail implements Action {

@@ -1,30 +1,18 @@
 import {LoginActionsUnion, LoginActionTypes} from '../actions/auth.actions';
-
-export interface AuthState {
-  loggedIn: boolean;
-  errorMsg: string;
-  user: object;
-  isLogging: boolean;
-}
-
-export const initialState: AuthState = {
-  loggedIn: false,
-  errorMsg: null,
-  user: null,
-  isLogging: false
-};
+import { AuthState, initialState } from '../store/auth.store';
 
 export function reducer(state: AuthState = initialState, action: LoginActionsUnion): AuthState {
   switch (action.type) {
     case LoginActionTypes.LOGIN:
       return {
         ...state,
-        user: action.payload
+        // user: action.payload
       };
     case LoginActionTypes.LOGIN_SUCCESS:
       return {
         ...state,
-        loggedIn: true
+        loggedIn: true,
+        user: action.user
       };
     case LoginActionTypes.LOGIN_FAIL:
       return {

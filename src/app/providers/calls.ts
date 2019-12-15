@@ -217,7 +217,7 @@ export class CallsProvider {
 		let params = new HttpParams().append('callId', callId.toString()).append('includeData', includeData.toString()).append('type', type.toString());
 
 		return this.http.get<CallFileResult[]>(this.appConfig.ResgridApiUrl + '/Calls/GetFilesForCall', { params: params })
-		.pipe(map((items) => {
+			.pipe(map((items) => {
 				let files: CallFileResult[] = new Array<CallFileResult>();
 
 				items.forEach(item => {
@@ -231,7 +231,7 @@ export class CallsProvider {
 
 	public getCallTypes(): Observable<CallTypeResult[]> {
 		return this.http.get<CallTypeResult[]>(this.appConfig.ResgridApiUrl + '/Calls/GetCallTypes')
-		.pipe(map((items) => {
+			.pipe(map((items) => {
 				let types: CallTypeResult[] = new Array<CallTypeResult>();
 
 				types.push({

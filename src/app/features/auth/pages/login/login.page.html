@@ -1,38 +1,43 @@
-<ion-content no-padding>
+<ion-content class="ion-no-padding">
   <div class="main">
     <form [formGroup]="loginForm" novalidate (ngSubmit)="login(loginForm.value)">
-      <ion-card no-margin class="card">
+      <ion-card class="card ion-no-margin">
         <ion-card-content>
           <ion-row class="row">
             <div class="fire-logo">
               <img src="assets/images/Resgrid_JustText.png" class="img-logo">
               <ion-text>
-                <h2 no-margin margin-vertical text-center>Dispatch Sign In</h2>
+                <h2 class="ion-margin-vertical ion-no-margin ion-text-center">Dispatch Sign In</h2>
               </ion-text>
             </div>
           </ion-row>
           <ion-row>
             <ion-col>
-              <ion-input clearInput type="email" placeholder="Username" [(ngModel)]="email" class="input"
-                padding-horizontal clear-input="true"></ion-input>
+              <ion-input clearInput formControlName="username" placeholder="Username" class="input padding-horizontal" clear-input="true" required></ion-input>
+              <label class="text-danger" *ngIf="loginForm.get('username').touched && loginForm.get('username').hasError('required')">Username is required</label>
             </ion-col>
           </ion-row>
           <ion-row>
             <ion-col>
-              <ion-input clearInput type="password" placeholder="Password" [(ngModel)]="password" class="input"
-                padding-horizontal clear-input="true"></ion-input>
+              <ion-input clearInput formControlName="password" type="password" placeholder="Password" class="input padding-horizontal" clear-input="true" required></ion-input>
+              <label class="text-danger" *ngIf="loginForm.get('password').touched && loginForm.get('password').hasError('required')">Password is required</label>
             </ion-col>
           </ion-row>
           <ion-row>
             <ion-col>
-              <ion-text float-end color="medium">
-                <h6 no-margin text-end class="small">Forgot Password?</h6>
+              <ion-text color="medium" class="ion-float-end">
+                <h6 class="small ion-no-margin ion-text-end">Forgot Password?</h6>
               </ion-text>
             </ion-col>
           </ion-row>
           <ion-row>
             <ion-col>
-              <ion-button expand="block" color="primary">Sign In</ion-button>
+              <p *ngIf="error$ && !isLogging$">{{error$}}</p>
+            </ion-col>
+          </ion-row>
+          <ion-row>
+            <ion-col>
+              <ion-button type="submit" expand="block" color="primary" [disabled]="loginForm.invalid || isLogging$">Sign In</ion-button>
             </ion-col>
           </ion-row>
           <div class="line"></div>
