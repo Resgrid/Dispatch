@@ -1,6 +1,5 @@
 import { Injectable, Inject } from '@angular/core';
-import { NativeStorage } from '@ionic-native/native-storage';
-import { APP_CONFIG_TOKEN, AppConfig } from "../config/app.config-interface";
+import { APP_CONFIG_TOKEN, AppConfig } from '../config/app.config-interface';
 
 import { Settings } from '../models/settings';
 
@@ -10,12 +9,12 @@ export class SettingsProvider {
   public isAuthenticated: boolean = false;
   public settings: Settings;
 
-  constructor( @Inject(APP_CONFIG_TOKEN) private appConfig: AppConfig, private nativeStorage: NativeStorage) {
+  constructor( @Inject(APP_CONFIG_TOKEN) private appConfig: AppConfig) {
     this.settings = new Settings();
 
     // Ok, NativeStorage should support local storage fallback, but it doesn't presist, so have this fake for web fallback.
     if (window['cordova']) {
-      this.storage = nativeStorage;
+      //this.storage = nativeStorage;
     } else {
       this.storage = {
         setItem: (key, value) => {

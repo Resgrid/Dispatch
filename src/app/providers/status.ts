@@ -7,8 +7,8 @@ import { StatusResult } from '../models/statusResult';
 import { SubmitStatus } from '../models/submitStatus';
 import { TypesProvider } from './types';
 import { PubSubService } from '../components/pubsub/angular2-pubsub.service';
-import { Subscription, Observable } from 'rxjs';
-import { TimerObservable } from "rxjs/observable/TimerObservable";
+import { Subscription, Observable, timer } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 @Injectable({
   providedIn: 'root'
@@ -27,7 +27,7 @@ export class StatusProvider implements OnDestroy {
       this.processStatus(e);
     });
 
-    this.timer = TimerObservable.create(5000, 30000);
+    this.timer = timer(5000, 30000);
     this.subscription = this.timer.subscribe(t => this.updatePending());
   }
 
@@ -37,7 +37,7 @@ export class StatusProvider implements OnDestroy {
 
   public getCurrentStatus(): Observable<StatusResult> {
     return this.http.get<StatusResult>(this.appConfig.ResgridApiUrl + '/Status/GetCurrentUserStatus')
-      .map((item) => {
+      .pipe(map((item) => {
         let status = new StatusResult();
         status.Uid = item.Uid;
         status.Act = item.Act;
@@ -54,7 +54,7 @@ export class StatusProvider implements OnDestroy {
         status.SClr = this.typesProvider.staffingToColorConverter(item.Ste);
 
         return status;
-      });
+      }));
   }
 
   public setStatus(userId: string, type: number, geolocation: string, respondingTo: number, destionationType: number, note: string): void {

@@ -1,10 +1,12 @@
 import { Injectable, Inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { APP_CONFIG_TOKEN, AppConfig } from '../config/app.config-interface';
+import { APP_CONFIG_TOKEN, AppConfig } from '../../../config/app.config-interface';
 import { AuthValidateResult } from '../models/authValidateResult';
 import { Observable } from 'rxjs';
+import { AuthModule } from '../auth.module';
 
 @Injectable({
+  // providedIn: AuthModule
   providedIn: 'root'
 })
 export class AuthProvider {

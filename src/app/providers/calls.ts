@@ -16,7 +16,7 @@ import { map } from 'rxjs/operators';
 
 @Injectable({
 	providedIn: 'root'
-  })
+})
 export class CallsProvider {
 
 	constructor(public http: HttpClient,
@@ -60,11 +60,11 @@ export class CallsProvider {
 		let params = new HttpParams().append('callId', callId);
 
 		//return this.http.get<CallResult>(url + "?callId=" + callId).map((item) => {
-		return this.http.get<CallResult>(url, { params: params }).map((item) => {
+		return this.http.get<CallResult>(url, { params: params }).pipe(map((item) => {
 			let status: CallResult = this.mapDataToCall(item);
 
 			return status;
-		});
+		}));
 	}
 
 	public getCallData(callId: any): Observable<CallDataResult> {
@@ -72,7 +72,7 @@ export class CallsProvider {
 
 		let params = new HttpParams().append('callId', callId);
 
-		return this.http.get(url, { params: params }).map((item) => {
+		return this.http.get(url, { params: params }).pipe(map((item) => {
 			let status: CallDataResult = <CallDataResult>item;
 
 			status.Activity.forEach(activity => {
@@ -87,14 +87,14 @@ export class CallsProvider {
 
 
 			return status;
-		});
+		}));
 	}
 
 	public getCallNotes(callId: any): Observable<CallNoteResult[]> {
 		let params = new HttpParams().append('callId', callId);
 
 		return this.http.get<CallNoteResult[]>(this.appConfig.ResgridApiUrl + '/Calls/GetCallNotes', { params: params })
-			.map((items) => {
+			.pipe(map((items) => {
 				let notes: CallNoteResult[] = new Array<CallNoteResult>();
 
 				items.forEach(item => {
@@ -109,7 +109,7 @@ export class CallsProvider {
 				});
 
 				return notes;
-			});
+			}));
 	}
 
 	public saveCallNote(callId: number, userId: string, note: string, location: Location): Observable<Object> {
@@ -217,7 +217,7 @@ export class CallsProvider {
 		let params = new HttpParams().append('callId', callId.toString()).append('includeData', includeData.toString()).append('type', type.toString());
 
 		return this.http.get<CallFileResult[]>(this.appConfig.ResgridApiUrl + '/Calls/GetFilesForCall', { params: params })
-			.map((items) => {
+		.pipe(map((items) => {
 				let files: CallFileResult[] = new Array<CallFileResult>();
 
 				items.forEach(item => {
@@ -226,12 +226,12 @@ export class CallsProvider {
 				});
 
 				return files;
-			});
+			}));
 	}
 
 	public getCallTypes(): Observable<CallTypeResult[]> {
 		return this.http.get<CallTypeResult[]>(this.appConfig.ResgridApiUrl + '/Calls/GetCallTypes')
-			.map((items) => {
+		.pipe(map((items) => {
 				let types: CallTypeResult[] = new Array<CallTypeResult>();
 
 				types.push({
@@ -245,7 +245,7 @@ export class CallsProvider {
 				});
 
 				return types;
-			});
+			}));
 	}
 
 	private mapDataToCall(item: any): CallResult {

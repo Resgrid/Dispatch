@@ -1,9 +1,8 @@
 import { Injectable, Inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { NativeStorage } from '@ionic-native/native-storage';
-import { APP_CONFIG_TOKEN, AppConfig } from "../config/app.config-interface";
+import { APP_CONFIG_TOKEN, AppConfig } from '../config/app.config-interface';
 
-import { Consts } from '../app/consts';
+import { Consts } from '../consts';
 import { PersonnelInfo } from '../models/personnelInfo';
 import { GroupInfo } from '../models/groupInfo';
 import { UnitInfo } from '../models/unitInfo';
@@ -27,7 +26,6 @@ export class LocalDbProvider {
   private syncing: boolean;
 
   constructor(public http: HttpClient,
-    private nativeStorage: NativeStorage,
     private consts: Consts,
     private utils: UtilsProvider,
     @Inject(APP_CONFIG_TOKEN) private appConfig: AppConfig,
@@ -44,7 +42,7 @@ export class LocalDbProvider {
   private gapStorage() {
     // Ok, NativeStorage should support local storage fallback, but it doesn't presist, so have this fake for web fallback.
     if (window['cordova']) {
-      this.storage = this.nativeStorage;
+      //this.storage = this.nativeStorage;
     } else {
       this.storage = {
         setItem: (key, value) => {
