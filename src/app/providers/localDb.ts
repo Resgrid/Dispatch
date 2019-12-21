@@ -18,7 +18,9 @@ import { SettingsProvider } from './settings';
 import { SecurityProvider } from './security';
 import { DepartmentRightsResult } from '../models/departmentRightsResult';
 
-@Injectable()
+@Injectable({
+  providedIn: 'root'
+})
 export class LocalDbProvider {
   private storage: any;
   private data: CoreDataResult;

@@ -1,0 +1,312 @@
+{
+  "appName": "Resgrid Responder",
+  "settingsPage": {
+    "title": "Settings",
+    "advancedSettingsTitle": "Advanced Settings",
+    "advResyncLabel": "ReSync Data",
+    "advCustomRespondingLabel": "Custom Responding Text",
+    "advCustomUrlLabel": "Custom Url"
+  },
+  "personnelPage": {
+    "title": "Personnel",
+    "ctaPanel": {
+      "title": "No Personnel",
+      "details": "",
+      "extraDetails": "",
+      "buttonLabel": ""
+    },
+    "ctaPanel2": {
+      "title": "Load in Progress",
+      "details": "We are currently fetching your latest department information and can't show you personnel yet.",
+      "extraDetails": "This message will disappear once the load is finished or you can pull to refresh to retry",
+      "buttonLabel": ""
+    }
+  },
+  "unitsPage": {
+    "title": "Units",
+    "ctaPanel": {
+      "title": "No Units",
+      "details": "",
+      "extraDetails": "",
+      "buttonLabel": ""
+    }
+  },
+  "notesPage": {
+    "title": "Notes",
+    "addLabel": "Add",
+    "ctaPanel": {
+      "title": "No Notes",
+      "details": "Click the add button to add a note, or you can add notes from the website.",
+      "extraDetails": "",
+      "buttonLabel": ""
+    }
+	},
+	"callNotesPage": {
+    "title": "Call Notes",
+    "addLabel": "Add",
+    "ctaPanel": {
+      "title": "No Call Notes",
+      "details": "",
+      "extraDetails": "",
+      "buttonLabel": ""
+    }
+  },
+  "customDetailPage": {
+    "title": "Custom Detail",
+    "addLabel": "",
+    "ctaPanel": {
+      "title": "",
+      "details": "",
+      "extraDetails": "",
+      "buttonLabel": ""
+    }
+  },
+  "customNotePage": {
+    "title": "Note For Action",
+    "noteLabel": "Note",
+    "buttonText": "Next",
+    "noteRequired": "The note is required",
+    "noteOptional": "The note is optional",
+    "ctaPanel": {
+      "title": "",
+      "details": "",
+      "extraDetails": "",
+      "buttonLabel": ""
+    }
+	},
+	"callImagesPage": {
+    "title": "Call Images",
+    "addLabel": "Add",
+    "ctaPanel": {
+      "title": "No Call Images",
+      "details": "",
+      "extraDetails": "",
+      "buttonLabel": ""
+    }
+	},
+	"callFilesPage": {
+    "title": "Call Files",
+    "addLabel": "Add",
+    "ctaPanel": {
+      "title": "No Call Files",
+      "details": "",
+      "extraDetails": "",
+      "buttonLabel": ""
+    }
+  },
+   "callsPage": {
+    "title": "Calls",
+    "ctaPanel": {
+      "title": "No Calls",
+      "details": "",
+      "extraDetails": "",
+      "buttonLabel": ""
+    }
+  },
+  "unitDetailPage": {
+    "title": "Unit Detail",
+    "ctaPanel": {
+      "title": "",
+      "details": "",
+      "extraDetails": "",
+      "buttonLabel": ""
+    }
+  },
+  "profilePage": {
+    "title": "Profile",
+    "editButton": "Edit Info",
+    "ctaPanel": {
+      "title": "",
+      "details": "",
+      "extraDetails": "",
+      "buttonLabel": ""
+    }
+  },
+  "staffingSchedulePage": {
+    "title": "Staffing Schedule",
+    "timeframeLablel": "Timeframe",
+    "stateLablel": "State",
+    "changeToLablel": "Change To",
+    "enabledText": "Enabled",
+    "disabledText": "Disabled"
+  },
+  "staffingSchedulesPage": {
+    "title": "Staffing Schedules",
+    "addButton": "Add",
+    "timeframeLablel": "Timeframe",
+    "changeToLablel": "Change To",
+    "ctaPanel": {
+      "title": "No Staffing Schedules",
+      "details": "Click the Add button to add an automatated staffing change",
+      "extraDetails": "",
+      "buttonLabel": ""
+    }
+  },
+  "messagesPage": {
+    "title": "Messages",
+    "newLabel": "New",
+    "messageTypeLabel": "Message",
+    "callbackTypeLabel": "Callback",
+    "pollTypeLabel": "Poll",
+    "inboxTab": "Inbox",
+    "outboxTab": "Outbox",
+    "ctaPanel": {
+      "title": "No Messages in the Inbox",
+      "details": "",
+      "extraDetails": "",
+      "buttonLabel": ""
+    }
+  },
+  "chatsPage": {
+    "title": "Chats",
+    "newLabel": "New",
+    "chatsTab": "Chats",
+    "groupsTab": "Groups",
+    "ctaPanel": {
+      "title": "No Chats",
+      "details": "Tap new to create a new 1 on 1 chat",
+      "extraDetails": "For group chats tap the groups tab at the bottom",
+      "buttonLabel": "New Chat"
+    }
+  },
+  "newChatPage": {
+    "title": "New Chat",
+    "newLabel": "New",
+    "chatsTab": "Chats",
+    "groupsTab": "Groups",
+    "ctaPanel": {
+      "title": "No Personnel",
+      "details": "Tap new to create a new 1 on 1 chat",
+      "extraDetails": "For group chats tap the groups tab at the bottom",
+      "buttonLabel": "New Chat"
+    }
+  },
+  "chatGroupsPage": {
+    "title": "Chat Groups",
+    "newLabel": "New",
+    "chatsTab": "Chats",
+    "groupsTab": "Groups"
+  },
+  "outboxPage": {
+    "title": "Sent Messages",
+    "newLabel": "New",
+    "messageTypeLabel": "Message",
+    "callbackTypeLabel": "Callback",
+    "pollTypeLabel": "Poll",
+    "inboxTab": "Inbox",
+    "outboxTab": "Outbox",
+    "ctaPanel": {
+      "title": "You have not sent any messages",
+      "details": "You can send a message by clicking the new button.",
+      "extraDetails": "",
+      "buttonLabel": ""
+    }
+  },
+   "addStaffingSchedulePage": {
+    "title": "New Staffing Schedule",
+    "typeLablel": "Type",
+    "dateText": "Date",
+    "weeklyText": "Weekly",
+    "timeLablel": "Time",
+    "dateLablel": "Date",
+    "staffingLablel": "Staffing",
+    "noteLablel": "Note",
+    "daysOfTheWeekText": "Days of the Week",
+    "saveButtonLabel": "Add Staffing Schedule"
+  },
+  "calendarPage": {
+    "title": "Calendar",
+    "todayLabel": "Today",
+    "upcomingLablel": "Upcoming",
+    "calendarLablel": "Calendar",
+    "ctaPanel": {
+      "title": "No Items For Today",
+      "details": "",
+      "extraDetails": "",
+      "buttonLabel": ""
+    },
+    "ctaPanel2": {
+      "title": "No Upcoming Items",
+      "details": "",
+      "extraDetails": "",
+      "buttonLabel": ""
+    }
+  },
+  "staffing": {
+    "title": "Staffing"
+  },
+  "availableAtPage": {
+    "title": "Standing By At"
+  },
+  "respondingToPage": {
+    "title": "Responding To"
+  },
+  "onsceneAtPage": {
+    "title": "Onscene At"
+  },
+  "personDetailPage": {
+    "title": "View Person"
+  },
+  "responding": "Responding",
+  "notResponding": "Not Responding",
+  "standingBy": "Standing By",
+  "onScene": "On Scene",
+
+  "available": "Available",
+  "delayed": "Delayed",
+  "unavailable": "Unavailable",
+  "comitted": "Committed",
+  "onShift": "On Shift",
+
+  "settingsNotSetPanel": {
+    "title": "Settings Not Set",
+    "details": "It appears that this is your first time to the BigBoard app, or the first time here with this new version. You need to set your settings (login) before you can start adding widgets",
+    "extraDetails": "Click the button below to login",
+    "buttonLabel": "Set Your Settings"
+  },
+  "noWidgetsPanel": {
+    "title": "No Widgets Added",
+    "details": "Your settings are set but you have not added any widgets to your dashboard yet. Use the plus (+) button to add a widget, and you can then move the widget around by holding the widget header and resize buy hovering over the buttom and right edge of the widget.",
+    "extraDetails": "Click the button below to add a widget or click the plus (+) button in the header",
+    "buttonLabel": "Add A Widget"
+  },
+  "account": "Account",
+  "language": "Language",
+  "tutorial": "Tutorial",
+  "ok": "Ok",
+  "cancel": "Cancel",
+  "skip": "Skip",
+  "continue": "Continue",
+  "login": "Login",
+  "signup": "Signup",
+  "email": "Email",
+  "password": "Password",
+  "passwordConfirm": "Password confirmation",
+  "tutorialPage": {
+    "slide1": {
+      "title": "Welcome to Ionic2 Essentials",
+      "description": "This Ionic2 starter comes pre-bundled with all the goodies you'll need for production ready mobile app"
+    },
+    "slide2": {
+      "title": "Ready to Discover?",
+      "description": "You can explore some of the features directly in the app (like internationalization), while others are part of the development experience (like Redux and CodePush)"
+    }
+  },
+  "shiftsPage": {
+    "title": "Shifts",
+    "todaySegment": "Today",
+    "shiftsSegment": "Shifts",
+    "noShiftsPanel": {
+      "title": "No Shifts Today",
+      "details": "",
+      "extraDetails": "",
+      "buttonLabel": ""
+    },
+    "ctaPanel2": {
+      "title": "No Shifts Created",
+      "details": "",
+      "extraDetails": "",
+      "buttonLabel": ""
+    }
+  }
+}

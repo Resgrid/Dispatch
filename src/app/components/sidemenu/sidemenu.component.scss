@@ -1,0 +1,104 @@
+
+.contentBg {
+    --background: #f8f8f8 !important;
+
+    ion-list {
+        padding-left: 28px;
+
+        ion-icon {
+            color: #999;
+
+            &.active {
+                color: #3c8af7;
+            }
+        }
+
+        ion-label {
+            padding-left: 20px;
+            letter-spacing: 2px;
+
+            &.active {
+                font-weight: bold;
+            }
+        }
+    }
+
+    .driverCard {
+        position: relative;
+        width: 100%;
+        padding-bottom: 5%;
+        box-shadow: none;
+        border-radius: 0;
+        padding-top: 10%;
+        background: linear-gradient(45deg, #3c8af7 47%, #7e0080);
+        --background: linear-gradient(45deg, #3c8af7 47%, #7e0080);
+
+        ion-item {
+            padding: 15px 26px;
+            padding-bottom: 0;
+            background: rgba(0, 0, 0, 0);
+            --background: rgba(0, 0, 0, 0);
+
+            .driverProfileImage {
+                display: flex;
+                align-items: center;
+                width: 100%;
+                justify-content: center;
+
+                ion-avatar {
+                    width: 60px;
+                    height: 60px;
+                    margin: 0;
+                    border: 2px solid #fff;
+                }
+
+                .userDetails {
+                    background: #fff;
+                    border-radius: 90px;
+                    display: flex;
+                    padding-left: 6px;
+                    padding-right: 6px;
+                    align-items: center;
+                    height: 1.8em;
+                    padding-bottom: 0;
+                    color: #ff4646;
+                    font-size: 11px;
+                }
+
+                .userName {
+                    letter-spacing: 1px;
+                    margin-bottom: 10px;
+                    color: white;
+                }
+            }
+        }
+    }
+
+    .cardContent {
+        display: flex;
+        justify-content: space-around;
+        border-radius: 6px;
+        padding: 3%;
+
+        .driverDetails {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .driverStatusIcons {
+            font-size: 26px;
+            color: #f3e046;
+        }
+
+        .detailText {
+            color: white;
+            font-size: 10px;
+        }
+
+        .detailsLabel {
+            font-size: 18px;
+        }
+    }
+}

@@ -74,4 +74,87 @@
   --ion-color-light-contrast-rgb: 0, 0, 0;
   --ion-color-light-shade: #d7d8da;
   --ion-color-light-tint: #f5f6f9;
+
+  
+    /** firebase**/
+    --ion-color-firebase: #FFA000;
+    --ion-color-firebase-rgb: 255, 160, 0;
+    --ion-color-firebase-contrast: #ffffff;
+    --ion-color-firebase-contrast-rgb: 255, 255, 255;
+    --ion-color-firebase-shade: #e69100;
+    --ion-color-firebase-tint: #ffbe4d;
+  
+      /** rose **/
+    --ion-color-rose: #FF6079;
+    --ion-color-header:#224068;
+    --ion-color-success-rgb: 34, 64, 104;
+    --ion-color-success-contrast: #ffffff;
+    --ion-color-success-contrast-rgb: 255, 255, 255;
+  
+  
+      /** profile **/
+    --ion-color-profile: #f53d3d;
+    --ion-color-profile-rgb: 245,61,61;
+    --ion-color-profile-contrast: #ffffff;
+    --ion-color-profile-contrast-rgb: 255,255,255;
+    --ion-color-profile-shade: #d83636;
+    --ion-color-profile-tint: #f65050;
+  
+    /** twitter **/
+    --ion-color-twitter: #38A1F3;
+    --ion-color-twitter-rgb: 56, 161, 243;
+    --ion-color-twitter-contrast: #ffffff;
+    --ion-color-twitter-contrast-rgb: 255, 255, 255;
+    --ion-color-twitter-shade: #3171e0;
+    --ion-color-twitter-tint: #4c8dff;
+  
+    /** facebook **/
+    --ion-color-facebook: #4267b2;
+    --ion-color-facebook-rgb: 66, 103, 178;
+    --ion-color-facebook-contrast: #ffffff;
+    --ion-color-facebook-contrast-rgb: 255, 255, 255;
+    --ion-color-facebook-shade: #3171e0;
+    --ion-color-facebook-tint: #4c8dff;
+}
+
+
+.ion-color-profile {
+  --ion-color-base: var(--ion-color-profile) !important;
+  --ion-color-base-rgb: var(--ion-color-profile-rgb) !important;
+  --ion-color-contrast: var(--ion-color-profile-contrast) !important;
+  --ion-color-contrast-rgb: var(--ion-color-profile-contrast-rgb) !important;
+  --ion-color-shade: var(--ion-color-profile-shade) !important;
+  --ion-color-tint: var(--ion-color-profile-tint) !important;
+}
+
+.ion-color-twitter {
+  --ion-color-base: var(--ion-color-twitter) !important;
+  --ion-color-base-rgb: var(--ion-color-twitter-rgb) !important;
+  --ion-color-contrast: var(--ion-color-twitter-contrast) !important;
+  --ion-color-contrast-rgb: var(--ion-color-twitter-contrast-rgb) !important;
+  --ion-color-shade: var(--ion-color-twitter-shade) !important;
+  --ion-color-tint: var(--ion-color-twitter-tint) !important;
+}
+
+.ion-color-facebook {
+  --ion-color-base: var(--ion-color-facebook) !important;
+  --ion-color-base-rgb: var(--ion-color-facebook-rgb) !important;
+  --ion-color-contrast: var(--ion-color-facebook-contrast) !important;
+  --ion-color-contrast-rgb: var(--ion-color-facebook-contrast-rgb) !important;
+  --ion-color-shade: var(--ion-color-facebook-shade) !important;
+  --ion-color-tint: var(--ion-color-facebook-tint) !important;
+}
+
+.pr0{
+  padding-right: 0;
+}
+
+.viewVideoModal{
+  --background:transparent;
+  background: transparent;
+}
+
+.profile{
+  --background:#f53d3d;
+  background:#f53d3d
 }

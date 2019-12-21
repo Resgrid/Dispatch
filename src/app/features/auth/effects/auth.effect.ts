@@ -8,6 +8,8 @@ import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { Router } from '@angular/router';
 import { LoadingProvider } from 'src/app/providers/loading';
+import { MenuController } from '@ionic/angular';
+import { SettingsProvider } from 'src/app/providers/settings';
 
 @Injectable()
 export class AuthEffects {
@@ -26,9 +28,21 @@ export class AuthEffects {
             fullName: data.Nme,
             departmentId: data.Did,
             authToken: data.Tkn,
-            authTokenExpiry: data.Txd
+            authTokenExpiry: data.Txd,
+            departmentName: data.Dnm,
+            departmentCreatedOn: data.Dcd
           }
         })),
+        tap(data => {
+          this.settingsProvider.settings.EmailAddress =  data.user.emailAddress;
+          this.settingsProvider.settings.DepartmentName = data.user.departmentName;
+          this.settingsProvider.settings.DepartmentId = data.user.departmentId;
+          this.settingsProvider.settings.DepartmentCreatedOn = data.user.departmentCreatedOn;
+          this.settingsProvider.settings.UserId = data.user.userId;
+          this.settingsProvider.settings.AuthToken = data.user.authToken;
+          this.settingsProvider.settings.AuthTokenExpiry = data.user.authTokenExpiry;
+          this.settingsProvider.settings.FullName = data.user.fullName;
+        }),
         // If request fails, dispatch failed action
         catchError(() => of({ type: authAction.LoginActionTypes.LOGIN_FAIL })))));
 
@@ -52,8 +66,13 @@ export class AuthEffects {
   @Effect({ dispatch: false })
   loggingIn$ = this
     .actions$
-    .pipe(ofType<authAction.IsLogin>(authAction.LoginActionTypes.IS_LOGIN), tap(action => this.loadingProvider.show()));
+    .pipe(ofType<authAction.IsLogin>(authAction.LoginActionTypes.IS_LOGIN), tap(action => {
+      this.menuCtrl.enable(true, 'start');
+      this.menuCtrl.enable(true, 'end');
+      this.loadingProvider.show();
+    }));
 
   constructor(private http: HttpClient, private actions$: Actions, private authProvider: AuthProvider,
-    private router: Router, private loadingProvider: LoadingProvider) { }
+    private router: Router, private loadingProvider: LoadingProvider, private menuCtrl: MenuController, 
+    private settingsProvider: SettingsProvider) { }
 }

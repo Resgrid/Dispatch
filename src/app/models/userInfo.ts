@@ -5,4 +5,6 @@ export class UserInfo  {
     departmentId: number;
     authToken: string;
     authTokenExpiry: string;
+    departmentName: string;
+    departmentCreatedOn: string;
 }

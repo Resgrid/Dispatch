@@ -11,7 +11,8 @@ export function reducer(state: HomeState = initialState, action: HomeActionsUnio
     case HomeActionTypes.LOADING_SUCCESS:
       return {
         ...state,
-        hasLoaded: true
+        hasLoaded: true,
+        data: action.payload
       };
     case HomeActionTypes.LOADING_FAIL:
       return {

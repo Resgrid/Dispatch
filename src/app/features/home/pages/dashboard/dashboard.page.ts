@@ -1,4 +1,6 @@
 import { Component } from '@angular/core';
+import { Store } from '@ngrx/store';
+import { HomeState } from '../../store/home.store';
 
 @Component({
   selector: 'app-dashboard',
@@ -7,6 +9,6 @@ import { Component } from '@angular/core';
 })
 export class DashboardPage {
 
-  constructor() {}
+  constructor(private store: Store<HomeState>) {}
 
 }

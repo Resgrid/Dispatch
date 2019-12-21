@@ -1,8 +1,9 @@
 {
   "name": "dispatch",
-  "version": "0.0.1",
-  "author": "Ionic Framework",
-  "homepage": "https://ionicframework.com/",
+  "version": "1.0.0",
+  "author": "Resgrid Team <team@resgrid.com>",
+  "homepage": "https://resgrid.com",
+  "description": "Computer Aided Dispatch interface for the Resgrid system",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -65,6 +66,5 @@
     "ts-node": "~7.0.0",
     "tslint": "~5.15.0",
     "typescript": "~3.4.3"
-  },
-  "description": "An Ionic project"
+  }
 }

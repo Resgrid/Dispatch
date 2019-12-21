@@ -1,0 +1,19 @@
+.zero-h {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.25s ease-out;
+}
+
+.animate-expand {
+    max-height: 500px;
+    transition: max-height 0.25s ease-in;
+}
+
+.menu-label {
+    align-items: center;
+    display: flex;
+
+    ion-icon {
+        padding-left: 10px;
+    }
+}

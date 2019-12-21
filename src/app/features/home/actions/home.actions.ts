@@ -15,6 +15,7 @@ export class Loading implements Action {
 
 export class LoadingSuccess implements Action {
   readonly type = HomeActionTypes.LOADING_SUCCESS;
+  constructor(public payload: DashboardPayload) {}
 }
 
 export class LoadingFail implements Action {

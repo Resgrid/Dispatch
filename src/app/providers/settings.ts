@@ -3,18 +3,21 @@ import { APP_CONFIG_TOKEN, AppConfig } from '../config/app.config-interface';
 
 import { Settings } from '../models/settings';
 
-@Injectable()
+
+@Injectable({
+  providedIn: 'root'
+})
 export class SettingsProvider {
   private storage: any;
   public isAuthenticated: boolean = false;
   public settings: Settings;
 
-  constructor( @Inject(APP_CONFIG_TOKEN) private appConfig: AppConfig) {
+  constructor(@Inject(APP_CONFIG_TOKEN) private appConfig: AppConfig) {
     this.settings = new Settings();
 
     // Ok, NativeStorage should support local storage fallback, but it doesn't presist, so have this fake for web fallback.
     if (window['cordova']) {
-      //this.storage = nativeStorage;
+      // this.storage = nativeStorage;
     } else {
       this.storage = {
         setItem: (key, value) => {
