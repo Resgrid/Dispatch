@@ -10,7 +10,7 @@ export enum HomeActionTypes {
 
 export class Loading implements Action {
   readonly type = HomeActionTypes.LOADING;
-  constructor(public payload: DashboardPayload) {}
+  constructor() {}
 }
 
 export class LoadingSuccess implements Action {
