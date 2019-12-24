@@ -6,12 +6,16 @@ import { ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { HomeRoutingModule } from './home-routing.module';
 import { reducer } from './reducers/home.reducer';
 import { HomeEffects } from './effects/home.effect';
+import { UnitListComponent } from './components/unitsList/units-list';
+import { IonicModule } from '@ionic/angular';
+import { ComponentsModule } from 'src/app/components/components.module';
 
 @NgModule({
   declarations: [],
   imports: [
     CommonModule,
     FormsModule,
+    IonicModule,
     ReactiveFormsModule,
     HomeRoutingModule,
     StoreModule.forFeature('homeModule', reducer),

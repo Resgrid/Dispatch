@@ -52,11 +52,21 @@ export class UtilsProvider {
 
     public navigate(link, forward?) {
         if (forward) {
-          this.nav.navigateForward('/' + link);
+            this.nav.navigateForward('/' + link);
         } else {
-          this.router.navigateByUrl('/' + link);
+            this.router.navigateByUrl('/' + link);
         }
-      }
+    }
+
+    public to2Digit(str: string): string {
+        if (!str) { return null; }
+
+        const isString: boolean = (typeof str == 'string');
+        if (isString && str.length == 1) {
+            str = 0 + str;
+        }
+        return str;
+    }
 
     public parseDateISOString(s) {
         let b = s.split(/\D/);
@@ -119,7 +129,7 @@ export class UtilsProvider {
             }
 
             if (hours === 0) {
-                 hours = 12;
+                hours = 12;
             }
             format = format.replace('hh', this.padLeadingZero(hours));
         }
@@ -174,8 +184,8 @@ export class UtilsProvider {
 
         timeZone = this.createDateUTCOffset(date);
 
-        const time = this.padLeadingZero(month) + '/' + this.padLeadingZero(day) + '/' + year + ' ' + 
-                     this.padLeadingZero(hour) + ':' + this.padLeadingZero(minute) + ':' + this.padLeadingZero(second) + ' ' + timeZone;
+        const time = this.padLeadingZero(month) + '/' + this.padLeadingZero(day) + '/' + year + ' ' +
+            this.padLeadingZero(hour) + ':' + this.padLeadingZero(minute) + ':' + this.padLeadingZero(second) + ' ' + timeZone;
 
         return time;
     }
@@ -216,7 +226,7 @@ export class UtilsProvider {
                 time = +new Date(time);
                 break;
             case 'object':
-                if (time.constructor === Date) { 
+                if (time.constructor === Date) {
                     time = time.getTime();
                 }
                 break;
@@ -321,8 +331,7 @@ export class UtilsProvider {
         }
         let i = 0,
             format;
-        while (format = timeFormats[i++])
-        {
+        while (format = timeFormats[i++]) {
             if (seconds < format[0]) {
                 if (typeof format[2] == 'string') {
                     return format[list_choice];

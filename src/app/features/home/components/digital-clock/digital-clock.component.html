@@ -1,0 +1,26 @@
+<div id="clock">
+    <div class="display clock-display">
+        <div class="weekdays">
+            <ul class="clock-weekdays-block">
+                <li class="day-block" *ngFor="let day of days" [class.active]="today == day">{{day}}</li>
+            </ul>
+        </div>
+        <div class="alarm"></div>
+        <div class="digits">
+            <ng-container *ngFor="let d of timeFormatList">
+                <div class="dots" *ngIf="d == 'dots'" [style.visibility]="!displayDots ? 'visible': 'hidden'"></div>
+                <div [attr.class]="d ? d: null" *ngIf="d != 'dots'">
+                    <span *ngFor="let border of borders" [attr.class]="border"></span>
+                </div>
+            </ng-container>
+            <div class="ampm">
+                <ul class="clock-meridian-block">
+                    <li class="clock-meridian" *ngFor="let m of ['AM', 'PM']" [class.active]="meridian == m">{{m}}</li>
+                </ul>
+            </div>
+        </div>
+        <div class="clock-date">
+            <div class="small">{{monthYear}}</div>
+        </div>
+    </div>
+</div>

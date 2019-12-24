@@ -1,0 +1,24 @@
+.clock-display {
+    .clock-meridian,
+    .clock-weekdays-block .day-block {
+        opacity: 0.3;
+        list-style-type: none;
+
+        &.active {
+            opacity: 1;
+            font-weight: bold;
+        }
+    }
+
+    .clock-weekdays-block {
+        >.day-block {
+            padding: 0 10px;
+            display: inline-block;
+        }
+    }
+
+    .small {
+        font-family: cursive;
+        font-size: 10px !important;
+    }
+}
