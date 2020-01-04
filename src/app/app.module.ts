@@ -22,6 +22,7 @@ import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
 import { ComponentsModule } from './components/components.module';
 import { PubSubModule } from './components/pubsub/angular2-pubsub.module';
 import { HttpInterceptorModule } from './interceptors/http.interceptor.module';
+import { DirectivesModule } from './directives/directives.module';
 
 export function createTranslateLoader(http: HttpClient) {
   return new TranslateHttpLoader(http, 'assets/i18n/', '.json');
@@ -49,6 +50,7 @@ export function createConfig(): SignalRConfiguration {
     HttpClientModule,
     AppRoutingModule,
     ComponentsModule,
+    DirectivesModule,
     HttpInterceptorModule,
     PubSubModule.forRoot(),
     StoreModule.forRoot(reducers, { metaReducers }),

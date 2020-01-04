@@ -39,6 +39,7 @@
     "rxjs": "~6.5.1",
     "signalr": "^2.4.1",
     "tslib": "^1.9.0",
+    "underscore": "^1.9.1",
     "zone.js": "~0.9.1"
   },
   "devDependencies": {

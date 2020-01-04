@@ -8,12 +8,14 @@ import { DashboardPage } from './dashboard.page';
 import { UnitListComponent } from '../../components/unitsList/units-list';
 import { DigitalClockComponent } from '../../components/digital-clock/digital-clock.component';
 import { CallsListComponent } from '../../components/calls-list/calls-list';
+import { DirectivesModule } from 'src/app/directives/directives.module';
 
 @NgModule({
   imports: [
     CommonModule,
     FormsModule,
     IonicModule,
+    DirectivesModule,
     RouterModule.forChild([
       {
         path: '',

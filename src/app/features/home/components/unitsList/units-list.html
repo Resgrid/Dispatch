@@ -1,74 +1,13 @@
-<div *ngIf="data">
-  <div class="ion-padding">
-    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla ac eros est. Cras iaculis pulvinar arcu non vehicula.
-    Fusce at quam a eros malesuada condimentum. Aliquam tincidunt tincidunt vehicula.
-  </div>
-
-  <ion-list>
-    <ion-list-header>Data</ion-list-header>
-    <ion-item>
-      <ion-avatar slot="start">
-        <img src="assets/chat/avatars/1.png">
-      </ion-avatar>
-      <ion-label>
-        <h3>
-          {{ data.heading }}
-        </h3>
-        <p>
-          {{ data.para1 }}
-        </p>
-        <p>
-          {{ data.para2 }}
-        </p>
-      </ion-label>
-    </ion-item>
-    <ion-item>
-      <ion-thumbnail slot="start">
-        <img src="assets/chat/chat/chat1.jpg">
-      </ion-thumbnail>
-      <ion-label>
-        <h3>
-          {{ data.heading }}
-        </h3>
-        <p>
-          {{ data.para1 }}
-        </p>
-        <p>
-          {{ data.para2 }}
-        </p>
-      </ion-label>
-    </ion-item>
-    <ion-item>
-      <ion-icon name="call" slot="start"></ion-icon>
-      <ion-label>
-        <h3>
-          {{ data.heading }}
-        </h3>
-        <p>
-          {{ data.para1 }}
-        </p>
-        <p>
-          {{ data.para2 }}
-        </p>
-      </ion-label>
-    </ion-item>
-  </ion-list>
+<div *ngIf="state?.hasLoaded">
+  <ion-item-group *ngFor="let group of state?.data?.UnitStatuses | groupBy:'GroupName'">
+    <ion-item-divider light>{{group.key}}</ion-item-divider>
+    <button ion-item *ngFor="let dest of group.value">{{dest.Name}}</button>
+  </ion-item-group>
 </div>
 
 <!-- Skeleton screen -->
-<div *ngIf="!data">
-  <div class="ion-padding custom-skeleton">
-    <ion-skeleton-text animated style="width: 60%"></ion-skeleton-text>
-    <ion-skeleton-text animated></ion-skeleton-text>
-    <ion-skeleton-text animated style="width: 88%"></ion-skeleton-text>
-    <ion-skeleton-text animated style="width: 70%"></ion-skeleton-text>
-    <ion-skeleton-text animated style="width: 60%"></ion-skeleton-text>
-  </div>
-
+<div *ngIf="!state?.hasLoaded">
   <ion-list>
-    <ion-list-header>
-      <ion-skeleton-text animated style="width: 20%"></ion-skeleton-text>
-    </ion-list-header>
     <ion-item>
       <ion-avatar slot="start">
         <ion-skeleton-text animated></ion-skeleton-text>

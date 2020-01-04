@@ -9,4 +9,5 @@ export class UnitStatusResult  {
     public Type: string = '';
     public StateText: string = '';
     public StateColor: string = '';
+    public StationName: string = '';
 }

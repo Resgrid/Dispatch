@@ -9,6 +9,7 @@ import { HomeEffects } from './effects/home.effect';
 import { UnitListComponent } from './components/unitsList/units-list';
 import { IonicModule } from '@ionic/angular';
 import { ComponentsModule } from 'src/app/components/components.module';
+import { DirectivesModule } from 'src/app/directives/directives.module';
 
 @NgModule({
   declarations: [],
@@ -18,6 +19,7 @@ import { ComponentsModule } from 'src/app/components/components.module';
     IonicModule,
     ReactiveFormsModule,
     HomeRoutingModule,
+    DirectivesModule,
     StoreModule.forFeature('homeModule', reducer),
     EffectsModule.forFeature([HomeEffects]),
   ],

@@ -24,12 +24,13 @@ export class HomeProvider {
 
     public getHomeData(): Observable<DashboardPayload> {
 
-        const getUnits = this.unitsProvider.getUnitStatuses();
+        const getUnits = this.unitsProvider.getUnitStatusesFull();
         const getCalls = this.callsProvider.getActiveCalls();
+
 
         return forkJoin([getUnits, getCalls]).pipe(map((results) => {
             return {
-                Units: results[0],
+                UnitStatuses: results[0],
                 Calls: results[1]
             };
         }));

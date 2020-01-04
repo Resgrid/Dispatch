@@ -1,4 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Input } from '@angular/core';
+import { HomeState } from '../../store/home.store';
+import { _ } from 'underscore';
 
 @Component({
   selector: 'app-units-list',
@@ -6,9 +8,10 @@ import { Component, OnInit } from '@angular/core';
   styleUrls: ['./units-list.scss'],
 })
 export class UnitListComponent implements OnInit {
+  @Input() state: HomeState;
   data: any;
 
-  constructor() {}
+  constructor() { }
 
   ionViewWillEnter() {
     setTimeout(() => {
@@ -24,4 +27,13 @@ export class UnitListComponent implements OnInit {
 
   }
 
+  public getUnits() {
+    if (this.state && this.state.data && this.state.data.UnitStatuses) {
+      //const groupedUnits = _.groupBy(this.state.data.Units, 'StationName');
+      //const groupedUnits = _.chain(this.state.data.Units).groupBy('StationName').pairs().sortBy(0).value();
+      //console.log(JSON.stringify(groupedUnits));
+      //return groupedUnits;
+
+    }
+  }
 }

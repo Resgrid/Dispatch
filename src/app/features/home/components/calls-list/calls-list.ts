@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Input } from '@angular/core';
+import { HomeState } from '../../store/home.store';
 
 @Component({
   selector: 'app-calls-list',
@@ -6,18 +7,20 @@ import { Component, OnInit } from '@angular/core';
   styleUrls: ['./calls-list.scss'],
 })
 export class CallsListComponent implements OnInit {
+  @Input() state: HomeState;
+
   data: any;
 
   constructor() {}
 
   ionViewWillEnter() {
-    setTimeout(() => {
+
       this.data = {
         'heading': 'Normal text',
         'para1': 'Lorem ipsum dolor sit amet, consectetur',
         'para2': 'adipiscing elit.'
       };
-    }, 5000);
+
   }
 
   ngOnInit() {

@@ -13,20 +13,20 @@
   <ion-grid>
     <ion-row>
       <ion-col size="4">
-        <app-units-list></app-units-list>
+        <app-units-list [state]="homeState$ | async"></app-units-list>
       </ion-col>
       <ion-col class="no-padding">
         <ion-row>
           <ion-col>
-            <ion-button expand="full"></ion-button>
+            <app-digital-clock></app-digital-clock>
           </ion-col>
           <ion-col>
-            <app-digital-clock></app-digital-clock>
+            
           </ion-col>
         </ion-row>
         <ion-row>
           <ion-col>
-            <app-calls-list></app-calls-list>
+            <app-calls-list [state]="homeState$ | async"></app-calls-list>
           </ion-col>
         </ion-row>
       </ion-col>

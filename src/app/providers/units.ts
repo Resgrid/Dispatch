@@ -8,6 +8,7 @@ import { DataProvider } from './data';
 import { TypesProvider } from './types';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { UnitStatusFullResult } from '../models/unitStatusFullResult';
 
 @Injectable({
   providedIn: 'root'
@@ -20,7 +21,7 @@ export class UnitsProvider {
 
   public getUnitStatuses(): Observable<UnitStatusResult[]> {
     let url = '';
-    let filter = this.settingsProvider.settings.UnitsFilter;
+    const filter = this.settingsProvider.settings.UnitsFilter;
 
     if (filter) {
       url = this.appConfig.ResgridApiUrl + '/Units/GetUnitStatuses?activeFilter=' + encodeURIComponent(filter);
@@ -29,7 +30,7 @@ export class UnitsProvider {
     }
 
     return this.http.get<UnitStatusResult[]>(url).pipe(map((items) => {
-      let statuses: UnitStatusResult[] = new Array<UnitStatusResult>();
+      const statuses: UnitStatusResult[] = new Array<UnitStatusResult>();
 
       items.forEach(item => {
         const status = new UnitStatusResult();
@@ -42,10 +43,47 @@ export class UnitsProvider {
         if (localUnit) {
           status.Name = localUnit.Nme;
           status.Type = localUnit.Typ;
+          status.StationName = localUnit.Snm;
         }
 
         status.StateText = this.typesProvider.unitStatusToTextConverter(item.Typ);
         status.StateColor = this.typesProvider.unitStatusToColorConverter(item.Typ);
+
+        statuses.push(status);
+      });
+
+      return statuses;
+    }));
+  }
+
+  public getUnitStatusesFull(): Observable<UnitStatusFullResult[]> {
+    return this.http.get<UnitStatusFullResult[]>(this.appConfig.ResgridApiUrl + '/BigBoard/GetUnitStatuses').pipe(map((items) => {
+      const statuses: UnitStatusFullResult[] = new Array<UnitStatusFullResult>();
+
+      items.forEach(item => {
+        const status = new UnitStatusFullResult();
+
+        status.Name = item.Name;
+        status.State = item.State;
+
+        if (item.StateCss.indexOf('#') > -1) {
+          status.StateCss = '';
+          status.StateStyle = item.StateStyle;
+
+        } else {
+          status.StateCss = item.StateCss;
+          status.StateStyle = '#000000';
+        }
+
+        status.GroupId = item.GroupId;
+        status.Latitude = item.Latitude;
+        status.Longitude = item.Longitude;
+        status.Timestamp = item.Timestamp;
+        status.Type = item.Type;
+        status.DestinationId = item.DestinationId;
+        status.Note = item.Note;
+        status.GroupName = item.GroupName;
+        status.Eta = item.Eta;
 
         statuses.push(status);
       });
