@@ -10,6 +10,7 @@ import { Router } from '@angular/router';
 import { LoadingProvider } from 'src/app/providers/loading';
 import { MenuController } from '@ionic/angular';
 import { SettingsProvider } from 'src/app/providers/settings';
+import { AlertProvider } from 'src/app/providers/alert';
 
 @Injectable()
 export class AuthEffects {
@@ -34,7 +35,7 @@ export class AuthEffects {
           }
         })),
         tap(data => {
-          this.settingsProvider.settings.EmailAddress =  data.user.emailAddress;
+          this.settingsProvider.settings.EmailAddress = data.user.emailAddress;
           this.settingsProvider.settings.DepartmentName = data.user.departmentName;
           this.settingsProvider.settings.DepartmentId = data.user.departmentId;
           this.settingsProvider.settings.DepartmentCreatedOn = data.user.departmentCreatedOn;
@@ -61,7 +62,18 @@ export class AuthEffects {
   @Effect({ dispatch: false })
   loginDone$ = this
     .actions$
-    .pipe(ofType<authAction.LoginDone>(authAction.LoginActionTypes.LOGIN_DONE), tap(action => console.log(action)));
+    .pipe(ofType<authAction.LoginDone>(authAction.LoginActionTypes.LOGIN_DONE), tap(action => {
+      console.log(action);
+    }));
+
+  @Effect({ dispatch: false })
+  loginFail$ = this
+    .actions$
+    .pipe(ofType<authAction.LoginDone>(authAction.LoginActionTypes.LOGIN_FAIL), tap(async action => {
+      console.log(action);
+      this.loadingProvider.hide();
+      await this.alertProvider.showOkAlert('Login Error', '', 'There was an issue trying to log you in, please check your username and password and try again.');
+    }));
 
   @Effect({ dispatch: false })
   loggingIn$ = this
@@ -73,6 +85,6 @@ export class AuthEffects {
     }));
 
   constructor(private http: HttpClient, private actions$: Actions, private authProvider: AuthProvider,
-    private router: Router, private loadingProvider: LoadingProvider, private menuCtrl: MenuController, 
-    private settingsProvider: SettingsProvider) { }
+    private router: Router, private loadingProvider: LoadingProvider, private menuCtrl: MenuController,
+    private settingsProvider: SettingsProvider, private alertProvider: AlertProvider) { }
 }

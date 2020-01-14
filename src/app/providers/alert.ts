@@ -12,10 +12,11 @@ export class AlertProvider {
 
   }
 
-  public async showOkAlert(title: string, subTitle: string) {
+  public async showOkAlert(title: string, subTitle: string, body: string) {
     this.alert = await this.alertCtrl.create({
       header: title,
       subHeader: subTitle,
+      message: body,
       buttons: ['OK']
     });
 

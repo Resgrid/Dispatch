@@ -1,58 +1,86 @@
-<div *ngIf="state?.hasLoaded">
-  <ion-item-group *ngFor="let group of state?.data?.UnitStatuses | groupBy:'GroupName'">
-    <ion-item-divider light>{{group.key}}</ion-item-divider>
-    <button ion-item *ngFor="let dest of group.value">{{dest.Name}}</button>
-  </ion-item-group>
-</div>
+<ion-content>
+  <div *ngIf="state?.hasLoaded">
+    <ion-item-group *ngFor="let group of state?.data?.UnitStatuses | groupBy:'GroupName'">
+      <ion-item-divider light>{{group.key}}</ion-item-divider>
+      <ion-card *ngFor="let unit of group.value">
+        <ion-card-header>
+          <ion-card-title>{{unit.Name}}</ion-card-title>
+        </ion-card-header>
+        <ion-card-content>
+          <ion-row>
+            <ion-col size="6">
+              <span [ngClass]="unit.StateCss" [style.color]="unit.StateStyle">{{unit.State}}</span>
+            </ion-col>
+            <ion-col size="6">
+              {{unit.Timestamp | rgTimeAgo}}
+            </ion-col>
+          </ion-row>
+        </ion-card-content>
+        <ion-footer>
+          <ion-row>
+            <ion-col center text-center>
+              <ion-checkbox></ion-checkbox>
+            </ion-col>
+            <ion-col center text-center>
+            </ion-col>
+            <ion-col center text-center>
+              <ion-button size="small">Small</ion-button>
+            </ion-col>
+          </ion-row>
+        </ion-footer>
+      </ion-card>
+    </ion-item-group>
+  </div>
 
-<!-- Skeleton screen -->
-<div *ngIf="!state?.hasLoaded">
-  <ion-list>
-    <ion-item>
-      <ion-avatar slot="start">
-        <ion-skeleton-text animated></ion-skeleton-text>
-      </ion-avatar>
-      <ion-label>
-        <h3>
-          <ion-skeleton-text animated style="width: 50%"></ion-skeleton-text>
-        </h3>
-        <p>
-          <ion-skeleton-text animated style="width: 80%"></ion-skeleton-text>
-        </p>
-        <p>
-          <ion-skeleton-text animated style="width: 60%"></ion-skeleton-text>
-        </p>
-      </ion-label>
-    </ion-item>
-    <ion-item>
-      <ion-thumbnail slot="start">
-        <ion-skeleton-text animated></ion-skeleton-text>
-      </ion-thumbnail>
-      <ion-label>
-        <h3>
-          <ion-skeleton-text animated style="width: 50%"></ion-skeleton-text>
-        </h3>
-        <p>
-          <ion-skeleton-text animated style="width: 80%"></ion-skeleton-text>
-        </p>
-        <p>
-          <ion-skeleton-text animated style="width: 60%"></ion-skeleton-text>
-        </p>
-      </ion-label>
-    </ion-item>
-    <ion-item>
-      <ion-skeleton-text animated style="width: 27px; height: 27px" slot="start"></ion-skeleton-text>
-      <ion-label>
-        <h3>
-          <ion-skeleton-text animated style="width: 50%"></ion-skeleton-text>
-        </h3>
-        <p>
-          <ion-skeleton-text animated style="width: 80%"></ion-skeleton-text>
-        </p>
-        <p>
-          <ion-skeleton-text animated style="width: 60%"></ion-skeleton-text>
-        </p>
-      </ion-label>
-    </ion-item>
-  </ion-list>
-</div>
+  <!-- Skeleton screen -->
+  <div *ngIf="!state?.hasLoaded">
+    <ion-list>
+      <ion-item>
+        <ion-avatar slot="start">
+          <ion-skeleton-text animated></ion-skeleton-text>
+        </ion-avatar>
+        <ion-label>
+          <h3>
+            <ion-skeleton-text animated style="width: 50%"></ion-skeleton-text>
+          </h3>
+          <p>
+            <ion-skeleton-text animated style="width: 80%"></ion-skeleton-text>
+          </p>
+          <p>
+            <ion-skeleton-text animated style="width: 60%"></ion-skeleton-text>
+          </p>
+        </ion-label>
+      </ion-item>
+      <ion-item>
+        <ion-thumbnail slot="start">
+          <ion-skeleton-text animated></ion-skeleton-text>
+        </ion-thumbnail>
+        <ion-label>
+          <h3>
+            <ion-skeleton-text animated style="width: 50%"></ion-skeleton-text>
+          </h3>
+          <p>
+            <ion-skeleton-text animated style="width: 80%"></ion-skeleton-text>
+          </p>
+          <p>
+            <ion-skeleton-text animated style="width: 60%"></ion-skeleton-text>
+          </p>
+        </ion-label>
+      </ion-item>
+      <ion-item>
+        <ion-skeleton-text animated style="width: 27px; height: 27px" slot="start"></ion-skeleton-text>
+        <ion-label>
+          <h3>
+            <ion-skeleton-text animated style="width: 50%"></ion-skeleton-text>
+          </h3>
+          <p>
+            <ion-skeleton-text animated style="width: 80%"></ion-skeleton-text>
+          </p>
+          <p>
+            <ion-skeleton-text animated style="width: 60%"></ion-skeleton-text>
+          </p>
+        </ion-label>
+      </ion-item>
+    </ion-list>
+  </div>
+</ion-content>

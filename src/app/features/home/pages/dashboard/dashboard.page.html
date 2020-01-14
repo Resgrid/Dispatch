@@ -10,8 +10,8 @@
 </ion-header>
 
 <ion-content>
-  <ion-grid>
-    <ion-row>
+  <ion-grid style="height: 100%; display: flex; flex-flow: column;">
+    <ion-row style="flex-grow: 1;">
       <ion-col size="4">
         <app-units-list [state]="homeState$ | async"></app-units-list>
       </ion-col>
@@ -24,8 +24,8 @@
             
           </ion-col>
         </ion-row>
-        <ion-row>
-          <ion-col>
+        <ion-row style="height: 90%;">
+          <ion-col size="12">
             <app-calls-list [state]="homeState$ | async"></app-calls-list>
           </ion-col>
         </ion-row>

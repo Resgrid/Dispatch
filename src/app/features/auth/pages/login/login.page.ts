@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { MenuController, LoadingController, Platform, AlertController } from '@ionic/angular';
+import { MenuController, LoadingController, Platform, AlertController, ModalController } from '@ionic/angular';
 import { FormGroup, FormBuilder, Validators } from '@angular/forms';
 import { Store } from '@ngrx/store';
 import { selectIsLoginState, selectLoginState } from 'src/app/store';
@@ -19,7 +19,8 @@ export class LoginPage implements OnInit {
   isLogging$ = false;
 
   constructor(private fb: FormBuilder, private store: Store<AuthState>,
-    private loadingProvider: LoadingProvider, private menuCtrl: MenuController) {
+    private loadingProvider: LoadingProvider, private menuCtrl: MenuController,
+    private alertController: AlertController) {
   }
 
   ngOnInit() {
@@ -65,9 +66,13 @@ export class LoginPage implements OnInit {
 
     this.store
       .select(selectLoginState)
-      .subscribe(res => {
+      .subscribe(async res => {
         if (res) {
           this.error$ = res;
+
+          if (this.error$) {
+            this.isLogging$ = false;
+          }
         }
       });
   }
