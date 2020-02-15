@@ -36,6 +36,7 @@
     "leaflet": "^1.6.0",
     "ng2-signalr": "^8.0.2",
     "ngrx-store-freeze": "^0.2.4",
+    "replace-in-file": "^5.0.2",
     "rxjs": "~6.5.1",
     "signalr": "^2.4.1",
     "tslib": "^1.9.0",

@@ -1,6 +1,6 @@
 <ion-content class="ion-no-padding">
   <div class="main">
-    <form [formGroup]="loginForm" novalidate (ngSubmit)="login(loginForm.value)">
+    <form [formGroup]="loginForm" novalidate (ngSubmit)="login(loginForm.value)" (keyup.enter)="login(loginForm.value)">
       <ion-card class="card ion-no-margin">
         <ion-card-content>
           <ion-row class="row">
