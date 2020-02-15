@@ -1,7 +1,7 @@
-import { ResponderChatGroupInfo } from './ResponderChatGroupInfo'
+import { ResponderChatGroupInfo } from './responderChatGroupInfo';
 
 export class ResponderChatResult  {
-    public UserId: string = "";
+    public UserId: string = '';
 
     public Groups: ResponderChatGroupInfo[];
 }
