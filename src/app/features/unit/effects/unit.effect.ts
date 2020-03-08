@@ -6,7 +6,8 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { CallsProvider } from 'src/app/providers/calls';
-import { HomeProvider } from '../providers/home';
+import { UnitStatusProvider } from 'src/app/providers/unitStatus';
+
 
 @Injectable()
 export class UnitEffects {
@@ -14,7 +15,7 @@ export class UnitEffects {
   setStatus$: Observable<Action> = this
     .actions$
     .pipe(ofType<unitAction.SetStatus>(unitAction.UnitActionTypes.SET_STATUS),
-      mergeMap(action => this.homeProvider.getHomeData().pipe(
+      mergeMap(action => this.unitStatusProvider.sendUnitStatus(action.payload.status).pipe(
         // If successful, dispatch success action with result
         map(data => ({
           type: unitAction.UnitActionTypes.SET_STATUS_SUCCESS,
@@ -23,5 +24,5 @@ export class UnitEffects {
         // If request fails, dispatch failed action
         catchError(() => of({ type: unitAction.UnitActionTypes.SET_STATUS_FAIL })))));
 
-  constructor(private actions$: Actions, private homeProvider: HomeProvider) { }
+  constructor(private actions$: Actions, private unitStatusProvider: UnitStatusProvider) { }
 }

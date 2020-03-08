@@ -1,4 +1,5 @@
 import { Action } from '@ngrx/store';
+import { SetStatusPayload } from '../models/setStatusPayload';
 
 // [UNIT] Unit module
 export enum UnitActionTypes {
@@ -9,7 +10,7 @@ export enum UnitActionTypes {
 
 export class SetStatus implements Action {
   readonly type = UnitActionTypes.SET_STATUS;
-  constructor() {}
+  constructor(public payload: SetStatusPayload) {}
 }
 
 export class SetStatusSuccess implements Action {
