@@ -3,27 +3,27 @@ import { StoreModule } from '@ngrx/store';
 import { EffectsModule } from '@ngrx/effects';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormsModule } from '@angular/forms';
-import { HomeRoutingModule } from './home-routing.module';
-import { reducer } from './reducers/home.reducer';
-import { HomeEffects } from './effects/home.effect';
-import { UnitListComponent } from './components/unitsList/units-list';
+import { MapRoutingModule } from './map-routing.module';
+import { reducer } from './reducers/map.reducer';
+import { MapEffects } from './effects/map.effect';
+import { MapComponent } from './components/map/map.component';
 import { IonicModule } from '@ionic/angular';
 import { ComponentsModule } from 'src/app/components/components.module';
 import { DirectivesModule } from 'src/app/directives/directives.module';
-import { MapModule } from '../map/map.module';
 
 @NgModule({
-  declarations: [],
+  declarations: [MapComponent],
   imports: [
     CommonModule,
     FormsModule,
     IonicModule,
     ReactiveFormsModule,
-    HomeRoutingModule,
+    MapRoutingModule,
     DirectivesModule,
-    StoreModule.forFeature('homeModule', reducer),
-    EffectsModule.forFeature([HomeEffects])
+    StoreModule.forFeature('mapModule', reducer),
+    EffectsModule.forFeature([MapEffects]),
   ],
-  providers: []
+  providers: [],
+  exports: [MapComponent]
 })
-export class HomeModule { }
+export class MapModule { }

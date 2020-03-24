@@ -9,6 +9,7 @@ import { UnitListComponent } from '../../components/unitsList/units-list';
 import { DigitalClockComponent } from '../../components/digital-clock/digital-clock.component';
 import { CallsListComponent } from '../../components/calls-list/calls-list';
 import { DirectivesModule } from 'src/app/directives/directives.module';
+import { MapModule } from 'src/app/features/map/map.module';
 
 @NgModule({
   imports: [
@@ -21,7 +22,8 @@ import { DirectivesModule } from 'src/app/directives/directives.module';
         path: '',
         component: DashboardPage
       }
-    ])
+    ]),
+    MapModule
   ],
   declarations: [DashboardPage, UnitListComponent, DigitalClockComponent, CallsListComponent]
 })

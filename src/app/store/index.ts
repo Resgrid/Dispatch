@@ -3,6 +3,7 @@ import * as fromRoot from './reducers/index';
 import { createFeatureSelector, createSelector } from '@ngrx/store';
 import { AuthState } from '../features/auth/store/auth.store';
 import { HomeState } from '../features/home/store/home.store';
+import { MapState } from '../features/map/store/map.store';
 
 export interface State extends fromRoot.State {
   auth: AuthState;
@@ -27,3 +28,5 @@ export const selectIsLoginState = createSelector(
 );
 
 export const selectHomeState = createFeatureSelector<HomeState>('homeModule');
+
+export const selectMapState = createFeatureSelector<MapState>('mapModule');
