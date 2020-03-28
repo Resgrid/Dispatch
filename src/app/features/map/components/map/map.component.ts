@@ -16,11 +16,11 @@ import { MapResult } from 'src/app/models/mapResult';
   styleUrls: ['./map.component.scss']
 })
 export class MapComponent implements OnInit, OnDestroy {
-  @ViewChild('map', { static: true }) mapContainer;
+  @ViewChild('map', { static: false }) mapContainer;
   public markers: any[];
   public map: any;
-  public mapWidth: string = '100px';
-  public mapHeight: string = '100px';
+  public mapWidth: string = '250px';
+  public mapHeight: string = '250px';
   public mapState$: Observable<MapState | null>;
 
   constructor(private store: Store<MapState>) {
@@ -50,14 +50,14 @@ export class MapComponent implements OnInit, OnDestroy {
 
       if (!this.map) {
         this.map = leaflet.map(this.mapContainer.nativeElement, {
-          dragging: false,
-          doubleClickZoom: false,
-          zoomControl: false
+          dragging: true,
+          doubleClickZoom: true,
+          zoomControl: true
         });
         leaflet.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          setView: true,
-          minZoom: 14,
-          maxZoom: 14
+          setView: true//,
+          //minZoom: 14,
+          //maxZoom: 14
         }).addTo(this.map);
       }
 
@@ -115,9 +115,9 @@ export class MapComponent implements OnInit, OnDestroy {
   }
 
   private setMapBounds() {
-    let parent = this.mapContainer.nativeElement.parentElement.parentElement.parentElement;
-    this.mapWidth = parent.offsetWidth - 35 + 'px';
-    this.mapHeight = parent.offsetHeight - 60 + 'px';
+    //let parent = this.mapContainer.nativeElement.parentElement.parentElement.parentElement;
+    //this.mapWidth = parent.offsetWidth - 35 + 'px';
+    //this.mapHeight = parent.offsetHeight - 60 + 'px';
 
     this.updateMapSize();
   }

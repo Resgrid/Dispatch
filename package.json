@@ -14,6 +14,7 @@
   },
   "private": true,
   "dependencies": {
+    "@angular/animations": "^9.1.0",
     "@angular/common": "~8.1.2",
     "@angular/core": "~8.1.2",
     "@angular/forms": "~8.1.2",
@@ -36,6 +37,8 @@
     "leaflet": "^1.6.0",
     "ng2-signalr": "^8.0.2",
     "ngrx-store-freeze": "^0.2.4",
+    "primeicons": "^2.0.0",
+    "primeng": "^9.0.2",
     "replace-in-file": "^5.0.2",
     "rxjs": "~6.5.1",
     "signalr": "^2.4.1",
