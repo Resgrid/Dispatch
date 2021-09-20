@@ -1,11 +1,11 @@
 import { Injectable, Inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { APP_CONFIG_TOKEN, AppConfig } from '../config/app.config-interface';
+import { environment } from '../../environments/environment';
 
 import { DataProvider } from './data';
 
-import { MessageResult } from '../models/messageResult';
-import { MessageRecipientResult } from '../models/messageRecipientResult';
+import { MessageResult } from '../core/models/messageResult';
+import { MessageRecipientResult } from '../core/models/messageRecipientResult';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
@@ -14,12 +14,12 @@ import { map } from 'rxjs/operators';
 })
 export class MessagesProvider {
 
-  constructor(public http: HttpClient, @Inject(APP_CONFIG_TOKEN) private appConfig: AppConfig, private dataProvider: DataProvider) {
+  constructor(public http: HttpClient, private dataProvider: DataProvider) {
 
   }
 
   public getMessages(): Observable<MessageResult[]> {
-    return this.http.get<MessageResult[]>(this.appConfig.ResgridApiUrl + '/Messages/GetMessages')
+    return this.http.get<MessageResult[]>(environment.baseApiUrl + environment.resgridApiUrl + '/Messages/GetMessages')
       .pipe(map((items) => {
         let messages: MessageResult[] = new Array<MessageResult>();
 
@@ -39,7 +39,7 @@ export class MessagesProvider {
   }
 
   public getMessagesPages(page): Observable<MessageResult[]> {
-    return this.http.get<MessageResult[]>(this.appConfig.ResgridApiUrl + '/Messages/GetMessagesPaged?page=' + page)
+    return this.http.get<MessageResult[]>(environment.baseApiUrl + environment.resgridApiUrl + '/Messages/GetMessagesPaged?page=' + page)
       .pipe(map((items) => {
         let messages: MessageResult[] = new Array<MessageResult>();
 
@@ -60,7 +60,7 @@ export class MessagesProvider {
 
 
   public getOutboxMessages(): Observable<MessageResult[]> {
-    return this.http.get<MessageResult[]>(this.appConfig.ResgridApiUrl + '/Messages/GetOutboxMessages')
+    return this.http.get<MessageResult[]>(environment.baseApiUrl + environment.resgridApiUrl + '/Messages/GetOutboxMessages')
       .pipe(map((items) => {
         let messages: MessageResult[] = new Array<MessageResult>();
 
@@ -80,7 +80,7 @@ export class MessagesProvider {
   }
 
   public getOutboxMessagesPages(page): Observable<MessageResult[]> {
-    return this.http.get<MessageResult[]>(this.appConfig.ResgridApiUrl + '/Messages/GetOutboxMessagesPaged?page=' + page)
+    return this.http.get<MessageResult[]>(environment.baseApiUrl + environment.resgridApiUrl + '/Messages/GetOutboxMessagesPaged?page=' + page)
     .pipe(map((items) => {
         let messages: MessageResult[] = new Array<MessageResult>();
 
@@ -102,7 +102,7 @@ export class MessagesProvider {
   public getMessage(messageId: any): Observable<MessageResult> {
     const params = new HttpParams().append('messageId', messageId);
 
-    return this.http.get<MessageResult>(this.appConfig.ResgridApiUrl + '/Messages/GetMessage', { params })
+    return this.http.get<MessageResult>(environment.baseApiUrl + environment.resgridApiUrl + '/Messages/GetMessage', { params })
     .pipe(map((item) => {
         let message: MessageResult = item as MessageResult;
 
@@ -129,7 +129,7 @@ export class MessagesProvider {
   public deleteMessage(messageId: any): Observable<Object> {
     const params = new HttpParams().append('messageId', messageId);
 
-    return this.http.delete(this.appConfig.ResgridApiUrl + '/Messages/DeleteMessage', { params });
+    return this.http.delete(environment.baseApiUrl + environment.resgridApiUrl + '/Messages/DeleteMessage', { params });
   }
 
   public setMessageResponse(messageId: any, type: any, note: string): Observable<Object> {
@@ -139,7 +139,7 @@ export class MessagesProvider {
       Not: note
     };
 
-    return this.http.put(this.appConfig.ResgridApiUrl + '/Messages/RespondToMessage', data);
+    return this.http.put(environment.baseApiUrl + environment.resgridApiUrl + '/Messages/RespondToMessage', data);
   }
 
   public sendMessage(subject: string, body: string, type: number, recipients: string): Observable<Object> {
@@ -183,6 +183,6 @@ export class MessagesProvider {
       });
     }
 
-    return this.http.post(this.appConfig.ResgridApiUrl + '/Messages/SendMessage', data);
+    return this.http.post(environment.baseApiUrl + environment.resgridApiUrl + '/Messages/SendMessage', data);
   }
 }

@@ -6,11 +6,10 @@ import { TruncatePipe } from './truncate.directive';
 import { RGTimeAgoPipe } from './rgTimeAgo.directive';
 import { RGTimeAgoUTCPipe } from './rgTimeAgoUtc.directive';
 import { ConversationPipe } from './conversation.directive';
-import { IonicModule } from '@ionic/angular';
 
 @NgModule({
   declarations: [OrderByPipe, GroupByPipe, TruncatePipe, RGTimeAgoPipe, RGTimeAgoUTCPipe, ConversationPipe],
-  imports: [IonicModule],
+  imports: [],
   exports: [OrderByPipe, GroupByPipe, TruncatePipe, RGTimeAgoPipe, RGTimeAgoUTCPipe, ConversationPipe]
 })
 export class DirectivesModule { }

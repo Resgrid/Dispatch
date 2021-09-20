@@ -1,40 +1,437 @@
-<ion-header>
-  <ion-toolbar>
-    <ion-buttons slot="start">
-      <ion-menu-button></ion-menu-button>
-    </ion-buttons>
-    <ion-title>
-      Dashboard
-    </ion-title>
-    <ion-buttons slot="end">
-			<ion-button color="primary">
-				New Call
-			</ion-button>
-		</ion-buttons>
-  </ion-toolbar>
-</ion-header>
+<div class="container-fluid">
+  <!--<app-pagetitle title="Dashboard" [breadcrumbItems]="breadCrumbItems"></app-pagetitle>-->
 
-<ion-content>
-  <ion-grid style="height: 100%; display: flex; flex-flow: column;">
-    <ion-row style="flex-grow: 1;">
-      <ion-col size="4">
-        <app-units-list [state]="homeState$ | async"></app-units-list>
-      </ion-col>
-      <ion-col class="no-padding">
-        <ion-row>
-          <ion-col>
-            <app-digital-clock></app-digital-clock>
-          </ion-col>
-          <ion-col>
+  <div class="row">
+    <div class="col-xl-8">
+      <div class="row">
+        <div class="col-xl-12">
+          <div class="card">
+            <div class="card-body border-top">
+              <div class="dropdown float-right" ngbDropdown>
+                <a href="javascript: void(0);" class="dropdown-toggle arrow-none card-drop" ngbDropdownToggle
+                  data-toggle="dropdown" aria-expanded="false">
+                  <i class="mdi mdi-dots-vertical"></i>
+                </a>
+                <div class="dropdown-menu dropdown-menu-right" ngbDropdownMenu>
+                  <a href="javascript:void(0);" class="dropdown-item" (click)="callTemplate()">Templates</a>
+                  <a href="javascript:void(0);" class="dropdown-item" (click)="callForm()"
+                    *ngIf="(homeState$ | async).newCallForm != null">Call Form</a>
+                  <!--<a href="javascript:void(0);" class="dropdown-item">Contacts</a>-->
+                </div>
+              </div>
+              <h4 class="card-title mb-4">Call</h4>
+              <div class="row">
+                <div class="col-sm-12">
+                  <perfect-scrollbar style="position: relative; height: 500px">
+                    <form [formGroup]="newCallForm" (ngSubmit)="saveCall()">
+                      <div id="newCall">
+                        <div class="form-group row">
+                          <label for="example-text-input" class="col-md-2 col-form-label">Name</label>
+                          <div class="col-md-8">
+                            <input formControlName="name" class="form-control" type="text"
+                              placeholder="Name of the call" />
+                          </div>
+                        </div>
+                        <div class="form-group row">
+                          <label for="example-datetime-local-input" class="col-md-2 col-form-label">Dispatch On</label>
+                          <div class="col-md-5">
+                            <input class="form-control" type="datetime-local" formControlName="dispatchOn" />
+                            <span class="help-inline">Leave this blank to disptach the call immediately, enter a
+                              date/time
+                              to
+                              dispatch in the future</span>
+                          </div>
+                        </div>
+                        <div class="form-group row">
+                          <label class="col-md-2 col-form-label">Priority</label>
+                          <div class="col-md-6">
+                            <select formControlName="priority" class="form-control">
+                              <option *ngFor="let priority of (homeState$ | async).callPriorties;"
+                                value="{{priority.Id}}">{{priority.Name}}</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div class="form-group row">
+                          <label class="col-md-2 col-form-label">Type</label>
+                          <div class="col-md-6">
+                            <select formControlName="type" class="form-control">
+                              <option *ngFor="let type of (homeState$ | async).callTypes;" value="{{type.Id}}">
+                                {{type.Name}}</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div class="form-group row">
+                          <label for="example-search-input" class="col-md-2 col-form-label">Contact Name</label>
+                          <div class="col-md-5">
+                            <input formControlName="reportingPartyName" class="form-control" type="text"
+                              placeholder="Name of the Contact or Reporting Party" />
+                          </div>
+                        </div>
+                        <div class="form-group row">
+                          <label for="example-search-input" class="col-md-2 col-form-label">Contact Info</label>
+                          <div class="col-md-5">
+                            <input formControlName="reportingPartyContact" class="form-control" type="text"
+                              placeholder="Phone or Email of the Reporter or Contact" />
+                          </div>
+                        </div>
+                        <div class="form-group row">
+                          <label class="col-md-2 col-form-label">Ids</label>
+                          <div class="col-sm-10">
+                            <div class="row">
+                              <div class="col-md-3">
+                                <div class="input-group input-group-sm">
+                                  <input formControlName="callId" type="text" class="form-control"
+                                    placeholder="Call Id" />
+                                </div>
+                              </div>
+                              <div class="col-md-3" style="padding-left: 0px">
+                                <div class="input-group input-group-sm">
+                                  <input formControlName="incidentId" type="text" class="form-control"
+                                    placeholder="Incident Id" />
+                                </div>
+                              </div>
+                              <div class="col-md-3" style="padding-left: 0px">
+                                <div class="input-group input-group-sm">
+                                  <input formControlName="referenceId" type="text" class="form-control"
+                                    placeholder="Reference Id" />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="form-group row">
+                          <label for="example-search-input" class="col-md-2 col-form-label">Nature</label>
+                          <div class="col-md-9">
+                            <textarea formControlName="nature" cols="30" rows="10" class="form-control"
+                              placeholder="A description of the nature of the call"></textarea>
+                          </div>
+                        </div>
+                        <div class="form-group row">
+                          <label for="example-search-input" class="col-md-2 col-form-label">Notes</label>
+                          <div class="col-md-9">
+                            <textarea formControlName="notes" cols="30" rows="10" class="form-control"
+                              placeholder="Call notes"></textarea>
+                          </div>
+                        </div>
+                        <div class="form-group row">
+                          <label class="col-sm-2 control-label">Location</label>
+                          <div class="col-sm-10">
+                            <div class="row">
+                              <div class="col-md-7">
+                                <div class="input-group input-group-sm">
+                                  <input formControlName="address" type="text" class="form-control"
+                                    placeholder="Full Address (Street, City, State, Zip)" style="width:320px;">
+                                  <div class="input-group-append">
+                                    <a id="searchButton" href="javascript:void(0);" class="btn btn-outline-info"
+                                      (click)="getCoordinatesForAddress()">Find Address</a>
+                                  </div>
+                                </div>
+                              </div>
+                              <div class="col-md-5" style="padding-left: 0px;">
+                                <div class="input-group input-group-sm">
+                                  <input formControlName="w3w" type="text" class="form-control"
+                                    placeholder="what.three.words" style="width:180px;">
+                                  <div class="input-group-append">
+                                    <a id="findw3wButton" href="#" class="btn btn-outline-info">Find Location</a>
+                                  </div>
+                                </div>
+                                <span class="help-inline">This is a what3words address. <a
+                                    href="https://what3words.com/about/" target="_blank">Learn More.</a></span>
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div class="col-md-5">
+                                <div class="input-group input-group-sm">
+                                  <input formControlName="latitude" type="text" class="form-control"
+                                    placeholder="Latitude">
+                                </div>
+                                <span class="help-inline">Latitude (Decimal Notation: i.e. 39.1517)</span>
+                              </div>
+                              <div class="col-md-6">
+                                <div class="input-group input-group-sm">
+                                  <input formControlName="longitude" type="text" class="form-control"
+                                    placeholder="Longitude" style="width:280px;">
+                                  <div class="input-group-append">
+                                    <a id="findgpsButton" class="btn btn-outline-info" href="javascript:void(0);"
+                                      (click)="findCoordinates()">Find Lat/Lon</a>
+                                  </div>
+                                </div>
+                                <span class="help-inline">Longitude (Decimal Notation: i.e. -119.4571)</span>
+                              </div>
+                            </div>
+                            <div #newCallMapContainer id="newCallMapContainer" name="newCallMapContainer"
+                              style="height: 300px; width: 95%;">
+                            </div>
+                          </div>
+                        </div>
+                        <div class="form-group row">
+                          <label for="example-search-input" class="col-md-2 col-form-label">Protocols</label>
+                          <div class="col-md-9">
 
-          </ion-col>
-        </ion-row>
-        <ion-row style="height: 90%;">
-          <ion-col size="12">
-            <app-calls-list [state]="homeState$ | async"></app-calls-list>
-          </ion-col>
-        </ion-row>
-      </ion-col>
-    </ion-row>
-  </ion-grid>
-</ion-content>
+                          </div>
+                        </div>
+                        <div class="form-group row">
+                          <label for="example-search-input" class="col-md-2 col-form-label">Personnel</label>
+                          <div class="col-md-9">
+                            <ul ngbNav #nav="ngbNav" [activeId]="1" class="nav-tabs">
+                              <li [ngbNavItem]="1">
+                                <a ngbNavLink>
+                                  <span class="d-block d-sm-none"><i class="fas fa-home"></i></span>
+                                  <span class="d-none d-sm-block">Personnel</span>
+                                </a>
+                                <ng-template ngbNavContent>
+                                  <ng-template [ngTemplateOutlet]="PersonnelTabContent"></ng-template>
+                                </ng-template>
+                              </li>
+                              <li [ngbNavItem]="2">
+                                <a ngbNavLink>
+                                  <span class="d-block d-sm-none"><i class="far fa-user"></i></span>
+                                  <span class="d-none d-sm-block">Groups</span>
+                                </a>
+                                <ng-template ngbNavContent>
+                                  <ng-template [ngTemplateOutlet]="GroupsTabContent"></ng-template>
+                                </ng-template>
+                              </li>
+                              <li [ngbNavItem]="3">
+                                <a ngbNavLink>
+                                  <span class="d-block d-sm-none"><i class="far fa-envelope"></i></span>
+                                  <span class="d-none d-sm-block">Roles</span>
+                                </a>
+                                <ng-template ngbNavContent>
+                                  <ng-template [ngTemplateOutlet]="RolesTabContent"></ng-template>
+                                </ng-template>
+                              </li>
+                            </ul>
+                            <div [ngbNavOutlet]="nav"></div>
+                          </div>
+                        </div>
+                        <div class="form-group row">
+                          <label for="example-search-input" class="col-md-2 col-form-label">Units</label>
+                          <div class="col-md-9">
+                            <ul ngbNav #unitsForDispatchNav="ngbNav" [activeId]="selectedGroupName" class="nav-tabs">
+                              <li [ngbNavItem]="group.key ? group.key : 'No Group'"
+                                *ngFor="let group of (homeState$ | async).unitStatuses | groupBy:'GroupName'">
+                                <a ngbNavLink>
+                                  <span class="d-block d-sm-none"><i class="fas fa-home"></i></span>
+                                  <span class="d-none d-sm-block">{{group.key ? group.key : 'No Group'}}</span>
+                                </a>
+                                <ng-template ngbNavContent>
+                                  <div class="table-responsive">
+                                    <table class="table table-centered">
+                                      <tbody>
+                                        <tr *ngFor="let unit of group.value">
+                                          <td style="width: 20px;">
+                                            <input type="checkbox" name="{{unit.UnitId}}"
+                                              (change)="changeCheckedUnitDispatch($event);"
+                                              [checked]="unit.SelectedForDispatch" />
+                                          </td>
+                                          <td>{{unit.Name}}</td>
+                                          <td>{{unit.Type}}</td>
+                                          <td>{{unit.DestinationName}}</td>
+                                          <td>{{unit.Distance | number: '1.0-2'}}km</td>
+                                          <td [ngClass]="unit.StateCss" [style.color]="unit.StateStyle">{{unit.State}}
+                                          </td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </ng-template>
+                              </li>
+                            </ul>
+
+                            <div [ngbNavOutlet]="unitsForDispatchNav"></div>
+                          </div>
+                        </div>
+                        <div class="form-group row">
+                          <label for="example-search-input" class="col-md-2 col-form-label"></label>
+                          <div class="col-md-9">
+
+                          </div>
+                        </div>
+                        <div class="form-group row">
+                          <label for="example-search-input" class="col-md-2 col-form-label"></label>
+                          <div class="col-md-9">
+
+                          </div>
+                        </div>
+                        <div class="row">
+                          <div class="col-md-12" style="text-align: right;">
+                            <button class="btn btn-primary w-md waves-effect waves-light" type="submit"
+                              *ngIf="!(homeState$ | async).isSavingCall">Create and Dispatch
+                              Call</button>
+                            <button class="btn btn-primary w-md waves-effect waves-light" type="button" disabled
+                              *ngIf="(homeState$ | async).isSavingCall">
+                              <span class="spinner-border spinner-border-sm"></span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </form>
+                  </perfect-scrollbar>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <div class="row">
+        <div class="col-xl-12">
+          <div class="card">
+            <div class="card-body">
+              <div class="dropdown float-right" ngbDropdown>
+                <a href="javascript: void(0);" class="dropdown-toggle arrow-none card-drop" ngbDropdownToggle
+                  data-toggle="dropdown" aria-expanded="false">
+                  <i class="mdi mdi-dots-vertical"></i>
+                </a>
+                <div class="dropdown-menu dropdown-menu-right" ngbDropdownMenu>
+                  <a href="javascript:void(0);" class="dropdown-item" (click)="callNotes()">Call Notes</a>
+                  <a href="javascript:void(0);" class="dropdown-item" (click)="callImages()">Call Images</a>
+                  <a href="javascript:void(0);" class="dropdown-item" (click)="callFiles()">Call Files</a>
+                  <a href="javascript:void(0);" class="dropdown-item" (click)="updateAssignments()">Update
+                    Assignments</a>
+                  <a href="javascript:void(0);" class="dropdown-item" (click)="closeCall()">Close Call</a>
+                  <a href="javascript:void(0);" class="dropdown-item" (click)="editCall()">Edit Call</a>
+                  <a href="javascript:void(0);" class="dropdown-item" (click)="viewCallForm()">View Call Form</a>
+                </div>
+              </div>
+              <h4 class="card-title mb-4">Active Calls</h4>
+              <div class="table-responsive">
+                <table class="table table-centered">
+                  <tbody>
+                    <tr *ngFor="let call of (homeState$ | async).calls;">
+                      <td style="width: 20px;"><input type="checkbox" name="{{call.Cid}}"
+                          (change)="changeCheckedCall($event)" [checked]="call.Selected"></td>
+                      <td>{{call.Num}}</td>
+                      <td>{{call.Nme}}</td>
+                      <td [style.color]="call.PriorityColor">{{call.PriorityText}}</td>
+                      <td>{{call.Utc | rgTimeAgoUtc}}</td>
+                      <td style="font-size: 10px;">{{call.Add}}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="col-xl-4">
+      <div class="row">
+        <div class="col-xl-12">
+          <div class="row">
+            <div class="col-xl-12">
+              <div class="card">
+                <div class="card-body">
+                  <div class="row">
+                    <div class="col-12">
+                      <div #map id="map" name="map" style="height: 300px;">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-xl-12">
+              <div class="card">
+                <div class="card-body">
+                  <div class="dropdown float-right" ngbDropdown>
+                    <a href="javascript: void(0);" class="dropdown-toggle arrow-none card-drop" ngbDropdownToggle
+                      data-toggle="dropdown" aria-expanded="false">
+                      <i class="mdi mdi-dots-vertical"></i>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right" ngbDropdownMenu>
+                      <a href="javascript:void(0);" class="dropdown-item">Roles</a>
+                    </div>
+                  </div>
+                  <h4 class="card-title mb-4">Units</h4>
+                  <div class="row">
+                    <div class="col-12">
+
+                      <div *ngFor="let group of (homeState$ | async).unitStatuses | groupBy:'GroupName'">
+                        <span class="mt-4" style="font-weight: 700 !important;">{{group.key}}</span>
+                        <table class="table table-centered">
+                          <tbody>
+                            <tr *ngFor="let unit of group.value">
+                              <td style="width: 20px;"><input type="checkbox" name="{{unit.UnitId}}"
+                                  (change)="changeCheckedUnit($event)" [checked]="unit.Selected"></td>
+                              <td>{{unit.Name}}</td>
+                              <td>{{unit.Type}}</td>
+                              <td>{{unit.DestinationName}}</td>
+                              <td [ngClass]="unit.StateCss" [style.color]="unit.StateStyle">{{unit.State}}</td>
+                              <td><a href="javascript:void(0);" class="mr-3 text-primary" ngbTooltip="Set Status"
+                                  (click)="setUnitStatus(unit.UnitId)"><i class="mdi mdi-flag font-size-18"></i></a>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<ng-template #PersonnelTabContent>
+  <div class="table-responsive">
+    <table class="table table-centered">
+      <tbody>
+        <tr *ngFor="let personnel of (homeState$ | async).personnelForGrid;">
+          <td style="width: 20px;"><input type="checkbox" name="{{personnel.UserId}}"
+              (change)="changeCheckedPersonnelDispatch($event)" [checked]="personnel.Selected">
+          </td>
+          <td>{{personnel.Name}}</td>
+          <td [style.color]="personnel.StatusColor">{{personnel.Status}}</td>
+          <td [style.color]="personnel.StaffingColor">{{personnel.Staffing}}</td>
+          <td>{{personnel.Distance | number: '1.0-2'}}km</td>
+          <td>{{personnel.Group}}</td>
+          <td style="font-size: 10px;">{{personnel?.Roles?.toString()}}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</ng-template>
+
+
+<ng-template #GroupsTabContent>
+  <div class="table-responsive">
+    <table class="table table-centered">
+      <tbody>
+        <tr *ngFor="let group of (homeState$ | async).groupsForGrid;">
+          <td style="width: 20px;"><input type="checkbox" name="{{group.GroupId}}"
+              (change)="changeCheckedGroupDispatch($event)" [checked]="group.Selected">
+          </td>
+          <td>{{group.Name}}</td>
+          <td>{{group.Count}}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</ng-template>
+
+<ng-template #RolesTabContent>
+  <div class="table-responsive">
+    <table class="table table-centered">
+      <tbody>
+        <tr *ngFor="let role of (homeState$ | async).rolesForGrid;">
+          <td style="width: 20px;"><input type="checkbox" name="{{role.RoleId}}"
+              (change)="changeCheckedRoleDispatch($event)" [checked]="role.Selected">
+          </td>
+          <td>{{role.Name}}</td>
+          <td>{{role.Count}}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</ng-template>

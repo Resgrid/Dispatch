@@ -1,22 +1,20 @@
 import { Injectable, Inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { APP_CONFIG_TOKEN, AppConfig } from '../config/app.config-interface';
 
 import { Consts } from '../consts';
-import { PersonnelInfo } from '../models/personnelInfo';
-import { GroupInfo } from '../models/groupInfo';
-import { UnitInfo } from '../models/unitInfo';
-import { RoleInfo } from '../models/roleInfo';
-import { StatusesInfo } from '../models/statusesInfo';
-import { SubmitStatus } from '../models/submitStatus';
-import { CallPriorityResult } from '../models/callPriorityResult';
-import { DepartmentResult } from '../models/departmentResult';
-import { CoreDataResult } from '../models/coreDataResult';
+import { PersonnelInfo } from '../core/models/personnelInfo';
+import { GroupInfo } from '../core/models/groupInfo';
+import { UnitInfo } from '../core/models/unitInfo';
+import { RoleInfo } from '../core/models/roleInfo';
+import { StatusesInfo } from '../core/models/statusesInfo';
+import { SubmitStatus } from '../core/models/submitStatus';
+import { CallPriorityResult } from '../core/models/callPriorityResult';
+import { DepartmentResult } from '../core/models/departmentResult';
+import { CoreDataResult } from '../core/models/coreDataResult';
 import { UtilsProvider } from './utils';
-import { PubSubService } from '../components/pubsub/angular2-pubsub.service';
 import { SettingsProvider } from './settings';
 import { SecurityProvider } from './security';
-import { DepartmentRightsResult } from '../models/departmentRightsResult';
+import { DepartmentRightsResult } from '../core/models/departmentRightsResult';
 import { LocalDbProvider } from './localDb';
 
 @Injectable({
@@ -37,8 +35,6 @@ export class DataProvider {
   constructor(public http: HttpClient,
     private consts: Consts,
     private utils: UtilsProvider,
-    @Inject(APP_CONFIG_TOKEN) private appConfig: AppConfig,
-    private pubsub: PubSubService,
     private securityProvider: SecurityProvider,
     private settingsProvider: SettingsProvider,
     private localDbProvider: LocalDbProvider) {

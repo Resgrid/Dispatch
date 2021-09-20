@@ -1,0 +1,36 @@
+// 
+// Widgets.scss
+// 
+
+
+
+// activity widget
+
+.activity-wid{
+    margin-top: 8px;
+    margin-left: 16px;
+
+    .activity-list{
+        position: relative;
+        padding: 0 0 40px 30px;
+
+        &:before {
+            content: "";
+            border-left: 2px dashed rgba($primary,0.25);
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            top: 32px
+        }
+        .activity-icon{
+            position: absolute;
+            left: -15px;
+            top: 0;
+            z-index: 9;
+        }
+
+        &:last-child{
+            padding-bottom: 0px;
+        }
+    }
+}

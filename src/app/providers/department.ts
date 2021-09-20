@@ -1,9 +1,9 @@
 import { Injectable, Inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { APP_CONFIG_TOKEN, AppConfig } from '../config/app.config-interface';
+import { environment } from '../../environments/environment';
 import { DataProvider } from './data';
-import { RespondingOption } from '../models/respondingOption';
-import { DepartmentStatusResult } from '../models/departmentStatusResult';
+import { RespondingOption } from '../core/models/respondingOption';
+import { DepartmentStatusResult } from '../core/models/departmentStatusResult';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
@@ -12,14 +12,14 @@ import { map } from 'rxjs/operators';
 })
 export class DepartmentProvider {
 
-  constructor(public http: HttpClient, @Inject(APP_CONFIG_TOKEN) private appConfig: AppConfig, private dataProvider: DataProvider) {
+  constructor(public http: HttpClient, private dataProvider: DataProvider) {
 
   }
 
   public getRespondingOptions(): Observable<RespondingOption[]> {
     // create observable
     const getOptionsObservable = new Observable<RespondingOption[]>((observer) => {
-      this.http.get<RespondingOption[]>(this.appConfig.ResgridApiUrl + '/Department/GetRespondingOptions')
+      this.http.get<RespondingOption[]>(environment.baseApiUrl + environment.resgridApiUrl + '/Department/GetRespondingOptions')
         .pipe(map((items) => {
           let options: RespondingOption[] = new Array<RespondingOption>();
           // let options = <RespondingOption[]>items;
@@ -61,7 +61,7 @@ export class DepartmentProvider {
   }
 
   public getDepartmentStatus(): Observable<DepartmentStatusResult> {
-    return this.http.get<DepartmentStatusResult>(this.appConfig.ResgridApiUrl + '/DepartmentStatus/GetDepartmentStatus')
+    return this.http.get<DepartmentStatusResult>(environment.baseApiUrl + environment.resgridApiUrl + '/DepartmentStatus/GetDepartmentStatus')
       .pipe(map((item) => {
         return item as DepartmentStatusResult;
       }));

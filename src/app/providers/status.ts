@@ -1,14 +1,13 @@
 import { Injectable, Inject, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { APP_CONFIG_TOKEN, AppConfig } from '../config/app.config-interface';
-import { StatusesInfo } from '../models/statusesInfo';
+import { StatusesInfo } from '../core/models/statusesInfo';
 import { Consts } from '../consts';
-import { StatusResult } from '../models/statusResult';
-import { SubmitStatus } from '../models/submitStatus';
+import { StatusResult } from '../core/models/statusResult';
+import { SubmitStatus } from '../core/models/submitStatus';
 import { TypesProvider } from './types';
-import { PubSubService } from '../components/pubsub/angular2-pubsub.service';
 import { Subscription, Observable, timer } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
@@ -20,12 +19,11 @@ export class StatusProvider implements OnDestroy {
   private subscription: Subscription;
   private timer;
 
-  constructor(public http: HttpClient, private consts: Consts, private typesProvider: TypesProvider, private pubsub: PubSubService,
-    @Inject(APP_CONFIG_TOKEN) private appConfig: AppConfig) {
+  constructor(public http: HttpClient, private consts: Consts, private typesProvider: TypesProvider) {
     this.cachedStatuses = new Array<SubmitStatus>();
-    this.pubsub.$sub(this.consts.EVENTS.STATUS_QUEUED).subscribe((e) => {
-      this.processStatus(e);
-    });
+    //this.pubsub.$sub(this.consts.EVENTS.STATUS_QUEUED).subscribe((e) => {
+    //  this.processStatus(e);
+    //});
 
     this.timer = timer(5000, 30000);
     this.subscription = this.timer.subscribe(t => this.updatePending());
@@ -36,7 +34,7 @@ export class StatusProvider implements OnDestroy {
   }
 
   public getCurrentStatus(): Observable<StatusResult> {
-    return this.http.get<StatusResult>(this.appConfig.ResgridApiUrl + '/Status/GetCurrentUserStatus')
+    return this.http.get<StatusResult>(environment.baseApiUrl + environment.resgridApiUrl + '/Status/GetCurrentUserStatus')
       .pipe(map((item) => {
         let status = new StatusResult();
         status.Uid = item.Uid;
@@ -97,7 +95,7 @@ export class StatusProvider implements OnDestroy {
 
   private processStatus(event: SubmitStatus) {
     if (event) {
-      return this.http.put(this.appConfig.ResgridApiUrl + '/Status/SetStatusForUser', {
+      return this.http.put(environment.baseApiUrl + environment.resgridApiUrl + '/Status/SetStatusForUser', {
         Uid: event.Uid,
         Typ: event.Typ,
         Geo: event.Geo,
@@ -107,7 +105,7 @@ export class StatusProvider implements OnDestroy {
       }).toPromise()
         .then(() => {
           event.Sent = true;
-          this.pubsub.$pub(this.consts.EVENTS.STATUS_UPDATED, event);
+          //this.pubsub.$pub(this.consts.EVENTS.STATUS_UPDATED, event);
         })
         .catch((error: Response | any) => {
           event.Sent = false;

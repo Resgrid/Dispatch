@@ -1,53 +1,88 @@
-<ion-content class="ion-no-padding">
-  <div class="main">
-    <form [formGroup]="loginForm" novalidate (ngSubmit)="login(loginForm.value)" (keyup.enter)="login(loginForm.value)">
-      <ion-card class="card ion-no-margin">
-        <ion-card-content>
-          <ion-row class="row">
-            <div class="fire-logo">
-              <img src="assets/images/Resgrid_JustText.png" class="img-logo">
-              <ion-text>
-                <h2 class="ion-margin-vertical ion-no-margin ion-text-center">Dispatch Sign In</h2>
-              </ion-text>
+<div class="home-btn d-none d-sm-block">
+  <a routerLink=""><i class="mdi mdi-home-variant h2 text-white"></i></a>
+</div>
+<div>
+  <div class="container-fluid p-0">
+    <div class="row no-gutters">
+      <div class="col-lg-4">
+        <div class="authentication-page-content p-4 d-flex align-items-center min-vh-100">
+          <div class="w-100">
+            <div class="row justify-content-center">
+              <div class="col-lg-9">
+                <div>
+                  <div class="text-center">
+                    <div>
+                      <a routerLink="" class="logo"><img src="assets/images/Resgrid_JustText.png" height="120"
+                          alt="logo"></a>
+                    </div>
+
+                    <h4 class="font-size-18 mt-4">Resgrid Dispatch</h4>
+                    <p class="text-muted">Enter the information below to Sign in.</p>
+                  </div>
+
+                  <div class="p-2 mt-5">
+                    <form class="form-horizontal" [formGroup]="loginForm" (ngSubmit)="login()">
+                      <ngb-alert type="danger" *ngIf="error$" [dismissible]="false">{{ error$ }}</ngb-alert>
+                      <div class="form-group auth-form-group-custom mb-4">
+                        <i class="ri-user-2-line auti-custom-input-icon"></i>
+                        <label for="username">Username</label>
+                        <input type="text" formControlName="username" class="form-control" id="username"
+                          placeholder="Username" [ngClass]="{ 'is-invalid': isLogging$ && f.username.errors }">
+                        <div *ngIf="isLogging$ && f.username.errors" class="invalid-feedback">
+                          <div *ngIf="f.username.errors.required">Username is required</div>
+                        </div>
+                      </div>
+
+                      <div class="form-group auth-form-group-custom mb-4">
+                        <i class="ri-lock-2-line auti-custom-input-icon"></i>
+                        <label for="password">Password</label>
+                        <input type="password" formControlName="password" class="form-control" id="password"
+                          [ngClass]="{ 'is-invalid': isLogging$ && f.password.errors }" placeholder="Password" />
+                        <div *ngIf="isLogging$ && f.password.errors" class="invalid-feedback">
+                          <div *ngIf="f.password.errors.required">Password is required</div>
+                        </div>
+                      </div>
+
+                      <div class="custom-control custom-checkbox">
+                        <input type="checkbox" class="custom-control-input" id="customControlInline">
+                        <label class="custom-control-label" for="customControlInline">Remember me</label>
+                      </div>
+
+                      <div class="mt-4 text-center">
+                        <button class="btn btn-primary w-md waves-effect waves-light" type="submit" *ngIf="!(authState$ | async).isLogging">Log In</button>
+                        <button class="btn btn-primary w-md waves-effect waves-light" type="button" disabled *ngIf="(authState$ | async).isLogging">
+                          <span class="spinner-border spinner-border-sm"></span>
+                        </button>
+                      </div>
+
+                      <div class="mt-4 text-center">
+                        <a href="https://resgrid.com/Account/ForgotPassword" class="text-muted"><i class="mdi mdi-lock mr-1"></i>
+                          Forgot
+                          your
+                          password?</a>
+                      </div>
+                    </form>
+                  </div>
+
+                  <div class="mt-5 text-center">
+                    <p>Don't have an account? <a herf="https://resgrid.com/Account/Register" class="font-weight-medium text-primary">
+                        Register </a> </p>
+                    <p>© 2021 Resgrid, LLC. Created with <i class="mdi mdi-heart text-danger"></i> in Nevada</p>
+                    <p>v{{version}}</p>
+                  </div>
+                </div>
+
+              </div>
             </div>
-          </ion-row>
-          <ion-row>
-            <ion-col>
-              <ion-input clearInput formControlName="username" placeholder="Username" class="input padding-horizontal" clear-input="true" required></ion-input>
-              <label class="text-danger" *ngIf="loginForm.get('username').touched && loginForm.get('username').hasError('required')">Username is required</label>
-            </ion-col>
-          </ion-row>
-          <ion-row>
-            <ion-col>
-              <ion-input clearInput formControlName="password" type="password" placeholder="Password" class="input padding-horizontal" clear-input="true" required></ion-input>
-              <label class="text-danger" *ngIf="loginForm.get('password').touched && loginForm.get('password').hasError('required')">Password is required</label>
-            </ion-col>
-          </ion-row>
-          <ion-row>
-            <ion-col>
-              <ion-text color="medium" class="ion-float-end">
-                <h6 class="small ion-no-margin ion-text-end">Forgot Password?</h6>
-              </ion-text>
-            </ion-col>
-          </ion-row>
-          <ion-row>
-            <ion-col>
-              <p *ngIf="error$ && !isLogging$">{{error$}}</p>
-            </ion-col>
-          </ion-row>
-          <ion-row>
-            <ion-col>
-              <ion-button type="submit" expand="block" color="primary" [disabled]="loginForm.invalid || isLogging$">Sign In</ion-button>
-            </ion-col>
-          </ion-row>
-          <div class="line"></div>
-          <ion-row>
-            <ion-col>
-              <ion-button expand="block" fill="outline" color="secondary">New? Create an Account</ion-button>
-            </ion-col>
-          </ion-row>
-        </ion-card-content>
-      </ion-card>
-    </form>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-8">
+        <div class="authentication-bg">
+          <div class="bg-overlay"></div>
+        </div>
+      </div>
+    </div>
   </div>
-</ion-content>
+</div>
+<!-- end page -->

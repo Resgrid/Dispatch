@@ -1,0 +1,19 @@
+// 
+// Task.scss
+//
+
+.task-box{
+  border: 1px solid $gray-300;
+  box-shadow: none;
+
+  .team{
+    .team-member{
+      margin-right: 6px;
+    }
+  }
+}
+
+.gu-transit {
+    border: 1px dashed $gray-600 !important;
+    background-color: $gray-200 !important;
+}

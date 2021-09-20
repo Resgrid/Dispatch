@@ -1,7 +1,7 @@
 import { Injectable, Inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { APP_CONFIG_TOKEN, AppConfig } from '../config/app.config-interface';
-import { PersonnelStatusResult } from '../models/personnelStatusResult';
+import { environment } from '../../environments/environment';
+import { PersonnelStatusResult } from '../core/models/personnelStatusResult';
 import { SettingsProvider } from './settings';
 import { DataProvider } from './data';
 import { TypesProvider } from './types';
@@ -14,8 +14,7 @@ import { map } from 'rxjs/operators';
 export class PersonnelProvider {
 
   constructor(public http: HttpClient, private settingsProvider: SettingsProvider,
-    private dataProvider: DataProvider, private typesProvider: TypesProvider,
-    @Inject(APP_CONFIG_TOKEN) private appConfig: AppConfig) {
+    private dataProvider: DataProvider, private typesProvider: TypesProvider) {
 
   }
 
@@ -24,9 +23,9 @@ export class PersonnelProvider {
     const filter = this.settingsProvider.settings.PersonnelFilter;
 
     if (filter) {
-      url = this.appConfig.ResgridApiUrl + '/Personnel/GetPersonnelStatuses?activeFilter=' + encodeURIComponent(filter);
+      url = environment.baseApiUrl + environment.resgridApiUrl + '/Personnel/GetPersonnelStatuses?activeFilter=' + encodeURIComponent(filter);
     } else {
-      url = this.appConfig.ResgridApiUrl + '/Personnel/GetPersonnelStatuses';
+      url = environment.baseApiUrl + environment.resgridApiUrl + '/Personnel/GetPersonnelStatuses';
     }
 
     return this.http.get<PersonnelStatusResult[]>(url).pipe(map((items) => {

@@ -1,0 +1,25 @@
+<div>
+    <div class="modal-header">
+      <h5 class="modal-title" id="composemodalTitle">Call Template</h5>
+      <button type="button" class="close" (click)="dismiss()" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+      </button>
+    </div>
+    <div class="modal-body">
+        <div class="form-group row">
+          <label class="col-md-2 col-form-label">Template</label>
+          <div class="col-md-10">
+            <select class="form-control" [(ngModel)]="selectedCallTemplate">
+              <option *ngFor="let template of (homeState$ | async).callTemplates;" [ngValue]="template">{{template.Name}}</option>
+            </select>
+          </div>
+        </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" (click)="dismiss()">Close</button>
+      <button type="button" class="btn btn-primary w-md waves-effect waves-light" (click)="save()" *ngIf="!isSaving" [disabled]="!selectedCallTemplate">Save</button>
+      <button class="btn btn-primary w-md waves-effect waves-light" type="button" disabled *ngIf="isSaving">
+        <span class="spinner-border spinner-border-sm"></span>
+      </button>
+    </div>
+  </div>

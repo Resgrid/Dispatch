@@ -1,59 +1,54 @@
-import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
-import { RouteReuseStrategy } from '@angular/router';
-import { environment } from '../environments/environment';
-import { IonicModule, IonicRouteStrategy } from '@ionic/angular';
-import { SplashScreen } from '@ionic-native/splash-screen/ngx';
-import { StatusBar } from '@ionic-native/status-bar/ngx';
-import { AppComponent } from './app.component';
-import { AppRoutingModule } from './app-routing.module';
-import { StoreModule } from '@ngrx/store';
-import { EffectsModule } from '@ngrx/effects';
-import { StoreDevtoolsModule } from '@ngrx/store-devtools';
-import { StoreRouterConnectingModule } from '@ngrx/router-store';
-import { metaReducers, reducers } from './store/reducers';
-import { AuthModule } from './features/auth/auth.module';
-import { HttpClientModule, HttpClient } from '@angular/common/http';
-import { APP_CONFIG_TOKEN } from './config/app.config-interface';
-import { AppConfigValues } from './config/app.config';
-import { TranslateHttpLoader } from '@ngx-translate/http-loader';
-import { SignalRModule, SignalRConfiguration } from 'ng2-signalr';
-import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
-import { ComponentsModule } from './components/components.module';
-import { PubSubModule } from './components/pubsub/angular2-pubsub.module';
-import { HttpInterceptorModule } from './interceptors/http.interceptor.module';
-import { DirectivesModule } from './directives/directives.module';
+import { CUSTOM_ELEMENTS_SCHEMA, NgModule } from '@angular/core';
+import { HttpClientModule, HTTP_INTERCEPTORS, HttpClient } from '@angular/common/http';
 
-export function createTranslateLoader(http: HttpClient) {
+import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
+import { TranslateHttpLoader } from '@ngx-translate/http-loader';
+
+import { environment } from '../environments/environment';
+
+import { LayoutsModule } from './layouts/layouts.module';
+
+import { AppRoutingModule } from './app-routing.module';
+import { AppComponent } from './app.component';
+import { NgxPubSubModule } from '@pscoped/ngx-pub-sub';
+import { NgxSpinnerModule } from "ngx-spinner";
+//import { ErrorInterceptor } from './core/helpers/error.interceptor';
+/*import { JwtInterceptor } from './core/helpers/jwt.interceptor';*/
+import { DirectivesModule } from './directives/directives.module';
+import { StoreModule } from '@ngrx/store';
+
+import { metaReducers, reducers } from './store/reducers';
+import { EffectsModule } from '@ngrx/effects';
+import { StoreRouterConnectingModule } from '@ngrx/router-store';
+import { StoreDevtoolsModule } from '@ngrx/store-devtools';
+import { HttpInterceptorModule } from './core/interceptors/http.interceptor.module';
+import { AuthModule } from './features/auth/auth.module';
+import { LeafletModule } from '@asymmetrik/ngx-leaflet';
+import { AgmCoreModule } from '@agm/core';
+import { VoiceModule } from './features/voice/voice.module';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+
+export function createTranslateLoader(http: HttpClient): any {
   return new TranslateHttpLoader(http, 'assets/i18n/', '.json');
 }
 
-export function createConfig(): SignalRConfiguration {
-  const c = new SignalRConfiguration();
-  c.hubName = AppConfigValues.ChannelHubName;
-  // c.qs = { };
-  c.url = AppConfigValues.BaseApiUrl;
-  // c.logging = true;
-
-  // c.executeEventsInZone = true; // optional, default is true
-  // c.executeErrorsInZone = false; // optional, default is false
-  // c.executeStatusChangeInZone = true; // optional, default is true
-  return c;
-}
-
 @NgModule({
-  declarations: [AppComponent],
-  entryComponents: [],
+  declarations: [
+    AppComponent
+  ],
   imports: [
     BrowserModule,
-    IonicModule.forRoot(),
     HttpClientModule,
     AppRoutingModule,
-    ComponentsModule,
     DirectivesModule,
     HttpInterceptorModule,
-    PubSubModule.forRoot(),
+    BrowserAnimationsModule,
+    NgxPubSubModule,
+    LeafletModule,
+    NgxSpinnerModule,
     StoreModule.forRoot(reducers, { metaReducers }),
+    AgmCoreModule.forRoot({apiKey: environment.googleMapsKey}),
     EffectsModule.forRoot([]),
     StoreRouterConnectingModule.forRoot(),
     StoreDevtoolsModule.instrument({
@@ -61,7 +56,6 @@ export function createConfig(): SignalRConfiguration {
       name: 'Resgrid Dispatch',
       logOnly: environment.production
     }),
-    SignalRModule.forRoot(createConfig),
     TranslateModule.forRoot({
       loader: {
         provide: TranslateLoader,
@@ -69,14 +63,16 @@ export function createConfig(): SignalRConfiguration {
         deps: [HttpClient]
       }
     }),
-    AuthModule
+    AuthModule,
+    VoiceModule,
+    LayoutsModule
   ],
   providers: [
-    StatusBar,
-    SplashScreen,
-    { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
-    { provide: APP_CONFIG_TOKEN, useValue: AppConfigValues }
+    //{ provide: HTTP_INTERCEPTORS, useClass: JwtInterceptor, multi: true },
+    //{ provide: HTTP_INTERCEPTORS, useClass: ErrorInterceptor, multi: true },
+    //{ provide: HTTP_INTERCEPTORS, useClass: FakeBackendInterceptor, multi: true },
   ],
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

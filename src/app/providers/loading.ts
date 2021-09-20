@@ -1,33 +1,22 @@
 import { Injectable } from '@angular/core';
-import { LoadingController } from '@ionic/angular';
-import { LoadingOptions, SpinnerTypes } from '@ionic/core';
+import { NgxSpinnerService } from 'ngx-spinner';
+import { from, Observable } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class LoadingProvider {
-  private spinner = {
-    message: 'Please wait...'
-  };
-  private loading;
-
-  constructor(public loadingController: LoadingController) {
+  constructor(private spinner: NgxSpinnerService) {
 
   }
 
   // Show loading
-  public async show() {
-    if (!this.loading) {
-      this.loading = await this.loadingController.create(this.spinner);
-      this.loading.present();
-    }
+  public show() {
+    return this.spinner.show();
   }
 
   // Hide loading
   public hide() {
-    if (this.loading) {
-      this.loading.dismiss();
-      this.loading = null;
-    }
+    return this.spinner.hide();
   }
 }

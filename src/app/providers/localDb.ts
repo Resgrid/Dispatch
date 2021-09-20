@@ -1,22 +1,20 @@
 import { Injectable, Inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { APP_CONFIG_TOKEN, AppConfig } from '../config/app.config-interface';
-
+import { environment } from '../../environments/environment';
 import { Consts } from '../consts';
-import { PersonnelInfo } from '../models/personnelInfo';
-import { GroupInfo } from '../models/groupInfo';
-import { UnitInfo } from '../models/unitInfo';
-import { RoleInfo } from '../models/roleInfo';
-import { StatusesInfo } from '../models/statusesInfo';
-import { SubmitStatus } from '../models/submitStatus';
-import { CallPriorityResult } from '../models/callPriorityResult';
-import { DepartmentResult } from '../models/departmentResult';
-import { CoreDataResult } from '../models/coreDataResult';
+import { PersonnelInfo } from '../core/models/personnelInfo';
+import { GroupInfo } from '../core/models/groupInfo';
+import { UnitInfo } from '../core/models/unitInfo';
+import { RoleInfo } from '../core/models/roleInfo';
+import { StatusesInfo } from '../core/models/statusesInfo';
+import { SubmitStatus } from '../core/models/submitStatus';
+import { CallPriorityResult } from '../core/models/callPriorityResult';
+import { DepartmentResult } from '../core/models/departmentResult';
+import { CoreDataResult } from '../core/models/coreDataResult';
 import { UtilsProvider } from './utils';
-import { PubSubService } from '../components/pubsub/angular2-pubsub.service';
 import { SettingsProvider } from './settings';
 import { SecurityProvider } from './security';
-import { DepartmentRightsResult } from '../models/departmentRightsResult';
+import { DepartmentRightsResult } from '../core/models/departmentRightsResult';
 
 @Injectable({
   providedIn: 'root'
@@ -30,8 +28,6 @@ export class LocalDbProvider {
   constructor(public http: HttpClient,
     private consts: Consts,
     private utils: UtilsProvider,
-    @Inject(APP_CONFIG_TOKEN) private appConfig: AppConfig,
-    private pubsub: PubSubService,
     private securityProvider: SecurityProvider,
     private settingsProvider: SettingsProvider) {
 
@@ -51,7 +47,7 @@ export class LocalDbProvider {
           return new Promise((resolve, reject) => {
             try {
               window.localStorage.setItem(key, JSON.stringify(value));
-              resolve();
+              resolve(true);
             } catch (error) {
               reject(error);
             }
@@ -71,7 +67,7 @@ export class LocalDbProvider {
           return new Promise((resolve, reject) => {
             try {
               window.localStorage.removeItem(key);
-              resolve();
+              resolve(true);
             } catch (error) {
               reject(error);
             }
@@ -81,7 +77,7 @@ export class LocalDbProvider {
           return new Promise((resolve, reject) => {
             try {
               window.localStorage.clear();
-              resolve();
+              resolve(true);
             } catch (error) {
               reject(error);
             }
@@ -132,20 +128,20 @@ export class LocalDbProvider {
       }
 
       if (forceSync || serverHasBeenUpdated || localDataIsStale) {
-        this.http.get<CoreDataResult>(this.appConfig.ResgridApiUrl + '/CoreData/GetCoreData').subscribe(
+        this.http.get<CoreDataResult>(environment.baseApiUrl + environment.resgridApiUrl + '/CoreData/GetCoreData').subscribe(
           data => {
             that.syncing = true;
             that.data = data;
             that.save();
 
             that.syncing = false;
-            that.pubsub.$pub(that.consts.EVENTS.LOCAL_DATA_SET, '');
-            that.pubsub.$pub(that.consts.EVENTS.COREDATASYNCED, '');
+            //that.pubsub.$pub(that.consts.EVENTS.LOCAL_DATA_SET, '');
+            //that.pubsub.$pub(that.consts.EVENTS.COREDATASYNCED, '');
             resolve(true);
           },
           error => {
             that.syncing = false;
-            that.pubsub.$pub(this.consts.EVENTS.LOCAL_DATA_SET, '');
+            //that.pubsub.$pub(this.consts.EVENTS.LOCAL_DATA_SET, '');
             resolve(false);
           });
       } else {
@@ -188,7 +184,7 @@ export class LocalDbProvider {
         });
 
       } else {
-        this.pubsub.$pub(this.consts.EVENTS.LOCAL_DATA_SET, '');
+        //this.pubsub.$pub(this.consts.EVENTS.LOCAL_DATA_SET, '');
         return resolve(false);
       }
     });

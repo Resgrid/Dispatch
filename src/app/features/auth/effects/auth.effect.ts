@@ -8,7 +8,6 @@ import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { Router } from '@angular/router';
 import { LoadingProvider } from 'src/app/providers/loading';
-import { MenuController } from '@ionic/angular';
 import { SettingsProvider } from 'src/app/providers/settings';
 import { AlertProvider } from 'src/app/providers/alert';
 
@@ -72,19 +71,17 @@ export class AuthEffects {
     .pipe(ofType<authAction.LoginDone>(authAction.LoginActionTypes.LOGIN_FAIL), tap(async action => {
       console.log(action);
       this.loadingProvider.hide();
-      await this.alertProvider.showOkAlert('Login Error', '', 'There was an issue trying to log you in, please check your username and password and try again.');
+      await this.alertProvider.showErrorAlert('Login Error', '', 'There was an issue trying to log you in, please check your username and password and try again.');
     }));
 
   @Effect({ dispatch: false })
   loggingIn$ = this
     .actions$
     .pipe(ofType<authAction.IsLogin>(authAction.LoginActionTypes.IS_LOGIN), tap(action => {
-      this.menuCtrl.enable(true, 'start');
-      this.menuCtrl.enable(true, 'end');
       this.loadingProvider.show();
     }));
 
-  constructor(private http: HttpClient, private actions$: Actions, private authProvider: AuthProvider,
-    private router: Router, private loadingProvider: LoadingProvider, private menuCtrl: MenuController,
+  constructor(private actions$: Actions, private authProvider: AuthProvider,
+    private router: Router, private loadingProvider: LoadingProvider, 
     private settingsProvider: SettingsProvider, private alertProvider: AlertProvider) { }
 }

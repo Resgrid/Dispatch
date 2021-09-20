@@ -1,10 +1,9 @@
 import { Injectable, Inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { APP_CONFIG_TOKEN, AppConfig } from '../config/app.config-interface';
-import { DepartmentRightsResult } from '../models/departmentRightsResult';
-import { PubSubService } from '../components/pubsub/angular2-pubsub.service';
+import { DepartmentRightsResult } from '../core/models/departmentRightsResult';
 import { Consts } from '../consts';
 import { map } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
@@ -19,9 +18,7 @@ export class SecurityProvider {
   private firebaseJWT: string;
 
   constructor(public http: HttpClient,
-    private pubsub: PubSubService,
-    private consts: Consts,
-    @Inject(APP_CONFIG_TOKEN) private appConfig: AppConfig) {
+    private consts: Consts) {
     this.groupRights = new Array<any>();
     this.departmentAdmin = false;
     this.canCreateCalls = false;
@@ -31,7 +28,7 @@ export class SecurityProvider {
   }
 
   public applySecurityRights() {
-    this.http.get<DepartmentRightsResult>(this.appConfig.ResgridApiUrl + '/Security/GetCurrentUsersRights')
+    this.http.get<DepartmentRightsResult>(environment.baseApiUrl + environment.resgridApiUrl + '/Security/GetCurrentUsersRights')
       .pipe(map((item) => { return item as DepartmentRightsResult; })).subscribe(
         data => {
           this.setRights(data);
@@ -73,7 +70,7 @@ export class SecurityProvider {
       this.firebaseJWT = data.FirebaseApiToken;
     }
 
-    this.pubsub.$pub(this.consts.EVENTS.SECURITY_SET, '');
+    //this.pubsub.$pub(this.consts.EVENTS.SECURITY_SET, '');
   }
 
   public isUserDepartmentAdmin(): boolean {

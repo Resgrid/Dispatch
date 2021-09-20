@@ -1,15 +1,14 @@
 import { Injectable, Inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { APP_CONFIG_TOKEN, AppConfig } from '../config/app.config-interface';
-import { StatusesInfo } from '../models/statusesInfo';
-import { StaffingResult } from '../models/staffingResult';
-import { StaffingScheduleResult } from '../models/staffingScheduleResult';
+import { StatusesInfo } from '../core/models/statusesInfo';
+import { StaffingResult } from '../core/models/staffingResult';
+import { StaffingScheduleResult } from '../core/models/staffingScheduleResult';
 import { TypesProvider } from './types';
 import { UtilsProvider } from './utils';
 import { Consts } from '../consts';
-import { PubSubService } from '../components/pubsub/angular2-pubsub.service';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
@@ -19,19 +18,19 @@ export class StaffingProvider {
   private currentSchedule: StaffingScheduleResult;
 
   constructor(public http: HttpClient, private typesProvider: TypesProvider, private utilsProvider: UtilsProvider,
-    @Inject(APP_CONFIG_TOKEN) private appConfig: AppConfig, private pubsub: PubSubService, private consts: Consts) {
+    private consts: Consts) {
 
   }
 
   public getCurrentStaffing(): Observable<StaffingResult> {
-    return this.http.get<StaffingResult>(this.appConfig.ResgridApiUrl + '/Staffing/GetCurrentStaffing')
+    return this.http.get<StaffingResult>(environment.baseApiUrl + environment.resgridApiUrl + '/Staffing/GetCurrentStaffing')
       .pipe(map((item) => {
         return item as StaffingResult;
       }));
   }
 
   public setStaffing(type: number, geoLocation: string, note: string): Observable<object> {
-    return this.http.post(this.appConfig.ResgridApiUrl + '/Staffing/SetStaffing', {
+    return this.http.post(environment.baseApiUrl + environment.resgridApiUrl + '/Staffing/SetStaffing', {
       Typ: type,
       Geo: geoLocation,
       Not: note
@@ -39,13 +38,13 @@ export class StaffingProvider {
   }
 
   public setStaffingForUser(userId: string, type: number, geoLocation: string, note: string): Observable<object> {
-    return this.http.put(this.appConfig.ResgridApiUrl + '/Staffing/SetStaffingForUser', {
+    return this.http.put(environment.baseApiUrl + environment.resgridApiUrl + '/Staffing/SetStaffingForUser', {
       Uid: userId,
       Typ: type,
       Geo: geoLocation,
       Not: note
     }).pipe(map((item) => {
-      this.pubsub.$pub(this.consts.EVENTS.STAFFING_UPDATED, event);
+      //this.pubsub.$pub(this.consts.EVENTS.STAFFING_UPDATED, event);
       return item as StaffingResult;
     }));
   }
@@ -59,7 +58,7 @@ export class StaffingProvider {
   }
 
   public getStaffingSchedules(): Observable<StaffingScheduleResult[]> {
-    return this.http.get<StaffingScheduleResult[]>(this.appConfig.ResgridApiUrl + '/StaffingSchedules/GetStaffingSchedules')
+    return this.http.get<StaffingScheduleResult[]>(environment.baseApiUrl + environment.resgridApiUrl + '/StaffingSchedules/GetStaffingSchedules')
       .pipe(map((items) => {
         let staffings: StaffingScheduleResult[] = new Array<StaffingScheduleResult>();
 
@@ -83,7 +82,7 @@ export class StaffingProvider {
   }
 
   public toggleStaffingSchedule(id: number, active: boolean): Observable<object> {
-    return this.http.put(this.appConfig.ResgridApiUrl + '/StaffingSchedules/ToggleStaffingSchedule', {
+    return this.http.put(environment.baseApiUrl + environment.resgridApiUrl + '/StaffingSchedules/ToggleStaffingSchedule', {
       Id: id,
       Act: active
     });
@@ -92,7 +91,7 @@ export class StaffingProvider {
   public deleteStaffingSchedule(id: number): Observable<object> {
     const params = new HttpParams().append('staffingSecheduleId', id.toString());
 
-    return this.http.delete(this.appConfig.ResgridApiUrl + '/StaffingSchedules/DeleteStaffingSchedule', { params });
+    return this.http.delete(environment.resgridApiUrl + '/StaffingSchedules/DeleteStaffingSchedule', { params });
   }
 
   public createStaffingSchedule(type: string, date: string, time: string, state: number, sunday: boolean,
@@ -106,7 +105,7 @@ export class StaffingProvider {
       intType = 2;
     }
 
-    return this.http.post(this.appConfig.ResgridApiUrl + '/StaffingSchedules/CreateStaffingSchedule', {
+    return this.http.post(environment.resgridApiUrl + '/StaffingSchedules/CreateStaffingSchedule', {
       Typ: intType,
       Spd: date,
       Spt: time,

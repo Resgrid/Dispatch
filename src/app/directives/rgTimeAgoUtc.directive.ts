@@ -10,7 +10,7 @@ export class RGTimeAgoUTCPipe {
 
 	}
 
-  transform(value: string, args: string[]) : string {
+  transform(value: string) : string {
     return this.utilsProvider.getTimeAgoUtc(value);
   }
 }

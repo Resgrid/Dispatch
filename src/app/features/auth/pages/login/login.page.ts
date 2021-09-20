@@ -1,79 +1,74 @@
-import { Component, OnInit } from '@angular/core';
-import { MenuController, LoadingController, Platform, AlertController, ModalController } from '@ionic/angular';
-import { FormGroup, FormBuilder, Validators } from '@angular/forms';
-import { Store } from '@ngrx/store';
-import { selectIsLoginState, selectLoginState } from 'src/app/store';
-import * as AuthActions from '../../actions/auth.actions';
-import { LoadingProvider } from 'src/app/providers/loading';
-import { AuthState } from '../../store/auth.store';
+import { Component, OnInit } from "@angular/core";
+import { FormGroup, FormBuilder, Validators } from "@angular/forms";
+import { Store } from "@ngrx/store";
+import { selectAuthState, selectIsLoginState, selectLoginState } from "src/app/store";
+import * as AuthActions from "../../actions/auth.actions";
+import { LoadingProvider } from "src/app/providers/loading";
+import { AuthState } from "../../store/auth.store";
+import { environment } from '../../../../../environments/environment';
+import { Observable } from "rxjs";
 
 @Component({
-  selector: 'app-login',
-  templateUrl: './login.page.html',
-  styleUrls: ['./login.page.scss'],
+  selector: "app-login",
+  templateUrl: "./login.page.html",
+  styleUrls: ["./login.page.scss"],
 })
 export class LoginPage implements OnInit {
-
   loginForm: FormGroup;
   error$ = null;
   isLogging$ = false;
+  year: number = new Date().getFullYear();
+  public version: string;
+  public authState$: Observable<AuthState | null>;
 
-  constructor(private fb: FormBuilder, private store: Store<AuthState>,
-    private loadingProvider: LoadingProvider, private menuCtrl: MenuController,
-    private alertController: AlertController) {
+  constructor(
+    private fb: FormBuilder,
+    private store: Store<AuthState>
+  ) {
+    this.authState$ = this.store.select(selectAuthState);
+  }
+
+  // convenience getter for easy access to form fields
+  get f() {
+    return this.loginForm.controls;
   }
 
   ngOnInit() {
-    this
-      .store
-      .select(selectIsLoginState)
-      .subscribe(res => {
-        this.isLogging$ = res;
-      });
-    this.loginForm = this
-      .fb
-      .group({
-        username: [
-          '', Validators.required
-        ],
-        password: [
-          '',
-          [Validators.required]
-        ]
-      });
+    this.version = environment.version;
+    document.body.removeAttribute('data-layout');
+    document.body.classList.add('auth-body-bg');
+
+    this.store.select(selectIsLoginState).subscribe((res) => {
+      this.isLogging$ = res;
+    });
+    this.loginForm = this.fb.group({
+      username: ["", Validators.required],
+      password: ["", [Validators.required]],
+    });
   }
 
-  ionViewDidEnter() {
-    this.menuCtrl.enable(false, 'start');
-    this.menuCtrl.enable(false, 'end');
-  }
-
-  login(formData) {
+  public login() {
     this.store.dispatch(new AuthActions.IsLogin());
 
     const authData = {
-      username: formData.username.trim(),
-      password: formData.password.trim()
+      username: this.f.username.value.trim(),
+      password: this.f.password.value.trim(),
     };
 
     this.store.dispatch(new AuthActions.Login(authData));
 
-    this.store
-      .select(selectIsLoginState)
-      .subscribe(res => {
-        this.isLogging$ = res;
-      });
+    this.store.select(selectIsLoginState).subscribe((res) => {
+      this.isLogging$ = res;
+    });
 
-    this.store
-      .select(selectLoginState)
-      .subscribe(async res => {
-        if (res) {
-          this.error$ = res;
+    this.store.select(selectLoginState).subscribe(async (res) => {
+      if (res) {
+        this.error$ = res;
 
-          if (this.error$) {
-            this.isLogging$ = false;
-          }
+        if (this.error$) {
+          this.isLogging$ = false;
         }
-      });
+      }
+    });
   }
 }

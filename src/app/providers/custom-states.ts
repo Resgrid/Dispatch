@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 
 import { Consts } from '../consts';
 import { DataProvider } from './data';
-import { StatusesInfo } from '../models/statusesInfo';
+import { StatusesInfo } from '../core/models/statusesInfo';
 
 @Injectable({
   providedIn: 'root'

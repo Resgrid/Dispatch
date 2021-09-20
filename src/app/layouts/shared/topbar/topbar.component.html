@@ -1,0 +1,198 @@
+<header id="page-topbar">
+  <div class="navbar-header">
+    <div class="d-flex">
+      <!-- LOGO -->
+      <div class="navbar-brand-box">
+        <a href="/home/dashboard" class="logo logo-dark">
+          <span class="logo-sm">
+            <img src="assets/images/Dispatch_1024.png" alt="" height="22">
+          </span>
+          <span class="logo-lg">
+            <img src="assets/images/Resgrid_JustText.png" alt="" height="20">
+          </span>
+        </a>
+
+        <a href="/home/dashboard" class="logo logo-light">
+          <span class="logo-sm">
+            <img src="assets/images/Dispatch_1024.png" alt="" height="22">
+          </span>
+          <span class="logo-lg">
+            <img src="assets/images/Resgrid_JustText_White.png" alt="" height="20">
+          </span>
+        </a>
+      </div>
+
+      <button type="button" class="btn btn-sm px-3 font-size-24 header-item waves-effect" id="vertical-menu-btn"
+        (click)="toggleMobileMenu($event)">
+        <i class="ri-menu-2-line align-middle"></i>
+      </button>
+
+    </div>
+
+    <div class="d-flex">
+
+      <div class="dropdown d-inline-block d-lg-none ml-2" ngbDropdown>
+        <button type="button" ngbDropdownToggle class="btn header-item noti-icon waves-effect"
+          id="page-header-search-dropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          <i class="ri-search-line"></i>
+        </button>
+        <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right p-0"
+          aria-labelledby="page-header-search-dropdown" ngbDropdownMenu>
+
+          <form class="p-3">
+            <div class="form-group m-0">
+              <div class="input-group">
+                <input type="text" class="form-control" placeholder="Search ...">
+                <div class="input-group-append">
+                  <button class="btn btn-primary" type="submit"><i class="ri-search-line"></i></button>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Language Menu -->
+      <div class="dropdown d-inline-block" ngbDropdown>
+        <button type="button" class="btn header-item" id="page-header-user-dropdown" ngbDropdownToggle>
+          <img *ngIf="flagvalue !== undefined" src="{{flagvalue}}" alt="Header Language" height="16"> <span
+            class="ml-1">{{countryName}}</span>
+          <img *ngIf="flagvalue === undefined" src="{{valueset}}" alt="Header Language" height="16">
+          <span *ngIf="flagvalue === undefined" class="ml-1">English</span>
+        </button>
+        <div class="dropdown-menu dropdown-menu-right" ngbDropdownMenu>
+          <a href="javascript:void(0);" class="dropdown-item notify-item" *ngFor="let item of listLang"
+            (click)="setLanguage(item.text, item.lang, item.flag)" [ngClass]="{'active': cookieValue === item.lang}">
+            <img src="{{item.flag}}" alt="user-image" class="mr-1" height="12"> <span
+              class="align-middle">{{item.text}}</span>
+          </a>
+        </div>
+      </div>
+      <!-- Language Menu -->
+
+      <!-- Notifications Menu -->
+      <div class="dropdown d-inline-block" ngbDropdown>
+        <button type="button" ngbDropdownToggle class="btn header-item noti-icon waves-effect"
+          id="page-header-notifications-dropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          <i class="ri-notification-3-line"></i>
+          <span class="noti-dot"></span>
+        </button>
+        <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right p-0" ngbDropdownMenu
+          aria-labelledby="page-header-notifications-dropdown">
+          <div class="p-3">
+            <div class="row align-items-center">
+              <div class="col">
+                <h6 class="m-0">{{ 'HEADER.NOTIFICATIONS.TITLE' | translate}} </h6>
+              </div>
+              <div class="col-auto">
+                <a href="javascript: void(0);" class="small">{{ 'HEADER.NOTIFICATIONS.VIEW_ALL' | translate}}</a>
+              </div>
+            </div>
+          </div>
+          <perfect-scrollbar style="position: relative; height: 230px;" [config]="configData">
+           <!-- <a href="" class="text-reset notification-item">
+              <div class="media">
+                <div class="avatar-xs mr-3">
+                  <span class="avatar-title bg-primary rounded-circle font-size-16">
+                    <i class="ri-shopping-cart-line"></i>
+                  </span>
+                </div>
+                <div class="media-body">
+                  <h6 class="mt-0 mb-1">{{ 'HEADER.NOTIFICATIONS.FIRST.TITLE' | translate}}</h6>
+                  <div class="font-size-12 text-muted">
+                    <p class="mb-1">{{ 'HEADER.NOTIFICATIONS.FIRST.TEXT' | translate}}</p>
+                    <p class="mb-0"><i class="mdi mdi-clock-outline"></i>
+                      {{ 'HEADER.NOTIFICATIONS.FIRST.TIME' | translate}}</p>
+                  </div>
+                </div>
+              </div>
+            </a>
+            <a href="" class="text-reset notification-item">
+              <div class="media">
+                <img src="assets/images/users/avatar-3.jpg" class="mr-3 rounded-circle avatar-xs" alt="user-pic">
+                <div class="media-body">
+                  <h6 class="mt-0 mb-1">{{ 'HEADER.NOTIFICATIONS.SECOND.TITLE' | translate}}</h6>
+                  <div class="font-size-12 text-muted">
+                    <p class="mb-1">{{ 'HEADER.NOTIFICATIONS.SECOND.TEXT' | translate}}</p>
+                    <p class="mb-0"><i
+                        class="mdi mdi-clock-outline"></i>{{ 'HEADER.NOTIFICATIONS.SECOND.TIME' | translate}}</p>
+                  </div>
+                </div>
+              </div>
+            </a>
+            <a href="" class="text-reset notification-item">
+              <div class="media">
+                <div class="avatar-xs mr-3">
+                  <span class="avatar-title bg-success rounded-circle font-size-16">
+                    <i class="ri-checkbox-circle-line"></i>
+                  </span>
+                </div>
+                <div class="media-body">
+                  <h6 class="mt-0 mb-1">{{ 'HEADER.NOTIFICATIONS.THIRD.TITLE' | translate}}</h6>
+                  <div class="font-size-12 text-muted">
+                    <p class="mb-1">{{ 'HEADER.NOTIFICATIONS.THIRD.TEXT' | translate}}</p>
+                    <p class="mb-0"><i
+                        class="mdi mdi-clock-outline"></i>{{ 'HEADER.NOTIFICATIONS.THIRD.TIME' | translate}}</p>
+                  </div>
+                </div>
+              </div>
+            </a>
+            <a href="" class="text-reset notification-item">
+              <div class="media">
+                <img src="assets/images/users/avatar-4.jpg" class="mr-3 rounded-circle avatar-xs" alt="user-pic">
+                <div class="media-body">
+                  <h6 class="mt-0 mb-1">{{ 'HEADER.NOTIFICATIONS.FOUR.TITLE' | translate}}</h6>
+                  <div class="font-size-12 text-muted">
+                    <p class="mb-1">{{ 'HEADER.NOTIFICATIONS.FOUR.TEXT' | translate}}</p>
+                    <p class="mb-0"><i
+                        class="mdi mdi-clock-outline"></i>{{ 'HEADER.NOTIFICATIONS.FOUR.TIME' | translate}}</p>
+                  </div>
+                </div>
+              </div>
+            </a> -->
+          </perfect-scrollbar>
+          <div class="p-2 border-top">
+            <a class="btn btn-sm btn-link font-size-14 btn-block text-center" href="javascript:void(0)">
+              <i class="mdi mdi-arrow-right-circle mr-1"></i> {{ 'HEADER.NOTIFICATIONS.LOAD_MORE' | translate}}
+            </a>
+          </div>
+        </div>
+      </div>
+      <!-- Notifications Menu -->
+
+      <!-- User Menu -->
+      <div class="dropdown d-inline-block user-dropdown" ngbDropdown>
+        <button type="button" ngbDropdownToggle class="btn header-item waves-effect" id="page-header-user-dropdown"
+          data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          <img class="rounded-circle header-profile-user" [src]="getAvatarUrl()" alt="Header Avatar">
+          <span class="d-none d-xl-inline-block ml-1">{{ auth?.user?.fullName }}</span>
+          <i class="mdi mdi-chevron-down d-none d-xl-inline-block"></i>
+        </button>
+
+        <div class="dropdown-menu dropdown-menu-right" ngbDropdownMenu>
+          <!-- 
+          <a class="dropdown-item" href="javascript: void(0);"><i class="ri-user-line align-middle mr-1"></i>
+            {{ 'HEADER.LOGIN.PROFILE' | translate}}</a>
+          <a class="dropdown-item d-block" href="javascript: void(0);"><span
+              class="badge badge-success float-right mt-1">11</span><i
+              class="ri-settings-2-line align-middle mr-1"></i>{{ 'HEADER.LOGIN.SETTINGS' | translate}} </a>
+          <a class="dropdown-item" href="javascript: void(0);"><i class="ri-lock-unlock-line align-middle mr-1"></i>
+            {{ 'HEADER.LOGIN.LOCK_SCREEN' | translate}}</a>
+          <div class="dropdown-divider"></div>item-->
+          <a class="dropdown-item text-danger" href="javascript: void(0);" (click)="logout()"><i
+              class="ri-shut-down-line align-middle mr-1 text-danger"></i>
+            {{ 'HEADER.LOGIN.LOGOUT' | translate}}</a>
+        </div>
+      </div>
+      <!-- User Menu -->
+
+      <div class="dropdown d-inline-block">
+        <button type="button" class="btn header-item noti-icon right-bar-toggle waves-effect"
+          (click)="toggleRightSidebar()">
+          <i class="ri-stack-line"></i>
+        </button>
+      </div>
+
+    </div>
+  </div>
+</header>

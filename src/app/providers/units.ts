@@ -1,21 +1,20 @@
 import { Injectable, Inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { APP_CONFIG_TOKEN, AppConfig } from '../config/app.config-interface';
-
-import { UnitStatusResult } from '../models/unitStatusResult';
+import { environment } from '../../environments/environment';
+import { UnitStatusResult } from '../core/models/unitStatusResult';
 import { SettingsProvider } from './settings';
 import { DataProvider } from './data';
 import { TypesProvider } from './types';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { UnitStatusFullResult } from '../models/unitStatusFullResult';
+import { UnitStatusFullResult } from '../core/models/unitStatusFullResult';
 
 @Injectable({
   providedIn: 'root'
 })
 export class UnitsProvider {
   constructor(public http: HttpClient, private settingsProvider: SettingsProvider,
-    private dataProvider: DataProvider, private typesProvider: TypesProvider, @Inject(APP_CONFIG_TOKEN) private appConfig: AppConfig) {
+    private dataProvider: DataProvider, private typesProvider: TypesProvider) {
 
   }
 
@@ -24,9 +23,9 @@ export class UnitsProvider {
     const filter = this.settingsProvider.settings.UnitsFilter;
 
     if (filter) {
-      url = this.appConfig.ResgridApiUrl + '/Units/GetUnitStatuses?activeFilter=' + encodeURIComponent(filter);
+      url = environment.baseApiUrl + environment.resgridApiUrl + '/Units/GetUnitStatuses?activeFilter=' + encodeURIComponent(filter);
     } else {
-      url = this.appConfig.ResgridApiUrl + '/Units/GetUnitStatuses';
+      url = environment.baseApiUrl + environment.resgridApiUrl + '/Units/GetUnitStatuses';
     }
 
     return this.http.get<UnitStatusResult[]>(url).pipe(map((items) => {
@@ -57,7 +56,7 @@ export class UnitsProvider {
   }
 
   public getUnitStatusesFull(): Observable<UnitStatusFullResult[]> {
-    return this.http.get<UnitStatusFullResult[]>(this.appConfig.ResgridApiUrl + '/BigBoard/GetUnitStatuses').pipe(map((items) => {
+    return this.http.get<UnitStatusFullResult[]>(environment.baseApiUrl + environment.resgridApiUrl + '/BigBoard/GetUnitStatuses').pipe(map((items) => {
       const statuses: UnitStatusFullResult[] = new Array<UnitStatusFullResult>();
 
       items.forEach(item => {
@@ -84,6 +83,8 @@ export class UnitsProvider {
         status.Note = item.Note;
         status.GroupName = item.GroupName;
         status.Eta = item.Eta;
+        status.UnitId = item.UnitId;
+        status.DestinationName = item.DestinationName;
 
         statuses.push(status);
       });

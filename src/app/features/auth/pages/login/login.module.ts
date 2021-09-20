@@ -1,9 +1,8 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { IonicModule } from '@ionic/angular';
 import { RouterModule } from '@angular/router';
-
+import { NgbAlertModule } from '@ng-bootstrap/ng-bootstrap';
 import { LoginPage } from './login.page';
 import { BrowserModule } from '@angular/platform-browser';
 
@@ -11,9 +10,8 @@ import { BrowserModule } from '@angular/platform-browser';
   imports: [
     CommonModule,
     FormsModule,
-    FormsModule,
+    NgbAlertModule,
     ReactiveFormsModule,
-    IonicModule,
     RouterModule.forChild([
       {
         path: '',

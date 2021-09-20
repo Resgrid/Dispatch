@@ -1,0 +1,49 @@
+import { Component, OnInit } from "@angular/core";
+import { Store } from "@ngrx/store";
+import { Observable } from "rxjs";
+import { DepartmentVoiceChannelResult } from "src/app/core/models/departmentVoiceChannelResult";
+import { VoiceState } from "src/app/features/voice/store/voice.store";
+import { selectAvailableChannelsState, selectVoiceState } from "src/app/store";
+import * as VoiceActions from "../../actions/voice.actions";
+
+@Component({
+  selector: "app-voice-footer",
+  templateUrl: "./voice-footer.component.html",
+  styleUrls: ["./voice-footer.component.scss"],
+})
+export class VoiceFooterComponent implements OnInit {
+  public selectedChannel: DepartmentVoiceChannelResult;
+  public isTransmitting: boolean = false;
+  public voiceState$: Observable<VoiceState | null>;
+  public availableChannels$: Observable<DepartmentVoiceChannelResult[] | null>;
+
+  constructor(private store: Store<VoiceState>) {
+    this.voiceState$ = this.store.select(selectVoiceState);
+    this.availableChannels$ = this.store.select(selectAvailableChannelsState);
+
+    this.availableChannels$.subscribe((channels) => {
+      if (channels) {
+        this.selectedChannel = channels[0];
+      }
+    });
+  }
+
+  ngOnInit(): void {
+  }
+
+  public startTransmitting(): void {
+    this.store.dispatch(new VoiceActions.StartTransmitting());
+  }
+
+  public stopTransmitting(): void {
+    this.store.dispatch(new VoiceActions.StopTransmitting());
+  }
+
+  public onChannelChange(channel) {
+    if (channel.ConferenceNumber == 0) {
+      this.store.dispatch(new VoiceActions.SetNoChannel());
+    } else {
+      this.store.dispatch(new VoiceActions.SetActiveChannel(channel));
+    }
+  }
+}

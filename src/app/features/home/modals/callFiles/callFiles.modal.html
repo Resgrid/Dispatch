@@ -1,0 +1,59 @@
+<div>
+  <div class="modal-header">
+    <h5 class="modal-title" id="composemodalTitle">Call Notes</h5>
+    <button type="button" class="close" (click)="dismiss()" aria-label="Close">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div>
+  <div>
+    <perfect-scrollbar style="position: relative; height: 345px;">
+      <div class="table-responsive">
+        <table id="basic-datatable" class="table table-centered dt-responsive nowrap datatables no-footer dtr-inline">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Filename</th>
+              <th>Size</th>
+              <th>Type</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let file of (homeState$ | async).callFiles">
+              <td>
+                <a class="text-dark font-weight-bold">
+                  <ngb-highlight [result]="file.Nme" [term]="searchTerm"></ngb-highlight>
+                </a>
+              </td>
+              <td>
+                <ngb-highlight [result]="file.Fln" [term]="searchTerm"></ngb-highlight>
+              </td>
+              <td>
+                <ngb-highlight [result]="file.Sze" [term]="searchTerm"></ngb-highlight>
+              </td>
+              <td>
+                <ngb-highlight [result]="file.Mime" [term]="searchTerm"></ngb-highlight>
+              </td>
+              <td>
+                <button class="btn btn-light btn-rounded">Download <i class="mdi mdi-download ml-2"></i></button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </perfect-scrollbar>
+  </div>
+  <div style="display: inherit;" class="modal-footer">
+    <div class="row">
+      <div class="col-md-3">
+        <label class="col-md-3 col-form-label">Upload New File</label>
+      </div>
+      <div class="col-md-7">
+        <input type="file" class="file-input" (change)="onFileSelected($event)" #fileUpload>
+      </div>
+      <div class="col-md-2">
+        <button type="button" class="btn btn-secondary" (click)="dismiss()">Close</button>
+      </div>
+    </div>
+  </div>
+</div>

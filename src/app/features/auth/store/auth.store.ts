@@ -1,4 +1,4 @@
-import { UserInfo } from 'src/app/models/userInfo';
+import { UserInfo } from 'src/app/core/models/userInfo';
 
 export interface AuthState {
     loggedIn: boolean;

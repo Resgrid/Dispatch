@@ -1,0 +1,109 @@
+//
+// accordion.scss
+//
+
+.custom-accordion {
+  .card-header {
+    padding: 0px;
+  }
+
+  .card {
+      margin-bottom: 0px;
+      .card-body {
+          padding: 0px;
+      }
+  }
+
+  .accordion-list {
+    display: flex;
+    background-color: $gray-300;
+    // padding: 12px 20px;
+    color: $body-color;
+    font-weight: $font-weight-semibold;
+    align-items: center;
+    justify-content: space-between;
+
+    &.collapsed {
+      i.accor-plus-icon {
+        &:before {
+          content: "\F0415";
+        }
+      }
+    }
+
+    .accor-plus-icon {
+      display: inline-block;
+      font-size: 16px;
+      height: 24px;
+      width: 24px;
+      line-height: 22px;
+      background-color: $card-bg;
+      text-align: center;
+      border-radius: 50%;
+    }
+  }
+
+  .card-body {
+    color: $text-muted;
+  }
+}
+
+.custom-accordion {
+  .card {
+    +.card {
+      margin-top: 0.5rem;
+    }
+  }
+
+  a {
+    &.collapsed {
+      i.accor-plus-icon {
+        &:before {
+          content: "\F0415";
+        }
+      }
+    }
+  }
+
+  .card-header {
+    border-radius: 7px;
+  }
+}
+
+.custom-accordion-arrow {
+  .card {
+    border: 1px solid $border-color;
+    box-shadow: none;
+  }
+
+  .card-header {
+    padding-left: 45px;
+    position: relative;
+
+    .accor-arrow-icon {
+      position: absolute;
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      line-height: 24px;
+      font-size: 16px;
+      background-color: $primary;
+      color: $white;
+      border-radius: 50%;
+      text-align: center;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+  }
+
+  a {
+    &.collapsed {
+      i.accor-arrow-icon {
+        &:before {
+          content: "\F0142";
+        }
+      }
+    }
+  }
+}

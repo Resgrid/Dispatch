@@ -1,0 +1,83 @@
+// 
+// Extras pages.scss
+//
+
+
+// pricing
+
+.pricing-nav-tabs{
+    display: inline-block;
+    background-color: $card-bg;
+    box-shadow: $box-shadow;
+    padding: 4px;
+    border-radius: 7px;
+    li{
+        display: inline-block;
+    }
+}
+
+
+.pricing-box{
+    .plan-features{
+        li{
+            padding: 7px 0px;
+        }
+    }
+}
+
+/*********************
+    Faqs
+**********************/ 
+
+.faq-nav-tabs{
+    .nav-item{
+        margin: 0px 8px;
+    }
+    .nav-link{
+        text-align: center;
+        margin-bottom: 8px;
+        border: 2px solid $border-color;
+        color: $body-color;
+        .nav-icon{
+            font-size: 40px;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        &.active{
+            border-color: $primary;
+            background-color: transparent;
+            color: $body-color;
+
+            .nav-icon{
+                color: $primary;
+            }
+        }
+    }
+}
+
+.text-error{
+    font-size: 120px;
+    @media (max-width: 575.98px) {
+        font-size: 86px;
+    }
+}
+
+.error-text{
+    color: $danger;
+    position: relative;
+
+    .error-img{
+        position: absolute;
+        width: 120px;
+        left: -15px;
+        right: 0;
+        bottom: 47px;
+
+        @media (max-width: 575.98px) {
+            width: 86px;
+            left: -12px;
+            bottom: 38px;
+        }
+    }
+}

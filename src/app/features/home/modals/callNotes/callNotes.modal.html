@@ -1,0 +1,44 @@
+<div>
+  <div class="modal-header">
+    <h5 class="modal-title" id="composemodalTitle">Call Notes</h5>
+    <button type="button" class="close" (click)="dismiss()" aria-label="Close">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div>
+  <div>
+    <perfect-scrollbar style="position: relative; height: 345px;">
+      <ul class="list-unstyled chat-list">
+        <li *ngFor="let note of (homeState$ | async).callNotes;">
+          <a>
+            <div class="media">
+              <div class="user-img online align-self-center mr-3">
+                <img src="{{getAvatarUrl(note.Uid)}}" class="rounded-circle avatar-xs" alt="">
+              </div>
+              <div class="media-body overflow-hidden">
+                <h5 class="text-truncate font-size-14 mb-1">{{note.Fnm}}</h5>
+                <p class="text-truncate mb-0">{{note.Not}}</p>
+              </div>
+              <div class="font-size-11">{{note.Tme}}</div>
+            </div>
+          </a>
+        </li>
+      </ul>
+    </perfect-scrollbar>
+  </div>
+  <div style="display: inherit;" class="modal-footer">
+    <form (ngSubmit)="save()" [formGroup]="formData">
+      <div class="row chat-input-section">
+        <div class="col-md-10">
+          <input type="text" class="form-control chat-input" placeholder="Enter Note..." formControlName="message"
+            [ngClass]="{'is-invalid': isSaving && form.message.errors}">
+          <div *ngIf="isSaving && form.message.errors" class="invalid-feedback">
+            <span *ngIf="form.message.errors.required">This value is required.</span>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-primary chat-send w-md waves-effect waves-light">Save</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>

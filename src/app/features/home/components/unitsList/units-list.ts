@@ -1,6 +1,5 @@
 import { Component, OnInit, Input } from '@angular/core';
 import { HomeState } from '../../store/home.store';
-import { _ } from 'underscore';
 
 @Component({
   selector: 'app-units-list',

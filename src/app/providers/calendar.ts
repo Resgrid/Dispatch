@@ -1,7 +1,7 @@
 import { Injectable, Inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { APP_CONFIG_TOKEN, AppConfig } from '../config/app.config-interface';
-import { CalendarItem } from '../models/calendarItem';
+import { environment } from '../../environments/environment';
+import { CalendarItem } from '../core/models/calendarItem';
 import { DataProvider } from './data';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -12,24 +12,23 @@ import { map } from 'rxjs/operators';
 export class CalendarProvider {
 
   constructor(public http: HttpClient,
-              @Inject(APP_CONFIG_TOKEN) private appConfig: AppConfig,
               private dataProvider: DataProvider) {
 
       }
 
       public getAllCalendarItems(): Observable<CalendarItem[]> {
-        return this.http.get<CalendarItem[]>(this.appConfig.ResgridApiUrl + '/Calendar/GetDepartmentCalendarItems');
+        return this.http.get<CalendarItem[]>(environment.baseApiUrl + environment.resgridApiUrl + '/Calendar/GetDepartmentCalendarItems');
       }
 
       public getAllCalendarItemsInRange(start: string, end: string): Observable<CalendarItem[]> {
-        const url = this.appConfig.ResgridApiUrl + '/Calendar/GetAllDepartmentCalendarItemsInRange';
+        const url = environment.baseApiUrl + environment.resgridApiUrl + '/Calendar/GetAllDepartmentCalendarItemsInRange';
         const params = new HttpParams().append('startDate', start).append('endDate', end);
 
         return this.http.get<CalendarItem[]>(url, { params });
       }
 
       public getCalendarItem(calendarItemId: any): Observable<CalendarItem> {
-        const url = this.appConfig.ResgridApiUrl + '/Calendar/GetCalendarItem';
+        const url = environment.baseApiUrl + environment.resgridApiUrl + '/Calendar/GetCalendarItem';
         const params = new HttpParams().append('id', calendarItemId);
 
         return this.http.get<CalendarItem>(url, { params }).pipe(map((item) => {
@@ -49,7 +48,7 @@ export class CalendarProvider {
       }
 
       public setAttendingStatus(calendarItemId: number, note: string, type: string) {
-        const url = this.appConfig.ResgridApiUrl + '/Calendar/SetCalendarAttendingStatus';
+        const url = environment.baseApiUrl + environment.resgridApiUrl + '/Calendar/SetCalendarAttendingStatus';
 
         return this.http.post(url, {
           CalId: calendarItemId,

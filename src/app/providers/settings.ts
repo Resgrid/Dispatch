@@ -1,8 +1,6 @@
 import { Injectable, Inject } from '@angular/core';
-import { APP_CONFIG_TOKEN, AppConfig } from '../config/app.config-interface';
-
-import { Settings } from '../models/settings';
-
+import { environment } from '../../environments/environment';
+import { Settings } from '../core/models/settings';
 
 @Injectable({
   providedIn: 'root'
@@ -12,19 +10,15 @@ export class SettingsProvider {
   public isAuthenticated: boolean = false;
   public settings: Settings;
 
-  constructor(@Inject(APP_CONFIG_TOKEN) private appConfig: AppConfig) {
+  constructor() {
     this.settings = new Settings();
 
-    // Ok, NativeStorage should support local storage fallback, but it doesn't presist, so have this fake for web fallback.
-    if (window['cordova']) {
-      // this.storage = nativeStorage;
-    } else {
       this.storage = {
         setItem: (key, value) => {
           return new Promise((resolve, reject) => {
             try {
               window.localStorage.setItem(key, JSON.stringify(value));
-              resolve();
+              resolve(true);
             } catch (error) {
               reject(error);
             }
@@ -44,7 +38,7 @@ export class SettingsProvider {
           return new Promise((resolve, reject) => {
             try {
               window.localStorage.removeItem(key);
-              resolve();
+              resolve(true);
             } catch (error) {
               reject(error);
             }
@@ -54,14 +48,13 @@ export class SettingsProvider {
           return new Promise((resolve, reject) => {
             try {
               window.localStorage.clear();
-              resolve();
+              resolve(true);
             } catch (error) {
               reject(error);
             }
           });
         },
       }
-    }
   }
 
   public init(): Promise<boolean> {
@@ -91,7 +84,7 @@ export class SettingsProvider {
   }
 
   public areSettingsSet(): boolean {
-    if (this.appConfig.IsDemo === true) {
+    if (environment.isDemo === true) {
       return true;
     } else {
       if (!this.settings.Username)

@@ -1,0 +1,107 @@
+//
+// components-rtl.scss
+//
+
+// dropdown
+
+.dropdown-megamenu {
+    &.show {
+        left: 20px !important;
+    }
+}
+
+// 
+
+.custom-accordion-arrow {
+    .card-header {
+        padding-left: 20px;
+        padding-right: 45px;
+
+        .accor-arrow-icon {
+            left: auto;
+            right: 10px;
+        }
+    }
+}
+
+// icons
+
+.icon-list-demo {
+    i {
+        margin-left: 12px;
+        margin-right: 0;
+    }
+}
+
+
+// Search box
+
+.search-box {
+    .form-control {
+        padding-left: 12px;
+        padding-right: 40px;
+    }
+
+    .search-icon {
+        left: auto;
+        right: 13px;
+    }
+}
+
+// Blockquote
+
+.blockquote {
+    border-left: 0;
+    border-right: 4px solid $gray-300;
+}
+
+.blockquote-reverse {
+    border-right: 0;
+    border-left: 4px solid $gray-300;
+}
+
+// table
+.table-responsive>.table-bordered {
+    border: 1px;
+}
+
+
+// Invoice
+
+@media print {
+
+    .content-page,
+    .content,
+    body {
+        margin-right: 0;
+    }
+}
+
+// Demos button 
+.demos-show-btn {
+    left: 0;
+    right: auto;
+    border-radius: 0 6px 6px 0;
+}
+
+// activity widget
+
+.activity-wid {
+    border-left: 0;
+    margin-left: 0;
+    margin-right: 16px;
+
+    .activity-list {
+        padding: 0 30px 40px 0px;
+
+        &:before {
+            left: auto;
+            right: 0;
+        }
+
+        .activity-icon {
+            left: auto;
+            right: -15px;
+        }
+    }
+}

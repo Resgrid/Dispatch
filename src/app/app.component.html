@@ -1,11 +1,1 @@
-<ion-app>
-  <ion-split-pane contentId="main-content" when="(min-width: 1600px)">
-    <ion-menu contentId="main-content" type="overlay">
-      <ion-content>
-        <app-sidemenu [auth]="authInfo$ | async"></app-sidemenu>
-      </ion-content>
-    </ion-menu>
-
-    <ion-router-outlet id="main-content"></ion-router-outlet>
-  </ion-split-pane>
-</ion-app>
+<router-outlet></router-outlet>

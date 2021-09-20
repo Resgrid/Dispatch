@@ -1,22 +1,22 @@
 import { Injectable, Inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { APP_CONFIG_TOKEN, AppConfig } from '../config/app.config-interface';
 import { DataProvider } from './data';
-import { ShiftResult } from '../models/shiftResult';
-import { ShiftDayResult } from '../models/shiftDayResult';
+import { ShiftResult } from '../core/models/shiftResult';
+import { ShiftDayResult } from '../core/models/shiftDayResult';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ShiftsProvider {
 
-  constructor(public http: HttpClient, @Inject(APP_CONFIG_TOKEN) private appConfig: AppConfig, private dataProvider: DataProvider) {
+  constructor(public http: HttpClient, private dataProvider: DataProvider) {
   }
 
   public getShifts(): Observable<ShiftResult[]> {
-    return this.http.get<ShiftResult[]>(this.appConfig.ResgridApiUrl + '/Shifts/GetShifts')
+    return this.http.get<ShiftResult[]>(environment.baseApiUrl + environment.resgridApiUrl + '/Shifts/GetShifts')
       .pipe(map((items) => {
         let shifts: ShiftResult[] = new Array<ShiftResult>();
 
@@ -33,7 +33,7 @@ export class ShiftsProvider {
   public getShift(shiftId: any): Observable<ShiftResult> {
     const params = new HttpParams().append('id', shiftId);
 
-    return this.http.get<ShiftResult>(this.appConfig.ResgridApiUrl + '/Shifts/GetShift', { params })
+    return this.http.get<ShiftResult>(environment.baseApiUrl + environment.resgridApiUrl + '/Shifts/GetShift', { params })
       .pipe(map((item) => {
         const shift: ShiftResult = item as ShiftResult;
 
@@ -44,7 +44,7 @@ export class ShiftsProvider {
   public getShiftDay(shiftDayId: any): Observable<ShiftDayResult> {
     const params = new HttpParams().append('id', shiftDayId);
 
-    return this.http.get<ShiftDayResult>(this.appConfig.ResgridApiUrl + '/Shifts/GetShiftDay', { params })
+    return this.http.get<ShiftDayResult>(environment.baseApiUrl + environment.resgridApiUrl + '/Shifts/GetShiftDay', { params })
       .pipe(map((item) => {
         let shiftDay: ShiftDayResult = item as ShiftDayResult;
 
@@ -80,7 +80,7 @@ export class ShiftsProvider {
   }
 
   public getTodaysShifts(): Observable<ShiftDayResult[]> {
-    return this.http.get<ShiftDayResult[]>(this.appConfig.ResgridApiUrl + '/Shifts/GetTodaysShifts')
+    return this.http.get<ShiftDayResult[]>(environment.baseApiUrl + environment.resgridApiUrl + '/Shifts/GetTodaysShifts')
     .pipe(map((items) => {
         let shiftDays: ShiftDayResult[] = new Array<ShiftDayResult>();
 
@@ -128,6 +128,6 @@ export class ShiftsProvider {
       GroupId: groupId,
     };
 
-    return this.http.post(this.appConfig.ResgridApiUrl + '/Shifts/SignupForShiftDay', data);
+    return this.http.post(environment.baseApiUrl + environment.resgridApiUrl + '/Shifts/SignupForShiftDay', data);
   }
 }

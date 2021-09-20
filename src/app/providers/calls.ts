@@ -1,283 +1,482 @@
-import { Injectable, Inject } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { APP_CONFIG_TOKEN, AppConfig } from '../config/app.config-interface';
+import { Injectable, Inject } from "@angular/core";
+import { HttpClient, HttpParams } from "@angular/common/http";
 
-import { TypesProvider } from './types';
-import { DataProvider } from './data';
-
-import { CallDataResult } from '../models/callDataResult';
-import { CallResult } from '../models/callResult';
-import { CallFileResult } from '../models/callFileResult';
-import { CallNoteResult } from '../models/callNoteResult';
-import { CallTypeResult } from '../models/callTypeResult';
-import { Location } from '../models/location';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { TypesProvider } from "./types";
+import { DataProvider } from "./data";
+import { environment } from "../../environments/environment";
+import { CallDataResult } from "../core/models/callDataResult";
+import { CallResult } from "../core/models/callResult";
+import { CallFileResult } from "../core/models/callFileResult";
+import { CallNoteResult } from "../core/models/callNoteResult";
+import { CallTypeResult } from "../core/models/callTypeResult";
+import { GpsLocation } from "../core/models/gpsLocation";
+import { Observable } from "rxjs";
+import { map } from "rxjs/operators";
+import { CallPriorityResult } from "../core/models/callPriorityResult";
+import { UtilsProvider } from "./utils";
 
 @Injectable({
-	providedIn: 'root'
+  providedIn: "root",
 })
 export class CallsProvider {
+  constructor(
+    public http: HttpClient,
+    private typesProvider: TypesProvider,
+    private dataProvider: DataProvider,
+    private utilsProvider: UtilsProvider
+  ) {}
 
-	constructor(public http: HttpClient,
-		private typesProvider: TypesProvider,
-		@Inject(APP_CONFIG_TOKEN) private appConfig: AppConfig,
-		private dataProvider: DataProvider) {
+  public getActiveCalls(): Observable<CallResult[]> {
+    const url =
+      environment.baseApiUrl +
+      environment.resgridApiUrl +
+      "/Calls/GetActiveCalls";
 
-	}
+    return this.http.get<CallResult[]>(url).pipe(
+      map((items) => {
+        let statuses: CallResult[] = new Array<CallResult>();
 
-	public getActiveCalls(): Observable<CallResult[]> {
-		const url = this.appConfig.ResgridApiUrl + '/Calls/GetActiveCalls';
+        items.forEach((item) => {
+          let status: CallResult = this.mapDataToCall(item);
 
-		return this.http.get<CallResult[]>(url).pipe(map((items) => {
-			let statuses: CallResult[] = new Array<CallResult>();
+          statuses.push(status);
+        });
 
-			items.forEach(item => {
-				let status: CallResult = this.mapDataToCall(item);
+        return statuses;
+      })
+    );
+  }
 
-				statuses.push(status);
-			});
+  public saveCall(
+    name,
+    priority,
+    type,
+    contactName,
+    contactInfo,
+    externalId,
+    incidentId,
+    referenceId,
+    nature,
+    notes,
+    address,
+    w3w,
+    latitude,
+    longitude,
+    dispatchList,
+    dispatchOn,
+    callFormData
+  ): Observable<any> {
+    let url =
+      environment.baseApiUrl + environment.resgridApiUrl + "/Calls/SaveCall";
 
-			return statuses;
-		}));
-	}
+    let coordinates = "";
+    if (latitude && latitude != 0 && longitude && longitude != 0) {
+      coordinates = latitude + "," + longitude;
+    }
 
-	public saveCall(priority, name, nature, gpsCoordinates, address): void {
-		let url = this.appConfig.ResgridApiUrl + '/Calls/SaveCall';
+    return this.http.post(url, {
+      Pri: priority,
+      Typ: type,
+      CNme: contactName,
+      CNum: contactInfo,
+      EId: externalId,
+      InI: incidentId,
+      RId: referenceId,
+      Nme: name,
+      Noc: nature,
+      Not: notes,
+      Geo: coordinates,
+      Add: address,
+      W3W: w3w,
+      Dis: dispatchList,
+      Don: dispatchOn,
+      Cfd: callFormData,
+    });
+  }
 
-		this.http.post(url, {
-			Pri: priority,
-			Nme: name,
-			Noc: nature,
-			Geo: gpsCoordinates,
-			Add: address
-		});
-	}
+  public getCall(callId: any): Observable<CallResult> {
+    let url =
+      environment.baseApiUrl + environment.resgridApiUrl + "/Calls/GetCall";
 
-	public getCall(callId: any): Observable<CallResult> {
-		let url = this.appConfig.ResgridApiUrl + '/Calls/GetCall';
+    let params = new HttpParams().append("callId", callId);
 
-		let params = new HttpParams().append('callId', callId);
+    //return this.http.get<CallResult>(url + "?callId=" + callId).map((item) => {
+    return this.http.get<CallResult>(url, { params: params }).pipe(
+      map((item) => {
+        let status: CallResult = this.mapDataToCall(item);
 
-		//return this.http.get<CallResult>(url + "?callId=" + callId).map((item) => {
-		return this.http.get<CallResult>(url, { params: params }).pipe(map((item) => {
-			let status: CallResult = this.mapDataToCall(item);
+        return status;
+      })
+    );
+  }
 
-			return status;
-		}));
-	}
+  public getCallData(callId: any): Observable<CallDataResult> {
+    let url =
+      environment.baseApiUrl +
+      environment.resgridApiUrl +
+      "/Calls/GetCallExtraData";
 
-	public getCallData(callId: any): Observable<CallDataResult> {
-		let url = this.appConfig.ResgridApiUrl + '/Calls/GetCallExtraData';
+    let params = new HttpParams().append("callId", callId);
 
-		let params = new HttpParams().append('callId', callId);
+    return this.http.get(url, { params: params }).pipe(
+      map((item) => {
+        let status: CallDataResult = <CallDataResult>item;
 
-		return this.http.get(url, { params: params }).pipe(map((item) => {
-			let status: CallDataResult = <CallDataResult>item;
+        status.Activity.forEach((activity) => {
+          if (activity.Type === "User") {
+            activity.StatusText = this.typesProvider.statusToTextConverter(
+              activity.StatusId
+            );
+            activity.StatusColor = this.typesProvider.statusToColorConverter(
+              activity.StatusId
+            );
+          } else {
+            activity.StatusText = this.typesProvider.unitStatusToTextConverter(
+              activity.StatusId
+            );
+            activity.StatusColor =
+              this.typesProvider.unitStatusToColorConverter(activity.StatusId);
+          }
+        });
 
-			status.Activity.forEach(activity => {
-				if (activity.Type === "User") {
-					activity.StatusText = this.typesProvider.statusToTextConverter(activity.StatusId);
-					activity.StatusColor = this.typesProvider.statusToColorConverter(activity.StatusId);
-				} else {
-					activity.StatusText = this.typesProvider.unitStatusToTextConverter(activity.StatusId);
-					activity.StatusColor = this.typesProvider.unitStatusToColorConverter(activity.StatusId);
-				}
-			});
+        return status;
+      })
+    );
+  }
 
+  public getCallNotes(callId: any): Observable<CallNoteResult[]> {
+    let params = new HttpParams().append("callId", callId);
 
-			return status;
-		}));
-	}
+    return this.http
+      .get<CallNoteResult[]>(
+        environment.baseApiUrl +
+          environment.resgridApiUrl +
+          "/Calls/GetCallNotes",
+        { params: params }
+      )
+      .pipe(
+        map((items) => {
+          return items;
+        })
+      );
+  }
 
-	public getCallNotes(callId: any): Observable<CallNoteResult[]> {
-		let params = new HttpParams().append('callId', callId);
+  public saveCallNote(
+    callId: string,
+    userId: string,
+    note: string,
+    location: GpsLocation
+  ): Observable<Object> {
+    let data = {
+      CallId: callId,
+      UserId: userId,
+      Note: note,
+    };
 
-		return this.http.get<CallNoteResult[]>(this.appConfig.ResgridApiUrl + '/Calls/GetCallNotes', { params: params })
-			.pipe(map((items) => {
-				let notes: CallNoteResult[] = new Array<CallNoteResult>();
+    if (location && location != null) {
+      data["Lat"] = location.Latitude;
+      data["Lon"] = location.Longitude;
+    }
 
-				items.forEach(item => {
-					let note = <CallNoteResult>item;
+    return this.http.post(
+      environment.baseApiUrl + environment.resgridApiUrl + "/Calls/AddCallNote",
+      data
+    );
+  }
 
-					let localPerson = this.dataProvider.getPerson(note.Uid);
-					if (localPerson) {
-						note.FullName = localPerson.Fnm + " " + localPerson.Lnm;
-					}
+  public saveCallImage(
+    callId: string,
+    userId: string,
+    note: string,
+    name: string,
+    location: GpsLocation,
+    image: string
+  ): Observable<Object> {
+    let data = {
+      Cid: callId,
+      Uid: userId,
+      Typ: 2,
+      Nme: name,
+      Lat: "",
+      Lon: "",
+      Not: note,
+      Data: image,
+    };
 
-					notes.push(note);
-				});
+    if (location && location != null) {
+      data["Lat"] = location.Latitude.toString();
+      data["Lon"] = location.Longitude.toString();
+    }
 
-				return notes;
-			}));
-	}
+    return this.http.post(
+      environment.baseApiUrl + environment.resgridApiUrl + "/Calls/UploadFile",
+      data
+    );
+  }
 
-	public saveCallNote(callId: number, userId: string, note: string, location: Location): Observable<Object> {
+  public saveCallFile(
+    callId: string,
+    userId: string,
+    note: string,
+    name: string,
+    location: GpsLocation,
+    file: string
+  ): Observable<Object> {
+    let data = {
+      Cid: callId,
+      Uid: userId,
+      Typ: 3,
+      Nme: name,
+      Lat: "",
+      Lon: "",
+      Not: note,
+      Data: file,
+    };
 
-		let data = {
-			CallId: callId,
-			UserId: userId,
-			Note: note
-		}
+    if (location && location != null) {
+      data["Lat"] = location.Latitude.toString();
+      data["Lon"] = location.Longitude.toString();
+    }
 
-		if (location && location != null) {
-			data["Lat"] = location.Latitude;
-			data["Lon"] = location.Longitude;
-		}
+    return this.http.post(
+      environment.baseApiUrl + environment.resgridApiUrl + "/Calls/UploadFile",
+      data
+    );
+  }
 
-		return this.http.post(this.appConfig.ResgridApiUrl + '/Calls/AddCallNote', data);
-	}
+  public closeCall(
+    callId: string,
+    note: string,
+    type: string
+  ): Observable<Object> {
+    return this.http.put(
+      environment.baseApiUrl + environment.resgridApiUrl + "/Calls/CloseCall",
+      {
+        Id: callId,
+        Msg: note,
+        Typ: type,
+      }
+    );
+  }
 
-	public saveCallImage(callId: number, userId: string, note: string, location: Location, image: string): Observable<Object> {
+  public updateCall(
+    callId: string,
+    name: string,
+    priority: number,
+    type: string,
+    contactName: string,
+    contactInfo: string,
+    externalId: string,
+    incidentId: string,
+    referenceId: string,
+    nature: string,
+    notes: string,
+    address: string,
+    w3w: string,
+    latitude: number,
+    longitude: number,
+    dispatchList: string,
+    dispatchOn: string,
+    callFormData: string,
+    redispatch: boolean
+  ): Observable<Object> {
+    let coordinates = "";
+    if (latitude && latitude != 0 && longitude && longitude != 0) {
+      coordinates = latitude + "," + longitude;
+    }
 
-		let data = {
-			Cid: callId,
-			Uid: userId,
-			Typ: 2,
-			Nme: 'cameraPhoneUpload.png',
-			Lat: '',
-			Lon: '',
-			Not: note,
-			Data: image
-		}
+    return this.http.put(
+      environment.baseApiUrl + environment.resgridApiUrl + "/Calls/EditCall",
+      {
+        Id: callId,
+        Pri: priority,
+        Typ: type,
+        CNme: contactName,
+        CNum: contactInfo,
+        EId: externalId,
+        InI: incidentId,
+        RId: referenceId,
+        Nme: name,
+        Noc: nature,
+        Not: notes,
+        Geo: coordinates,
+        Add: address,
+        W3W: w3w,
+        Dis: dispatchList,
+        Don: dispatchOn,
+        Cfd: callFormData,
+        RebroadcastCall: redispatch,
+      }
+    );
+  }
 
-		if (location && location != null) {
-			data["Lat"] = location.Latitude.toString();
-			data["Lon"] = location.Longitude.toString();
-		}
+  public getCallImages(
+    callId: string,
+    includeData: boolean
+  ): Observable<CallFileResult[]> {
+    return this.getFiles(callId, includeData, 2);
+  }
 
-		return this.http.post(this.appConfig.ResgridApiUrl + '/Calls/UploadFile', data);
-	}
+  public getCallFiles(
+    callId: string,
+    includeData: boolean
+  ): Observable<CallFileResult[]> {
+    return this.getFiles(callId, includeData, 3);
+  }
 
-	public closeCall(callId: number, note: string, type: string): Observable<Object> {
-		return this.http.put(this.appConfig.ResgridApiUrl + '/Calls/CloseCall', {
-			Id: callId,
-			Msg: note,
-			Typ: type
-		});
-	}
+  public getCallAudio(
+    callId: string,
+    includeData: boolean
+  ): Observable<CallFileResult[]> {
+    return this.getFiles(callId, includeData, 1);
+  }
 
-	public createCall(priority: string, type: string, name: string, nature: string, latitude: number,
-		longitude: number, contactName: string, contactNumber: string, callId: string, address: string,
-		what3words: string, dispatch: string): Observable<Object> {
+  public getFiles(
+    callId: string,
+    includeData: boolean,
+    type: number
+  ): Observable<CallFileResult[]> {
+    let params = new HttpParams()
+      .append("callId", callId.toString())
+      .append("includeData", includeData.toString())
+      .append("type", type.toString());
 
-		let coordinates = "";
-		if (latitude && latitude != 0 && longitude && longitude != 0) {
-			coordinates = latitude + "," + longitude;
-		}
+    return this.http
+      .get<CallFileResult[]>(
+        environment.baseApiUrl +
+          environment.resgridApiUrl +
+          "/Calls/GetFilesForCall",
+        { params: params }
+      )
+      .pipe(
+        map((items) => {
+          let files: CallFileResult[] = new Array<CallFileResult>();
 
-		return this.http.post(this.appConfig.ResgridApiUrl + '/Calls/SaveCall', {
-			Pri: priority,
-			Nme: name,
-			Noc: nature,
-			Geo: coordinates,
-			Add: address,
-			W3W: what3words,
-			Cid: callId,
-			Typ: type,
-			Dis: dispatch,
-			CNme: contactName,
-			CNum: contactNumber
-		});
-	}
+          items.forEach((item) => {
+            let file = <CallFileResult>item;
+            files.push(file);
+          });
 
-	public updateCall(callId: Number, name: string, nature: string, latitude: number,
-		longitude: number, contactName: string, contactNumber: string, callNumber: string, address: string, note: string): Observable<Object> {
-		let test = contactName + contactNumber + callNumber + note;
-		if (test) {
+          return files;
+        })
+      );
+  }
 
-		}
+  public getCallTypes(): Observable<CallTypeResult[]> {
+    return this.http
+      .get<CallTypeResult[]>(
+        environment.baseApiUrl +
+          environment.resgridApiUrl +
+          "/Calls/GetCallTypes"
+      )
+      .pipe(
+        map((items) => {
+          let types: CallTypeResult[] = new Array<CallTypeResult>();
 
-		let coordinates = "";
-		if (latitude && latitude != 0 && longitude && longitude != 0) {
-			coordinates = latitude + "," + longitude;
-		}
+          types.push({
+            Id: 0,
+            Name: "No Type",
+          });
 
-		return this.http.put(this.appConfig.ResgridApiUrl + '/Calls/EditCall', {
-			Cid: callId,
-			Nme: name,
-			Noc: nature,
-			Add: address
-		});
-	}
+          items.forEach((item) => {
+            let type = <CallTypeResult>item;
+            types.push(type);
+          });
 
-	public getCallImages(callId: number, includeData: boolean): Observable<CallFileResult[]> {
-		return this.getFiles(callId, includeData, 2);
-	}
+          return types;
+        })
+      );
+  }
 
-	public getCallFiles(callId: number, includeData: boolean): Observable<CallFileResult[]> {
-		return this.getFiles(callId, includeData, 3);
-	}
+  public getCallPriorties(): Observable<CallPriorityResult[]> {
+    return this.http.get<CallPriorityResult[]>(
+      environment.baseApiUrl +
+        environment.resgridApiUrl +
+        "/CallPriorities/GetAllCallPriorites"
+    );
+  }
 
-	public getCallAudio(callId: number, includeData: boolean): Observable<CallFileResult[]> {
-		return this.getFiles(callId, includeData, 1);
-	}
+  public GetAllPendingScheduledCalls(): Observable<CallResult[]> {
+    const url =
+      environment.baseApiUrl +
+      environment.resgridApiUrl +
+      "/Calls/GetAllPendingScheduledCalls";
 
-	public getFiles(callId: number, includeData: boolean, type: number): Observable<CallFileResult[]> {
-		let params = new HttpParams().append('callId', callId.toString()).append('includeData', includeData.toString()).append('type', type.toString());
+    return this.http.get<CallResult[]>(url).pipe(
+      map((items) => {
+        let statuses: CallResult[] = new Array<CallResult>();
 
-		return this.http.get<CallFileResult[]>(this.appConfig.ResgridApiUrl + '/Calls/GetFilesForCall', { params: params })
-			.pipe(map((items) => {
-				let files: CallFileResult[] = new Array<CallFileResult>();
+        items.forEach((item) => {
+          let status: CallResult = this.mapDataToCall(item);
 
-				items.forEach(item => {
-					let file = <CallFileResult>item;
-					files.push(file);
-				});
+          statuses.push(status);
+        });
 
-				return files;
-			}));
-	}
+        return statuses;
+      })
+    );
+  }
 
-	public getCallTypes(): Observable<CallTypeResult[]> {
-		return this.http.get<CallTypeResult[]>(this.appConfig.ResgridApiUrl + '/Calls/GetCallTypes')
-			.pipe(map((items) => {
-				let types: CallTypeResult[] = new Array<CallTypeResult>();
+  public updateCallDisptachTime(
+    callId: string,
+    date: string
+  ): Observable<Object> {
+    return this.http.get(
+      environment.baseApiUrl + environment.resgridApiUrl + `/Calls/UpdateScheduledDispatchTime?callId=${callId}&date=${date}`
+    );
+  }
 
-				types.push({
-					Id: 0,
-					Name: "No Type"
-				})
+  public deleteCall(
+    callId: string
+  ): Observable<Object> {
+    return this.http.get(
+      environment.baseApiUrl + environment.resgridApiUrl + `/Calls/DeleteCall?callId=${callId}`
+    );
+  }
 
-				items.forEach(item => {
-					let type = <CallTypeResult>item;
-					types.push(type);
-				});
+  private mapDataToCall(item: any): CallResult {
+    let status: CallResult = new CallResult();
 
-				return types;
-			}));
-	}
+    status.Cid = item.Cid;
+    status.Pri = item.Pri;
+    status.Ctl = item.Ctl;
+    status.Nme = item.Nme;
 
-	private mapDataToCall(item: any): CallResult {
-		let status: CallResult = new CallResult();
+    status.Noc = item.Noc;
+    status.Map = item.Map;
+    status.Not = item.Not;
+    status.Add = item.Add;
 
-		status.Cid = item.Cid;
-		status.Pri = item.Pri;
-		status.Ctl = item.Ctl;
-		status.Nme = item.Nme;
+    status.Geo = item.Geo;
+    status.Lon = item.Lon;
+    status.Utc = item.Utc;
+    status.Ste = item.Ste;
+    status.Num = item.Num;
 
-		status.Noc = item.Noc;
-		status.Map = item.Map;
-		status.Not = item.Not;
-		status.Add = item.Add;
+    status.Nts = item.Nts;
+    status.Aud = item.Aud;
+    status.Img = item.Img;
+    status.Fls = item.Fls;
+    status.w3w = item.w3w;
+    status.Aid = item.Aid;
+    status.Typ = item.Typ;
 
-		status.Geo = item.Geo;
-		status.Lon = item.Lon;
-		status.Utc = item.Utc;
-		status.Ste = item.Ste;
-		status.Num = item.Num;
+    status.PriorityColor = this.typesProvider.priorityToColorConverter(
+      status.Pri
+    );
+    status.PriorityText = this.typesProvider.priorityToTextConverter(
+      status.Pri
+    );
 
-		status.Nts = item.Nts;
-		status.Aud = item.Aud;
-		status.Img = item.Img;
-		status.Fls = item.Fls;
-		status.w3w = item.w3w;
-		status.Aid = item.Aid;
-		status.Typ = item.Typ;
+    status.LoggedOnDate = this.utilsProvider.formatDateForDisplay(
+      new Date(item.Utc),
+      "yyyy-MM-dd HH:mm"
+    );
+    status.DispatchOnDate = this.utilsProvider.formatDateForDisplay(
+      new Date(item.Don),
+      "yyyy-MM-dd HH:mm"
+    );
 
-		status.PriorityColor = this.typesProvider.priorityToColorConverter(status.Pri);
-		status.PriorityText = this.typesProvider.priorityToTextConverter(status.Pri);
-
-		return status;
-	}
+    return status;
+  }
 }

@@ -1,21 +1,24 @@
 import { Injectable, Inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { APP_CONFIG_TOKEN, AppConfig } from '../config/app.config-interface';
 
-import { StatusesInfo } from '../models/statusesInfo';
+import { StatusesInfo } from '../core/models/statusesInfo';
 import { SettingsProvider } from './settings';
 import { DataProvider } from './data';
 import { TypesProvider } from './types';
 import { UtilsProvider } from './utils';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
+import { SetUnitStatePayload } from '../features/home/models/setUnitStatePayload';
 
-@Injectable()
+@Injectable({
+  providedIn: 'root'
+})
 export class UnitStatusProvider {
   private currentStatusesInfo: StatusesInfo;
   private currentDestination: any;
 
   constructor(public http: HttpClient, private settingsProvider: SettingsProvider, private dataProvider: DataProvider, private typesProvider: TypesProvider,
-    @Inject(APP_CONFIG_TOKEN) private appConfig: AppConfig, private utilsProvider: UtilsProvider) {
+    private utilsProvider: UtilsProvider) {
 
   }
 
@@ -60,6 +63,6 @@ export class UnitStatusProvider {
       result.Rto = 0;
     }
 
-    return this.http.post(this.appConfig.ResgridApiUrl + '/UnitState/SetUnitState', result);
+    return this.http.post(environment.baseApiUrl + environment.resgridApiUrl + '/UnitState/SetUnitState', result);
   }
 }

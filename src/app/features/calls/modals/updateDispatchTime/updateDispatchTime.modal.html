@@ -1,0 +1,31 @@
+<div>
+  <div class="modal-header">
+    <h5 class="modal-title" id="composemodalTitle">Update Dispatch Time</h5>
+    <button type="button" class="close" (click)="dismiss()" aria-label="Close">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div>
+  <form [formGroup]="updateCallForm" (ngSubmit)="save()">
+    <div class="modal-body">
+      <div class="form-group row">
+        <label class="col-md-2 col-form-label">Template</label>
+        <div class="col-md-10">
+          <input class="form-control" type="datetime-local" formControlName="dispatchOn" />
+          <span class="help-inline">Enter a date/time to dispatch in the future. If you supply a date/time that is now
+            or
+            in the past the call won't be dispatched.</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" (click)="dismiss()">Close</button>
+      <button class="btn btn-primary w-md waves-effect waves-light" type="submit"
+        *ngIf="!(callsState$ | async).isUpdatingDispatchTime">Update 
+        Call</button>
+      <button class="btn btn-primary w-md waves-effect waves-light" type="button" disabled
+        *ngIf="(callsState$ | async).isUpdatingDispatchTime">
+        <span class="spinner-border spinner-border-sm"></span>
+      </button>
+    </div>
+  </form>
+</div>

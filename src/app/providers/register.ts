@@ -1,10 +1,10 @@
 import { Injectable, Inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { APP_CONFIG_TOKEN, AppConfig } from '../config/app.config-interface';
-import { EmailCheckResult } from '../models/emailCheckResult';
-import { DepartmentCheckResult } from '../models/departmentCheckResult';
-import { UsernameCheckResult } from '../models/usernameCheckResult';
-import { DepartmentCreationResult } from '../models/departmentCreationResult';
+import { environment } from '../../environments/environment';
+import { EmailCheckResult } from '../core/models/emailCheckResult';
+import { DepartmentCheckResult } from '../core/models/departmentCheckResult';
+import { UsernameCheckResult } from '../core/models/usernameCheckResult';
+import { DepartmentCreationResult } from '../core/models/departmentCreationResult';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
@@ -13,14 +13,14 @@ import { map } from 'rxjs/operators';
 })
 export class RegisterProvider {
 
-  constructor(public http: HttpClient, @Inject(APP_CONFIG_TOKEN) private appConfig: AppConfig) {
+  constructor(public http: HttpClient) {
 
   }
 
   public isEmailAddressInUse(emailAddress: string): Observable<EmailCheckResult> {
     const params = new HttpParams().append('emailAddress', encodeURIComponent(emailAddress));
 
-    return this.http.get<EmailCheckResult>(this.appConfig.BaseApiUrl + '/DepartmentRegistration/CheckIfEmailInUse', { params })
+    return this.http.get<EmailCheckResult>(environment.baseApiUrl + environment.baseApiUrl + '/DepartmentRegistration/CheckIfEmailInUse', { params })
       .pipe(map((item) => {
         return item as EmailCheckResult;
       }));
@@ -29,7 +29,7 @@ export class RegisterProvider {
   public isDepartmentNameInUse(departmentName: string): Observable<DepartmentCheckResult> {
     const params = new HttpParams().append('departmentName', encodeURIComponent(departmentName));
 
-    return this.http.get<DepartmentCheckResult>(this.appConfig.BaseApiUrl + '/DepartmentRegistration/CheckIfDepartmentNameUsed', { params })
+    return this.http.get<DepartmentCheckResult>(environment.baseApiUrl + environment.baseApiUrl + '/DepartmentRegistration/CheckIfDepartmentNameUsed', { params })
       .pipe(map((item) => {
         return item as DepartmentCheckResult;
       }));
@@ -38,7 +38,7 @@ export class RegisterProvider {
   public isUserNameInUse(userName: string): Observable<UsernameCheckResult> {
     const params = new HttpParams().append('userName', encodeURIComponent(userName));
 
-    return this.http.get<UsernameCheckResult>(this.appConfig.BaseApiUrl + '/DepartmentRegistration/CheckIfUserNameUsed', { params })
+    return this.http.get<UsernameCheckResult>(environment.baseApiUrl + environment.baseApiUrl + '/DepartmentRegistration/CheckIfUserNameUsed', { params })
       .pipe(map((item) => {
         return item as UsernameCheckResult;
       }));
@@ -46,7 +46,7 @@ export class RegisterProvider {
 
   public registerDepartment(fullName: string, email: string, userName: string, password: string,
                             departmentName: string, departmentType: string): Observable<DepartmentCreationResult> {
-    return this.http.post(this.appConfig.BaseApiUrl + '/DepartmentRegistration/Register', {
+    return this.http.post(environment.baseApiUrl + environment.baseApiUrl + '/DepartmentRegistration/Register', {
       FullName: fullName,
       Email: email,
       Username: userName,

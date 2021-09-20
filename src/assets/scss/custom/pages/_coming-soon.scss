@@ -1,0 +1,26 @@
+// 
+// coming-soon.scss
+//
+
+.counter-number {
+  font-size: 24px;
+  font-weight: $font-weight-bold;
+  font-family: $font-family-secondary;
+  text-align: center;
+  display: flex;
+
+  span {
+    font-size: 14px;
+    font-weight: $font-weight-normal;
+    display: block;
+    padding-top: 5px;
+  }
+}
+
+.coming-box {
+  width: 25%;
+}
+
+.comingsoon-bg {
+  background-image: url("../../../images/comingsoon-bg.jpg");
+}

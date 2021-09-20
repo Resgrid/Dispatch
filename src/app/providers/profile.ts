@@ -1,9 +1,8 @@
 import { Injectable, Inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { APP_CONFIG_TOKEN, AppConfig } from '../config/app.config-interface';
-
-import { MobileCarriersResult } from '../models/mobileCarriersResult';
-import { ProfileResult } from '../models/profileResult';
+import { environment } from '../../environments/environment';
+import { MobileCarriersResult } from '../core/models/mobileCarriersResult';
+import { ProfileResult } from '../core/models/profileResult';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
@@ -12,11 +11,11 @@ import { map } from 'rxjs/operators';
 })
 export class ProfileProvider {
 
-  constructor(public http: HttpClient, @Inject(APP_CONFIG_TOKEN) private appConfig: AppConfig) {
+  constructor(public http: HttpClient) {
   }
 
   public getProfile(): Observable<ProfileResult> {
-    return this.http.get<ProfileResult>(this.appConfig.ResgridApiUrl + '/Profile/GetProfile')
+    return this.http.get<ProfileResult>(environment.baseApiUrl + environment.resgridApiUrl + '/Profile/GetProfile')
       .pipe(map((item) => {
         let profile: ProfileResult = item as ProfileResult;
 
@@ -25,7 +24,7 @@ export class ProfileProvider {
   }
 
   public getMobileCarriers(): Observable<MobileCarriersResult[]> {
-    return this.http.get<MobileCarriersResult[]>(this.appConfig.ResgridApiUrl + '/Profile/GetMobileCarriers')
+    return this.http.get<MobileCarriersResult[]>(environment.baseApiUrl + environment.resgridApiUrl + '/Profile/GetMobileCarriers')
       .pipe(map((items) => {
         return items as MobileCarriersResult[];
       }));
@@ -52,12 +51,12 @@ export class ProfileProvider {
       SendNotificationEmail: profile.Sne
     }
 
-    return this.http.post(this.appConfig.ResgridApiUrl + '/Profile/UpdateProfile', updateProfile);
+    return this.http.post(environment.baseApiUrl + environment.resgridApiUrl + '/Profile/UpdateProfile', updateProfile);
   }
 
   public toggleCustomSounds(enableCustomSounds: boolean): Observable<object> {
     const params = new HttpParams().append('enableCustomPushSounds', enableCustomSounds.toString());
 
-    return this.http.get(this.appConfig.ResgridApiUrl + '/Profile/ToggleCustomPushSounds', { params });
+    return this.http.get(environment.baseApiUrl + environment.resgridApiUrl + '/Profile/ToggleCustomPushSounds', { params });
   }
 }

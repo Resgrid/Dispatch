@@ -1,9 +1,8 @@
 import { Injectable } from '@angular/core';
 
 import { Consts } from '../consts';
-import { StatusesInfo } from '../models/statusesInfo';
+import { StatusesInfo } from '../core/models/statusesInfo';
 import { CustomStatesProvider } from './custom-states'
-import { PubSubService } from '../components/pubsub/angular2-pubsub.service';
 
 @Injectable({
 	providedIn: 'root'
@@ -14,10 +13,10 @@ export class TypesProvider {
 	private unitStates: StatusesInfo[];
 	private localDataSetSub: any;
 
-	constructor(private customStatesProvider: CustomStatesProvider, private consts: Consts, private pubsub: PubSubService) {
-		this.localDataSetSub = this.pubsub.$sub(this.consts.EVENTS.LOCAL_DATA_SET).subscribe((from) => {
-			this.populateStatuses();
-		});
+	constructor(private customStatesProvider: CustomStatesProvider, private consts: Consts) {
+		//this.localDataSetSub = this.pubsub.$sub(this.consts.EVENTS.LOCAL_DATA_SET).subscribe((from) => {
+		//	this.populateStatuses();
+		//});
 	}
 
 	ngOnInit() {

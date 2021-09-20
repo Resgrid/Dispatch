@@ -1,11 +1,11 @@
 import { Injectable, Inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { APP_CONFIG_TOKEN, AppConfig } from '../config/app.config-interface';
+import { environment } from '../../environments/environment';
 
 import { SettingsProvider } from './settings';
 
-import { PersonnelChatResult } from '../models/personnelChatResult';
-import { ResponderChatResult } from '../models/responderChatResult';
+import { PersonnelChatResult } from '../core/models/personnelChatResult';
+import { ResponderChatResult } from '../core/models/responderChatResult';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
@@ -15,19 +15,18 @@ import { map } from 'rxjs/operators';
 export class ChatProvider {
 
   constructor(public http: HttpClient,
-    private settingsProvider: SettingsProvider,
-    @Inject(APP_CONFIG_TOKEN) private appConfig: AppConfig) {
+    private settingsProvider: SettingsProvider) {
   }
 
   public getChatData(): Observable<ResponderChatResult> {
-    return this.http.get<ResponderChatResult>(this.appConfig.ResgridApiUrl + '/Chat/GetResponderChatInfo')
+    return this.http.get<ResponderChatResult>(environment.baseApiUrl + environment.resgridApiUrl + '/Chat/GetResponderChatInfo')
       .pipe(map((item) => {
         return item as ResponderChatResult;
       }));
   }
 
   public getPersonnelChatData(): Observable<PersonnelChatResult[]> {
-    return this.http.get<PersonnelChatResult[]>(this.appConfig.ResgridApiUrl + '/Chat/GetPersonnelForChat')
+    return this.http.get<PersonnelChatResult[]>(environment.baseApiUrl + environment.resgridApiUrl + '/Chat/GetPersonnelForChat')
       .pipe(map((items) => {
         return items as PersonnelChatResult[];
       }));
@@ -42,7 +41,7 @@ export class ChatProvider {
       type = 0;
     }
 
-    this.http.post(this.appConfig.ResgridApiUrl + '/Chat/NotifyNewChat', {
+    this.http.post(environment.baseApiUrl + environment.resgridApiUrl + '/Chat/NotifyNewChat', {
       Id: chatId,
       GroupName: groupName,
       SendingUserId: this.settingsProvider.getUserId(),

@@ -1,0 +1,108 @@
+// 
+// plugins-rtl.scss
+//
+
+
+// FLOT CHART
+
+.legendLabel {
+    padding-right: 5px!important;
+    padding-left: 20px;
+}
+
+// Select 2
+
+.select2-container {
+    .select2-selection--single {
+        .select2-selection__rendered {
+            padding-right: 12px;
+        }
+
+        .select2-selection__arrow {
+            left: 3px;
+            right: auto;
+        }
+    }
+
+    .select2-selection--multiple {
+        .select2-selection__choice {
+            float: right;
+            margin-left: 5px;
+            margin-right: 0;
+        }
+    }
+
+    .select2-search__field{
+        text-align: right;
+    }
+
+    .select2-search--inline {
+        float: right;
+    }
+}
+
+
+// datatable
+
+.dataTables_wrapper {
+    .dataTables_filter{
+        text-align: left !important;
+        input{
+            margin-left: 0px !important;
+            margin-right: 0.5em;
+        }
+    }
+}
+
+// Parsley
+.parsley-errors-list {
+    >li {
+        padding-left: 0;
+        padding-right: 20px;
+
+        &:before {
+            left: auto;
+            right: 2px;
+        }
+    }
+}
+
+/* =============
+   Form wizard
+============= */
+
+.wizard {
+    > .steps {
+      .number {
+        margin-left: 10px;
+        margin-right: 0px;
+      }
+    }
+  }
+  
+  aw-wizard-navigation-bar.horizontal.large-empty-symbols ul.steps-indicator li:not(:last-child):before {
+    left: -68px;
+  }
+  
+  .kycwizard {
+    aw-wizard-navigation-bar.horizontal.large-empty-symbols ul.steps-indicator li:not(:last-child):before {
+      left: -102px;
+    }
+  }
+  
+  // editor
+  
+  .ck.ck-toolbar > .ck-toolbar__items {
+    flex-direction: row-reverse !important;
+  }
+  
+  .ck.ck-editor__editable_inline {
+    text-align: right !important;
+  }
+  
+  .ck.ck-dropdown .ck-dropdown__panel.ck-dropdown__panel_ne,
+  .ck.ck-dropdown .ck-dropdown__panel.ck-dropdown__panel_se {
+    right: 0;
+    left: auto !important;
+  }
+  

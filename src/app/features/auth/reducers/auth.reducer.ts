@@ -17,7 +17,8 @@ export function reducer(state: AuthState = initialState, action: LoginActionsUni
     case LoginActionTypes.LOGIN_FAIL:
       return {
         ...state,
-        errorMsg: 'Invalid user credential'
+        errorMsg: 'Invalid user credentials',
+        isLogging: false
       };
     case LoginActionTypes.IS_LOGIN:
       return {

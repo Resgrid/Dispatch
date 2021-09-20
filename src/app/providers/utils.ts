@@ -1,5 +1,4 @@
 import { Injectable } from '@angular/core';
-import { Platform, NavController } from '@ionic/angular';
 import { Router } from '@angular/router';
 
 @Injectable({
@@ -14,7 +13,7 @@ export class UtilsProvider {
         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
 
-    constructor(private platform: Platform, private nav: NavController, private router: Router) {
+    constructor(private router: Router) {
 
     }
 
@@ -26,36 +25,8 @@ export class UtilsProvider {
         return false;
     }
 
-    public isIOS(): boolean {
-        if (!this.isDevice()) {
-            return false;
-        }
-
-        if (this.platform.is('ios')) {
-            return true;
-        }
-
-        return false;
-    }
-
-    public isAndroid(): boolean {
-        if (!this.isDevice()) {
-            return false;
-        }
-
-        if (this.platform.is('android')) {
-            return true;
-        }
-
-        return false;
-    }
-
     public navigate(link, forward?) {
-        if (forward) {
-            this.nav.navigateForward('/' + link);
-        } else {
-            this.router.navigateByUrl('/' + link);
-        }
+        this.router.navigateByUrl('/' + link);
     }
 
     public to2Digit(str: string): string {
@@ -88,6 +59,10 @@ export class UtilsProvider {
     public formatDateForDisplay(date: Date, format) {
         // Original idea from: https://weblog.west-wind.com/posts/2008/Mar/18/A-simple-formatDate-function-for-JavaScript
 
+        if (!date) {
+            return '';
+        }
+        
         if (!format) {
             format = 'MM/dd/yyyy';
         }

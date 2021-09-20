@@ -1,6 +1,6 @@
 import {Action} from '@ngrx/store';
 import { LoginPayload } from '../models/loginPayload';
-import { UserInfo } from 'src/app/models/userInfo';
+import { UserInfo } from 'src/app/core/models/userInfo';
 
 // [AUTH] Auth module
 export enum LoginActionTypes {

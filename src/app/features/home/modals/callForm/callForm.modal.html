@@ -1,0 +1,27 @@
+<div>
+  <div class="modal-header">
+    <h5 class="modal-title" id="composemodalTitle">Call Form</h5>
+    <button type="button" class="close" (click)="dismiss()" aria-label="Close">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div>
+  <div>
+    <div class="modal-body">
+      <perfect-scrollbar style="position: relative; height: 345px;">
+        <div class="row">
+          <div class="col-md-6">
+            <div id="fb-reader"></div>
+          </div>
+        </div>
+      </perfect-scrollbar>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" (click)="dismiss()">Close</button>
+    <button type="button" class="btn btn-primary w-md waves-effect waves-light" (click)="save()"
+      *ngIf="!isSaving">Save</button>
+    <button class="btn btn-primary w-md waves-effect waves-light" type="button" disabled *ngIf="isSaving">
+      <span class="spinner-border spinner-border-sm"></span>
+    </button>
+  </div>
+</div>

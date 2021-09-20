@@ -1,10 +1,10 @@
 import { Injectable, Inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { APP_CONFIG_TOKEN, AppConfig } from '../config/app.config-interface';
+import { environment } from '../../environments/environment';
 
 import { DataProvider } from './data';
 
-import { NoteResult } from '../models/noteResult';
+import { NoteResult } from '../core/models/noteResult';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
@@ -13,11 +13,11 @@ import { map } from 'rxjs/operators';
 })
 export class NotesProvider {
 
-  constructor(public http: HttpClient, @Inject(APP_CONFIG_TOKEN) private appConfig: AppConfig, private dataProvider: DataProvider) {
+  constructor(public http: HttpClient, private dataProvider: DataProvider) {
   }
 
   public getNotes(): Observable<NoteResult[]> {
-    return this.http.get<NoteResult[]>(this.appConfig.ResgridApiUrl + '/Notes/GetAllNotes')
+    return this.http.get<NoteResult[]>(environment.baseApiUrl + environment.resgridApiUrl + '/Notes/GetAllNotes')
       .pipe(map((items) => {
         let notes: NoteResult[] = new Array<NoteResult>();
 
@@ -39,7 +39,7 @@ export class NotesProvider {
   public getNote(noteId: any): Observable<NoteResult> {
     const params = new HttpParams().append('noteId', noteId);
 
-    return this.http.get<NoteResult>(this.appConfig.ResgridApiUrl + '/Notes/GetNote', { params })
+    return this.http.get<NoteResult>(environment.baseApiUrl + environment.resgridApiUrl + '/Notes/GetNote', { params })
       .pipe(map((item) => {
         let note: NoteResult = item as NoteResult;
 
@@ -61,6 +61,6 @@ export class NotesProvider {
       Ado: false  // Admins Only
     };
 
-    return this.http.post(this.appConfig.ResgridApiUrl + '/Notes/SaveNote', data);
+    return this.http.post(environment.baseApiUrl + environment.resgridApiUrl + '/Notes/SaveNote', data);
   }
 }

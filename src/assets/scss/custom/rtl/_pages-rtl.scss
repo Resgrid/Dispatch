@@ -1,0 +1,262 @@
+// 
+// pages-rtl.scss
+//
+
+
+// timeline
+
+.verti-timeline {
+  border-left: 0;
+  border-right: 3px dashed $gray-300;
+
+  .event-list {
+    padding: 0 30px 40px 0;
+
+    .event-timeline-dot {
+      left: auto;
+      right: -9px;
+    }
+  }
+}
+
+// email
+
+.email-leftbar {
+  float: right;
+}
+
+.email-rightbar {
+  margin-right: 260px;
+  margin-left: 0px;
+}
+
+.message-list {
+  li {
+    .col-mail {
+      float: right;
+    }
+
+    .col-mail-1 {
+
+      .star-toggle,
+      .checkbox-wrapper-mail,
+      .dot {
+        float: right
+      }
+
+      .checkbox-wrapper-mail {
+        margin: 15px 20px 0 10px;
+      }
+
+      .star-toggle {
+        margin-right: 5px;
+      }
+
+      .title {
+        right: 110px;
+        left: 0;
+      }
+    }
+
+    .col-mail-2 {
+      right: 320px;
+      left: 0;
+
+      .subject {
+        right: 0;
+        left: 200px;
+      }
+
+      .date {
+        left: 0;
+        right: auto;
+        padding-right: 80px;
+        padding-left: 0px;
+      }
+
+    }
+  }
+
+  .checkbox-wrapper-mail {
+    label {
+      &:before {
+        right: 4px;
+      }
+    }
+  }
+}
+
+@media (max-width: 767px) {
+  .email-leftbar {
+    float: none !important;
+    width: 100%;
+  }
+
+  .email-rightbar {
+    margin-right: 0;
+  }
+}
+
+// authentication
+
+.home-btn {
+  position: absolute;
+  left: 25px;
+  right: auto;
+}
+
+
+// Chat
+
+.chat-conversation {
+  .chat-avatar {
+    float: right;
+    margin-left: 8px;
+    margin-right: 0;
+  }
+
+  .conversation-list {
+    .chat-time {
+      text-align: left;
+    }
+  }
+
+  .right {
+    .conversation-list {
+      float: left;
+
+      .conversation-name {
+        text-align: left;
+      }
+
+      .chat-time {
+        text-align: right;
+      }
+    }
+  }
+}
+
+.chat-input {
+  padding-right: 120px;
+  padding-left: 12px;
+}
+
+.chat-input-links {
+  left: auto;
+  right: 16px;
+}
+
+
+// Ecommerce
+
+.product-img {
+  .product-ribbon {
+    left: auto;
+    right: -24px;
+    border-radius: 30px 0 0 30px;
+  }
+
+  .product-like {
+    right: auto;
+    left: 0;
+
+  }
+}
+
+.product-review-link {
+  .list-inline-item {
+    &:not(:last-child) {
+      margin-right: 0;
+      margin-left: 14px;
+    }
+  }
+}
+
+
+// Kanbanboard
+
+.task-box {
+  .team .team-member {
+    margin-right: 0;
+    margin-left: 6px
+  }
+}
+
+// Authentication
+
+.auth-form-group-custom {
+  label {
+    left: auto;
+    right: 60px;
+  }
+
+  .form-control {
+    padding-left: 12px;
+    padding-right: 60px;
+  }
+
+  .auti-custom-input-icon {
+    left: auto;
+    right: 19px;
+  }
+}
+
+
+// Timeline
+
+.timeline {
+  .timeline-item {
+    text-align: left;
+  }
+
+  @media (min-width: 768px) {
+    .timeline-item.timeline-left {
+      text-align: right;
+    }
+  }
+}
+
+
+
+// datatable icon
+.datatables {
+  thead {
+    tr {
+      th {
+        position: relative;
+
+        &:before {
+          content: "\F0143";
+          position: absolute;
+          left: 0;
+          right: auto;
+          top: 7px;
+          font: normal normal normal 24px/1 "Material Design Icons";
+          opacity: 0.3;
+        }
+
+        &:after {
+          content: "\F0140";
+          position: absolute;
+          left: 0;
+          right: auto;
+          top: 14px;
+          opacity: 0.3;
+          font: normal normal normal 24px/1 "Material Design Icons";
+        }
+      }
+
+      .asc {
+        &:before {
+          opacity: 1;
+        }
+      }
+
+      .desc {
+        &:after {
+          opacity: 1;
+        }
+      }
+    }
+  }
+}

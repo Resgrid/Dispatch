@@ -1,0 +1,24 @@
+<div class="voice-footer" *ngIf="(voiceState$ | async).isVoiceEnabled;">
+  <div class="container-fluid" style="height: 50px;">
+    <div class="row justify-content-center" style="height: 50px;">
+      <div class="col-sm-2" style="height: 50px; padding: 4px; background: #252b3b;">
+        <div class="text-sm-left d-none d-sm-block">
+          <select class="form-control" [(ngModel)]="selectedChannel" (ngModelChange)="onChannelChange($event)">
+            <option *ngFor="let channel of (voiceState$ | async).channels;" [ngValue]="channel">{{channel.Name}}</option>
+          </select>
+        </div>
+      </div>
+      <div class="col-sm-2" style="height: 50px; padding: 4px; background: #252b3b;">
+        <div class="text-sm-left d-none d-sm-block">
+          {{(voiceState$ | async).currentVoipStatus}}
+        </div>
+      </div>
+      <div class="col-xs-1" style="height: 50px; padding: 4px; background: #252b3b;">
+        <div class="text-sm-right d-none d-sm-block">
+          <button type="button" class="btn btn-primary" (mousedown)="startTransmitting()" (mouseup)="stopTransmitting()" (mouseleave)="stopTransmitting()">
+            <i [ngClass]="{'ri-mic-off-fill':!(voiceState$ | async).isTransmitting, 'ri-mic-fill': (voiceState$ | async).isTransmitting, 'text-danger':!(voiceState$ | async).isTransmitting}"></i></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
