@@ -1,0 +1,145 @@
+
+//
+// Round slider
+//
+
+.rs-control{
+  margin: 0px auto;
+}
+
+.rs-path-color{
+  background-color: $gray-300;
+}
+
+.rs-bg-color{
+  background-color: $card-bg;
+}
+
+.rs-border{
+  border-color: transparent;
+}
+
+.rs-handle{
+  background-color: $gray-700;
+}
+
+.rs-circle-border{
+  .rs-border{
+    border: 8px solid $gray-300;
+  }
+}
+
+.rs-disabled{
+  opacity: 1;
+}
+
+// Outer border
+
+.outer-border {
+  .rs-border{
+    border-width: 0px;
+    &.rs-outer  {
+      border: 14px solid $gray-300;
+  }
+  }
+  .rs-handle{
+    margin-left: 0 !important;
+  }
+  .rs-path-color{
+    background-color: transparent;
+  }
+}
+
+// Outer border dot
+
+.outer-border-dot {
+  .rs-border.rs-outer  {
+    border: 16px dotted;
+  }
+  .rs-handle{
+    margin-left: 0 !important;
+  }
+}
+
+@each $color,
+$value in $theme-colors {
+    .rs-range-#{$color} {
+        .rs-range-color{
+          background-color: $value;
+        }
+
+        .rs-handle-dot{
+          background-color: lighten(($value), 24%);
+          border-color: $value;
+          &:after{
+            background-color: $value;
+          }
+        }
+
+        &.rs-circle-border{
+          .rs-handle{
+            background-color: $value;
+          }
+        }
+
+        &.outer-border-dot {
+          .rs-border.rs-outer  {
+            border-color: lighten(($value), 24%);
+          }
+        }
+    }
+}
+
+// rs-handle-arrow
+
+.rs-handle-arrow{
+    .rs-handle  {
+      background-color: transparent;
+      border: 8px solid transparent;
+      border-right-color:$gray-700;
+      margin: -6px 0px 0px 14px !important;
+      border-width: 6px 104px 6px 4px;
+      &:before  {
+        display: block;
+        content: " ";
+        position: absolute;
+        height: 22px;
+        width: 22px;
+        background:$gray-700;
+        right: -11px;
+        bottom: -11px;
+        border-radius: 100px;
+    }
+  }
+  
+}
+
+.rs-handle-arrow-dash{
+  .rs-handle  {
+    background-color: transparent;
+    border: 8px solid transparent;
+    border-right-color: $gray-700;
+    margin: -8px 0 0 14px !important;
+    &:before  {
+      display: block;
+      content: " ";
+      position: absolute;
+      height: 12px;
+      width: 12px;
+      background: $gray-700;
+      right: -6px;
+      bottom: -6px;
+      border-radius: 100%;
+  }
+  &:after{
+    display: block;
+    content: " ";
+    width: 80px;
+    position: absolute;
+    top: -1px;
+    right: 0px;
+    border-top: 2px dotted $gray-700
+  }
+}
+
+}

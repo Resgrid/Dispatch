@@ -1,0 +1,70 @@
+//
+// Datepicker
+//
+
+ngb-datepicker {
+  background-color: $dropdown-bg;
+  position: absolute;
+  z-index: $zindex-dropdown;
+}
+
+ngb-datepicker-navigation-select>.custom-select {
+  margin: 0 5px;
+}
+
+.ngb-dp-day,
+.ngb-dp-today {
+  outline: none !important;
+
+  .btn-light,
+  .btn-primary {
+    box-shadow: none !important;
+    outline: none !important;
+    // border-radius: 50%;
+    border: none !important;
+  }
+}
+
+.ngb-dp-weekday {
+  font-style: normal !important;
+}
+
+.ngb-tp {
+  box-shadow: $box-shadow;
+  background-color: $dropdown-bg;
+  margin-top: 5px;
+  float: left;
+  min-width: 10rem;
+  padding: 0.75rem;
+  margin: 0.125rem 0 0;
+  font-size: 0.875rem;
+  color: $dropdown-color;
+  text-align: left;
+  list-style: none;
+  background-clip: padding-box;
+  border: $dropdown-border-width solid $dropdown-border-color;
+  border-radius: $dropdown-border-radius;
+  position: absolute;
+  z-index: $zindex-dropdown;
+}
+
+// Date Range
+.custom-day {
+  line-height: 2rem;
+  border-radius: 50%;
+  padding: 0 !important;
+  outline: none !important;
+
+  &:hover {
+    background-color: $primary !important;
+  }
+
+  &.range {
+    background-color: $primary !important;
+  }
+
+  &.range.faded {
+    background-color: lighten($gray-300, 5%) !important;
+    color: $gray-700 !important;
+  }
+}

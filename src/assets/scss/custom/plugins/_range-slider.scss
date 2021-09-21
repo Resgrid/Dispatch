@@ -1,0 +1,43 @@
+//
+// Range slider
+//
+
+.ng5-slider {
+  .ng5-slider-pointer {
+    background-color: $primary !important;
+    width: 18px !important;
+    height: 18px !important;
+    top: -7px !important;
+    outline: none !important;
+
+    &:after {
+      top: 5px !important;
+      left: 5px !important;
+    }
+  }
+
+  .ng5-slider-active {
+    &:after {
+      background-color: $white !important;
+    }
+  }
+
+  .ng5-slider-tick {
+    left: -3px !important;
+  }
+
+  .ng5-slider-tick-value {
+    left: 1px !important;
+    top: -25px !important;
+  }
+
+  .ng5-slider-tick-legend {
+    top: 14px !important;
+    text-transform: capitalize;
+    font-size: 0.7rem;
+  }
+
+  .ng5-slider-selection {
+    background: $primary !important;
+  }
+}
