@@ -2,9 +2,6 @@ import { Component, Input, OnInit } from "@angular/core";
 import { NgbModal, NgbActiveModal } from "@ng-bootstrap/ng-bootstrap";
 import { Store } from "@ngrx/store";
 import { Observable, Subscription } from "rxjs";
-import { CallResult } from "src/app/core/models/callResult";
-import { CustomStatusesResult } from "src/app/core/models/customStatusesResult";
-import { GroupInfo } from "src/app/core/models/groupInfo";
 import {
   selectAuthState,
   selectHomeState,
@@ -18,6 +15,7 @@ import * as _ from "lodash";
 import { FormBuilder, FormGroup, Validators } from "@angular/forms";
 import { environment } from "../../../../../environments/environment";
 import { AuthState } from "src/app/features/auth/store/auth.store";
+import { CallResultData } from "@resgrid-shared/ngx-resgridlib";
 declare var $: any;
 
 @Component({
@@ -28,7 +26,7 @@ declare var $: any;
 export class CallFormModalComponent implements OnInit {
   public homeState$: Observable<HomeState | null>;
   public selectedCallStatus: string = "1";
-  public selectedCall: CallResult;
+  public selectedCall: CallResultData;
   public note: string;
   public isSaving: boolean = false;
   @Input() auth: AuthState;

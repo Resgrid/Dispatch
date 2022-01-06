@@ -1,8 +1,5 @@
-export class GroupsForCallResult  {
-    public GroupId: number = 0;
-    public Name: string = "";
-    public Count: number = 0;
+import { GroupsForCallGridData } from "@resgrid-shared/ngx-resgridlib";
 
-    // Local data
+export class GroupsForCallResult extends GroupsForCallGridData {
     public Selected: boolean = false;
 }

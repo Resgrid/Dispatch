@@ -10,12 +10,12 @@
       </div>
       <div class="col-sm-2" style="height: 50px; padding: 4px; background: #252b3b;">
         <div class="text-sm-left d-none d-sm-block">
-          {{(voiceState$ | async).currentVoipStatus}}
+          
         </div>
       </div>
       <div class="col-xs-1" style="height: 50px; padding: 4px; background: #252b3b;">
         <div class="text-sm-right d-none d-sm-block">
-          <button type="button" class="btn btn-primary" (mousedown)="startTransmitting()" (mouseup)="stopTransmitting()" (mouseleave)="stopTransmitting()">
+          <button type="button" class="btn btn-primary" (mousedown)="startTransmitting()" (mouseup)="stopTransmitting()" (mouseleave)="stopTransmittingLeave()" [disabled]="selectedChannel.Id === ''">
             <i [ngClass]="{'ri-mic-off-fill':!(voiceState$ | async).isTransmitting, 'ri-mic-fill': (voiceState$ | async).isTransmitting, 'text-danger':!(voiceState$ | async).isTransmitting}"></i></button>
         </div>
       </div>

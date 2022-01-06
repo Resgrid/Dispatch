@@ -2,7 +2,8 @@ import { VoiceState, initialState } from "../store/voice.store";
 import { VoiceActionTypes, VoiceActionsUnion } from "../actions/voice.actions";
 
 import * as _ from "lodash";
-import { DepartmentVoiceChannelResult } from "src/app/core/models/departmentVoiceChannelResult";
+import { DepartmentVoiceChannelResultData } from "@resgrid-shared/ngx-resgridlib";
+
 
 export function reducer(
   state: VoiceState = initialState,
@@ -10,15 +11,22 @@ export function reducer(
 ): VoiceState {
   switch (action.type) {
     case VoiceActionTypes.GET_VOIPINFO_SUCCESS:
-      let channels: DepartmentVoiceChannelResult[] = new Array();
+      let channels: DepartmentVoiceChannelResultData[] = new Array();
       channels.push({
-        Name: "No Channel Selected",
+        Id: '',
+        Name: 'No Channel Selected',
         ConferenceNumber: 0,
         IsDefault: false,
       });
 
       if (action && action.payload && action.payload.Channels) {
         channels.push(...action.payload.Channels);
+
+        //channels.push({
+        //  Name: 'Disconnect',
+        //  ConferenceNumber: -1,
+        //  IsDefault: false,
+        //});
       }
 
       return {
@@ -42,15 +50,39 @@ export function reducer(
         ...state,
         currentActiveVoipChannel: null,
       };
-      case VoiceActionTypes.SET_ACTIVECHANNEL:
+    case VoiceActionTypes.SET_ACTIVECHANNEL:
       return {
         ...state,
         currentActiveVoipChannel: action.channel,
+      };
+    case VoiceActionTypes.ADD_OPENVIDU_STREAM:
+      var subs = _.cloneDeep(state.subscribers);
+      subs.push(action.stream);
+
+      return {
+        ...state,
+        subscribers: subs,
+      };
+    case VoiceActionTypes.REMOVE_OPENVIDU_STREAM:
+      var subs = _.cloneDeep(state.subscribers);
+
+      const index = subs.indexOf(action.stream, 0);
+      if (index > -1) {
+        subs.splice(index, 1);
+      }
+
+      return {
+        ...state,
+        subscribers: subs,
+      };
+    case VoiceActionTypes.SET_CURRENT_VOICE_STATE:
+      return {
+        ...state,
+        currentVoipStatus: action.state,
       };
     default:
       return state;
   }
 }
-
 
 export const getAvailableChannels = (state: VoiceState) => state.channels;

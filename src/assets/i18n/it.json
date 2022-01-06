@@ -1,0 +1,240 @@
+{
+  "HEADER": {
+    "SEARCH": "Cerca...",
+    "MEGA_MENU": "Mega Menu",
+    "NOTIFICATIONS": {
+      "TITLE": "Notifiche",
+      "VIEW_ALL": "Visualizza tutto",
+      "LOAD_MORE": "Visualizza altro ..",
+      "FIRST": {
+        "TITLE": "Il tuo ordine è stato effettuato",
+        "TEXT": "Se più lingue si fondono la grammatica",
+        "TIME": "3 minuti fa"
+      },
+      "SECOND": {
+        "TITLE": "James Lemire",
+        "TEXT": "Sembrerà un inglese semplificato.",
+        "TIME": "1 ora fa"
+      },
+      "THIRD": {
+        "TITLE": "Il tuo articolo è spedito",
+        "TEXT": "Se più lingue si fondono la grammatica",
+        "TIME": "3 minuti fa"
+      },
+      "FOUR": {
+        "TITLE": "Salena Layfield",
+        "TEXT": "Come mio scettico amico di Cambridge occidentale.",
+        "TIME": "1 ora fa"
+      }
+    },
+    "SETTINGS": "Settings",
+    "UI": {
+      "TITLE": "Componenti dell'interfaccia utente",
+      "LIGHTBOX": "LightBox",
+      "RANGE_SLIDER": "Range Slider",
+      "SWEET_ALERT": "Sweet Alert",
+      "RATING": "Rating",
+      "FORMS": "Moduli",
+      "TABLES": "Tavoli",
+      "CHARTS": "Grafici"
+    },
+    "APPLICATIONS": {
+      "TITLE": "Applicazioni",
+      "ECOMMERCE": "Ecommerce",
+      "CALENDAR": "Calendario",
+      "EMAIL": "Email",
+      "PROJECTS": "Progetti",
+      "TASKS": "Compiti",
+      "CONTACTS": "Contatti"
+    },
+    "EXTRA_PAGES": {
+      "TITLE": "Pagine extra",
+      "LIGHT_SIDEBAR": "Light Sidebar",
+      "COMPACT_SIDEBAR": "Barra laterale compatta",
+      "HORIZONTAL_LAYOUT": "Layout orizzontale",
+      "MAINTENANCE": "Manutenzione",
+      "COMING SOON": "Prossimamente",
+      "TIMELINE": "Cronologia",
+      "FAQ": "FAQs"
+    },
+    "LOGIN": {
+      "PROFILE": "Profile",
+      "MY_WALLET": "Il mio portafoglio",
+      "SETTINGS": "Impostazioni",
+      "LOCK_SCREEN": "Blocca schermo",
+      "LOGOUT": "Logout"
+    }
+  },
+  "MENUITEMS": {
+    "MENU": {
+      "TEXT": "Menù"
+    },
+    "DASHBOARDS": {
+      "TEXT": "Pannello di controllo",
+      "BADGE": "03"
+    },
+    "LAYOUTS": {
+      "TEXT": "layout",
+      "LIST": {
+        "HORIZONTAL": "Orizzontale",
+        "LIGHTSIDEBAR": "Barra laterale leggera",
+        "COMPACTSIDEBAR": "Barra laterale compatta",
+        "ICONSIDEBAR": "Barra laterale delle icone",
+        "BOXED": "Layout in scatola",
+        "COLOREDSIDEBAR": "Barra laterale colorata",
+        "VERTICAL": "Verticale",
+        "LIGHTTOPBAR": "Barra superiore leggera",
+        "COLOREDHEADER": "Intestazione colorata"
+      }
+    },
+    "APPS": {
+      "TEXT": "applicazioni"
+    },
+    "CALENDAR": {
+      "TEXT": "Calendario"
+    },
+    "CHAT": {
+      "TEXT": "Chiacchierare",
+      "BADGE": "Nuova"
+    },
+    "ECOMMERCE": {
+      "TEXT": "ecommerce",
+      "LIST": {
+        "PRODUCTS": "Prodotti",
+        "PRODUCTDETAIL": "Dettagli del prodotto",
+        "ORDERS": "Ordini",
+        "CUSTOMERS": "I clienti",
+        "CART": "Carrello",
+        "CHECKOUT": "Check-out",
+        "SHOPS": "negozi",
+        "ADDPRODUCT": "Aggiungi prodotto"
+      }
+    },
+    "EMAIL": {
+      "TEXT": "E-mail",
+      "LIST": {
+        "INBOX": "Posta in arrivo",
+        "READEMAIL": "Leggi l'email"
+      }
+    },
+    "PROJECTS": {
+      "TEXT": "progetti",
+      "LIST": {
+        "GRID": "Griglia dei progetti",
+        "PROJECTLIST": "Elenco dei progetti",
+        "OVERVIEW": "Panoramica del progetto",
+        "CREATE": "Creare nuovo"
+      }
+    },
+    "KANBAN": {
+      "TEXT": "Kanban Board"
+    },
+    "PAGES": {
+      "TEXT": "pagine"
+    },
+    "AUTHENTICATION": {
+      "TEXT": "Autenticazione",
+      "LIST": {
+        "LOGIN": "Accesso",
+        "REGISTER": "Registrati",
+        "RECOVERPWD": "Recupera la password",
+        "LOCKSCREEN": "Blocca schermo"
+      }
+    },
+    "UTILITY": {
+      "TEXT": "Utilità",
+      "LIST": {
+        "STARTER": "Pagina iniziale",
+        "MAINTENANCE": "Manutenzione",
+        "TIMELINE": "Sequenza temporale",
+        "COOMINGSOON": "Prossimamente",
+        "FAQS": "FAQs",
+        "PRICING": "Prezzi",
+        "ERROR404": "Errore 404",
+        "ERROR500": "Errore 500"
+      }
+    },
+    "COMPONENTS": {
+      "TEXT": "componenti"
+    },
+    "UIELEMENTS": {
+      "TEXT": "Elementi dell'interfaccia utente",
+      "LIST": {
+        "ALERTS": "avvisi",
+        "BUTTONS": "pulsanti",
+        "CARDS": "Carte",
+        "CAROUSEL": "Giostra",
+        "DROPDOWNS": "menu a discesa",
+        "GRID": "Griglia",
+        "IMAGES": "immagini",
+        "MODALS": "Modals",
+        "RANGESLIDER": "Cursore gamma",
+        "PROGRESSBAR": "Indicatori di stato",
+        "SWEETALERT": "Avviso dolce",
+        "TABS": "Schede e fisarmoniche",
+        "TYPOGRAPHY": "Tipografia",
+        "VIDEO": "Video",
+        "GENERAL": "Generale"
+      }
+    },
+    "FORMS": {
+      "TEXT": "Forme",
+      "BADGE": "8",
+      "LIST": {
+        "ELEMENTS": "Form Elements",
+        "VALIDATION": "Convalida del modulo",
+        "ADVANCED": "Modulo avanzato",
+        "EDITOR": "Editor di moduli",
+        "FILEUPLOAD": "Caricamento file modulo",
+        "REPEATER": "Ripetitore di moduli",
+        "WIZARD": "Procedura guidata modulo",
+        "MASK": "Maschera Maschera"
+      }
+    },
+    "TABLES": {
+      "TEXT": "tabelle",
+      "LIST": {
+        "BASIC": "Tabelle di base",
+        "ADVANCED": "Tabella avanzata"
+      }
+    },
+    "CHARTS": {
+      "TEXT": "Grafici",
+      "LIST": {
+        "APEX": "Grafico dell'apice",
+        "CHARTJS": "Grafico di Chartjs",
+        "CHARTIST": "Chart Chartist",
+        "ECHART": "E Chart"
+      }
+    },
+    "ICONS": {
+      "TEXT": "Icons",
+      "LIST": {
+        "REMIX": "Boxicons",
+        "MATERIALDESIGN": "Design materiale",
+        "DRIPICONS": "Dripicons",
+        "FONTAWESOME": "Carattere fantastico"
+      }
+    },
+    "MAPS": {
+      "TEXT": "Mappe",
+      "LIST": {
+        "LEAFLET": "Mappe opuscoli",
+        "GOOGLEMAP": "Google Maps"
+      }
+    },
+    "MULTILEVEL": {
+      "TEXT": "Multi livello",
+      "LIST": {
+        "LEVEL1": {
+          "1": "Livello 1.1",
+          "2": "Livello 1.2",
+          "LEVEL2": {
+            "1": "Livello 2.1",
+            "2": "Livello 2.2"
+          }
+        }
+      }
+    }
+  }
+}

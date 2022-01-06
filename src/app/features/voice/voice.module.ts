@@ -6,7 +6,6 @@ import { ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { VoiceRoutingModule } from './voice-routing.module';
 import { reducer } from './reducers/voice.reducer';
 import { VoiceEffects } from './effects/voice.effect';
-import { DirectivesModule } from 'src/app/directives/directives.module';
 import { NgbAlertModule, NgbDropdownModule, NgbNavModule, NgbPaginationModule, NgbTooltipModule, NgbTypeaheadModule } from '@ng-bootstrap/ng-bootstrap';
 import { Ng2SearchPipeModule } from 'ng2-search-filter';
 import { PerfectScrollbarModule } from 'ngx-perfect-scrollbar';
@@ -24,7 +23,6 @@ import { VoiceFooterComponent } from './shared/voice-footer/voice-footer.compone
     FormsModule,
     ReactiveFormsModule,
     VoiceRoutingModule,
-    DirectivesModule,
     NgbAlertModule,
     Ng2SearchPipeModule,
     NgbNavModule,

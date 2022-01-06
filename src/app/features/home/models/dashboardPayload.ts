@@ -1,21 +1,14 @@
-import { UnitStatusResult } from 'src/app/core/models/unitStatusResult';
-import { CallResult } from 'src/app/core/models/callResult';
-import { UnitInfo } from 'src/app/core/models/unitInfo';
-import { UnitStatusFullResult } from 'src/app/core/models/unitStatusFullResult';
-import { CallPriorityResult } from 'src/app/core/models/callPriorityResult';
-import { CallTypeResult } from 'src/app/core/models/callTypeResult';
-import { PersonnelForCallResult } from 'src/app/core/models/personnelForCallResult';
-import { GroupsForCallResult } from 'src/app/core/models/groupsForCallResult';
-import { RolesForCallResult } from 'src/app/core/models/rolesForCallResult';
-import { FormDataResult } from 'src/app/core/models/formDataResult';
+import { CallPriorityResultData, CallResultData, CallTypeResultData, FormResultData, GetPersonnelForCallGridResultData, GetRolesForCallGridResultData, UnitStatusResultData } from "@resgrid-shared/ngx-resgridlib";
+import { GroupsForCallGridData } from "@resgrid-shared/ngx-resgridlib/lib/models/v4/dispatch/getGroupsForCallGridResultData";
+
 
 export class DashboardPayload {
-    public UnitStatuses: UnitStatusFullResult[];
-    public Calls: CallResult[];
-    public CallPriorties: CallPriorityResult[];
-    public CallTypes: CallTypeResult[];
-    public PersonnelForGrid: PersonnelForCallResult[];
-    public GroupsForGrid: GroupsForCallResult[];
-    public RolesForGrid: RolesForCallResult[];
-    public NewCallForm: FormDataResult;
+    public UnitStatuses: UnitStatusResultData[];
+    public Calls: CallResultData[];
+    public CallPriorties: CallPriorityResultData[];
+    public CallTypes: CallTypeResultData[];
+    public PersonnelForGrid: GetPersonnelForCallGridResultData[];
+    public GroupsForGrid: GroupsForCallGridData[];
+    public RolesForGrid: GetRolesForCallGridResultData[];
+    public NewCallForm: FormResultData;
 }

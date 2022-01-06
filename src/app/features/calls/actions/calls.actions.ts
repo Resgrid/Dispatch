@@ -1,12 +1,11 @@
 import { Action } from "@ngrx/store";
+import { CallExtraDataResultData, CallResultData, GpsLocation, MapDataAndMarkersData, UnitStatusResultData } from "@resgrid-shared/ngx-resgridlib";
+import { GroupsForCallGridData } from "@resgrid-shared/ngx-resgridlib/lib/models/v4/dispatch/getGroupsForCallGridResultData";
 import { Call } from "src/app/core/models/call";
-import { CallDataResult } from "src/app/core/models/callDataResult";
-import { CallResult } from "src/app/core/models/callResult";
-import { GpsLocation } from "src/app/core/models/gpsLocation";
 import { GroupsForCallResult } from "src/app/core/models/groupsForCallResult";
 import { PersonnelForCallResult } from "src/app/core/models/personnelForCallResult";
 import { RolesForCallResult } from "src/app/core/models/rolesForCallResult";
-import { UnitStatusFullResult } from "src/app/core/models/unitStatusFullResult";
+import { UnitStatusResult } from "src/app/core/models/unitStatusResult";
 
 export enum CallsActionTypes {
   GET_SCHEDULED_CALLS = "[CALLS] GET_SCHEDULED_CALLS",
@@ -39,7 +38,7 @@ export class GetScheduledCalls implements Action {
 
 export class GetScheduledCallsSuccess implements Action {
   readonly type = CallsActionTypes.GET_SCHEDULED_CALLS_SUCCESS;
-  constructor(public payload: CallResult[]) {}
+  constructor(public payload: CallResultData[]) {}
 }
 
 export class GetScheduledCallsFail implements Action {
@@ -54,33 +53,34 @@ export class UpdateSelectedDispatchPerson implements Action {
 
 export class UpdateSelectedDispatchGroup implements Action {
   readonly type = CallsActionTypes.UPDATE_SELECTEDDISPATCHGROUP;
-  constructor(public groupId: number, public checked: boolean) {}
+  constructor(public groupId: string, public checked: boolean) {}
 }
 
 export class UpdateSelectedDispatchRole implements Action {
   readonly type = CallsActionTypes.UPDATE_SELECTEDDISPATCHROLE;
-  constructor(public roleId: number, public checked: boolean) {}
+  constructor(public roleId: string, public checked: boolean) {}
 }
 
 export class UpdateSelectedDispatchRoleUnit implements Action {
   readonly type = CallsActionTypes.UPDATE_SELECTEDDISPATCHUNIT;
-  constructor(public unitId: number, public checked: boolean) {}
+  constructor(public unitId: string, public checked: boolean) {}
 }
 
 export class UpdateEditCallDataFromHomeState implements Action {
   readonly type = CallsActionTypes.UPDATE_EDITCALLDATA_FROMHOME;
-  constructor(public unitStatuses: UnitStatusFullResult[], public rolesForGrid: RolesForCallResult[], 
-              public groupsForGrid: GroupsForCallResult[], public personnelForGrid: PersonnelForCallResult[]) {}
+  constructor(public unitStatuses: UnitStatusResult[], public rolesForGrid: RolesForCallResult[], 
+              public groupsForGrid: GroupsForCallResult[], public personnelForGrid: PersonnelForCallResult[],
+              public mapData: MapDataAndMarkersData) {}
 }
 
 export class GetUpdatedPersonnelandUnitsDistancesToCall implements Action {
   readonly type = CallsActionTypes.GET_UPDATEDPERSONANDUNITS_DISTANCE;
-  constructor(public callLocation: GpsLocation, public personnel: PersonnelForCallResult[], public units: UnitStatusFullResult[]) {}
+  constructor(public callLocation: GpsLocation, public personnel: PersonnelForCallResult[], public units: UnitStatusResult[]) {}
 }
 
 export class UpdatePersonnelandUnitsDistancesToCall implements Action {
   readonly type = CallsActionTypes.UPDATE_PERSONANDUNITS_DISTANCE;
-  constructor(public personnel: PersonnelForCallResult[], public units: UnitStatusFullResult[]) {}
+  constructor(public personnel: PersonnelForCallResult[], public units: UnitStatusResultData[]) {}
 }
 
 export class GetCallById implements Action {
@@ -90,8 +90,9 @@ export class GetCallById implements Action {
 
 export class GetCallByIdSuccess implements Action {
   readonly type = CallsActionTypes.GET_CALL_BYID_SUCCESS;
-  constructor(public call: CallResult, public data: CallDataResult) {}
+  constructor(public call: CallResultData, public data: CallExtraDataResultData, public mapData: MapDataAndMarkersData) {}
 }
+
 
 export class GetCallByIdFailure implements Action {
   readonly type = CallsActionTypes.GET_CALL_BYID_FAIL;

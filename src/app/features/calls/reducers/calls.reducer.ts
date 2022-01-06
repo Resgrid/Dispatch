@@ -2,6 +2,7 @@ import { initialState, CallsState } from "../store/calls.store";
 import { CallsActionsUnion, CallsActionTypes } from "../actions/calls.actions";
 
 import * as _ from "lodash";
+import { CallLocalResult } from "src/app/core/models/callLocalResult";
 
 export function reducer(
   state: CallsState = initialState,
@@ -11,7 +12,7 @@ export function reducer(
     case CallsActionTypes.GET_SCHEDULED_CALLS_SUCCESS:
       return {
         ...state,
-        pendingScheduledCalls: action.payload,
+        pendingScheduledCalls: action.payload as CallLocalResult[],
       };
     case CallsActionTypes.UPDATE_SELECTEDDISPATCHPERSON:
       var personnel = _.cloneDeep(state.personnelForGrid);
@@ -72,6 +73,7 @@ export function reducer(
         rolesForGrid: action.rolesForGrid,
         groupsForGrid: action.groupsForGrid,
         personnelForGrid: action.personnelForGrid,
+        mapData: action.mapData,
       };
     case CallsActionTypes.UPDATE_PERSONANDUNITS_DISTANCE:
       return {
@@ -97,7 +99,7 @@ export function reducer(
             });
           } else if (dispatch.Type === "Unit") {
             units.forEach((unit) => {
-              if (unit.UnitId === parseInt(dispatch.Id, 10)) {
+              if (unit.UnitId === dispatch.Id) {
                 unit.SelectedForDispatch = true;
               } else {
                 unit.Selected = false;
@@ -113,7 +115,7 @@ export function reducer(
             });
           } else if (dispatch.Type === "Role") {
             roles.forEach((role) => {
-              if (role.RoleId == parseInt(dispatch.Id, 10)) {
+              if (role.RoleId == dispatch.Id) {
                 role.Selected = true;
               } else {
                 role.Selected = false;
@@ -127,10 +129,12 @@ export function reducer(
         ...state,
         callToEdit: action.call,
         callEditData: action.data,
+        mapData: action.mapData,
         personnelForGrid: personnel,
         unitStatuses: units,
         rolesForGrid: roles,
         groupsForGrid: groups,
+
       };
     case CallsActionTypes.SHOW_CALLDISPATCHTIMEMODAL:
       return {

@@ -1,0 +1,240 @@
+{
+  "HEADER": {
+    "SEARCH": "Buscar...",
+    "MEGA_MENU": "Mega Menú",
+    "NOTIFICATIONS": {
+      "TITLE": "Notificaciones",
+      "VIEW_ALL": "Ver todo",
+      "LOAD_MORE": "Ver más..",
+      "FIRST": {
+        "TITLE": "Su pedido se ha realizado",
+        "TEXT": "Si varios idiomas fusionan la gramática",
+        "TIME": "hace 3 minutos"
+      },
+      "SECOND": {
+        "TITLE": "James Lemire",
+        "TEXT": "Parecerá un inglés simplificado",
+        "TIME": "hace 1 hora"
+      },
+      "THIRD": {
+        "TITLE": "Su artículo ha sido enviado",
+        "TEXT": "Si varios idiomas fusionan la gramática",
+        "TIME": "hace 3 minutos"
+      },
+      "FOUR": {
+        "TITLE": "Salena Layfield",
+        "TEXT": "Como un escéptico amigo de Cambridge occidental",
+        "TIME": "hace 1 hora"
+      }
+    },
+    "SETTINGS": "Configuración",
+    "UI": {
+      "TITLE": "Componentes de la interfaz de usuario",
+      "LIGHTBOX": "LightBox",
+      "RANGE_SLIDER": "Control deslizante de rango",
+      "SWEET_ALERT": "Alerta dulce",
+      "RATING": "Calificación",
+      "FORMS": "Formularios",
+      "TABLES": "Tablas",
+      "CHARTS": "Gráficos"
+    },
+    "APPLICATIONS": {
+      "TITLE": "Aplicaciones",
+      "ECOMMERCE": "Comercio electrónico",
+      "CALENDAR": "Calendario",
+      "EMAIL": "Correo electrónico",
+      "PROJECTS": "Proyectos",
+      "TASKS": "Tareas",
+      "CONTACTS": "Contactos"
+    },
+    "EXTRA_PAGES": {
+      "TITLE": "Páginas extra",
+      "LIGHT_SIDEBAR": "Barra lateral ligera",
+      "COMPACT_SIDEBAR": "Barra lateral compacta",
+      "HORIZONTAL_LAYOUT": "Diseño horizontal",
+      "MAINTENANCE": "Mantenimiento",
+      "COMING SOON": "Próximamente",
+      "TIMELINE": "Timeline",
+      "FAQ": "Preguntas frecuentes"
+    },
+    "LOGIN": {
+      "PROFILE": "Perfil",
+      "MY_WALLET": "Mi billetera",
+      "SETTINGS": "Configuración",
+      "LOCK_SCREEN": "Pantalla de bloqueo",
+      "LOGOUT": "Cerrar sesión"
+    }
+  },
+  "MENUITEMS": {
+    "MENU": {
+      "TEXT": "Menú"
+    },
+    "DASHBOARDS": {
+      "TEXT": "Tablero",
+      "BADGE": "03"
+    },
+    "LAYOUTS": {
+      "TEXT": "Diseños",
+      "LIST": {
+        "HORIZONTAL": "Horizontal",
+        "LIGHTSIDEBAR": "Barra lateral ligera",
+        "COMPACTSIDEBAR": "Barra lateral compacta",
+        "ICONSIDEBAR": "Barra lateral de iconos",
+        "BOXED": "Diseño en caja",
+        "COLOREDSIDEBAR": "Barra lateral de color",
+        "VERTICAL": "Vertical",
+        "LIGHTTOPBAR": "Barra superior ligera",
+        "COLOREDHEADER": "Encabezado de color"
+      }
+    },
+    "APPS": {
+      "TEXT": "Aplicaciones"
+    },
+    "CALENDAR": {
+      "TEXT": "Calendario"
+    },
+    "CHAT": {
+      "TEXT": "Charla",
+      "BADGE": "Nueva"
+    },
+    "ECOMMERCE": {
+      "TEXT": "Comercio electrónico",
+      "LIST": {
+        "PRODUCTS": "Productos",
+        "PRODUCTDETAIL": "Detalle del producto",
+        "ORDERS": "Pedidos",
+        "CUSTOMERS": "Clientes",
+        "CART": "Carro",
+        "CHECKOUT": "Revisa",
+        "SHOPS": "Tiendas",
+        "ADDPRODUCT": "Añadir Producto"
+      }
+    },
+    "EMAIL": {
+      "TEXT": "Email",
+      "LIST": {
+        "INBOX": "Bandeja de entrada",
+        "READEMAIL": "Leer el correo electrónico"
+      }
+    },
+    "PROJECTS": {
+      "TEXT": "Proyectos",
+      "LIST": {
+        "GRID": "Cuadrícula de proyectos",
+        "PROJECTLIST": "Lista de proyectos",
+        "OVERVIEW": "Descripción del proyecto",
+        "CREATE": "Crear nueva"
+      }
+    },
+    "KANBAN": {
+      "TEXT": "Kanban Board"
+    },
+    "PAGES": {
+      "TEXT": "Páginas"
+    },
+    "AUTHENTICATION": {
+      "TEXT": "Autenticación",
+      "LIST": {
+        "LOGIN": "Iniciar sesión",
+        "REGISTER": "Registrarse",
+        "RECOVERPWD": "Recuperar contraseña",
+        "LOCKSCREEN": "Bloquear pantalla"
+      }
+    },
+    "UTILITY": {
+      "TEXT": "Utilidad",
+      "LIST": {
+        "STARTER": "Página de inicio",
+        "MAINTENANCE": "Mantenimiento",
+        "TIMELINE": "Cronograma",
+        "COOMINGSOON": "Próximamente",
+        "FAQS": "Preguntas frecuentes",
+        "PRICING": "Precios",
+        "ERROR404": "error 404",
+        "ERROR500": "Error 500"
+      }
+    },
+    "COMPONENTS": {
+      "TEXT": "Componentes"
+    },
+    "UIELEMENTS": {
+      "TEXT": "Elementos de la IU",
+      "LIST": {
+        "ALERTS": "Alertas",
+        "BUTTONS": "Botones",
+        "CARDS": "Tarjetas",
+        "CAROUSEL": "Carrusel",
+        "DROPDOWNS": "Listas deplegables",
+        "GRID": "Cuadrícula",
+        "IMAGES": "Imágenes",
+        "MODALS": "Modalidades",
+        "RANGESLIDER": "Control deslizante de rango",
+        "PROGRESSBAR": "Barras de progreso",
+        "SWEETALERT": "Alerta dulce",
+        "TABS": "Pestañas y acordeones",
+        "TYPOGRAPHY": "Tipografía",
+        "VIDEO": "Vídeo",
+        "GENERAL": "General"
+      }
+    },
+    "FORMS": {
+      "TEXT": "Formas",
+      "BADGE": "8",
+      "LIST": {
+        "ELEMENTS": "Elementos de formulario",
+        "VALIDATION": "Validación de formulario",
+        "ADVANCED": "Formulario avanzado",
+        "EDITOR": "Editora de formularios",
+        "FILEUPLOAD": "Subir archivo de formulario",
+        "REPEATER": "Repetidor de forma",
+        "WIZARD": "Asistente de formulario",
+        "MASK": "Máscara de forma"
+      }
+    },
+    "TABLES": {
+      "TEXT": "Mesas",
+      "LIST": {
+        "BASIC": "Tablas Básicas",
+        "ADVANCED": "Mesa avanzada"
+      }
+    },
+    "CHARTS": {
+      "TEXT": "Gráficos",
+      "LIST": {
+        "APEX": "Gráfico de Apex",
+        "CHARTJS": "Chartjs Chart",
+        "CHARTIST": "Chartist Chart",
+        "ECHART": "Gráfico E"
+      }
+    },
+    "ICONS": {
+      "TEXT": "Íconos",
+      "LIST": {
+        "REMIX": "Boxicones",
+        "MATERIALDESIGN": "Diseño de materiales",
+        "DRIPICONS": "Dripicons",
+        "FONTAWESOME": "Fuente impresionante"
+      }
+    },
+    "MAPS": {
+      "TEXT": "Mapas",
+      "LIST": {
+        "LEAFLET": "Mapas de folletos",
+        "GOOGLEMAP": "mapas de Google"
+      }
+    },
+    "MULTILEVEL": {
+      "TEXT": "Multi nivel",
+      "LIST": {
+        "LEVEL1": {
+          "1": "Nivel 1.1",
+          "2": "Nivel 1.2",
+          "LEVEL2": {
+            "1": "Nivel 2.1",
+            "2": "Nivel 2.2"
+          }
+        }
+      }
+    }
+  }
+}

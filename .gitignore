@@ -71,3 +71,6 @@ www/index.html
 /www
 .vscode
 package-lock.json
+.npmrc
+src/app/layouts/shared/horizontalnavbar/dist/menu.js
+src/app/layouts/shared/sidebar/dist/menu.js

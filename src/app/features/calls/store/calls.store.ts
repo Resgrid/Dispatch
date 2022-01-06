@@ -1,17 +1,19 @@
-import { CallDataResult } from "src/app/core/models/callDataResult";
-import { CallResult } from "src/app/core/models/callResult";
+import { CallExtraDataResultData, CallResultData, GetRolesForCallGridResultData, MapDataAndMarkersData, UnitStatusResultData } from "@resgrid-shared/ngx-resgridlib";
+import { CallLocalResult } from "src/app/core/models/callLocalResult";
 import { GroupsForCallResult } from "src/app/core/models/groupsForCallResult";
 import { PersonnelForCallResult } from "src/app/core/models/personnelForCallResult";
 import { RolesForCallResult } from "src/app/core/models/rolesForCallResult";
-import { UnitStatusFullResult } from "src/app/core/models/unitStatusFullResult";
+import { UnitStatusResult } from "src/app/core/models/unitStatusResult";
+
 
 export interface CallsState {
-    pendingScheduledCalls: CallResult[];
+    pendingScheduledCalls: CallLocalResult[];
 
     // For Edit Call
-    callToEdit: CallResult;
-    callEditData: CallDataResult;
-    unitStatuses: UnitStatusFullResult[];
+    callToEdit: CallResultData;
+    callEditData: CallExtraDataResultData;
+    mapData: MapDataAndMarkersData;
+    unitStatuses: UnitStatusResult[];
     rolesForGrid: RolesForCallResult[];
     groupsForGrid: GroupsForCallResult[];
     personnelForGrid: PersonnelForCallResult[];
@@ -30,6 +32,7 @@ export const initialState: CallsState = {
     personnelForGrid: null,
     callToEdit: null,
     callEditData: null,
+    mapData: null,
     callIdToUpdateDispatchTime: null,
     updatedDispatchTime: null,
     isUpdatingDispatchTime: false

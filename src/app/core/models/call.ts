@@ -6,8 +6,8 @@ export class Call  {
     public DispatchOn: string = "";
     public Note: string = "";
     public Address: string = "";
-    public Latitude: string = "";
-    public Longitude: string = "";
+    public Latitude: number = 0;
+    public Longitude: number = 0;
     public ExternalId: string = "";
     public IncidentId: string = "";
     public ReferenceId: string = "";

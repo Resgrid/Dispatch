@@ -8,7 +8,6 @@ import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { Router } from '@angular/router';
 import { LoadingProvider } from 'src/app/providers/loading';
-import { SettingsProvider } from 'src/app/providers/settings';
 import { AlertProvider } from 'src/app/providers/alert';
 
 @Injectable()
@@ -23,25 +22,15 @@ export class AuthEffects {
         map(data => ({
           type: authAction.LoginActionTypes.LOGIN_SUCCESS,
           user: {
-            userId: data.Uid,
-            emailAddress: data.Eml,
-            fullName: data.Nme,
-            departmentId: data.Did,
-            authToken: data.Tkn,
-            authTokenExpiry: data.Txd,
-            departmentName: data.Dnm,
-            departmentCreatedOn: data.Dcd
+            userId: data.sub,
+            emailAddress: data.Rights.EmailAddress,
+            fullName: data.Rights.FullName,
+            departmentId: data.Rights.DepartmentId,
+            departmentName: data.Rights.DepartmentName,
           }
         })),
         tap(data => {
-          this.settingsProvider.settings.EmailAddress = data.user.emailAddress;
-          this.settingsProvider.settings.DepartmentName = data.user.departmentName;
-          this.settingsProvider.settings.DepartmentId = data.user.departmentId;
-          this.settingsProvider.settings.DepartmentCreatedOn = data.user.departmentCreatedOn;
-          this.settingsProvider.settings.UserId = data.user.userId;
-          this.settingsProvider.settings.AuthToken = data.user.authToken;
-          this.settingsProvider.settings.AuthTokenExpiry = data.user.authTokenExpiry;
-          this.settingsProvider.settings.FullName = data.user.fullName;
+          this.authProvider.startTrackingRefreshToken();
         }),
         // If request fails, dispatch failed action
         catchError(() => of({ type: authAction.LoginActionTypes.LOGIN_FAIL })))));
@@ -81,7 +70,6 @@ export class AuthEffects {
       this.loadingProvider.show();
     }));
 
-  constructor(private actions$: Actions, private authProvider: AuthProvider,
-    private router: Router, private loadingProvider: LoadingProvider, 
-    private settingsProvider: SettingsProvider, private alertProvider: AlertProvider) { }
+  constructor(private actions$: Actions, private authProvider: AuthProvider, 
+    private router: Router, private loadingProvider: LoadingProvider, private alertProvider: AlertProvider) { }
 }

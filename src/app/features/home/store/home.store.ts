@@ -1,42 +1,35 @@
-import { CallFileResult } from 'src/app/core/models/callFileResult';
-import { CallNoteResult } from 'src/app/core/models/callNoteResult';
-import { CallPriorityResult } from 'src/app/core/models/callPriorityResult';
-import { CallResult } from 'src/app/core/models/callResult';
-import { CallTemplateResult } from 'src/app/core/models/callTemplate';
-import { CallTypeResult } from 'src/app/core/models/callTypeResult';
-import { FormDataResult } from 'src/app/core/models/formDataResult';
-import { GpsLocation } from 'src/app/core/models/gpsLocation';
+import { CallFileResultData, CallNoteResultData, CallPriorityResultData, CallResultData, CallTypeResultData, FormResultData, GetCallTemplatesResultData, GpsLocation, MapDataAndMarkersData } from '@resgrid-shared/ngx-resgridlib';
+import { CallLocalResult } from 'src/app/core/models/callLocalResult';
 import { GroupsForCallResult } from 'src/app/core/models/groupsForCallResult';
-import { MapResult } from 'src/app/core/models/mapResult';
 import { PersonnelForCallResult } from 'src/app/core/models/personnelForCallResult';
 import { RolesForCallResult } from 'src/app/core/models/rolesForCallResult';
-import { UnitStatusFullResult } from 'src/app/core/models/unitStatusFullResult';
+import { UnitStatusResult } from 'src/app/core/models/unitStatusResult';
 import { SetUnitStateModalData } from '../models/setUnitStateModalData';
 
 export interface HomeState {
 
     // Home page data
     hasLoaded: boolean;
-    unitStatuses: UnitStatusFullResult[];
-    calls: CallResult[];
-    callPriorties: CallPriorityResult[];
-    callTypes: CallTypeResult[];
+    unitStatuses: UnitStatusResult[];
+    calls: CallLocalResult[];
+    callPriorties: CallPriorityResultData[];
+    callTypes: CallTypeResultData[];
     personnelForGrid: PersonnelForCallResult[];
     groupsForGrid: GroupsForCallResult[];
     rolesForGrid: RolesForCallResult[];
-    newCallForm: FormDataResult;
+    newCallForm: FormResultData;
 
     // Map data
-    mapData: MapResult;
+    mapData: MapDataAndMarkersData;
 
     // New Call data
-    newCall: CallResult;
+    newCall: CallResultData;
     newCallLocation: GpsLocation;
     newCallFormData: string;
     isSavingCall: boolean;
     
     // Edit Call
-    editCall: CallResult;
+    editCall: CallResultData;
 
     // Set unit state
     isSavingUnitState: boolean;
@@ -44,18 +37,18 @@ export interface HomeState {
 
     // Close call
     isSavingCloseCall: boolean;
-    closeCallState:  CallResult;
+    closeCallState:  CallResultData;
 
     // Call template
-    callTemplates: CallTemplateResult[];
-    activeCallTemplate: CallTemplateResult;
+    callTemplates: GetCallTemplatesResultData[];
+    activeCallTemplate: GetCallTemplatesResultData;
 
     // Call Notes
-    callNotes: CallNoteResult[];
+    callNotes: CallNoteResultData[];
 
     // Call Images
-    callImages: CallFileResult[];
-    callFiles: CallFileResult[];
+    callImages: CallFileResultData[];
+    callFiles: CallFileResultData[];
 }
 
 export const initialState: HomeState = {
@@ -65,7 +58,7 @@ export const initialState: HomeState = {
     callPriorties: null,
     callTypes: null,
     mapData: null,
-    newCall: new CallResult(),
+    newCall: new CallResultData(),
     isSavingCall: false,
     isSavingUnitState: false,
     setUnitStatusModalState: null,
