@@ -1,4 +1,4 @@
-import { CallResultData, CustomStatusResultData, GroupResultData } from "@resgrid-shared/ngx-resgridlib";
+import { CallResultData, CustomStatusResultData, GroupResultData } from '@resgrid/ngx-resgridlib';
 
 export class SetUnitStateModalData {
     public UnitId: string;

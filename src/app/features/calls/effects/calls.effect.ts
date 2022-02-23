@@ -6,7 +6,7 @@ import { Injectable } from "@angular/core";
 import { forkJoin, from, Observable, of } from "rxjs";
 import { NgbModal, NgbModalRef } from "@ng-bootstrap/ng-bootstrap";
 import { CallsState } from "../store/calls.store";
-import { CallsService, GpsLocation, LocationService, MappingService } from '@resgrid-shared/ngx-resgridlib';
+import { CallsService, GpsLocation, LocationService, MappingService } from '@resgrid/ngx-resgridlib';
 import * as _ from "lodash";
 import { AlertProvider } from "src/app/providers/alert";
 import { LoadChildren, Router } from "@angular/router";

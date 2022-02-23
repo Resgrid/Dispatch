@@ -1,4 +1,4 @@
-import { DepartmentVoiceChannelResultData, DepartmentVoiceResultData } from "@resgrid-shared/ngx-resgridlib";
+import { DepartmentVoiceChannelResultData, DepartmentVoiceResultData } from '@resgrid/ngx-resgridlib';
 import { StreamManager } from "openvidu-browser";
 
 export interface VoiceState {

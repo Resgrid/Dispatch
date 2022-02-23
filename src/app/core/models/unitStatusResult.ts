@@ -1,4 +1,4 @@
-import { UnitStatusResultData } from "@resgrid-shared/ngx-resgridlib";
+import { UnitStatusResultData } from '@resgrid/ngx-resgridlib';
 
 export class UnitStatusResult extends UnitStatusResultData {
     public Selected: boolean = false;

@@ -10,7 +10,7 @@ import {
 import {
   DepartmentVoiceChannelResultData,
   VoiceService,
-} from '@resgrid-shared/ngx-resgridlib';
+} from '@resgrid/ngx-resgridlib';
 import { VoiceState } from '../features/voice/store/voice.store';
 import { Store } from '@ngrx/store';
 import * as VoiceActions from '../features/voice/actions/voice.actions';

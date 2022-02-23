@@ -8,7 +8,7 @@ import { SortDirection } from "../../directives/calls-sortable.directive";
 import { Store } from "@ngrx/store";
 import { CallsState } from "../../store/calls.store";
 import { selectCallsState } from "src/app/store";
-import { CallResultData } from "@resgrid-shared/ngx-resgridlib";
+import { CallResultData } from '@resgrid/ngx-resgridlib';
 import { CallLocalResult } from "src/app/core/models/callLocalResult";
 
 // Search Data

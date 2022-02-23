@@ -28,7 +28,7 @@ import {
   UnitsService,
   UnitStatusService,
   VoiceService,
-} from "@resgrid-shared/ngx-resgridlib";
+} from '@resgrid/ngx-resgridlib';
 
 @Injectable()
 export class HomeEffects {

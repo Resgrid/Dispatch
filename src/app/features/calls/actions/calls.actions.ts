@@ -1,6 +1,6 @@
 import { Action } from "@ngrx/store";
-import { CallExtraDataResultData, CallResultData, GpsLocation, MapDataAndMarkersData, UnitStatusResultData } from "@resgrid-shared/ngx-resgridlib";
-import { GroupsForCallGridData } from "@resgrid-shared/ngx-resgridlib/lib/models/v4/dispatch/getGroupsForCallGridResultData";
+import { CallExtraDataResultData, CallResultData, GpsLocation, MapDataAndMarkersData, UnitStatusResultData } from '@resgrid/ngx-resgridlib';
+import { GroupsForCallGridData } from "@resgrid/ngx-resgridlib";
 import { Call } from "src/app/core/models/call";
 import { GroupsForCallResult } from "src/app/core/models/groupsForCallResult";
 import { PersonnelForCallResult } from "src/app/core/models/personnelForCallResult";

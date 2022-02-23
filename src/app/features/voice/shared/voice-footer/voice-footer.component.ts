@@ -1,6 +1,6 @@
 import { Component, OnInit } from "@angular/core";
 import { Store } from "@ngrx/store";
-import { DepartmentVoiceChannelResultData } from "@resgrid-shared/ngx-resgridlib";
+import { DepartmentVoiceChannelResultData } from '@resgrid/ngx-resgridlib';
 import { Observable } from "rxjs";
 import { VoiceState } from "src/app/features/voice/store/voice.store";
 import { AudioProvider } from "src/app/providers/audio";

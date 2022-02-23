@@ -1,4 +1,4 @@
-import { DepartmentRightsResultData, ProfileModel } from "@resgrid-shared/ngx-resgridlib";
+import { DepartmentRightsResultData, ProfileModel } from '@resgrid/ngx-resgridlib';
 
 export class LoginResult implements ProfileModel {
     public sub: string = '';

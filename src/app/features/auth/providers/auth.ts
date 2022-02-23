@@ -4,7 +4,7 @@ import {
   AuthService,
   ProfileModel,
   SecurityService,
-} from "@resgrid-shared/ngx-resgridlib";
+} from '@resgrid/ngx-resgridlib';
 import { concatMap, flatMap, map, mergeMap } from "rxjs/operators";
 import { LoginResult } from "src/app/core/models/loginResult";
 

@@ -8,7 +8,7 @@ import * as HomeActions from "../../actions/home.actions";
 import { take } from "rxjs/operators";
 import { Actions, ofType } from "@ngrx/effects";
 import * as _ from 'lodash';
-import { CallResultData } from "@resgrid-shared/ngx-resgridlib";
+import { CallResultData } from '@resgrid/ngx-resgridlib';
 
 @Component({
   selector: "app-resgrid-modal-closeCall",

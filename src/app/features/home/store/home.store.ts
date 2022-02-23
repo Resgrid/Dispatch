@@ -1,4 +1,4 @@
-import { CallFileResultData, CallNoteResultData, CallPriorityResultData, CallResultData, CallTypeResultData, FormResultData, GetCallTemplatesResultData, GpsLocation, MapDataAndMarkersData } from '@resgrid-shared/ngx-resgridlib';
+import { CallFileResultData, CallNoteResultData, CallPriorityResultData, CallResultData, CallTypeResultData, FormResultData, GetCallTemplatesResultData, GpsLocation, MapDataAndMarkersData } from '@resgrid/ngx-resgridlib';
 import { CallLocalResult } from 'src/app/core/models/callLocalResult';
 import { GroupsForCallResult } from 'src/app/core/models/groupsForCallResult';
 import { PersonnelForCallResult } from 'src/app/core/models/personnelForCallResult';

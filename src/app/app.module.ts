@@ -8,7 +8,7 @@ import { TranslateHttpLoader } from '@ngx-translate/http-loader';
 import { environment } from '../environments/environment';
 
 import { LayoutsModule } from './layouts/layouts.module';
-import { NgxResgridLibModule } from '@resgrid-shared/ngx-resgridlib';
+import { NgxResgridLibModule } from '@resgrid/ngx-resgridlib';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { NgxSpinnerModule } from "ngx-spinner";

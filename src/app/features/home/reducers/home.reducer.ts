@@ -2,7 +2,7 @@ import { HomeState, initialState } from "../store/home.store";
 import { HomeActionTypes, HomeActionsUnion } from "../actions/home.actions";
 
 import * as _ from "lodash";
-import { CallResultData, GpsLocation } from "@resgrid-shared/ngx-resgridlib";
+import { CallResultData, GpsLocation } from '@resgrid/ngx-resgridlib';
 import { UnitStatusResult } from "src/app/core/models/unitStatusResult";
 import { PersonnelForCallResult } from "src/app/core/models/personnelForCallResult";
 import { GroupsForCallResult } from "src/app/core/models/groupsForCallResult";

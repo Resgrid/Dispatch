@@ -9,7 +9,7 @@ import { VoiceState } from "../store/voice.store";
 import {
   KazooVoiceService,
   VoiceService,
-} from "@resgrid-shared/ngx-resgridlib";
+} from '@resgrid/ngx-resgridlib';
 import { OpenViduService } from "src/app/providers/openvidu";
 import { HomeState } from "../../home/store/home.store";
 import { selectAuthState } from "src/app/store";

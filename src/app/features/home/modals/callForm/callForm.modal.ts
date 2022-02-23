@@ -15,7 +15,7 @@ import * as _ from "lodash";
 import { FormBuilder, FormGroup, Validators } from "@angular/forms";
 import { environment } from "../../../../../environments/environment";
 import { AuthState } from "src/app/features/auth/store/auth.store";
-import { CallResultData } from "@resgrid-shared/ngx-resgridlib";
+import { CallResultData } from '@resgrid/ngx-resgridlib';
 declare var $: any;
 
 @Component({

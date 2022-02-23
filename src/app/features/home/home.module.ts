@@ -20,7 +20,7 @@ import { CallImagesModalComponent } from './modals/callImages/callImages.modal';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { CallFilesModalComponent } from './modals/callFiles/callFiles.modal';
 import { CallFormModalComponent } from './modals/callForm/callForm.modal';
-import { NgxResgridLibModule } from '@resgrid-shared/ngx-resgridlib';
+import { NgxResgridLibModule } from '@resgrid/ngx-resgridlib';
 
 @NgModule({
   declarations: [

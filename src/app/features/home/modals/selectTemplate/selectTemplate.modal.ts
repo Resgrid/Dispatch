@@ -8,7 +8,7 @@ import * as HomeActions from "../../actions/home.actions";
 import { take } from "rxjs/operators";
 import { Actions, ofType } from "@ngrx/effects";
 import * as _ from 'lodash';
-import { GetCallTemplatesResultData } from "@resgrid-shared/ngx-resgridlib";
+import { GetCallTemplatesResultData } from '@resgrid/ngx-resgridlib';
 
 @Component({
   selector: "app-resgrid-modal-selectTemplate",

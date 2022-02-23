@@ -11,6 +11,8 @@ export const environment = {
   version: '99.99.99',
   osmMapKey: "OSMMAPKEY",
   googleMapsKey: "GOOGLEMAPKEY",
+  logLevel: 0,
+  loggingKey: '',
   firebaseConfig: {
     apiKey: '',
     authDomain: '',

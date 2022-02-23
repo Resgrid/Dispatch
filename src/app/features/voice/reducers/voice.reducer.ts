@@ -2,7 +2,7 @@ import { VoiceState, initialState } from "../store/voice.store";
 import { VoiceActionTypes, VoiceActionsUnion } from "../actions/voice.actions";
 
 import * as _ from "lodash";
-import { DepartmentVoiceChannelResultData } from "@resgrid-shared/ngx-resgridlib";
+import { DepartmentVoiceChannelResultData } from '@resgrid/ngx-resgridlib';
 
 
 export function reducer(

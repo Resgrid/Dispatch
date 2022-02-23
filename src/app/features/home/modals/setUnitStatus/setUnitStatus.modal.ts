@@ -7,7 +7,7 @@ import { HomeState } from "../../store/home.store";
 import * as HomeActions from "../../actions/home.actions";
 import { take } from "rxjs/operators";
 import { Actions, ofType } from "@ngrx/effects";
-import { CallResultData, CustomStatusResultData, GroupResultData } from "@resgrid-shared/ngx-resgridlib";
+import { CallResultData, CustomStatusResultData, GroupResultData } from '@resgrid/ngx-resgridlib';
 
 @Component({
   selector: "app-resgrid-modal-setUnitStatus",

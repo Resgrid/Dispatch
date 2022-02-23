@@ -8,7 +8,7 @@ import { NgbAlertModule, NgbDropdownModule, NgbNavModule, NgbPaginationModule, N
 import { PerfectScrollbarConfigInterface, PerfectScrollbarModule, PERFECT_SCROLLBAR_CONFIG } from 'ngx-perfect-scrollbar';
 import { LeafletModule } from '@asymmetrik/ngx-leaflet';
 import { UiModule } from 'src/app/shared/ui/ui.module';
-import { NgxResgridLibModule } from '@resgrid-shared/ngx-resgridlib';
+import { NgxResgridLibModule } from '@resgrid/ngx-resgridlib';
 
 const DEFAULT_PERFECT_SCROLLBAR_CONFIG: PerfectScrollbarConfigInterface = {
   suppressScrollX: true,

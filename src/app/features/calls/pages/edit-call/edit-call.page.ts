@@ -29,7 +29,7 @@ import {
 import * as L from "leaflet";
 import { environment } from "../../../../../environments/environment";
 import { take } from "rxjs/operators";
-import { CallResult, CallResultData, GetMapDataAndMarkersResult, GpsLocation, MapDataAndMarkersData } from "@resgrid-shared/ngx-resgridlib";
+import { CallResult, CallResultData, GetMapDataAndMarkersResult, GpsLocation, MapDataAndMarkersData } from '@resgrid/ngx-resgridlib';
 import { Call } from "src/app/core/models/call";
 
 @Component({

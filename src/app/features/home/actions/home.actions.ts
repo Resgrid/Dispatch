@@ -1,5 +1,5 @@
 import { Action } from '@ngrx/store';
-import { CallFileResultData, CallNoteResultData, CallResultData, DepartmentVoiceResultData, GetCallTemplatesResultData, GpsLocation, MapDataAndMarkersData, UnitStatusResultData } from '@resgrid-shared/ngx-resgridlib';
+import { CallFileResultData, CallNoteResultData, CallResultData, DepartmentVoiceResultData, GetCallTemplatesResultData, GpsLocation, MapDataAndMarkersData, UnitStatusResultData } from '@resgrid/ngx-resgridlib';
 import { Call } from 'src/app/core/models/call';
 import { PersonnelForCallResult } from 'src/app/core/models/personnelForCallResult';
 import { UnitStatusResult } from 'src/app/core/models/unitStatusResult';

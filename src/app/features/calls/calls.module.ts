@@ -13,7 +13,7 @@ import { LeafletModule } from '@asymmetrik/ngx-leaflet';
 import { UiModule } from 'src/app/shared/ui/ui.module';
 import { GalleryModule } from  'ng-gallery';
 import { UpdateDispatchTimeModalComponent } from './modals/updateDispatchTime/updateDispatchTime.modal';
-import { NgxResgridLibModule } from '@resgrid-shared/ngx-resgridlib';
+import { NgxResgridLibModule } from '@resgrid/ngx-resgridlib';
 
 @NgModule({
   declarations: [

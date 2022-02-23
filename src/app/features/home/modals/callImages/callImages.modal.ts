@@ -17,7 +17,7 @@ import { environment } from "../../../../../environments/environment";
 import { AuthState } from "src/app/features/auth/store/auth.store";
 import { Gallery, GalleryItem, GalleryRef, ImageItem } from "ng-gallery";
 import { encode } from "base64-arraybuffer";
-import { CallResultData } from "@resgrid-shared/ngx-resgridlib";
+import { CallResultData } from '@resgrid/ngx-resgridlib';
 
 @Component({
   selector: "app-resgrid-modal-callImages",
