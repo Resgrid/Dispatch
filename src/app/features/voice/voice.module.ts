@@ -13,10 +13,12 @@ import { LeafletModule } from '@asymmetrik/ngx-leaflet';
 import { UiModule } from 'src/app/shared/ui/ui.module';
 import { GalleryModule } from  'ng-gallery';
 import { VoiceFooterComponent } from './shared/voice-footer/voice-footer.component';
+import { OpenViduVideoComponent } from './shared/video-component/ov-video.component';
 
 @NgModule({
   declarations: [
-    VoiceFooterComponent
+    VoiceFooterComponent,
+    OpenViduVideoComponent
   ],
   imports: [
     CommonModule,
@@ -39,10 +41,12 @@ import { VoiceFooterComponent } from './shared/voice-footer/voice-footer.compone
   ],
   providers: [],
   exports: [
-    VoiceFooterComponent
+    VoiceFooterComponent,
+    OpenViduVideoComponent
   ],
   entryComponents: [
-    VoiceFooterComponent
+    VoiceFooterComponent,
+    OpenViduVideoComponent
   ]
 })
 export class VoiceModule { }

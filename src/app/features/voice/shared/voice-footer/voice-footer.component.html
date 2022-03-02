@@ -10,7 +10,7 @@
       </div>
       <div class="col-sm-2" style="height: 50px; padding: 4px; background: #252b3b;">
         <div class="text-sm-left d-none d-sm-block">
-          
+          <ov-video [streamManager]="sub" *ngFor="let sub of openViduService.subscribers"></ov-video>
         </div>
       </div>
       <div class="col-xs-1" style="height: 50px; padding: 4px; background: #252b3b;">

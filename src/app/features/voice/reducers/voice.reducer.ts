@@ -2,8 +2,7 @@ import { VoiceState, initialState } from "../store/voice.store";
 import { VoiceActionTypes, VoiceActionsUnion } from "../actions/voice.actions";
 
 import * as _ from "lodash";
-import { DepartmentVoiceChannelResultData } from '@resgrid/ngx-resgridlib';
-
+import { DepartmentVoiceChannelResultData } from "@resgrid/ngx-resgridlib";
 
 export function reducer(
   state: VoiceState = initialState,
@@ -13,8 +12,8 @@ export function reducer(
     case VoiceActionTypes.GET_VOIPINFO_SUCCESS:
       let channels: DepartmentVoiceChannelResultData[] = new Array();
       channels.push({
-        Id: '',
-        Name: 'No Channel Selected',
+        Id: "",
+        Name: "No Channel Selected",
         ConferenceNumber: 0,
         IsDefault: false,
       });
@@ -79,6 +78,16 @@ export function reducer(
       return {
         ...state,
         currentVoipStatus: action.state,
+      };
+    case VoiceActionTypes.INCREMENT_PARTICIPANTS:
+      return {
+        ...state,
+        participants: state.participants + 1,
+      };
+    case VoiceActionTypes.DECREMENT_PARTICIPANTS:
+      return {
+        ...state,
+        participants: state.participants - 1,
       };
     default:
       return state;

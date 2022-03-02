@@ -73,3 +73,4 @@ www/index.html
 .npmrc
 src/app/layouts/shared/horizontalnavbar/dist/menu.js
 src/app/layouts/shared/sidebar/dist/menu.js
+.env

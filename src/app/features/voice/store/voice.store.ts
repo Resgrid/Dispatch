@@ -9,6 +9,7 @@ export interface VoiceState {
     currentActiveVoipChannel: DepartmentVoiceChannelResultData;
     channels: DepartmentVoiceChannelResultData[];
     subscribers: StreamManager[];
+    participants: number;
 }
 
 export const initialState: VoiceState = {
@@ -18,5 +19,6 @@ export const initialState: VoiceState = {
     currentVoipStatus: 'Disconnected',
     currentActiveVoipChannel: null,
     channels: null,
-    subscribers: []
+    subscribers: [],
+    participants: 0,
 };

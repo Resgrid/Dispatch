@@ -26,6 +26,8 @@ export enum VoiceActionTypes {
   REMOVE_OPENVIDU_STREAM = '[VOICE] REMOVE_OPENVIDU_STREAM',
   DONE = '[VOICE] DONE',
   SET_CURRENT_VOICE_STATE = '[VOICE] SET_CURRENT_VOICE_STATE',
+  INCREMENT_PARTICIPANTS = '[VOICE] INCREMENT_PARTICIPANTS',
+  DECREMENT_PARTICIPANTS = '[VOICE] DECREMENT_PARTICIPANTS',
 }
 
 export class GetVoipInfo implements Action {
@@ -138,6 +140,16 @@ export class SetCurrentVoiceState implements Action {
   constructor(public state: string) {}
 }
 
+export class IncrementParticipants implements Action {
+  readonly type = VoiceActionTypes.INCREMENT_PARTICIPANTS;
+  constructor() {}
+}
+
+export class DecrementParticipants implements Action {
+  readonly type = VoiceActionTypes.DECREMENT_PARTICIPANTS;
+  constructor() {}
+}
+
 export class Done implements Action {
   readonly type = VoiceActionTypes.DONE;
   constructor() {}
@@ -166,4 +178,6 @@ export type VoiceActionsUnion =
   | AddOpenViduStream
   | RemoveOpenViduStream
   | SetCurrentVoiceState
-  | Done;
+  | Done
+  | IncrementParticipants
+  | DecrementParticipants;

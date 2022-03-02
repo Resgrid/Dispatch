@@ -38,4 +38,24 @@ export class AlertProvider {
       timer: 500
     });
   }
+
+  public showAutoCloseErrorAlert(title: string) {
+    Swal.fire({
+      position: 'top-end',
+      icon: 'error',
+      title: title,
+      showConfirmButton: false,
+      timer: 500
+    });
+  }
+
+  public showAutoCloseWarningAlert(title: string) {
+    Swal.fire({
+      position: 'top-end',
+      icon: 'warning',
+      title: title,
+      showConfirmButton: false,
+      timer: 500
+    });
+  }
 }
