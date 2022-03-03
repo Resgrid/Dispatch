@@ -51,7 +51,7 @@ let getBaseUrl = (): string => {
       channelUrl: environment.channelUrl,
       channelHubName: environment.channelHubName,
       logLevel: environment.logLevel,
-    }),
+  }),
     BrowserAnimationsModule,
     LeafletModule,
     NgxSpinnerModule,

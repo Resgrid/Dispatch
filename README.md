@@ -15,130 +15,74 @@ Resgrid is an open-source Computer Aided Dispatch (CAD) solution for first respo
 
 ## Configuration
 
+You will need to create a .env file
+
 ```json
-// [environment].json
-{
-    "BaseApiUrl":"",
-    "ResgridApiUrl":"",
-    "ChannelUrl":"",
-    "ChannelHubName":"",
-    "What3WordsKey":"",
-    "IsDemo":false,
-    "DemoToken":"",
-    "Version":"",
-    "ReleaseDate":"",
-    "MapApiKey":"",
-    "FirebaseApiKey":"",
-    "FirebaseAuthDomain":"",
-    "FirebaseDbUrl":"",
-    "FirebaseProjId":"",
-    "FirebaseStorage":"",
-    "FirebaseSenderId":""
-}
+// .env
+BASE_API_URL=
+API_URL=
+CHANNEL_URL=
+CHANNEL_HUB_NAME=
+LOG_LEVEL=
+OSM_MAP_KEY=
+GOOGLE_MAPS_KEY=
+LOGGING_KEY=
 ```
 
 ## Settings
 
-### Settings.json Values
+### .env Values
 <table>
   <tr>
     <th>Setting</th>
     <th>Description</th>
   </tr>
   <tr>
-    <td>BaseApiUrl</td>
+    <td>BASE_API_URL</td>
     <td>
       The base URL to talk to the Resgrid API (Services) for our hosted production system this is "https://api.resgrid.com"
     </td>
   </tr>
   <tr>
-    <td>ResgridApiUrl</td>
+    <td>API_URL</td>
     <td>
-      The full URL (including version) to talk to the Resgrid API (Services) for our hosted production system this is "https://api.resgrid.com/api/v3"
+      The version api path for the BASE_API_URL for the hosted system the default is "/api/v4"
     </td>
   </tr>
   <tr>
-    <td>ChannelUrl</td>
+    <td>CHANNEL_URL</td>
     <td>
-      The URL to connect to the SignalR hub for our hosted production system this is "https://api.resgrid.com/signalr"
+      The URL to connect to the SignalR hub for our hosted production system this is "https://events.resgrid.com/"
     </td>
   </tr>
   <tr>
-    <td>ChannelHubName</td>
+    <td>CHANNEL_HUB_NAME</td>
     <td>
-      The SignalR hub name to connect to receive events for
+      The SignalR hub name to connect to receive events for. The hosted system default is "eventingHub"
     </td>
   </tr>
   <tr>
-    <td>What3WordsKey</td>
+    <td>LOG_LEVEL</td>
     <td>
-      API Key to talk to the What3Words (https://what3words.com/) service
+      Log level for the Ngx-ResgridLib library: 0 = Debug and above, 1 = Warn and above, 2 = Error only, -1 = Off
     </td>
   </tr>
   <tr>
-    <td>IsDemo</td>
+    <td>OSM_MAP_KEY</td>
     <td>
-      Is used for demo installation (should always be false)
+      API Key for MapTiler.com
     </td>
   </tr>
   <tr>
-    <td>DemoToken</td>
+    <td>GOOGLE_MAPS_KEY</td>
     <td>
-      Token used for demo installation (should always be empty string "")
+      API Key for Google Maps, ensure the geocoding forward and reverse permissions and apis are available to it.
     </td>
   </tr>
   <tr>
-    <td>Version</td>
+    <td>LOGGING_KEY</td>
     <td>
-      App Version
-    </td>
-  </tr>
-  <tr>
-    <td>ReleaseDate</td>
-    <td>
-      When Was this version released
-    </td>
-  </tr>
-  <tr>
-    <td>MapApiKey</td>
-    <td>
-      Api Key needed to talk to the backend map provider
-    </td>
-  </tr>
-  <tr>
-    <td>FirebaseApiKey</td>
-    <td>
-      API Key to talk to Firebase services
-    </td>
-  </tr>
-  <tr>
-    <td>FirebaseAuthDomain</td>
-    <td>
-      Auth domain for the dispatch firebase app
-    </td>
-  </tr>
-  <tr>
-    <td>FirebaseDbUrl</td>
-    <td>
-      URL of the Firebase database
-    </td>
-  </tr>
-  <tr>
-    <td>FirebaseProjId</td>
-    <td>
-      Id for the Dispatch Firebase project
-    </td>
-  </tr>
-  <tr>
-    <td>FirebaseStorage</td>
-    <td>
-      Domain name bucket for the Firebase storage
-    </td>
-  </tr>
-  <tr>
-    <td>FirebaseSenderId</td>
-    <td>
-      Push notification sender id for Firebase Cloud Messaging (FCM)
+      Sentry.io logging key
     </td>
   </tr>
 </table>

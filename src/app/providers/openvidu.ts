@@ -1,4 +1,4 @@
-import { ApplicationRef, Injectable } from '@angular/core';
+import { ApplicationRef, Injectable } from "@angular/core";
 import {
   ConnectionEvent,
   Device,
@@ -10,22 +10,18 @@ import {
   StreamEvent,
   StreamManager,
   Subscriber,
-} from 'openvidu-browser';
-import {
-  DepartmentVoiceChannelResultData,
-  VoiceService,
-  VoiceSessionConnectionResult,
-} from '@resgrid/ngx-resgridlib';
-import { VoiceState } from '../features/voice/store/voice.store';
-import { Store } from '@ngrx/store';
-import * as VoiceActions from '../features/voice/actions/voice.actions';
-import { BehaviorSubject, concat, from, Observable, of } from 'rxjs';
-import { concatMap, delay, tap } from 'rxjs/operators';
-import { environment } from 'src/environments/environment';
-import { AlertProvider } from './alert';
+} from "openvidu-browser";
+import { DepartmentVoiceChannelResultData, VoiceService, VoiceSessionConnectionResult } from "@resgrid/ngx-resgridlib";
+import { VoiceState } from "../features/voice/store/voice.store";
+import { Store } from "@ngrx/store";
+import * as VoiceActions from "../features/voice/actions/voice.actions";
+import { BehaviorSubject, concat, from, Observable, of } from "rxjs";
+import { concatMap, delay, tap } from "rxjs/operators";
+import { environment } from "src/environments/environment";
+import { AlertProvider } from "./alert";
 
 @Injectable({
-  providedIn: 'root',
+  providedIn: "root",
 })
 export class OpenViduService {
   private connectedName: string;
@@ -38,16 +34,9 @@ export class OpenViduService {
   private isConnectionLost: boolean = false;
   public subscribers: StreamManager[] = []; // Remotes
 
-  constructor(
-    private store: Store<VoiceState>,
-    private voiceService: VoiceService,
-    private alertProvider: AlertProvider
-  ) {}
+  constructor(private store: Store<VoiceState>, private voiceService: VoiceService, private alertProvider: AlertProvider) {}
 
-  public joinChannel(
-    channel: DepartmentVoiceChannelResultData,
-    name: string
-  ): Observable<any> {
+  public joinChannel(channel: DepartmentVoiceChannelResultData, name: string): Observable<any> {
     this.OV = new OpenVidu();
     this.session = this.OV.initSession();
     this.connectedName = name;
@@ -61,8 +50,8 @@ export class OpenViduService {
 
     return this.voiceService.connectToSession(channel.Id).pipe(
       concatMap(async (data) => {
-        if (data.Data && data.Data.Token && data.Status === 'success') {
-          await this.session.connect(data.Data.Token, { clientData: name });
+        if (data.Data && data.Data.Token && data.Status === "success") {
+          return from(this.session.connect(data.Data.Token, { clientData: name })).pipe(delay(1500));
         }
 
         return of(data).pipe(delay(1500));
@@ -81,9 +70,9 @@ export class OpenViduService {
       videoSource: false, // The source of video. If undefined default webcam
       publishAudio: false, // Whether you want to start publishing with your audio unmuted or not
       publishVideo: false, // Whether you want to start publishing with your video enabled or not
-      resolution: '640x480', // The resolution of your video
+      resolution: "640x480", // The resolution of your video
       frameRate: 1, // The frame rate of your video
-      insertMode: 'APPEND', // How the video is inserted in the target element 'video-container'
+      insertMode: "APPEND", // How the video is inserted in the target element 'video-container'
       mirror: false, // Whether to mirror your local video or not
     });
 
@@ -107,7 +96,7 @@ export class OpenViduService {
     delete this.OV;
     //this.generateParticipantInfo();
 
-    this.store.dispatch(new VoiceActions.SetCurrentVoiceState('Disconnected'));
+    this.store.dispatch(new VoiceActions.SetCurrentVoiceState("Disconnected"));
   }
 
   public mute() {
@@ -115,9 +104,7 @@ export class OpenViduService {
   }
 
   public unmute() {
-    if (this.publisher) {
-      this.publisher.publishAudio(true);
-    }
+    this.publisher?.publishAudio(true);
   }
 
   private deleteSubscriber(streamManager: StreamManager): void {
@@ -138,7 +125,7 @@ export class OpenViduService {
     this.subscribeToConnectionCreatedAndDestroyed();
 
     // On every new Stream received...
-    this.session.on('streamCreated', (event: StreamEvent) => {
+    this.session.on("streamCreated", (event: StreamEvent) => {
       const properties = {
         subscribeToAudio: true,
         subscribeToVideo: false,
@@ -151,11 +138,7 @@ export class OpenViduService {
 
       // Subscribe to the Stream to receive it. Second parameter is undefined
       // so OpenVidu doesn't create an HTML video on its own
-      const subscriber: Subscriber = this.session.subscribe(
-        event.stream,
-        undefined,
-        properties
-      );
+      const subscriber: Subscriber = this.session.subscribe(event.stream, undefined, properties);
 
       this.subscribers.push(subscriber);
       //this.applicationRef.tick();
@@ -164,76 +147,58 @@ export class OpenViduService {
     });
 
     // On every Stream destroyed...
-    this.session.on('streamDestroyed', (event: StreamEvent) => {
+    this.session.on("streamDestroyed", (event: StreamEvent) => {
       // Remove the stream from 'subscribers' array
       this.deleteSubscriber(event.stream.streamManager);
     });
 
     // On every asynchronous exception...
-    this.session.on('exception', (exception) => {
+    this.session.on("exception", (exception) => {
       console.warn(exception);
     });
 
-    this.session.on(
-      'publisherStartSpeaking',
-      (event: PublisherSpeakingEvent) => {
-        if (
-          event &&
-          event.connection &&
-          event.connection.localOptions &&
-          event.connection.localOptions.metadata
-        ) {
-          let metadata = JSON.parse(event.connection.localOptions.metadata);
+    this.session.on("publisherStartSpeaking", (event: PublisherSpeakingEvent) => {
+      if (event && event.connection && event.connection.localOptions && event.connection.localOptions.metadata) {
+        let metadata = JSON.parse(event.connection.localOptions.metadata);
 
-          console.log('Publisher ' + metadata.clientData + ' start speaking');
-        } else {
-          console.log(
-            'Publisher ' + event.connection.connectionId + ' start speaking'
-          );
-        }
+        console.log("Publisher " + metadata.clientData + " start speaking");
+      } else {
+        console.log("Publisher " + event.connection.connectionId + " start speaking");
       }
-    );
+    });
 
-    this.session.on(
-      'publisherStopSpeaking',
-      (event: PublisherSpeakingEvent) => {
-        console.log(
-          'Publisher ' + event.connection.connectionId + ' stop speaking'
-        );
-      }
-    );
+    this.session.on("publisherStopSpeaking", (event: PublisherSpeakingEvent) => {
+      console.log("Publisher " + event.connection.connectionId + " stop speaking");
+    });
   }
 
   private subscribeToReconnection() {
-    this.session.on('reconnecting', async () => {
-      console.log('Connection lost: Reconnecting');
+    this.session.on("reconnecting", async () => {
+      console.log("Connection lost: Reconnecting");
       this.isConnectionLost = true;
 
-      this.alertProvider.showAutoCloseWarningAlert('Connection Problem: Trying to reconnect to the session...');
+      this.alertProvider.showAutoCloseWarningAlert("Connection Problem: Trying to reconnect to the session...");
     });
-    this.session.on('reconnected', () => {
-      console.log('Connection lost: Reconnected');
+    this.session.on("reconnected", () => {
+      console.log("Connection lost: Reconnected");
       this.isConnectionLost = false;
     });
-    this.session.on(
-      'sessionDisconnected',
-      async (event: SessionDisconnectedEvent) => {
-        if (event.reason === 'networkDisconnect') {
-          this.alertProvider.showAutoCloseErrorAlert('Unable to connect to the session due to an network problem');
+    this.session.on("sessionDisconnected", async (event: SessionDisconnectedEvent) => {
+      if (event.reason === "networkDisconnect") {
+        this.alertProvider.showAutoCloseErrorAlert("Unable to connect to the session due to an network problem");
 
-          this.leaveSession();
-        }
+        this.leaveSession();
       }
-    );
+    });
   }
 
   private subscribeToConnectionCreatedAndDestroyed() {
-    this.session.on('connectionCreated', async (event: ConnectionEvent) => {
+    this.session.on("connectionCreated", async (event: ConnectionEvent) => {
       if (this.isMyOwnConnection(event.connection.connectionId)) {
-        this.store.dispatch(new VoiceActions.SetCurrentVoiceState('Connected'));
+        this.store.dispatch(new VoiceActions.SetCurrentVoiceState("Connected"));
 
         if (this.channel) {
-          this.alertProvider.showAutoCloseSuccessAlert('Connected to channel ' + this.channel.Name);
+          this.alertProvider.showAutoCloseSuccessAlert("Connected to channel " + this.channel.Name);
         }
       }
 
@@ -249,7 +214,7 @@ export class OpenViduService {
       //}
     });
 
-    this.session.on('connectionDestroyed', (event: ConnectionEvent) => {
+    this.session.on("connectionDestroyed", (event: ConnectionEvent) => {
       if (this.isMyOwnConnection(event.connection.connectionId)) {
         return;
       }

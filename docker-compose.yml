@@ -1,0 +1,10 @@
+version: '3.5'
+
+services:
+  web:
+    env_file: "../Configs/.dispatch_local_env"
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '4202:80'
