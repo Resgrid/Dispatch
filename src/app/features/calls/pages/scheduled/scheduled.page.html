@@ -45,24 +45,24 @@
 
                 <tr *ngFor="let call of service.calls$ | async">
                   <td>
-                    <ngb-highlight [result]="call.Num" [term]="service.searchTerm"></ngb-highlight>
+                    <ngb-highlight [result]="call.Number" [term]="service.searchTerm"></ngb-highlight>
                   </td>
                   <td>
-                    <ngb-highlight [result]="call.Nme" [term]="service.searchTerm"></ngb-highlight>
+                    <ngb-highlight [result]="call.Name" [term]="service.searchTerm"></ngb-highlight>
                   </td>
                   <td>
                     <ngb-highlight [result]="call.PriorityText" [term]="service.searchTerm"></ngb-highlight>
                   </td>
                   <td>
-                    <ngb-highlight [result]="call.LoggedOnDate" [term]="service.searchTerm"></ngb-highlight>
+                    <ngb-highlight [result]="call.LoggedOn" [term]="service.searchTerm"></ngb-highlight>
                   </td>
                   <td>
-                    <ngb-highlight [result]="call.DispatchOnDate" [term]="service.searchTerm"></ngb-highlight>
+                    <ngb-highlight [result]="call.DispatchedOn" [term]="service.searchTerm"></ngb-highlight>
                   </td>
                   <td>
-                    <a href="javascript:void(0);" class="mr-3 text-primary" placement="top" ngbTooltip="Reschedule" (click)="updateDispatchTime(call.Cid)"><i
+                    <a href="javascript:void(0);" class="mr-3 text-primary" placement="top" ngbTooltip="Reschedule" (click)="updateDispatchTime(call.CallId)"><i
                       class="mdi mdi-calendar font-size-18"></i></a>
-                    <a href="javascript:void(0);" class="mr-3 text-primary" placement="top" ngbTooltip="Edit" (click)="editCall(call.Cid)"><i
+                    <a href="javascript:void(0);" class="mr-3 text-primary" placement="top" ngbTooltip="Edit" (click)="editCall(call.CallId)"><i
                         class="mdi mdi-pencil font-size-18"></i></a>
                     <a href="javascript:void(0);" class="text-danger" placement="top" ngbTooltip="Delete"><i
                         class="mdi mdi-trash-can font-size-18"></i></a>

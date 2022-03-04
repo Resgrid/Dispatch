@@ -1,6 +1,6 @@
 export class SetUnitStatePayload {
-    public unitId: number;
-    public stateType: number;
+    public unitId: string;
+    public stateType: string;
     public destination: string;
     public destinationType: number;
     public note: string;

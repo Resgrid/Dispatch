@@ -1,0 +1,8 @@
+version: '3.5'
+
+services:
+  web:
+    env_file: ".env"
+    image: resgridllc/dispatch:latest
+    ports:
+      - '4400:80'

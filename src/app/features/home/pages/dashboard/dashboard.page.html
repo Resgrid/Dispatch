@@ -289,8 +289,8 @@
                   <a href="javascript:void(0);" class="dropdown-item" (click)="callNotes()">Call Notes</a>
                   <a href="javascript:void(0);" class="dropdown-item" (click)="callImages()">Call Images</a>
                   <a href="javascript:void(0);" class="dropdown-item" (click)="callFiles()">Call Files</a>
-                  <a href="javascript:void(0);" class="dropdown-item" (click)="updateAssignments()">Update
-                    Assignments</a>
+                  <!--<a href="javascript:void(0);" class="dropdown-item" (click)="updateAssignments()">Update
+                    Assignments</a>-->
                   <a href="javascript:void(0);" class="dropdown-item" (click)="closeCall()">Close Call</a>
                   <a href="javascript:void(0);" class="dropdown-item" (click)="editCall()">Edit Call</a>
                   <a href="javascript:void(0);" class="dropdown-item" (click)="viewCallForm()">View Call Form</a>
@@ -301,13 +301,13 @@
                 <table class="table table-centered">
                   <tbody>
                     <tr *ngFor="let call of (homeState$ | async).calls;">
-                      <td style="width: 20px;"><input type="checkbox" name="{{call.Cid}}"
+                      <td style="width: 20px;"><input type="checkbox" name="{{call.CallId}}"
                           (change)="changeCheckedCall($event)" [checked]="call.Selected"></td>
-                      <td>{{call.Num}}</td>
-                      <td>{{call.Nme}}</td>
+                      <td>{{call.Number}}</td>
+                      <td>{{call.Name}}</td>
                       <td [style.color]="call.PriorityColor">{{call.PriorityText}}</td>
-                      <td>{{call.Utc | rgTimeAgoUtc}}</td>
-                      <td style="font-size: 10px;">{{call.Add}}</td>
+                      <td>{{call.LoggedOnUtc | rgTimeAgoUtc}}</td>
+                      <td style="font-size: 10px;">{{call.Address}}</td>
                     </tr>
                   </tbody>
                 </table>

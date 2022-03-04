@@ -18,18 +18,16 @@ import {
 import * as HomeActions from "../../actions/home.actions";
 import { FormBuilder, FormGroup, Validators } from "@angular/forms";
 import { take } from "rxjs/operators";
-import { MapResult } from "src/app/core/models/mapResult";
 import * as L from "leaflet";
 import { environment } from "../../../../../environments/environment";
 import * as _ from "lodash";
-import { CallResult } from "src/app/core/models/callResult";
-import { CallTemplateResult } from "src/app/core/models/callTemplate";
-import { Call } from "src/app/core/models/call";
-import { GpsLocation } from "src/app/core/models/gpsLocation";
-import { ConnectionState, SignalRProvider } from "src/app/providers/signalr";
 import { VoiceState } from "src/app/features/voice/store/voice.store";
 import * as VoiceActions from "../../../voice/actions/voice.actions";
 import { Router } from "@angular/router";
+import { CallResultData, ConnectionState, GetCallTemplatesResultData, GpsLocation, MapDataAndMarkersData, SignalRService } from "@resgrid/ngx-resgridlib";
+import { Call } from "src/app/core/models/call";
+import { AuthState } from "src/app/features/auth/store/auth.store";
+import { HomeProvider } from "../../providers/home";
 
 @Component({
   selector: "app-dashboard",
@@ -38,10 +36,10 @@ import { Router } from "@angular/router";
 })
 export class DashboardPage implements AfterViewInit {
   public homeState$: Observable<HomeState | null>;
-  public mapData$: Observable<MapResult | null>;
-  public activeCallTemplate$: Observable<CallTemplateResult | null>;
+  public mapData$: Observable<MapDataAndMarkersData | null>;
+  public activeCallTemplate$: Observable<GetCallTemplatesResultData | null>;
   public newCallAddress$: Observable<GpsLocation | null>;
-  public newCall$: Observable<CallResult | null>;
+  public newCall$: Observable<CallResultData | null>;
   public breadCrumbItems: Array<{}>;
 
   @ViewChild("map") mapContainer;
@@ -53,7 +51,7 @@ export class DashboardPage implements AfterViewInit {
   public newCallMarker: L.Marker;
   public markers: any[];
   public selectedGroupName: string = "";
-
+  public auth: AuthState;
   public newCallForm: FormGroup;
   public unitGroups: string[];
 
@@ -61,9 +59,9 @@ export class DashboardPage implements AfterViewInit {
     public formBuilder: FormBuilder,
     private store: Store<HomeState>,
     private voiceStore: Store<VoiceState>,
-    private signalRProvider: SignalRProvider,
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private homeProvider: HomeProvider
   ) {
     this.homeState$ = this.store.select(selectHomeState);
     this.mapData$ = this.store.select(selectMapDataState);
@@ -216,11 +214,7 @@ export class DashboardPage implements AfterViewInit {
       { label: "Dashboard", active: true },
     ];
 
-    this.signalRProvider.connectionState$.subscribe(
-      (state: ConnectionState) => {}
-    );
-
-    this.signalRProvider.start();
+    this.homeProvider.startSignalR();
     this.store.dispatch(new VoiceActions.GetVoipInfo());
   }
 
@@ -241,7 +235,7 @@ export class DashboardPage implements AfterViewInit {
 
         if (selectedCall) {
           this.store.dispatch(
-            new HomeActions.ShowCallNotesModal(selectedCall.Cid)
+            new HomeActions.ShowCallNotesModal(selectedCall.CallId)
           );
         }
       });
@@ -256,7 +250,7 @@ export class DashboardPage implements AfterViewInit {
 
         if (selectedCall) {
           this.store.dispatch(
-            new HomeActions.ShowCallImagesModal(selectedCall.Cid)
+            new HomeActions.ShowCallImagesModal(selectedCall.CallId)
           );
         }
       });
@@ -271,7 +265,7 @@ export class DashboardPage implements AfterViewInit {
 
         if (selectedCall) {
           this.store.dispatch(
-            new HomeActions.ShowCallFilesModal(selectedCall.Cid)
+            new HomeActions.ShowCallFilesModal(selectedCall.CallId)
           );
         }
       });
@@ -289,7 +283,7 @@ export class DashboardPage implements AfterViewInit {
         const selectedCall = _.find(state.calls, ["Selected", true]);
 
         if (selectedCall) {
-          this.router.navigate(['/calls/edit-call', selectedCall.Cid, "2"]);
+          this.router.navigate(['/calls/edit-call', selectedCall.CallId, "2"]);
         }
       });
   }
@@ -472,7 +466,7 @@ export class DashboardPage implements AfterViewInit {
   }
 
   /* New Call Map func */
-  private setupNewCallMap(data: MapResult) {
+  private setupNewCallMap(data: MapDataAndMarkersData) {
     if (!this.newCallMap) {
       this.newCallMap = L.map(this.newCallMapContainer.nativeElement, {
         scrollWheelZoom: false,
@@ -562,7 +556,7 @@ export class DashboardPage implements AfterViewInit {
   /* New Call Map func end */
 
   /* Map func */
-  private processMapData(data: MapResult) {
+  private processMapData(data: MapDataAndMarkersData) {
     if (data) {
       this.setupNewCallMap(data);
 
@@ -634,11 +628,11 @@ export class DashboardPage implements AfterViewInit {
     }
   }
 
-  private getMapCenter(data: MapResult) {
+  private getMapCenter(data: MapDataAndMarkersData) {
     return [data.CenterLat, data.CenterLon];
   }
 
-  private getMapZoomLevel(data: MapResult): any {
+  private getMapZoomLevel(data: MapDataAndMarkersData): any {
     return data.ZoomLevel;
   }
   /* Map func end */

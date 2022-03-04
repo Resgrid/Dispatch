@@ -28,12 +28,9 @@ import {
 } from "src/app/store";
 import * as L from "leaflet";
 import { environment } from "../../../../../environments/environment";
-import { MapResult } from "src/app/core/models/mapResult";
-import { GpsLocation } from "src/app/core/models/gpsLocation";
-import { CallResult } from "src/app/core/models/callResult";
-import { CallDataResult } from "src/app/core/models/callDataResult";
-import { Call } from "src/app/core/models/call";
 import { take } from "rxjs/operators";
+import { CallResult, CallResultData, GetMapDataAndMarkersResult, GpsLocation, MapDataAndMarkersData } from '@resgrid/ngx-resgridlib';
+import { Call } from "src/app/core/models/call";
 
 @Component({
   selector: "app-edit-call",
@@ -47,13 +44,11 @@ export class EditCallPage implements AfterViewInit {
   private id: string;
   private source: number;
   private activatedRouteSub: any;
-  private mapData: MapResult;
   public editCallForm: FormGroup;
 
   public callsState$: Observable<CallsState | null>;
   public homeState$: Observable<HomeState | null>;
-  public editCall$: Observable<CallResult | null>;
-  public editCallData$: Observable<CallDataResult | null>;
+  public editCall$: Observable<CallResultData | null>;
 
   public selectedGroupName: string = "";
   public unitGroups: string[];
@@ -78,7 +73,6 @@ export class EditCallPage implements AfterViewInit {
     this.callsState$ = this.store.select(selectCallsState);
     this.homeState$ = this.store.select(selectHomeState);
     this.editCall$ = this.store.select(selectEditCallState);
-    this.editCallData$ = this.store.select(selectEditCallData);
 
     this.editCallForm = this.formBuilder.group({
       name: ["", Validators.required],
@@ -125,7 +119,8 @@ export class EditCallPage implements AfterViewInit {
           state.unitStatuses,
           state.rolesForGrid,
           state.groupsForGrid,
-          state.personnelForGrid
+          state.personnelForGrid,
+          state.mapData
         )
       );
 
@@ -161,59 +156,66 @@ export class EditCallPage implements AfterViewInit {
         this.selectedGroupName = "No Group";
       }
 
-      this.mapData = state.mapData;
       this.cdr.detectChanges();
     });
 
-    this.editCall$.subscribe((editCallData) => {
-      if (editCallData) {
-        this.form["name"].setValue(editCallData.Nme);
-        this.form["name"].patchValue(editCallData.Nme);
+    this.callsState$.subscribe((callsState) => {
+      if (callsState && callsState.callToEdit) {
+        const editCallData = callsState.callToEdit;
 
-        this.form["nature"].setValue(editCallData.Noc);
-        this.form["nature"].patchValue(editCallData.Noc);
+        this.form["name"].setValue(editCallData.Name);
+        this.form["name"].patchValue(editCallData.Name);
 
-        this.form["priority"].setValue(editCallData.Pri);
-        this.form["priority"].patchValue(editCallData.Pri);
+        this.form["nature"].setValue(editCallData.Nature);
+        this.form["nature"].patchValue(editCallData.Nature);
 
-        this.form["type"].setValue(editCallData.Typ);
-        this.form["type"].patchValue(editCallData.Typ);
+        this.form["priority"].setValue(editCallData.Priority);
+        this.form["priority"].patchValue(editCallData.Priority);
 
-        this.form["reportingPartyName"].setValue(editCallData.Rnm);
-        this.form["reportingPartyName"].patchValue(editCallData.Rnm);
+        this.form["type"].setValue(editCallData.Type);
+        this.form["type"].patchValue(editCallData.Type);
 
-        this.form["reportingPartyContact"].setValue(editCallData.Rci);
-        this.form["reportingPartyContact"].patchValue(editCallData.Rci);
+        this.form["reportingPartyName"].setValue(editCallData.ContactName);
+        this.form["reportingPartyName"].patchValue(editCallData.ContactName);
 
-        this.form["address"].setValue(editCallData.Add);
-        this.form["address"].patchValue(editCallData.Add);
+        this.form["reportingPartyContact"].setValue(editCallData.ContactInfo);
+        this.form["reportingPartyContact"].patchValue(editCallData.ContactInfo);
 
-        this.form["latitude"].setValue(editCallData.Gla);
-        this.form["latitude"].patchValue(editCallData.Gla);
+        this.form["address"].setValue(editCallData.Address);
+        this.form["address"].patchValue(editCallData.Address);
 
-        this.form["longitude"].setValue(editCallData.Glo);
-        this.form["longitude"].patchValue(editCallData.Glo);
+        this.form["latitude"].setValue(editCallData.Latitude);
+        this.form["latitude"].patchValue(editCallData.Latitude);
 
-        this.form["callId"].setValue(editCallData.Eid);
-        this.form["callId"].patchValue(editCallData.Eid);
+        this.form["longitude"].setValue(editCallData.Longitude);
+        this.form["longitude"].patchValue(editCallData.Longitude);
 
-        this.form["incidentId"].setValue("");
-        this.form["incidentId"].patchValue("");
+        this.form["callId"].setValue(editCallData.ExternalId);
+        this.form["callId"].patchValue(editCallData.ExternalId);
 
-        this.form["referenceId"].setValue(editCallData.Rid);
-        this.form["referenceId"].patchValue(editCallData.Rid);
+        this.form["incidentId"].setValue(editCallData.IncidentId);
+        this.form["incidentId"].patchValue(editCallData.IncidentId);
 
-        this.form["notes"].setValue(editCallData.Not);
-        this.form["notes"].patchValue(editCallData.Not);
+        this.form["referenceId"].setValue(editCallData.ReferenceId);
+        this.form["referenceId"].patchValue(editCallData.ReferenceId);
 
-        this.form["w3w"].setValue(editCallData.w3w);
-        this.form["w3w"].patchValue(editCallData.w3w);
+        this.form["notes"].setValue(editCallData.Note);
+        this.form["notes"].patchValue(editCallData.Note);
 
-        this.form["dispatchOn"].setValue(editCallData.Don);
-        this.form["dispatchOn"].patchValue(editCallData.Don);
+        this.form["w3w"].setValue(editCallData.What3Words);
+        this.form["w3w"].patchValue(editCallData.What3Words);
 
-        this.setupNewCallMap(this.mapData);
-        this.addPinToMap(editCallData.Gla, editCallData.Glo);
+        this.form["dispatchOn"].setValue(editCallData.DispatchedOnUtc);
+        this.form["dispatchOn"].patchValue(editCallData.DispatchedOnUtc);
+
+        if (editCallData.Latitude && editCallData.Longitude) {
+          this.setupNewCallMap(parseInt(editCallData.Latitude), parseInt(editCallData.Longitude), 13);
+          this.addPinToMap(editCallData.Latitude, editCallData.Longitude);
+        } else {
+          this.setupNewCallMap(parseInt(callsState.mapData.CenterLat), parseInt(callsState.mapData.CenterLon), parseInt(callsState.mapData.ZoomLevel));
+        }
+
+        this.cdr.detectChanges();
       }
     });
   }
@@ -279,7 +281,7 @@ export class EditCallPage implements AfterViewInit {
 
     this.store.select(selectCallsState).pipe(take(1)).subscribe((state) => {
       if (state.callToEdit) {
-        editCall.Id = state.callToEdit.Cid;
+        editCall.Id = state.callToEdit.CallId;
       }
 
       if (state && state.personnelForGrid) {
@@ -347,7 +349,7 @@ export class EditCallPage implements AfterViewInit {
   public findCoordinates() {}
 
   /* New Call Map func */
-  private setupNewCallMap(data: MapResult) {
+  private setupNewCallMap(latitude: number, longitude: number, zoom: number) {
     if (!this.newCallMap) {
       this.newCallMap = L.map(this.editCallMapContainer.nativeElement, {
         scrollWheelZoom: false,
@@ -363,8 +365,7 @@ export class EditCallPage implements AfterViewInit {
       ).addTo(this.newCallMap);
 
       this.newCallMap.scrollWheelZoom.disable();
-      var mapCenter = this.getMapCenter(data);
-      this.newCallMap.setView(mapCenter, this.getMapZoomLevel(data));
+      this.newCallMap.setView([latitude, longitude], zoom);
 
       this.newCallMap.on("click", (e) => {
         var coord = e.latlng;
@@ -421,11 +422,11 @@ export class EditCallPage implements AfterViewInit {
     this.updatePersonnelDistances(new GpsLocation(lat, lng));
   }
 
-  private getMapCenter(data: MapResult) {
-    return [data.CenterLat, data.CenterLon];
+  private getMapCenter(data: CallResultData) {
+    return [data.Latitude, data.Longitude];
   }
 
-  private getMapZoomLevel(data: MapResult): any {
+  private getMapZoomLevel(data: MapDataAndMarkersData): any {
     return data.ZoomLevel;
   }
 

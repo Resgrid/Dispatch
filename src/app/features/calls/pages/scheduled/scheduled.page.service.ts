@@ -5,15 +5,15 @@ import { BehaviorSubject, Observable, of, Subject } from "rxjs";
 import { debounceTime, delay, switchMap, tap } from "rxjs/operators";
 import * as CallsActions from "../../actions/calls.actions";
 import { SortDirection } from "../../directives/calls-sortable.directive";
-import { CallResult } from "src/app/core/models/callResult";
 import { Store } from "@ngrx/store";
 import { CallsState } from "../../store/calls.store";
-import { getPendingScheduledCalls } from "../../reducers/calls.reducer";
 import { selectCallsState } from "src/app/store";
+import { CallResultData } from '@resgrid/ngx-resgridlib';
+import { CallLocalResult } from "src/app/core/models/callLocalResult";
 
 // Search Data
 export interface SearchResult {
-  calls: CallResult[];
+  calls: CallLocalResult[];
   total: number;
 }
 
@@ -39,10 +39,10 @@ function compare(v1, v2) {
  * @param direction Sort direction Ascending or Descending
  */
 function sort(
-  calls: CallResult[],
+  calls: CallLocalResult[],
   column: string,
   direction: string
-): CallResult[] {
+): CallLocalResult[] {
   if (direction === "") {
     return calls;
   } else {
@@ -58,12 +58,12 @@ function sort(
  * @param tables Table field value fetch
  * @param term Search the value
  */
-function matches(call: CallResult, term: string) {
+function matches(call: CallLocalResult, term: string) {
   return (
-    call.Nme.toLowerCase().includes(term) ||
-    call.Noc.toLowerCase().includes(term) ||
-    call.Not.toLowerCase().includes(term) ||
-    call.Num.toLowerCase().includes(term) ||
+    call.Name.toLowerCase().includes(term) ||
+    call.Nature.toLowerCase().includes(term) ||
+    call.Note.toLowerCase().includes(term) ||
+    call.Number.toLowerCase().includes(term) ||
     call.PriorityText.toLowerCase().includes(term)
   );
 }
@@ -77,10 +77,10 @@ export class ScheduledCallsPageService {
   // tslint:disable-next-line: variable-name
   private _search$ = new Subject<void>();
   // tslint:disable-next-line: variable-name
-  private _calls$ = new BehaviorSubject<CallResult[]>([]);
+  private _calls$ = new BehaviorSubject<CallLocalResult[]>([]);
   private _total$ = new BehaviorSubject<number>(0);
-  private _storeCalls$: Observable<CallResult[] | null>;
-  private _pendingCalls: CallResult[] = new Array();
+  private _storeCalls$: Observable<CallLocalResult[] | null>;
+  private _pendingCalls: CallLocalResult[] = new Array();
 
   // tslint:disable-next-line: variable-name
   private _state: State = {

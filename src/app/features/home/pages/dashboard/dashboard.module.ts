@@ -7,11 +7,11 @@ import { DashboardPage } from './dashboard.page';
 import { UnitListComponent } from '../../components/unitsList/units-list';
 import { DigitalClockComponent } from '../../components/digital-clock/digital-clock.component';
 import { CallsListComponent } from '../../components/calls-list/calls-list';
-import { DirectivesModule } from 'src/app/directives/directives.module';
-import { NgbAlertModule, NgbDropdownModule, NgbNavModule, NgbTabsetModule, NgbTooltipModule } from '@ng-bootstrap/ng-bootstrap';
+import { NgbAlertModule, NgbDropdownModule, NgbNavModule, NgbTooltipModule } from '@ng-bootstrap/ng-bootstrap';
 import { PerfectScrollbarConfigInterface, PerfectScrollbarModule, PERFECT_SCROLLBAR_CONFIG } from 'ngx-perfect-scrollbar';
 import { LeafletModule } from '@asymmetrik/ngx-leaflet';
 import { UiModule } from 'src/app/shared/ui/ui.module';
+import { NgxResgridLibModule } from '@resgrid/ngx-resgridlib';
 
 const DEFAULT_PERFECT_SCROLLBAR_CONFIG: PerfectScrollbarConfigInterface = {
   suppressScrollX: true,
@@ -23,8 +23,8 @@ const DEFAULT_PERFECT_SCROLLBAR_CONFIG: PerfectScrollbarConfigInterface = {
     CommonModule,
     FormsModule,
     NgbAlertModule,
+    NgxResgridLibModule,
     ReactiveFormsModule,
-    DirectivesModule,
     Ng2SearchPipeModule,
     NgbNavModule,
     NgbDropdownModule,

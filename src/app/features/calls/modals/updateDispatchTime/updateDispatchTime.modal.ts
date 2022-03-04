@@ -6,7 +6,6 @@ import { selectCallsState } from "src/app/store";
 import { take } from "rxjs/operators";
 import { Actions, ofType } from "@ngrx/effects";
 import * as _ from 'lodash';
-import { CallTemplateResult } from "src/app/core/models/callTemplate";
 import { CallsState } from "../../store/calls.store";
 import * as CallsActions from "../../actions/calls.actions";
 import { FormBuilder, FormGroup, Validators } from "@angular/forms";

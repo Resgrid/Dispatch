@@ -7,24 +7,28 @@ import { from, Observable, of } from "rxjs";
 import { HomeProvider } from "../providers/home";
 import { NgbModal, NgbModalRef } from "@ng-bootstrap/ng-bootstrap";
 import { SetUnitStatusModalComponent } from "../modals/setUnitStatus/setUnitStatus.modal";
-import { DispatchProvider } from "src/app/providers/dispatch";
-import { UnitStatusProvider } from "src/app/providers/unitStatus";
 import { AlertProvider } from "src/app/providers/alert";
-import { UnitsProvider } from "src/app/providers/units";
 import { HomeState } from "../store/home.store";
-import { CallsProvider } from "src/app/providers/calls";
 import { CloseCallModalComponent } from "../modals/closeCall/closeCall.modal";
-import { MapProvider } from "src/app/providers/map";
 import { SelectTemplateModalComponent } from "../modals/selectTemplate/selectTemplate.modal";
-import { LocationProvider } from "src/app/providers/location";
 import { CallNotesModalComponent } from "../modals/callNotes/callNotes.modal";
 import { CallImagesModalComponent } from "../modals/callImages/callImages.modal";
 import { CallFilesModalComponent } from "../modals/callFiles/callFiles.modal";
-import { GpsLocation } from "src/app/core/models/gpsLocation";
 import { PersonnelForCallResult } from "src/app/core/models/personnelForCallResult";
 import { CallFormModalComponent } from "../modals/callForm/callForm.modal";
-import { VoiceProvider } from "src/app/providers/voice";
 import { LoadingProvider } from "src/app/providers/loading";
+import {
+  CallFilesService,
+  CallNotesService,
+  CallsService,
+  DispatchService,
+  GpsLocation,
+  LocationService,
+  MappingService,
+  UnitsService,
+  UnitStatusService,
+  VoiceService,
+} from '@resgrid/ngx-resgridlib';
 
 @Injectable()
 export class HomeEffects {
@@ -61,11 +65,9 @@ export class HomeEffects {
 
   @Effect({ dispatch: false })
   loadingFail$ = this.actions$.pipe(
-    ofType<homeAction.LoadingFail>(
-      homeAction.HomeActionTypes.LOADING_FAIL
-    ),
+    ofType<homeAction.LoadingFail>(homeAction.HomeActionTypes.LOADING_FAIL),
     tap(async (action) => {
-      this.loadingProvider.hide()
+      this.loadingProvider.hide();
       this.alertProvider.showErrorAlert(
         "Unable to load data",
         "",
@@ -80,10 +82,10 @@ export class HomeEffects {
       homeAction.HomeActionTypes.SHOW_SETUNITSTATUSMODAL
     ),
     mergeMap((action) =>
-      this.dispatchProvider.getSetUnitStatusesModalPayload(action.unitId).pipe(
+      this.dispatchProvider.getSetUnitStatusData(action.unitId).pipe(
         map((data) => ({
           type: homeAction.HomeActionTypes.OPEN_SETUNITSTATUSMODAL,
-          payload: data,
+          payload: data.Data,
         }))
       )
     )
@@ -104,13 +106,22 @@ export class HomeEffects {
     ),
     mergeMap((action) =>
       this.unitStatusProvider
-        .sendUnitStatus({
-          UnitId: action.payload.unitId,
-          StateType: action.payload.stateType,
+        .saveUnitStatus({
+          Id: action.payload.unitId,
+          Type: action.payload.stateType,
           RespondingTo: action.payload.destination,
-          UtcTimestamp: action.payload.date.toUTCString().replace("UTC", "GMT"),
-          LocalTimestamp: action.payload.date.toISOString(),
+          TimestampUtc: action.payload.date.toUTCString().replace("UTC", "GMT"),
+          Timestamp: action.payload.date.toISOString(),
           Note: action.payload.note,
+          Latitude: "",
+          Longitude: "",
+          Accuracy: "",
+          Altitude: "",
+          AltitudeAccuracy: "",
+          Speed: "",
+          Heading: "",
+          EventId: "",
+          Roles: [],
         })
         .pipe(
           // If successful, dispatch success action with result
@@ -149,11 +160,11 @@ export class HomeEffects {
       homeAction.HomeActionTypes.SAVE_UNITSTATE_SUCCESS
     ),
     mergeMap((action) =>
-      this.unitsProvider.getUnitStatusesFull().pipe(
+      this.unitStatusProvider.getAllUnitStatuses().pipe(
         // If successful, dispatch success action with result
         map((data) => ({
           type: homeAction.HomeActionTypes.UPDATE_UNITSTATES,
-          payload: data,
+          payload: data.Data,
         })),
         tap((data) => {
           this.alertProvider.showAutoCloseSuccessAlert(
@@ -174,11 +185,11 @@ export class HomeEffects {
       homeAction.HomeActionTypes.GET_LATESTUNITSTATES
     ),
     mergeMap((action) =>
-      this.unitsProvider.getUnitStatusesFull().pipe(
+      this.unitStatusProvider.getAllUnitStatuses().pipe(
         // If successful, dispatch success action with result
         map((data) => ({
           type: homeAction.HomeActionTypes.UPDATE_UNITSTATES,
-          payload: data,
+          payload: data.Data,
         })),
         // If request fails, dispatch failed action
         catchError(() =>
@@ -266,11 +277,11 @@ export class HomeEffects {
   loadingMap$: Observable<Action> = this.actions$.pipe(
     ofType<homeAction.LoadingMap>(homeAction.HomeActionTypes.LOADING_MAP),
     mergeMap((action) =>
-      this.mapProvider.getMapData().pipe(
+      this.mapProvider.getMapDataAndMarkers().pipe(
         // If successful, dispatch success action with result
         map((data) => ({
           type: homeAction.HomeActionTypes.LOADING_MAP_SUCCESS,
-          payload: data,
+          payload: data.Data,
         })),
         // If request fails, dispatch failed action
         catchError(() =>
@@ -285,7 +296,9 @@ export class HomeEffects {
     ofType<homeAction.LoadingMapSuccess>(
       homeAction.HomeActionTypes.LOADING_MAP_SUCCESS
     ),
-    tap((action) => {this.loadingProvider.hide();})
+    tap((action) => {
+      this.loadingProvider.hide();
+    })
   );
 
   @Effect({ dispatch: false })
@@ -294,7 +307,7 @@ export class HomeEffects {
       homeAction.HomeActionTypes.LOADING_MAP_FAIL
     ),
     tap(async (action) => {
-      this.loadingProvider.hide()
+      this.loadingProvider.hide();
       this.alertProvider.showErrorAlert(
         "Unable to load map data",
         "",
@@ -309,10 +322,10 @@ export class HomeEffects {
       homeAction.HomeActionTypes.SHOW_SELECTCALLTEMPLATEMODAL
     ),
     mergeMap((action) =>
-      this.dispatchProvider.getcallTemplatesPayload().pipe(
+      this.dispatchProvider.getCallTemplates().pipe(
         map((data) => ({
           type: homeAction.HomeActionTypes.OPEN_SELECTCALLTEMPLATEMODAL,
-          payload: data,
+          payload: data.Data,
         }))
       )
     )
@@ -428,11 +441,11 @@ export class HomeEffects {
       homeAction.HomeActionTypes.GET_LATESTPERSONNELDATA
     ),
     mergeMap((action) =>
-      this.dispatchProvider.getPersonnelForCallGridPayload().pipe(
+      this.dispatchProvider.getPersonnelForCallGrid().pipe(
         // If successful, dispatch success action with result
         map((data) => ({
           type: homeAction.HomeActionTypes.UPDATE_PERSONNELDATA,
-          payload: data,
+          payload: data.Data,
         })),
         // If request fails, dispatch failed action
         catchError(() =>
@@ -452,7 +465,7 @@ export class HomeEffects {
         // If successful, dispatch success action with result
         map((data) => ({
           type: homeAction.HomeActionTypes.UPDATE_CALLS,
-          payload: data,
+          payload: data.Data,
         })),
         // If request fails, dispatch failed action
         catchError(() =>
@@ -468,10 +481,10 @@ export class HomeEffects {
       homeAction.HomeActionTypes.SHOW_CALLNOTESMODAL
     ),
     mergeMap((action) =>
-      this.callsProvider.getCallNotes(action.callId).pipe(
+      this.callNotesProvider.getCallNotes(action.callId).pipe(
         map((data) => ({
           type: homeAction.HomeActionTypes.OPEN_CALLNOTESMODAL,
-          payload: data,
+          payload: data.Data,
         }))
       )
     )
@@ -489,7 +502,7 @@ export class HomeEffects {
   saveCallNote$: Observable<Action> = this.actions$.pipe(
     ofType<homeAction.SaveCallNote>(homeAction.HomeActionTypes.SAVE_CALLNOTE),
     mergeMap((action) =>
-      this.callsProvider
+      this.callNotesProvider
         .saveCallNote(action.callId, action.userId, action.callNote, null)
         .pipe(
           // If successful, dispatch success action with result
@@ -513,10 +526,10 @@ export class HomeEffects {
       homeAction.HomeActionTypes.SHOW_CALLIMAGESMODAL
     ),
     mergeMap((action) =>
-      this.callsProvider.getCallImages(action.callId, true).pipe(
+      this.callFilesProvider.getCallImages(action.callId, true).pipe(
         map((data) => ({
           type: homeAction.HomeActionTypes.OPEN_CALLIMAGESMODAL,
-          payload: data,
+          payload: data.Data,
         }))
       )
     )
@@ -536,7 +549,7 @@ export class HomeEffects {
       homeAction.HomeActionTypes.UPLOAD_CALLIMAGE
     ),
     mergeMap((action) =>
-      this.callsProvider
+      this.callFilesProvider
         .saveCallImage(
           action.callId,
           action.userId,
@@ -567,10 +580,10 @@ export class HomeEffects {
       homeAction.HomeActionTypes.SHOW_CALLFILESMODAL
     ),
     mergeMap((action) =>
-      this.callsProvider.getCallFiles(action.callId, false).pipe(
+      this.callFilesProvider.getCallFiles(action.callId, false).pipe(
         map((data) => ({
           type: homeAction.HomeActionTypes.OPEN_CALLFILESMODAL,
-          payload: data,
+          payload: data.Data,
         }))
       )
     )
@@ -590,7 +603,7 @@ export class HomeEffects {
       homeAction.HomeActionTypes.UPLOAD_CALLFILE
     ),
     mergeMap((action) =>
-      this.callsProvider
+      this.callFilesProvider
         .saveCallFile(
           action.callId,
           action.userId,
@@ -684,23 +697,12 @@ export class HomeEffects {
     exhaustMap((data) => this.runModal(CallFormModalComponent, "xl"))
   );
 
-  @Effect()
-  getVoipInfo$: Observable<Action> = this.actions$.pipe(
-    ofType<homeAction.GetVoipInfo>(homeAction.HomeActionTypes.GET_VOIPINFO),
-    mergeMap((action) =>
-      this.voiceProvider.getVoiceSettings().pipe(
-        // If successful, dispatch success action with result
-        map((data) => ({
-          type: homeAction.HomeActionTypes.GET_VOIPINFO_SUCCESS,
-          payload: data,
-        })),
-        tap((data) => {}),
-        // If request fails, dispatch failed action
-        catchError(() =>
-          of({ type: homeAction.HomeActionTypes.GET_VOIPINFO_FAIL })
-        )
-      )
-    )
+  @Effect({ dispatch: false })
+  setCallFormData$: Observable<Action> = this.actions$.pipe(
+    ofType<homeAction.SetNewCallFormData>(
+      homeAction.HomeActionTypes.SET_NEWCALLFORMDATA
+    ),
+    tap((data) => this.closeModal())
   );
 
   constructor(
@@ -708,14 +710,16 @@ export class HomeEffects {
     private store: Store<HomeState>,
     private homeProvider: HomeProvider,
     private modalService: NgbModal,
-    private dispatchProvider: DispatchProvider,
-    private unitStatusProvider: UnitStatusProvider,
+    private dispatchProvider: DispatchService,
+    private unitStatusProvider: UnitStatusService,
     private alertProvider: AlertProvider,
-    private unitsProvider: UnitsProvider,
-    private callsProvider: CallsProvider,
-    private mapProvider: MapProvider,
-    private locationProvider: LocationProvider,
-    private voiceProvider: VoiceProvider,
+    private unitsProvider: UnitsService,
+    private callsProvider: CallsService,
+    private callNotesProvider: CallNotesService,
+    private callFilesProvider: CallFilesService,
+    private mapProvider: MappingService,
+    private locationProvider: LocationService,
+    private voiceProvider: VoiceService,
     private loadingProvider: LoadingProvider
   ) {}
 

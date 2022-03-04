@@ -1,6 +1,6 @@
 <div>
   <div class="modal-header">
-    <h5 class="modal-title" id="composemodalTitle">Call Notes</h5>
+    <h5 class="modal-title" id="composemodalTitle">Call Files</h5>
     <button type="button" class="close" (click)="dismiss()" aria-label="Close">
       <span aria-hidden="true">&times;</span>
     </button>
@@ -22,20 +22,20 @@
             <tr *ngFor="let file of (homeState$ | async).callFiles">
               <td>
                 <a class="text-dark font-weight-bold">
-                  <ngb-highlight [result]="file.Nme" [term]="searchTerm"></ngb-highlight>
+                  <ngb-highlight [result]="file.Name" [term]="searchTerm"></ngb-highlight>
                 </a>
               </td>
               <td>
-                <ngb-highlight [result]="file.Fln" [term]="searchTerm"></ngb-highlight>
+                <ngb-highlight [result]="file.FileName" [term]="searchTerm"></ngb-highlight>
               </td>
               <td>
-                <ngb-highlight [result]="file.Sze" [term]="searchTerm"></ngb-highlight>
+                <ngb-highlight [result]="file.Fize" [term]="searchTerm"></ngb-highlight>
               </td>
               <td>
                 <ngb-highlight [result]="file.Mime" [term]="searchTerm"></ngb-highlight>
               </td>
               <td>
-                <button class="btn btn-light btn-rounded">Download <i class="mdi mdi-download ml-2"></i></button>
+                <a href="{{file.Url}}" class="btn btn-light btn-rounded">Download</a>
               </td>
             </tr>
           </tbody>

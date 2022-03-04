@@ -1,11 +1,12 @@
 import { Action } from '@ngrx/store';
-import { DepartmentVoiceChannelResult } from 'src/app/core/models/departmentVoiceChannelResult';
-import { DepartmentVoiceResult } from 'src/app/core/models/departmentVoiceResult';
+import { DepartmentVoiceChannelResultData, DepartmentVoiceResultData } from '@resgrid/ngx-resgridlib';
+import { StreamManager } from 'openvidu-browser';
 
 export enum VoiceActionTypes {
   GET_VOIPINFO = '[VOICE] GET_VOIPINFO',
   GET_VOIPINFO_SUCCESS = '[VOICE] GET_VOIPINFO_SUCCESS',
   GET_VOIPINFO_FAIL = '[VOICE] GET_VOIPINFO_FAIL',
+  START_VOIP_SERVICES = '[VOICE] START_VOIP_SERVICES',
   VOIP_CALL_PROGRESS = '[VOICE] VOIP_CALL_PROGRESS',
   VOIP_CALL_FAILED = '[VOICE] VOIP_CALL_FAILED',
   VOIP_CALL_ENDED = '[VOICE] VOIP_CALL_ENDED',
@@ -21,6 +22,12 @@ export enum VoiceActionTypes {
   SET_NOCHANNEL = '[VOICE] SET_NOCHANNEL',
   SET_ACTIVECHANNEL = '[VOICE] SET_ACTIVECHANNEL',
   VOIP_PHONE_DISCONNECT = '[VOICE] VOIP_PHONE_DISCONNECT',
+  ADD_OPENVIDU_STREAM = '[VOICE] ADD_OPENVIDU_STREAM',
+  REMOVE_OPENVIDU_STREAM = '[VOICE] REMOVE_OPENVIDU_STREAM',
+  DONE = '[VOICE] DONE',
+  SET_CURRENT_VOICE_STATE = '[VOICE] SET_CURRENT_VOICE_STATE',
+  INCREMENT_PARTICIPANTS = '[VOICE] INCREMENT_PARTICIPANTS',
+  DECREMENT_PARTICIPANTS = '[VOICE] DECREMENT_PARTICIPANTS',
 }
 
 export class GetVoipInfo implements Action {
@@ -30,12 +37,17 @@ export class GetVoipInfo implements Action {
 
 export class GetVoipInfoSuccess implements Action {
   readonly type = VoiceActionTypes.GET_VOIPINFO_SUCCESS;
-  constructor(public payload: DepartmentVoiceResult) {}
+  constructor(public payload: DepartmentVoiceResultData) {}
 }
 
 export class GetVoipInfoFail implements Action {
   readonly type = VoiceActionTypes.GET_VOIPINFO_FAIL;
   constructor() {}
+}
+
+export class StartVoipServices implements Action {
+  readonly type = VoiceActionTypes.START_VOIP_SERVICES;
+  constructor(public payload: DepartmentVoiceResultData) {}
 }
 
 export class VoipCallProgress implements Action {
@@ -105,7 +117,7 @@ export class SetNoChannel implements Action {
 
 export class SetActiveChannel implements Action {
   readonly type = VoiceActionTypes.SET_ACTIVECHANNEL;
-  constructor(public channel: DepartmentVoiceChannelResult) {}
+  constructor(public channel: DepartmentVoiceChannelResultData) {}
 }
 
 export class DisconnectActiveCall implements Action {
@@ -113,6 +125,59 @@ export class DisconnectActiveCall implements Action {
   constructor() {}
 }
 
-export type VoiceActionsUnion = GetVoipInfo | GetVoipInfoSuccess | GetVoipInfoFail | VoipCallProgress | VoipCallFailed | VoipCallEnded | 
-VoipCallConnected | VoipPhoneConnected | VoipPhoneDisconnected | VoipPhoneSipRegistered | VoipPhoneSipUnregistered |
-VoipPhoneSipRegisterFailed | VoipPhoneNewSession | StartTransmitting | StopTransmitting | SetNoChannel | SetActiveChannel | DisconnectActiveCall;
+export class AddOpenViduStream implements Action {
+  readonly type = VoiceActionTypes.ADD_OPENVIDU_STREAM;
+  constructor(public stream: StreamManager) {}
+}
+
+export class RemoveOpenViduStream implements Action {
+  readonly type = VoiceActionTypes.REMOVE_OPENVIDU_STREAM;
+  constructor(public stream: StreamManager) {}
+}
+
+export class SetCurrentVoiceState implements Action {
+  readonly type = VoiceActionTypes.SET_CURRENT_VOICE_STATE;
+  constructor(public state: string) {}
+}
+
+export class IncrementParticipants implements Action {
+  readonly type = VoiceActionTypes.INCREMENT_PARTICIPANTS;
+  constructor() {}
+}
+
+export class DecrementParticipants implements Action {
+  readonly type = VoiceActionTypes.DECREMENT_PARTICIPANTS;
+  constructor() {}
+}
+
+export class Done implements Action {
+  readonly type = VoiceActionTypes.DONE;
+  constructor() {}
+}
+
+export type VoiceActionsUnion =
+  | GetVoipInfo
+  | GetVoipInfoSuccess
+  | GetVoipInfoFail
+  | VoipCallProgress
+  | VoipCallFailed
+  | VoipCallEnded
+  | VoipCallConnected
+  | VoipPhoneConnected
+  | VoipPhoneDisconnected
+  | VoipPhoneSipRegistered
+  | VoipPhoneSipUnregistered
+  | VoipPhoneSipRegisterFailed
+  | VoipPhoneNewSession
+  | StartTransmitting
+  | StopTransmitting
+  | SetNoChannel
+  | SetActiveChannel
+  | DisconnectActiveCall
+  | StartVoipServices
+  | AddOpenViduStream
+  | RemoveOpenViduStream
+  | SetCurrentVoiceState
+  | Done
+  | IncrementParticipants
+  | DecrementParticipants;

@@ -6,8 +6,6 @@ import { ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { HomeRoutingModule } from './home-routing.module';
 import { reducer } from './reducers/home.reducer';
 import { HomeEffects } from './effects/home.effect';
-import { UnitListComponent } from './components/unitsList/units-list';
-import { DirectivesModule } from 'src/app/directives/directives.module';
 import { NgbAlertModule, NgbDropdownModule, NgbNavModule, NgbPaginationModule, NgbTooltipModule, NgbTypeaheadModule } from '@ng-bootstrap/ng-bootstrap';
 import { Ng2SearchPipeModule } from 'ng2-search-filter';
 import { PerfectScrollbarModule } from 'ngx-perfect-scrollbar';
@@ -22,6 +20,7 @@ import { CallImagesModalComponent } from './modals/callImages/callImages.modal';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { CallFilesModalComponent } from './modals/callFiles/callFiles.modal';
 import { CallFormModalComponent } from './modals/callForm/callForm.modal';
+import { NgxResgridLibModule } from '@resgrid/ngx-resgridlib';
 
 @NgModule({
   declarations: [
@@ -38,7 +37,7 @@ import { CallFormModalComponent } from './modals/callForm/callForm.modal';
     FormsModule,
     ReactiveFormsModule,
     HomeRoutingModule,
-    DirectivesModule,
+    NgxResgridLibModule,
     NgbAlertModule,
     Ng2SearchPipeModule,
     NgbNavModule,

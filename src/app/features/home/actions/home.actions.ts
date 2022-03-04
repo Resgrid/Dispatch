@@ -1,15 +1,8 @@
 import { Action } from '@ngrx/store';
+import { CallFileResultData, CallNoteResultData, CallResultData, DepartmentVoiceResultData, GetCallTemplatesResultData, GpsLocation, MapDataAndMarkersData, UnitStatusResultData } from '@resgrid/ngx-resgridlib';
 import { Call } from 'src/app/core/models/call';
-import { CallFileResult } from 'src/app/core/models/callFileResult';
-import { CallNoteResult } from 'src/app/core/models/callNoteResult';
-import { CallResult } from 'src/app/core/models/callResult';
-import { CallTemplateResult } from 'src/app/core/models/callTemplate';
-import { CallTypeResult } from 'src/app/core/models/callTypeResult';
-import { DepartmentVoiceResult } from 'src/app/core/models/departmentVoiceResult';
-import { GpsLocation } from 'src/app/core/models/gpsLocation';
-import { MapResult } from 'src/app/core/models/mapResult';
 import { PersonnelForCallResult } from 'src/app/core/models/personnelForCallResult';
-import { UnitStatusFullResult } from 'src/app/core/models/unitStatusFullResult';
+import { UnitStatusResult } from 'src/app/core/models/unitStatusResult';
 import { DashboardPayload } from '../models/dashboardPayload';
 import { SaveCloseCallPayload } from '../models/saveCloseCallPayload';
 import { SetUnitStateModalData } from '../models/setUnitStateModalData';
@@ -75,20 +68,7 @@ export enum HomeActionTypes {
   UPDATE_PERSONANDUNITS_DISTANCE = '[HOME] UPDATE_PERSONANDUNITS_DISTANCE',
   GET_UPDATEDPERSONANDUNITS_DISTANCE = '[HOME] GET_UPDATEDPERSONANDUNITS_DISTANCE',
   OPEN_CALLFORMMODAL = '[HOME] OPEN_CALLFORMMODAL',
-  SET_NEWCALLFORMDATA = '[HOME] SET_NEWCALLFORMDATA',
-  GET_VOIPINFO = '[HOME] GET_VOIPINFO',
-  GET_VOIPINFO_SUCCESS = '[HOME] GET_VOIPINFO_SUCCESS',
-  GET_VOIPINFO_FAIL = '[HOME] GET_VOIPINFO_FAIL',
-  VOIP_CALL_PROGRESS = '[HOME] VOIP_CALL_PROGRESS',
-  VOIP_CALL_FAILED = '[HOME] VOIP_CALL_FAILED',
-  VOIP_CALL_ENDED = '[HOME] VOIP_CALL_ENDED',
-  VOIP_CALL_CONNECTED = '[HOME] VOIP_CALL_CONNECTED',
-  VOIP_PHONE_CONNECTED = '[HOME] VOIP_PHONE_CONNECTED',
-  VOIP_PHONE_DISCONNECTED = '[HOME] VOIP_PHONE_DISCONNECTED',
-  VOIP_PHONE_NEWSESSION = '[HOME] VOIP_PHONE_NEWSESSION',
-  VOIP_PHONE_SIPREGISTERED = '[HOME] VOIP_PHONE_SIPREGISTERED',
-  VOIP_PHONE_SIPUNREGISTERED = '[HOME] VOIP_PHONE_SIPUNREGISTERED',
-  VOIP_PHONE_SIPREGISTERFAILED = '[HOME] VOIP_PHONE_SIPREGISTERFAILED',
+  SET_NEWCALLFORMDATA = '[HOME] SET_NEWCALLFORMDATA'
 }
 
 // Home
@@ -116,7 +96,7 @@ export class LoadingMap implements Action {
 
 export class LoadingMapSuccess implements Action {
   readonly type = HomeActionTypes.LOADING_MAP_SUCCESS;
-  constructor(public payload: MapResult) {}
+  constructor(public payload: MapDataAndMarkersData) {}
 }
 
 export class LoadingMapFail implements Action {
@@ -127,7 +107,7 @@ export class LoadingMapFail implements Action {
 // Set Unit State Modal
 export class ShowSetUnitStateModal implements Action {
   readonly type = HomeActionTypes.SHOW_SETUNITSTATUSMODAL;
-  constructor(public unitId: number) {}
+  constructor(public unitId: string) {}
 }
 
 export class OpenSetUnitStateModal implements Action {
@@ -162,12 +142,12 @@ export class GetLatestUnitStates implements Action {
 
 export class UpdateUnitStates implements Action {
   readonly type = HomeActionTypes.UPDATE_UNITSTATES;
-  constructor(public payload: UnitStatusFullResult[]) {}
+  constructor(public payload: UnitStatusResultData[]) {}
 }
 
 export class UpdateSelectUnit implements Action {
   readonly type = HomeActionTypes.UPDATE_SELECTUNIT;
-  constructor(public unitId: number, public checked: boolean) {}
+  constructor(public unitId: string, public checked: boolean) {}
 }
 
 export class UpdateSelectedCall implements Action {
@@ -197,7 +177,7 @@ export class ShowCloseCallModal implements Action {
 
 export class UpdateCalls implements Action {
   readonly type = HomeActionTypes.UPDATE_CALLS;
-  constructor(public payload: CallResult[]) {}
+  constructor(public payload: CallResultData[]) {}
 }
 
 export class UpdateSelectedDispatchPerson implements Action {
@@ -207,17 +187,17 @@ export class UpdateSelectedDispatchPerson implements Action {
 
 export class UpdateSelectedDispatchGroup implements Action {
   readonly type = HomeActionTypes.UPDATE_SELECTEDDISPATCHGROUP;
-  constructor(public groupId: number, public checked: boolean) {}
+  constructor(public groupId: string, public checked: boolean) {}
 }
 
 export class UpdateSelectedDispatchRole implements Action {
   readonly type = HomeActionTypes.UPDATE_SELECTEDDISPATCHROLE;
-  constructor(public roleId: number, public checked: boolean) {}
+  constructor(public roleId: string, public checked: boolean) {}
 }
 
 export class UpdateSelectedDispatchRoleUnit implements Action {
   readonly type = HomeActionTypes.UPDATE_SELECTEDDISPATCHUNIT;
-  constructor(public unitId: number, public checked: boolean) {}
+  constructor(public unitId: string, public checked: boolean) {}
 }
 
 export class UpdateNewCallLocation implements Action {
@@ -232,12 +212,12 @@ export class ShowSelectCallTemplateModal implements Action {
 
 export class OpenSelectCallTemplateModal implements Action {
   readonly type = HomeActionTypes.OPEN_SELECTCALLTEMPLATEMODAL;
-  constructor(public payload: CallTemplateResult[]) {}
+  constructor(public payload: GetCallTemplatesResultData[]) {}
 }
 
 export class ApplyCallTemplate implements Action {
   readonly type = HomeActionTypes.UPDATE_APPLYCALLTEMPLATE;
-  constructor(public payload: CallTemplateResult) {}
+  constructor(public payload: GetCallTemplatesResultData) {}
 }
 
 export class GetCoordinatesForAddress implements Action {
@@ -302,7 +282,7 @@ export class ShowCallNotesModal implements Action {
 
 export class OpenCallNotesModal implements Action {
   readonly type = HomeActionTypes.OPEN_CALLNOTESMODAL;
-  constructor(public payload: CallNoteResult[]) {}
+  constructor(public payload: CallNoteResultData[]) {}
 }
 
 export class SaveCallNote implements Action {
@@ -327,7 +307,7 @@ export class ShowCallImagesModal implements Action {
 
 export class OpenCallImagesModal implements Action {
   readonly type = HomeActionTypes.OPEN_CALLIMAGESMODAL;
-  constructor(public payload: CallFileResult[]) {}
+  constructor(public payload: CallFileResultData[]) {}
 }
 
 export class UploadCallImage implements Action {
@@ -352,7 +332,7 @@ export class ShowCallFilesModal implements Action {
 
 export class OpenCallFilesModal implements Action {
   readonly type = HomeActionTypes.OPEN_CALLFILESMODAL;
-  constructor(public payload: CallFileResult[]) {}
+  constructor(public payload: CallFileResultData[]) {}
 }
 
 export class UploadCallFile implements Action {
@@ -372,12 +352,12 @@ export class UploadCallFileFail implements Action {
 
 export class UpdatePersonnelandUnitsDistancesToCall implements Action {
   readonly type = HomeActionTypes.UPDATE_PERSONANDUNITS_DISTANCE;
-  constructor(public personnel: PersonnelForCallResult[], public units: UnitStatusFullResult[]) {}
+  constructor(public personnel: PersonnelForCallResult[], public units: UnitStatusResultData[]) {}
 }
 
 export class GetUpdatedPersonnelandUnitsDistancesToCall implements Action {
   readonly type = HomeActionTypes.GET_UPDATEDPERSONANDUNITS_DISTANCE;
-  constructor(public callLocation: GpsLocation, public personnel: PersonnelForCallResult[], public units: UnitStatusFullResult[]) {}
+  constructor(public callLocation: GpsLocation, public personnel: PersonnelForCallResult[], public units: UnitStatusResult[]) {}
 }
 
 export class OpenCallFormModal implements Action {
@@ -388,71 +368,6 @@ export class OpenCallFormModal implements Action {
 export class SetNewCallFormData implements Action {
   readonly type = HomeActionTypes.SET_NEWCALLFORMDATA;
   constructor(public formData: string) {}
-}
-
-export class GetVoipInfo implements Action {
-  readonly type = HomeActionTypes.GET_VOIPINFO;
-  constructor() {}
-}
-
-export class GetVoipInfoSuccess implements Action {
-  readonly type = HomeActionTypes.GET_VOIPINFO_SUCCESS;
-  constructor(public payload: DepartmentVoiceResult) {}
-}
-
-export class GetVoipInfoFail implements Action {
-  readonly type = HomeActionTypes.GET_VOIPINFO_FAIL;
-  constructor() {}
-}
-
-export class VoipCallProgress implements Action {
-  readonly type = HomeActionTypes.VOIP_CALL_PROGRESS;
-  constructor() {}
-}
-
-export class VoipCallFailed implements Action {
-  readonly type = HomeActionTypes.VOIP_CALL_FAILED;
-  constructor(public cause: string) {}
-}
-
-export class VoipCallEnded implements Action {
-  readonly type = HomeActionTypes.VOIP_CALL_ENDED;
-  constructor(public cause: string) {}
-}
-
-export class VoipCallConnected implements Action {
-  readonly type = HomeActionTypes.VOIP_CALL_CONNECTED;
-  constructor() {}
-}
-
-export class VoipPhoneConnected implements Action {
-  readonly type = HomeActionTypes.VOIP_PHONE_CONNECTED;
-  constructor() {}
-}
-
-export class VoipPhoneDisconnected implements Action {
-  readonly type = HomeActionTypes.VOIP_PHONE_DISCONNECTED;
-  constructor() {}
-}
-
-export class VoipPhoneSipRegistered implements Action {
-  readonly type = HomeActionTypes.VOIP_PHONE_SIPREGISTERED;
-  constructor() {}
-}
-
-export class VoipPhoneSipUnregistered implements Action {
-  readonly type = HomeActionTypes.VOIP_PHONE_SIPUNREGISTERED;
-  constructor() {}
-}
-
-export class VoipPhoneSipRegisterFailed implements Action {
-  readonly type = HomeActionTypes.VOIP_PHONE_SIPREGISTERFAILED;
-  constructor() {}
-}
-
-export class VoipPhoneNewSession implements Action {
-  readonly type = HomeActionTypes.VOIP_PHONE_NEWSESSION;
-  constructor() {}
 }
 
 export type HomeActionsUnion = Loading | LoadingSuccess | LoadingFail | LoadingMap | LoadingMapSuccess | LoadingMapFail | 

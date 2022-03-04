@@ -1,6 +1,7 @@
 import {ActionReducerMap, ActionReducer, MetaReducer} from '@ngrx/store';
 import {environment} from '../../../environments/environment';
 import * as fromRouter from '@ngrx/router-store';
+import { localStorageSync } from 'ngrx-store-localstorage';
 
 /**
  * storeFreeze prevents state from being mutated. When mutation occurs, an
@@ -44,3 +45,13 @@ export function logger(reducer: ActionReducer < State >): ActionReducer < State 
 export const metaReducers: MetaReducer < State > [] = !environment.production
   ? [logger, storeFreeze]
   : [];
+
+
+function localStorageSyncReducer(reducer: ActionReducer<State>): ActionReducer<State> {
+  return localStorageSync({
+    keys: [
+      'auth'
+    ],
+    rehydrate: true
+  })(reducer);
+}

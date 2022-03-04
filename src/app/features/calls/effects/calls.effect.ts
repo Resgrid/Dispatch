@@ -6,11 +6,7 @@ import { Injectable } from "@angular/core";
 import { forkJoin, from, Observable, of } from "rxjs";
 import { NgbModal, NgbModalRef } from "@ng-bootstrap/ng-bootstrap";
 import { CallsState } from "../store/calls.store";
-import { VoiceProvider } from "src/app/providers/voice";
-import { CallsProvider } from "src/app/providers/calls";
-import { GpsLocation } from "src/app/core/models/gpsLocation";
-import { LocationProvider } from "src/app/providers/location";
-
+import { CallsService, GpsLocation, LocationService, MappingService } from '@resgrid/ngx-resgridlib';
 import * as _ from "lodash";
 import { AlertProvider } from "src/app/providers/alert";
 import { LoadChildren, Router } from "@angular/router";
@@ -28,11 +24,11 @@ export class CallsEffects {
       callsAction.CallsActionTypes.GET_SCHEDULED_CALLS
     ),
     mergeMap((action) =>
-      this.callsProvider.GetAllPendingScheduledCalls().pipe(
+      this.callsProvider.getAllPendingScheduledCalls().pipe(
         // If successful, dispatch success action with result
         map((data) => ({
           type: callsAction.CallsActionTypes.GET_SCHEDULED_CALLS_SUCCESS,
-          payload: data,
+          payload: data.Data,
         })),
         tap((data) => {}),
         // If request fails, dispatch failed action
@@ -139,13 +135,15 @@ export class CallsEffects {
     mergeMap((action) =>
       forkJoin([
         this.callsProvider.getCall(action.callId),
-        this.callsProvider.getCallData(action.callId),
+        this.callsProvider.getCallExtraData(action.callId),
+        this.mapProvider.getMapDataAndMarkers(),
       ]).pipe(
         // If successful, dispatch success action with result
         map((result) => ({
           type: callsAction.CallsActionTypes.GET_CALL_BYID_SUCCESS,
-          call: result[0],
-          data: result[1],
+          call: result[0].Data,
+          data: result[1].Data,
+          mapData: result[2].Data,
         })),
         tap((data) => {}),
         // If request fails, dispatch failed action
@@ -155,6 +153,7 @@ export class CallsEffects {
       )
     )
   );
+
 
   @Effect({ dispatch: false })
   getCallByIdFail$ = this.actions$.pipe(
@@ -200,8 +199,8 @@ export class CallsEffects {
           action.call.Note,
           action.call.Address,
           action.call.w3w,
-          parseInt(action.call.Latitude, 10),
-          parseInt(action.call.Longitude, 10),
+          action.call.Latitude,
+          action.call.Longitude,
           action.call.DispatchList,
           action.call.DispatchOn,
           action.call.FormData,
@@ -308,11 +307,12 @@ export class CallsEffects {
     private actions$: Actions,
     private store: Store<CallsState>,
     private modalService: NgbModal,
-    private callsProvider: CallsProvider,
-    private locationProvider: LocationProvider,
+    private callsProvider: CallsService,
+    private locationProvider: LocationService,
     private alertProvider: AlertProvider,
     private loadingProvider: LoadingProvider,
-    private router: Router
+    private router: Router,
+    private mapProvider: MappingService,
   ) {}
 
   runModal = (component, size) => {

@@ -12,13 +12,13 @@
           <a>
             <div class="media">
               <div class="user-img online align-self-center mr-3">
-                <img src="{{getAvatarUrl(note.Uid)}}" class="rounded-circle avatar-xs" alt="">
+                <img src="{{getAvatarUrl(note.UserId)}}" class="rounded-circle avatar-xs" alt="">
               </div>
               <div class="media-body overflow-hidden">
-                <h5 class="text-truncate font-size-14 mb-1">{{note.Fnm}}</h5>
-                <p class="text-truncate mb-0">{{note.Not}}</p>
+                <h5 class="text-truncate font-size-14 mb-1">{{note.FullName}}</h5>
+                <p class="text-truncate mb-0">{{note.Note}}</p>
               </div>
-              <div class="font-size-11">{{note.Tme}}</div>
+              <div class="font-size-11">{{note.TimestampFormatted}}</div>
             </div>
           </a>
         </li>

@@ -1,13 +1,15 @@
-import { DepartmentVoiceChannelResult } from "src/app/core/models/departmentVoiceChannelResult";
-import { DepartmentVoiceResult } from "src/app/core/models/departmentVoiceResult";
+import { DepartmentVoiceChannelResultData, DepartmentVoiceResultData } from '@resgrid/ngx-resgridlib';
+import { StreamManager } from "openvidu-browser";
 
 export interface VoiceState {
     isVoiceEnabled: boolean;
     isTransmitting: boolean;
-    voipSystemInfo: DepartmentVoiceResult;
+    voipSystemInfo: DepartmentVoiceResultData;
     currentVoipStatus: string;
-    currentActiveVoipChannel: DepartmentVoiceChannelResult;
-    channels: DepartmentVoiceChannelResult[];
+    currentActiveVoipChannel: DepartmentVoiceChannelResultData;
+    channels: DepartmentVoiceChannelResultData[];
+    subscribers: StreamManager[];
+    participants: number;
 }
 
 export const initialState: VoiceState = {
@@ -16,5 +18,7 @@ export const initialState: VoiceState = {
     voipSystemInfo: null,
     currentVoipStatus: 'Disconnected',
     currentActiveVoipChannel: null,
-    channels: null
+    channels: null,
+    subscribers: [],
+    participants: 0,
 };

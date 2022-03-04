@@ -2,9 +2,6 @@ import { Component, Input, OnInit } from "@angular/core";
 import { NgbModal, NgbActiveModal } from "@ng-bootstrap/ng-bootstrap";
 import { Store } from "@ngrx/store";
 import { Observable, Subscription } from "rxjs";
-import { CallResult } from "src/app/core/models/callResult";
-import { CustomStatusesResult } from "src/app/core/models/customStatusesResult";
-import { GroupInfo } from "src/app/core/models/groupInfo";
 import {
   selectAuthState,
   selectHomeState,
@@ -19,6 +16,7 @@ import { FormBuilder, FormGroup, Validators } from "@angular/forms";
 import { environment } from "../../../../../environments/environment";
 import { AuthState } from "src/app/features/auth/store/auth.store";
 import { encode } from "base64-arraybuffer";
+import { CallResultData } from '@resgrid/ngx-resgridlib';
 
 @Component({
   selector: "app-resgrid-modal-callFiles",
@@ -28,7 +26,7 @@ import { encode } from "base64-arraybuffer";
 export class CallFilesModalComponent implements OnInit {
   public homeState$: Observable<HomeState | null>;
   public selectedCallStatus: string = "1";
-  public selectedCall: CallResult;
+  public selectedCall: CallResultData;
   public note: string;
   public isSaving: boolean = false;
   @Input() auth: AuthState;
@@ -95,7 +93,7 @@ export class CallFilesModalComponent implements OnInit {
       this.getBase64EncodedFileData(file).subscribe((base64Encoded) => {
         this.store.dispatch(
           new HomeActions.UploadCallFile(
-            this.selectedCall.Cid,
+            this.selectedCall.CallId,
             this.auth.user.userId,
             this.fileName,
             base64Encoded

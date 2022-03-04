@@ -2,14 +2,12 @@ import { Component, Input, OnInit } from "@angular/core";
 import { NgbModal, NgbActiveModal } from "@ng-bootstrap/ng-bootstrap";
 import { Store } from "@ngrx/store";
 import { Observable } from "rxjs";
-import { CallResult } from "src/app/core/models/callResult";
-import { CustomStatusesResult } from "src/app/core/models/customStatusesResult";
-import { GroupInfo } from "src/app/core/models/groupInfo";
 import { selectHomeState, selectIsSavingUnitState } from "src/app/store";
 import { HomeState } from "../../store/home.store";
 import * as HomeActions from "../../actions/home.actions";
 import { take } from "rxjs/operators";
 import { Actions, ofType } from "@ngrx/effects";
+import { CallResultData, CustomStatusResultData, GroupResultData } from '@resgrid/ngx-resgridlib';
 
 @Component({
   selector: "app-resgrid-modal-setUnitStatus",
@@ -18,9 +16,9 @@ import { Actions, ofType } from "@ngrx/effects";
 })
 export class SetUnitStatusModalComponent implements OnInit {
   public homeState$: Observable<HomeState | null>;
-  public selectedStatus: CustomStatusesResult;
-  public selectedCall: CallResult;
-  public selectedStation: GroupInfo;
+  public selectedStatus: CustomStatusResultData;
+  public selectedCall: CallResultData;
+  public selectedStation: GroupResultData;
   public selectedDestination: any;
   public note: string;
   public isSaving: boolean = false;
@@ -40,7 +38,7 @@ export class SetUnitStatusModalComponent implements OnInit {
   }
 
   public save() {
-    if (this.selectedStatus && this.selectedStatus.Id >= 0) {
+    if (this.selectedStatus) {
       this.isSaving = true;
       this.store.dispatch(new HomeActions.SavingSetUnitState());
 
@@ -53,12 +51,12 @@ export class SetUnitStatusModalComponent implements OnInit {
 
           if (this.selectedStatus?.Detail === 1) {
             if (this.selectedStation) {
-              destination = this.selectedStation.Gid.toString();
+              destination = this.selectedStation.GroupId.toString();
               destinationType = 1;
             }
           } else if (this.selectedStatus?.Detail === 2) {
             if (this.selectedCall) {
-              destination = this.selectedCall.Cid;
+              destination = this.selectedCall.CallId;
               destinationType = 2;
             }
           } else if (this.selectedStatus?.Detail === 3) {

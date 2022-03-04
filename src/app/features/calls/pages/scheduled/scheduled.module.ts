@@ -4,8 +4,7 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { Ng2SearchPipeModule } from 'ng2-search-filter';
 import { ScheduledPage } from './scheduled.page';
-import { DirectivesModule } from 'src/app/directives/directives.module';
-import { NgbAlertModule, NgbDropdownModule, NgbNavModule, NgbPaginationModule, NgbTabsetModule, NgbTooltipModule, NgbTypeaheadModule } from '@ng-bootstrap/ng-bootstrap';
+import { NgbAlertModule, NgbDropdownModule, NgbNavModule, NgbPaginationModule, NgbTooltipModule, NgbTypeaheadModule } from '@ng-bootstrap/ng-bootstrap';
 import { PerfectScrollbarConfigInterface, PerfectScrollbarModule, PERFECT_SCROLLBAR_CONFIG } from 'ngx-perfect-scrollbar';
 import { LeafletModule } from '@asymmetrik/ngx-leaflet';
 import { UiModule } from 'src/app/shared/ui/ui.module';
@@ -21,7 +20,6 @@ const DEFAULT_PERFECT_SCROLLBAR_CONFIG: PerfectScrollbarConfigInterface = {
     FormsModule,
     NgbAlertModule,
     ReactiveFormsModule,
-    DirectivesModule,
     Ng2SearchPipeModule,
     NgbNavModule,
     NgbDropdownModule,
