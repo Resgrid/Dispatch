@@ -99,6 +99,10 @@ export class TopbarComponent implements OnInit {
     this.router.navigate(['/auth/login']);
   }
 
+  navToEditProfile() {
+    this.router.navigate(['/profile/edit-profile']);
+  }
+
   getAvatarUrl() {
     return environment.baseApiUrl + environment.resgridApiUrl + '/Avatars/Get?id=' + this.auth?.user?.userId
   }

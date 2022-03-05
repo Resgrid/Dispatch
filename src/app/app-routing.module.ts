@@ -29,6 +29,10 @@ const routes: Routes = [
   {
     path: 'calls',
     loadChildren: () => import('./features/calls/calls.module').then(m => m.CallsModule)
+  },
+  {
+    path: 'profile',
+    loadChildren: () => import('./features/profile/profile.module').then(m => m.ProfileModule)
   }
 ];
 

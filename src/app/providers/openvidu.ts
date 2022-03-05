@@ -19,6 +19,7 @@ import { BehaviorSubject, concat, from, Observable, of } from "rxjs";
 import { concatMap, delay, tap } from "rxjs/operators";
 import { environment } from "src/environments/environment";
 import { AlertProvider } from "./alert";
+import { OpenViduDevicesService } from "./openviduDevices";
 
 @Injectable({
   providedIn: "root",
@@ -30,11 +31,16 @@ export class OpenViduService {
   private OV: OpenVidu;
   private session: Session;
   //publisher: StreamManager; // Local
-  private publisher: Publisher; // Local
+  public publisher: Publisher; // Local
   private isConnectionLost: boolean = false;
   public subscribers: StreamManager[] = []; // Remotes
 
-  constructor(private store: Store<VoiceState>, private voiceService: VoiceService, private alertProvider: AlertProvider) {}
+  constructor(
+    private store: Store<VoiceState>,
+    private voiceService: VoiceService,
+    private alertProvider: AlertProvider,
+    private devicesService: OpenViduDevicesService
+  ) {}
 
   public joinChannel(channel: DepartmentVoiceChannelResultData, name: string): Observable<any> {
     this.OV = new OpenVidu();
@@ -48,25 +54,36 @@ export class OpenViduService {
       this.OV.enableProdMode();
     }
 
+    const that = this;
     return this.voiceService.connectToSession(channel.Id).pipe(
       concatMap(async (data) => {
         if (data.Data && data.Data.Token && data.Status === "success") {
-          return from(this.session.connect(data.Data.Token, { clientData: name })).pipe(delay(1500));
+          return this.session.connect(data.Data.Token, { clientData: name })
         }
 
         return of(data).pipe(delay(1500));
       }),
       concatMap(async (data) => {
-        return await this.initPublisher();
+        return of(data).pipe(delay(1500));
+      }),
+      concatMap(async (data) => {
+        return this.devicesService.initDevices();
+      }),
+      concatMap(async (data) => {
+        return this.initPublisher(that);
       })
     );
   }
 
-  public async initPublisher() {
+  public async initPublisher(that: OpenViduService) {
+    const audioDeviceAvailable = this.devicesService.hasAudioDeviceAvailable();
+    const selectedMic = this.devicesService.getMicSelected();
+    const audioSource = audioDeviceAvailable ? selectedMic?.device : undefined;
+
     // Init a publisher passing undefined as targetElement (we don't want OpenVidu to insert a video
     // element: we will manage it on our own) and with the desired properties
     const publisher: Publisher = await this.OV.initPublisherAsync(undefined, {
-      audioSource: undefined, //this.audioInputDeviceId, // The source of audio. If undefined default microphone
+      audioSource: audioSource, //this.audioInputDeviceId, // The source of audio. If undefined default microphone
       videoSource: false, // The source of video. If undefined default webcam
       publishAudio: false, // Whether you want to start publishing with your audio unmuted or not
       publishVideo: false, // Whether you want to start publishing with your video enabled or not
@@ -79,7 +96,7 @@ export class OpenViduService {
     // --- 6) Publish your stream ---
 
     await this.session.publish(publisher); //.then(() => {
-    this.publisher = publisher;
+    that.publisher = publisher;
   }
 
   public leaveSession() {

@@ -171,17 +171,17 @@
 
         <div class="dropdown-menu dropdown-menu-right" ngbDropdownMenu>
           <!-- 
-          <a class="dropdown-item" href="javascript: void(0);"><i class="ri-user-line align-middle mr-1"></i>
-            {{ 'HEADER.LOGIN.PROFILE' | translate}}</a>
           <a class="dropdown-item d-block" href="javascript: void(0);"><span
               class="badge badge-success float-right mt-1">11</span><i
               class="ri-settings-2-line align-middle mr-1"></i>{{ 'HEADER.LOGIN.SETTINGS' | translate}} </a>
           <a class="dropdown-item" href="javascript: void(0);"><i class="ri-lock-unlock-line align-middle mr-1"></i>
             {{ 'HEADER.LOGIN.LOCK_SCREEN' | translate}}</a>
           <div class="dropdown-divider"></div>item-->
+          <a class="dropdown-item" href="javascript: void(0);" (click)="navToEditProfile()"><i class="ri-user-line align-middle mr-1"></i>
+            {{ 'HEADER.USER_MENU.PROFILE' | translate}}</a>
           <a class="dropdown-item text-danger" href="javascript: void(0);" (click)="logout()"><i
               class="ri-shut-down-line align-middle mr-1 text-danger"></i>
-            {{ 'HEADER.LOGIN.LOGOUT' | translate}}</a>
+            {{ 'HEADER.USER_MENU.LOGOUT' | translate}}</a>
         </div>
       </div>
       <!-- User Menu -->

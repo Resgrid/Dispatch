@@ -27,6 +27,14 @@ export const reducers: ActionReducerMap < State > = {
   router: fromRouter.routerReducer
 };
 
+function localStorageSyncReducer(reducer: ActionReducer<State>): ActionReducer<State> {
+  return localStorageSync({
+    keys:  ['homeModule'],
+    rehydrate: true
+  })(reducer);
+}
+
+
 // console.log all actions
 export function logger(reducer: ActionReducer < State >): ActionReducer < State > {
   return function(state: State, action: any): State {
@@ -42,16 +50,6 @@ export function logger(reducer: ActionReducer < State >): ActionReducer < State 
  * the root meta-reducer. To add more meta-reducers, provide an array of meta-reducers
  * that will be composed to form the root meta-reducer.
  */
-export const metaReducers: MetaReducer < State > [] = !environment.production
-  ? [logger, storeFreeze]
-  : [];
-
-
-function localStorageSyncReducer(reducer: ActionReducer<State>): ActionReducer<State> {
-  return localStorageSync({
-    keys: [
-      'auth'
-    ],
-    rehydrate: true
-  })(reducer);
-}
+ export const metaReducers: MetaReducer < State > [] = !environment.production
+ ? [logger, storeFreeze, localStorageSyncReducer]
+ : [localStorageSyncReducer];
