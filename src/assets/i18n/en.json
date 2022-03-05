@@ -1,12 +1,26 @@
 {
   "HEADER": {
     "SEARCH": "Search...",
-    "MEGA_MENU": "Mega Menu",
     "NOTIFICATIONS": {
       "TITLE": "Notifications",
       "VIEW_ALL": "View All",
       "LOAD_MORE": "View More.."
     },
+    "USER_MENU": {
+      "LOGOUT": "Logout",
+      "PROFILE": "Profile"
+    },
     "SETTINGS": "Settings"
+  },
+  "MENUITEMS": {
+    "MENU": {
+      "TEXT": "Menu"
+    },
+    "DASHBOARDS": {
+      "TEXT": "Dashboard"
+    },
+    "SCHEDULEDCALLS": {
+      "TEXT": "Scheduled Calls"
+    }
   }
 }

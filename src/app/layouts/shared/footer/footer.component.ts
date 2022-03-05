@@ -18,4 +18,7 @@ export class FooterComponent implements OnInit {
     this.version = environment.version;
   }
 
+  public currentYear() {
+    return new Date().getFullYear();
+  }
 }
