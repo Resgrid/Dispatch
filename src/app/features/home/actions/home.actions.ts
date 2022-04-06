@@ -68,7 +68,8 @@ export enum HomeActionTypes {
   UPDATE_PERSONANDUNITS_DISTANCE = '[HOME] UPDATE_PERSONANDUNITS_DISTANCE',
   GET_UPDATEDPERSONANDUNITS_DISTANCE = '[HOME] GET_UPDATEDPERSONANDUNITS_DISTANCE',
   OPEN_CALLFORMMODAL = '[HOME] OPEN_CALLFORMMODAL',
-  SET_NEWCALLFORMDATA = '[HOME] SET_NEWCALLFORMDATA'
+  SET_NEWCALLFORMDATA = '[HOME] SET_NEWCALLFORMDATA',
+  DONE = '[HOME] DONE'
 }
 
 // Home
@@ -352,7 +353,7 @@ export class UploadCallFileFail implements Action {
 
 export class UpdatePersonnelandUnitsDistancesToCall implements Action {
   readonly type = HomeActionTypes.UPDATE_PERSONANDUNITS_DISTANCE;
-  constructor(public personnel: PersonnelForCallResult[], public units: UnitStatusResultData[]) {}
+  constructor(public personnel: PersonnelForCallResult[], public units: UnitStatusResult[]) {}
 }
 
 export class GetUpdatedPersonnelandUnitsDistancesToCall implements Action {
@@ -370,6 +371,11 @@ export class SetNewCallFormData implements Action {
   constructor(public formData: string) {}
 }
 
+export class Done implements Action {
+  readonly type = HomeActionTypes.DONE;
+  constructor() {}
+}
+
 export type HomeActionsUnion = Loading | LoadingSuccess | LoadingFail | LoadingMap | LoadingMapSuccess | LoadingMapFail | 
                                ShowSetUnitStateModal | OpenSetUnitStateModal | SavingSetUnitState | SavingUnitState | SavingUnitStateSuccess |
                                SavingUnitStateFail | UpdateUnitStates | UpdateSelectUnit | UpdateSelectedCall | SavingCloseCall |
@@ -381,4 +387,4 @@ export type HomeActionsUnion = Loading | LoadingSuccess | LoadingFail | LoadingM
                                ShowCallNotesModal | OpenCallNotesModal | SaveCallNote | SaveCallNoteSuccess | SaveCallNoteFail | ShowCallImagesModal |
                                OpenCallImagesModal | UploadCallImage | UploadCallImageSuccess | UploadCallImageFail | ShowCallFilesModal | 
                                OpenCallFilesModal | UpdatePersonnelandUnitsDistancesToCall | GetUpdatedPersonnelandUnitsDistancesToCall |
-                               OpenCallFormModal | SetNewCallFormData | IsSavingCall;
+                               OpenCallFormModal | SetNewCallFormData | IsSavingCall | Done;

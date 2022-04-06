@@ -541,8 +541,8 @@ export class DashboardPage implements AfterViewInit {
   }
 
   private updatePersonnelDistances(location: GpsLocation) {
-    this.store.select(selectHomeState).subscribe((state) => {
-      if (state && state.personnelForGrid) {
+    this.store.select(selectHomeState).pipe(take(1)).subscribe((state) => {
+      if (state && state.personnelForGrid && state.unitStatuses) {
         this.store.dispatch(
           new HomeActions.GetUpdatedPersonnelandUnitsDistancesToCall(
             location,

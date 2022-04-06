@@ -123,7 +123,7 @@
                                     placeholder="Full Address (Street, City, State, Zip)" style="width:320px;">
                                   <div class="input-group-append">
                                     <a id="searchButton" href="javascript:void(0);" class="btn btn-outline-info"
-                                      (click)="getCoordinatesForAddress()">Find Address</a>
+                                      (click)="getCoordinatesForAddress()"><i class="mdi mdi-magnify"></i></a>
                                   </div>
                                 </div>
                               </div>
@@ -132,10 +132,10 @@
                                   <input formControlName="w3w" type="text" class="form-control"
                                     placeholder="what.three.words" style="width:180px;">
                                   <div class="input-group-append">
-                                    <a id="findw3wButton" href="#" class="btn btn-outline-info">Find Location</a>
+                                    <a id="findw3wButton" href="#" class="btn btn-outline-info"><i class="mdi mdi-magnify"></i></a>
                                   </div>
                                 </div>
-                                <span class="help-inline">This is a what3words address. <a
+                                <span class="help-inline" style="font-size: 11px;">This is a what3words address. <a
                                     href="https://what3words.com/about/" target="_blank">Learn More.</a></span>
                               </div>
                             </div>
@@ -145,7 +145,7 @@
                                   <input formControlName="latitude" type="text" class="form-control"
                                     placeholder="Latitude">
                                 </div>
-                                <span class="help-inline">Latitude (Decimal Notation: i.e. 39.1517)</span>
+                                <span class="help-inline" style="font-size: 11px;">Latitude (Decimal Notation: i.e. 39.1517)</span>
                               </div>
                               <div class="col-md-6">
                                 <div class="input-group input-group-sm">
@@ -153,10 +153,10 @@
                                     placeholder="Longitude" style="width:280px;">
                                   <div class="input-group-append">
                                     <a id="findgpsButton" class="btn btn-outline-info" href="javascript:void(0);"
-                                      (click)="findCoordinates()">Find Lat/Lon</a>
+                                      (click)="findCoordinates()"><i class="mdi mdi-magnify"></i></a>
                                   </div>
                                 </div>
-                                <span class="help-inline">Longitude (Decimal Notation: i.e. -119.4571)</span>
+                                <span class="help-inline" style="font-size: 11px;">Longitude (Decimal Notation: i.e. -119.4571)</span>
                               </div>
                             </div>
                             <div #newCallMapContainer id="newCallMapContainer" name="newCallMapContainer"
@@ -176,7 +176,7 @@
                             <ul ngbNav #nav="ngbNav" [activeId]="1" class="nav-tabs">
                               <li [ngbNavItem]="1">
                                 <a ngbNavLink>
-                                  <span class="d-block d-sm-none"><i class="fas fa-home"></i></span>
+                                  <span class="d-block d-sm-none"></span>
                                   <span class="d-none d-sm-block">Personnel</span>
                                 </a>
                                 <ng-template ngbNavContent>
@@ -185,7 +185,7 @@
                               </li>
                               <li [ngbNavItem]="2">
                                 <a ngbNavLink>
-                                  <span class="d-block d-sm-none"><i class="far fa-user"></i></span>
+                                  <span class="d-block d-sm-none"></span>
                                   <span class="d-none d-sm-block">Groups</span>
                                 </a>
                                 <ng-template ngbNavContent>
@@ -194,7 +194,7 @@
                               </li>
                               <li [ngbNavItem]="3">
                                 <a ngbNavLink>
-                                  <span class="d-block d-sm-none"><i class="far fa-envelope"></i></span>
+                                  <span class="d-block d-sm-none"></span>
                                   <span class="d-none d-sm-block">Roles</span>
                                 </a>
                                 <ng-template ngbNavContent>
