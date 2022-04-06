@@ -15,7 +15,7 @@
       </div>
       <div class="col-xs-1" style="height: 50px; padding: 4px; background: #252b3b;">
         <div class="text-sm-right d-none d-sm-block">
-          <button type="button" class="btn btn-primary" (mousedown)="startTransmitting()" (mouseup)="stopTransmitting()" (mouseleave)="stopTransmittingLeave()" [disabled]="selectedChannel.Id === ''">
+          <button type="button" class="btn btn-primary" (click)="toggleTransmitting()" [disabled]="selectedChannel.Id === ''">
             <i [ngClass]="{'ri-mic-off-fill':!(voiceState$ | async).isTransmitting, 'ri-mic-fill': (voiceState$ | async).isTransmitting, 'text-danger':!(voiceState$ | async).isTransmitting}"></i></button>
         </div>
       </div>

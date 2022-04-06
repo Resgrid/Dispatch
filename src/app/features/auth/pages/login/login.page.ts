@@ -47,6 +47,10 @@ export class LoginPage implements OnInit {
     });
   }
 
+  public currentYear() {
+    return new Date().getFullYear();
+  }
+
   public login() {
     this.store.dispatch(new AuthActions.IsLogin());
 

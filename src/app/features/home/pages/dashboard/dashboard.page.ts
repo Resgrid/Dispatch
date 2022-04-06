@@ -29,6 +29,21 @@ import { Call } from "src/app/core/models/call";
 import { AuthState } from "src/app/features/auth/store/auth.store";
 import { HomeProvider } from "../../providers/home";
 
+const iconRetinaUrl = './assets/marker-icon-2x.png';
+const iconUrl = './assets/marker-icon.png';
+const shadowUrl = './assets/marker-shadow.png';
+const iconDefault = L.icon({
+iconRetinaUrl,
+iconUrl,
+shadowUrl,
+iconSize: [25, 41],
+iconAnchor: [12, 41],
+popupAnchor: [1, -34],
+tooltipAnchor: [16, -28],
+shadowSize: [41, 41]
+});
+L.Marker.prototype.options.icon = iconDefault;
+
 @Component({
   selector: "app-dashboard",
   templateUrl: "dashboard.page.html",
@@ -511,13 +526,15 @@ export class DashboardPage implements AfterViewInit {
       that.newCallMarker.setLatLng(new L.LatLng(position.lat, position.lng));
       that.newCallMap.panTo(new L.LatLng(position.lat, position.lng));
 
-      this.form["latitude"].setValue(position.lat);
-      this.form["latitude"].patchValue(position.lat);
+      if (that && that.form) {
+        that.form["latitude"].setValue(position.lat);
+        that.form["latitude"].patchValue(position.lat);
 
-      this.form["longitude"].setValue(position.lng);
-      this.form["longitude"].patchValue(position.lng);
+        that.form["longitude"].setValue(position.lng);
+        that.form["longitude"].patchValue(position.lng);
+      }
 
-      this.updatePersonnelDistances(
+      that.updatePersonnelDistances(
         new GpsLocation(position.lat, position.lng)
       );
 
@@ -531,11 +548,13 @@ export class DashboardPage implements AfterViewInit {
     //  new HomeActions.UpdateNewCallLocation(lat, lng)
     //);
 
-    this.form["latitude"].setValue(lat);
-    this.form["latitude"].patchValue(lat);
+    if (this.form) {
+      this.form["latitude"].setValue(lat);
+      this.form["latitude"].patchValue(lat);
 
-    this.form["longitude"].setValue(lng);
-    this.form["longitude"].patchValue(lng);
+      this.form["longitude"].setValue(lng);
+      this.form["longitude"].patchValue(lng);
+    }
 
     this.updatePersonnelDistances(new GpsLocation(lat, lng));
   }
