@@ -1,6 +1,6 @@
 import * as homeAction from "../actions/home.actions";
 import { Action, Store } from "@ngrx/store";
-import { Actions, Effect, ofType } from "@ngrx/effects";
+import { Actions, createEffect, Effect, ofType } from "@ngrx/effects";
 import { catchError, exhaustMap, map, mergeMap, tap } from "rxjs/operators";
 import { Injectable } from "@angular/core";
 import { from, Observable, of } from "rxjs";
@@ -28,7 +28,8 @@ import {
   UnitsService,
   UnitStatusService,
   VoiceService,
-} from '@resgrid/ngx-resgridlib';
+} from "@resgrid/ngx-resgridlib";
+import * as _ from "lodash";
 
 @Injectable()
 export class HomeEffects {
@@ -55,9 +56,7 @@ export class HomeEffects {
 
   @Effect()
   loadingSuccess$: Observable<Action> = this.actions$.pipe(
-    ofType<homeAction.LoadingSuccess>(
-      homeAction.HomeActionTypes.LOADING_SUCCESS
-    ),
+    ofType<homeAction.LoadingSuccess>(homeAction.HomeActionTypes.LOADING_SUCCESS),
     map((data) => ({
       type: homeAction.HomeActionTypes.LOADING_MAP,
     }))
@@ -78,9 +77,7 @@ export class HomeEffects {
 
   @Effect()
   showSetUnitStatusModal$: Observable<Action> = this.actions$.pipe(
-    ofType<homeAction.ShowSetUnitStateModal>(
-      homeAction.HomeActionTypes.SHOW_SETUNITSTATUSMODAL
-    ),
+    ofType<homeAction.ShowSetUnitStateModal>(homeAction.HomeActionTypes.SHOW_SETUNITSTATUSMODAL),
     mergeMap((action) =>
       this.dispatchProvider.getSetUnitStatusData(action.unitId).pipe(
         map((data) => ({
@@ -93,17 +90,13 @@ export class HomeEffects {
 
   @Effect({ dispatch: false })
   openSetUnitStatusModal$: Observable<Action> = this.actions$.pipe(
-    ofType<homeAction.OpenSetUnitStateModal>(
-      homeAction.HomeActionTypes.OPEN_SETUNITSTATUSMODAL
-    ),
+    ofType<homeAction.OpenSetUnitStateModal>(homeAction.HomeActionTypes.OPEN_SETUNITSTATUSMODAL),
     exhaustMap((data) => this.runModal(SetUnitStatusModalComponent, "md"))
   );
 
   @Effect()
   saveUnitState$: Observable<Action> = this.actions$.pipe(
-    ofType<homeAction.SavingUnitState>(
-      homeAction.HomeActionTypes.SAVE_UNITSTATE
-    ),
+    ofType<homeAction.SavingUnitState>(homeAction.HomeActionTypes.SAVE_UNITSTATE),
     mergeMap((action) =>
       this.unitStatusProvider
         .saveUnitStatus({
@@ -132,33 +125,23 @@ export class HomeEffects {
             this.closeModal();
           }),
           // If request fails, dispatch failed action
-          catchError(() =>
-            of({ type: homeAction.HomeActionTypes.SAVE_UNITSTATE_FAIL })
-          )
+          catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_UNITSTATE_FAIL }))
         )
     )
   );
 
   @Effect({ dispatch: false })
   saveUnitStateFail$ = this.actions$.pipe(
-    ofType<homeAction.SavingUnitStateFail>(
-      homeAction.HomeActionTypes.SAVE_UNITSTATE_FAIL
-    ),
+    ofType<homeAction.SavingUnitStateFail>(homeAction.HomeActionTypes.SAVE_UNITSTATE_FAIL),
     tap(async (action) => {
       this.closeModal();
-      this.alertProvider.showErrorAlert(
-        "Unit Status Error",
-        "",
-        "There was an issue trying to set the unit status, please try again."
-      );
+      this.alertProvider.showErrorAlert("Unit Status Error", "", "There was an issue trying to set the unit status, please try again.");
     })
   );
 
   @Effect()
   saveUnitStateSuccess$: Observable<Action> = this.actions$.pipe(
-    ofType<homeAction.SavingUnitStateSuccess>(
-      homeAction.HomeActionTypes.SAVE_UNITSTATE_SUCCESS
-    ),
+    ofType<homeAction.SavingUnitStateSuccess>(homeAction.HomeActionTypes.SAVE_UNITSTATE_SUCCESS),
     mergeMap((action) =>
       this.unitStatusProvider.getAllUnitStatuses().pipe(
         // If successful, dispatch success action with result
@@ -167,23 +150,17 @@ export class HomeEffects {
           payload: data.Data,
         })),
         tap((data) => {
-          this.alertProvider.showAutoCloseSuccessAlert(
-            "Unit State has been saved."
-          );
+          this.alertProvider.showAutoCloseSuccessAlert("Unit State has been saved.");
         }),
         // If request fails, dispatch failed action
-        catchError(() =>
-          of({ type: homeAction.HomeActionTypes.SAVE_UNITSTATE_FAIL })
-        )
+        catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_UNITSTATE_FAIL }))
       )
     )
   );
 
   @Effect()
   getLastestUnitStates$: Observable<Action> = this.actions$.pipe(
-    ofType<homeAction.SavingUnitStateSuccess>(
-      homeAction.HomeActionTypes.GET_LATESTUNITSTATES
-    ),
+    ofType<homeAction.SavingUnitStateSuccess>(homeAction.HomeActionTypes.GET_LATESTUNITSTATES),
     mergeMap((action) =>
       this.unitStatusProvider.getAllUnitStatuses().pipe(
         // If successful, dispatch success action with result
@@ -192,69 +169,47 @@ export class HomeEffects {
           payload: data.Data,
         })),
         // If request fails, dispatch failed action
-        catchError(() =>
-          of({ type: homeAction.HomeActionTypes.GENERAL_FAILURE })
-        )
+        catchError(() => of({ type: homeAction.HomeActionTypes.GENERAL_FAILURE }))
       )
     )
   );
 
   @Effect()
   saveCloseCall$: Observable<Action> = this.actions$.pipe(
-    ofType<homeAction.SavingCloseCall>(
-      homeAction.HomeActionTypes.SAVE_CLOSECALL
-    ),
+    ofType<homeAction.SavingCloseCall>(homeAction.HomeActionTypes.SAVE_CLOSECALL),
     mergeMap((action) =>
-      this.callsProvider
-        .closeCall(
-          action.payload.callId,
-          action.payload.note,
-          action.payload.stateType
-        )
-        .pipe(
-          // If successful, dispatch success action with result
-          map((data) => ({
-            type: homeAction.HomeActionTypes.SAVE_CLOSECALL_SUCCESS,
-          })),
-          tap((data) => {
-            this.closeModal();
-          }),
-          // If request fails, dispatch failed action
-          catchError(() =>
-            of({ type: homeAction.HomeActionTypes.SAVE_CLOSECALL_FAIL })
-          )
-        )
+      this.callsProvider.closeCall(action.payload.callId, action.payload.note, action.payload.stateType).pipe(
+        // If successful, dispatch success action with result
+        map((data) => ({
+          type: homeAction.HomeActionTypes.SAVE_CLOSECALL_SUCCESS,
+        })),
+        tap((data) => {
+          this.closeModal();
+        }),
+        // If request fails, dispatch failed action
+        catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_CLOSECALL_FAIL }))
+      )
     )
   );
 
   @Effect({ dispatch: false })
   openCloseCallModal$: Observable<Action> = this.actions$.pipe(
-    ofType<homeAction.ShowCloseCallModal>(
-      homeAction.HomeActionTypes.SHOW_CLOSECALLMODAL
-    ),
+    ofType<homeAction.ShowCloseCallModal>(homeAction.HomeActionTypes.SHOW_CLOSECALLMODAL),
     exhaustMap((data) => this.runModal(CloseCallModalComponent, "md"))
   );
 
   @Effect({ dispatch: false })
   saveCloseCallFail$ = this.actions$.pipe(
-    ofType<homeAction.SavingCloseCallFail>(
-      homeAction.HomeActionTypes.SAVE_CLOSECALL_FAIL
-    ),
+    ofType<homeAction.SavingCloseCallFail>(homeAction.HomeActionTypes.SAVE_CLOSECALL_FAIL),
     tap(async (action) => {
       this.closeModal();
-      this.alertProvider.showErrorAlert(
-        "Close Call Error",
-        "",
-        "There was an issue trying to close the call, please try again."
-      );
+      this.alertProvider.showErrorAlert("Close Call Error", "", "There was an issue trying to close the call, please try again.");
     })
   );
 
   @Effect()
   saveCloseCallSuccess$: Observable<Action> = this.actions$.pipe(
-    ofType<homeAction.ShowCloseCallModal>(
-      homeAction.HomeActionTypes.SAVE_CLOSECALL_SUCCESS
-    ),
+    ofType<homeAction.ShowCloseCallModal>(homeAction.HomeActionTypes.SAVE_CLOSECALL_SUCCESS),
     mergeMap((action) =>
       this.callsProvider.getActiveCalls().pipe(
         // If successful, dispatch success action with result
@@ -266,9 +221,7 @@ export class HomeEffects {
           this.alertProvider.showAutoCloseSuccessAlert("Call has been closed.");
         }),
         // If request fails, dispatch failed action
-        catchError(() =>
-          of({ type: homeAction.HomeActionTypes.SAVE_CLOSECALL_FAIL })
-        )
+        catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_CLOSECALL_FAIL }))
       )
     )
   );
@@ -284,18 +237,14 @@ export class HomeEffects {
           payload: data.Data,
         })),
         // If request fails, dispatch failed action
-        catchError(() =>
-          of({ type: homeAction.HomeActionTypes.LOADING_MAP_FAIL })
-        )
+        catchError(() => of({ type: homeAction.HomeActionTypes.LOADING_MAP_FAIL }))
       )
     )
   );
 
   @Effect({ dispatch: false })
   loadingMapSuccess$: Observable<Action> = this.actions$.pipe(
-    ofType<homeAction.LoadingMapSuccess>(
-      homeAction.HomeActionTypes.LOADING_MAP_SUCCESS
-    ),
+    ofType<homeAction.LoadingMapSuccess>(homeAction.HomeActionTypes.LOADING_MAP_SUCCESS),
     tap((action) => {
       this.loadingProvider.hide();
     })
@@ -303,9 +252,7 @@ export class HomeEffects {
 
   @Effect({ dispatch: false })
   loadingMapFail$ = this.actions$.pipe(
-    ofType<homeAction.LoadingMapFail>(
-      homeAction.HomeActionTypes.LOADING_MAP_FAIL
-    ),
+    ofType<homeAction.LoadingMapFail>(homeAction.HomeActionTypes.LOADING_MAP_FAIL),
     tap(async (action) => {
       this.loadingProvider.hide();
       this.alertProvider.showErrorAlert(
@@ -318,9 +265,7 @@ export class HomeEffects {
 
   @Effect()
   showSelectCallTemplateModal$: Observable<Action> = this.actions$.pipe(
-    ofType<homeAction.ShowSelectCallTemplateModal>(
-      homeAction.HomeActionTypes.SHOW_SELECTCALLTEMPLATEMODAL
-    ),
+    ofType<homeAction.ShowSelectCallTemplateModal>(homeAction.HomeActionTypes.SHOW_SELECTCALLTEMPLATEMODAL),
     mergeMap((action) =>
       this.dispatchProvider.getCallTemplates().pipe(
         map((data) => ({
@@ -333,17 +278,13 @@ export class HomeEffects {
 
   @Effect({ dispatch: false })
   openSelectCallTemplateModal$: Observable<Action> = this.actions$.pipe(
-    ofType<homeAction.OpenSelectCallTemplateModal>(
-      homeAction.HomeActionTypes.OPEN_SELECTCALLTEMPLATEMODAL
-    ),
+    ofType<homeAction.OpenSelectCallTemplateModal>(homeAction.HomeActionTypes.OPEN_SELECTCALLTEMPLATEMODAL),
     exhaustMap((data) => this.runModal(SelectTemplateModalComponent, "md"))
   );
 
   @Effect({ dispatch: false })
   applyCallTemplateModal$: Observable<Action> = this.actions$.pipe(
-    ofType<homeAction.ApplyCallTemplate>(
-      homeAction.HomeActionTypes.UPDATE_APPLYCALLTEMPLATE
-    ),
+    ofType<homeAction.ApplyCallTemplate>(homeAction.HomeActionTypes.UPDATE_APPLYCALLTEMPLATE),
     tap(async (action) => {
       this.closeModal();
     })
@@ -351,25 +292,21 @@ export class HomeEffects {
 
   @Effect()
   getCoordinatesForAddress$: Observable<Action> = this.actions$.pipe(
-    ofType<homeAction.GetCoordinatesForAddress>(
-      homeAction.HomeActionTypes.GET_COORDINATESFORADDRESS
-    ),
+    ofType<homeAction.GetCoordinatesForAddress>(homeAction.HomeActionTypes.GET_COORDINATESFORADDRESS),
     mergeMap((action) =>
-      this.locationProvider
-        .getCoordinatesForAddressFromGoogle(action.address)
-        .pipe(
-          // If successful, dispatch success action with result
-          map((data) => ({
-            type: homeAction.HomeActionTypes.GET_COORDINATESFORADDRESS_SUCCESS,
-            payload: data,
-          })),
-          // If request fails, dispatch failed action
-          catchError(() =>
-            of({
-              type: homeAction.HomeActionTypes.GET_COORDINATESFORADDRESS_FAIL,
-            })
-          )
+      this.locationProvider.getCoordinatesForAddressFromGoogle(action.address).pipe(
+        // If successful, dispatch success action with result
+        map((data) => ({
+          type: homeAction.HomeActionTypes.GET_COORDINATESFORADDRESS_SUCCESS,
+          payload: data,
+        })),
+        // If request fails, dispatch failed action
+        catchError(() =>
+          of({
+            type: homeAction.HomeActionTypes.GET_COORDINATESFORADDRESS_FAIL,
+          })
         )
+      )
     )
   );
 
@@ -403,9 +340,7 @@ export class HomeEffects {
             type: homeAction.HomeActionTypes.SAVE_CALL_SUCCESS,
           })),
           // If request fails, dispatch failed action
-          catchError(() =>
-            of({ type: homeAction.HomeActionTypes.SAVE_CALL_FAIL })
-          )
+          catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_CALL_FAIL }))
         )
     )
   );
@@ -415,31 +350,21 @@ export class HomeEffects {
     ofType<homeAction.SaveCallFail>(homeAction.HomeActionTypes.SAVE_CALL_FAIL),
     tap(async (action) => {
       this.closeModal();
-      this.alertProvider.showErrorAlert(
-        "Call Save Error",
-        "",
-        "There was an issue trying to save the call, please try again."
-      );
+      this.alertProvider.showErrorAlert("Call Save Error", "", "There was an issue trying to save the call, please try again.");
     })
   );
 
   @Effect({ dispatch: false })
   saveCallSuccess$: Observable<Action> = this.actions$.pipe(
-    ofType<homeAction.SaveCallSuccess>(
-      homeAction.HomeActionTypes.SAVE_CALL_SUCCESS
-    ),
+    ofType<homeAction.SaveCallSuccess>(homeAction.HomeActionTypes.SAVE_CALL_SUCCESS),
     tap((data) => {
-      this.alertProvider.showAutoCloseSuccessAlert(
-        "Call has been saved and dispatched."
-      );
+      this.alertProvider.showAutoCloseSuccessAlert("Call has been saved and dispatched.");
     })
   );
 
   @Effect()
   getLatestPersonnelData$: Observable<Action> = this.actions$.pipe(
-    ofType<homeAction.GetLatestPersonnelData>(
-      homeAction.HomeActionTypes.GET_LATESTPERSONNELDATA
-    ),
+    ofType<homeAction.GetLatestPersonnelData>(homeAction.HomeActionTypes.GET_LATESTPERSONNELDATA),
     mergeMap((action) =>
       this.dispatchProvider.getPersonnelForCallGrid().pipe(
         // If successful, dispatch success action with result
@@ -448,18 +373,14 @@ export class HomeEffects {
           payload: data.Data,
         })),
         // If request fails, dispatch failed action
-        catchError(() =>
-          of({ type: homeAction.HomeActionTypes.GENERAL_FAILURE })
-        )
+        catchError(() => of({ type: homeAction.HomeActionTypes.GENERAL_FAILURE }))
       )
     )
   );
 
   @Effect()
   getLatestCalls$: Observable<Action> = this.actions$.pipe(
-    ofType<homeAction.GetLatestCalls>(
-      homeAction.HomeActionTypes.GET_LATESTCALLS
-    ),
+    ofType<homeAction.GetLatestCalls>(homeAction.HomeActionTypes.GET_LATESTCALLS),
     mergeMap((action) =>
       this.callsProvider.getActiveCalls().pipe(
         // If successful, dispatch success action with result
@@ -468,18 +389,14 @@ export class HomeEffects {
           payload: data.Data,
         })),
         // If request fails, dispatch failed action
-        catchError(() =>
-          of({ type: homeAction.HomeActionTypes.GENERAL_FAILURE })
-        )
+        catchError(() => of({ type: homeAction.HomeActionTypes.GENERAL_FAILURE }))
       )
     )
   );
 
   @Effect()
   showCallNotesModal$: Observable<Action> = this.actions$.pipe(
-    ofType<homeAction.ShowCallNotesModal>(
-      homeAction.HomeActionTypes.SHOW_CALLNOTESMODAL
-    ),
+    ofType<homeAction.ShowCallNotesModal>(homeAction.HomeActionTypes.SHOW_CALLNOTESMODAL),
     mergeMap((action) =>
       this.callNotesProvider.getCallNotes(action.callId).pipe(
         map((data) => ({
@@ -492,9 +409,7 @@ export class HomeEffects {
 
   @Effect({ dispatch: false })
   openCallNotesModal$: Observable<Action> = this.actions$.pipe(
-    ofType<homeAction.OpenCallNotesModal>(
-      homeAction.HomeActionTypes.OPEN_CALLNOTESMODAL
-    ),
+    ofType<homeAction.OpenCallNotesModal>(homeAction.HomeActionTypes.OPEN_CALLNOTESMODAL),
     exhaustMap((data) => this.runModal(CallNotesModalComponent, "lg"))
   );
 
@@ -502,29 +417,23 @@ export class HomeEffects {
   saveCallNote$: Observable<Action> = this.actions$.pipe(
     ofType<homeAction.SaveCallNote>(homeAction.HomeActionTypes.SAVE_CALLNOTE),
     mergeMap((action) =>
-      this.callNotesProvider
-        .saveCallNote(action.callId, action.userId, action.callNote, null)
-        .pipe(
-          // If successful, dispatch success action with result
-          map((data) => ({
-            type: homeAction.HomeActionTypes.SAVE_CALLNOTE_SUCCESS,
-          })),
-          tap((data) => {
-            this.closeModal();
-          }),
-          // If request fails, dispatch failed action
-          catchError(() =>
-            of({ type: homeAction.HomeActionTypes.SAVE_CALLNOTE_FAIL })
-          )
-        )
+      this.callNotesProvider.saveCallNote(action.callId, action.userId, action.callNote, null).pipe(
+        // If successful, dispatch success action with result
+        map((data) => ({
+          type: homeAction.HomeActionTypes.SAVE_CALLNOTE_SUCCESS,
+        })),
+        tap((data) => {
+          this.closeModal();
+        }),
+        // If request fails, dispatch failed action
+        catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_CALLNOTE_FAIL }))
+      )
     )
   );
 
   @Effect()
   showCallImagesModal$: Observable<Action> = this.actions$.pipe(
-    ofType<homeAction.ShowCallImagesModal>(
-      homeAction.HomeActionTypes.SHOW_CALLIMAGESMODAL
-    ),
+    ofType<homeAction.ShowCallImagesModal>(homeAction.HomeActionTypes.SHOW_CALLIMAGESMODAL),
     mergeMap((action) =>
       this.callFilesProvider.getCallImages(action.callId, true).pipe(
         map((data) => ({
@@ -537,48 +446,31 @@ export class HomeEffects {
 
   @Effect({ dispatch: false })
   openCallImagesModal$: Observable<Action> = this.actions$.pipe(
-    ofType<homeAction.OpenCallImagesModal>(
-      homeAction.HomeActionTypes.OPEN_CALLIMAGESMODAL
-    ),
+    ofType<homeAction.OpenCallImagesModal>(homeAction.HomeActionTypes.OPEN_CALLIMAGESMODAL),
     exhaustMap((data) => this.runModal(CallImagesModalComponent, "xl"))
   );
 
   @Effect()
   uploadCallImage$: Observable<Action> = this.actions$.pipe(
-    ofType<homeAction.UploadCallImage>(
-      homeAction.HomeActionTypes.UPLOAD_CALLIMAGE
-    ),
+    ofType<homeAction.UploadCallImage>(homeAction.HomeActionTypes.UPLOAD_CALLIMAGE),
     mergeMap((action) =>
-      this.callFilesProvider
-        .saveCallImage(
-          action.callId,
-          action.userId,
-          "",
-          action.name,
-          null,
-          action.image
-        )
-        .pipe(
-          // If successful, dispatch success action with result
-          map((data) => ({
-            type: homeAction.HomeActionTypes.UPLOAD_CALLIMAGE_SUCCESS,
-          })),
-          tap((data) => {
-            this.closeModal();
-          }),
-          // If request fails, dispatch failed action
-          catchError(() =>
-            of({ type: homeAction.HomeActionTypes.UPLOAD_CALLIMAGE_FAIL })
-          )
-        )
+      this.callFilesProvider.saveCallImage(action.callId, action.userId, "", action.name, null, action.image).pipe(
+        // If successful, dispatch success action with result
+        map((data) => ({
+          type: homeAction.HomeActionTypes.UPLOAD_CALLIMAGE_SUCCESS,
+        })),
+        tap((data) => {
+          this.closeModal();
+        }),
+        // If request fails, dispatch failed action
+        catchError(() => of({ type: homeAction.HomeActionTypes.UPLOAD_CALLIMAGE_FAIL }))
+      )
     )
   );
 
   @Effect()
   showCallFilesModal$: Observable<Action> = this.actions$.pipe(
-    ofType<homeAction.ShowCallFilesModal>(
-      homeAction.HomeActionTypes.SHOW_CALLFILESMODAL
-    ),
+    ofType<homeAction.ShowCallFilesModal>(homeAction.HomeActionTypes.SHOW_CALLFILESMODAL),
     mergeMap((action) =>
       this.callFilesProvider.getCallFiles(action.callId, false).pipe(
         map((data) => ({
@@ -591,118 +483,107 @@ export class HomeEffects {
 
   @Effect({ dispatch: false })
   openCallFilesModal$: Observable<Action> = this.actions$.pipe(
-    ofType<homeAction.OpenCallFilesModal>(
-      homeAction.HomeActionTypes.OPEN_CALLFILESMODAL
-    ),
+    ofType<homeAction.OpenCallFilesModal>(homeAction.HomeActionTypes.OPEN_CALLFILESMODAL),
     exhaustMap((data) => this.runModal(CallFilesModalComponent, "lg"))
   );
 
   @Effect()
   uploadCallFile$: Observable<Action> = this.actions$.pipe(
-    ofType<homeAction.UploadCallFile>(
-      homeAction.HomeActionTypes.UPLOAD_CALLFILE
-    ),
+    ofType<homeAction.UploadCallFile>(homeAction.HomeActionTypes.UPLOAD_CALLFILE),
     mergeMap((action) =>
-      this.callFilesProvider
-        .saveCallFile(
-          action.callId,
-          action.userId,
-          "",
-          action.name,
-          null,
-          action.image
-        )
-        .pipe(
-          // If successful, dispatch success action with result
-          map((data) => ({
-            type: homeAction.HomeActionTypes.UPLOAD_CALLFILE_SUCCESS,
-          })),
-          tap((data) => {
-            this.closeModal();
-          }),
-          // If request fails, dispatch failed action
-          catchError(() =>
-            of({ type: homeAction.HomeActionTypes.UPLOAD_CALLFILE_FAIL })
-          )
-        )
+      this.callFilesProvider.saveCallFile(action.callId, action.userId, "", action.name, null, action.image).pipe(
+        // If successful, dispatch success action with result
+        map((data) => ({
+          type: homeAction.HomeActionTypes.UPLOAD_CALLFILE_SUCCESS,
+        })),
+        tap((data) => {
+          this.closeModal();
+        }),
+        // If request fails, dispatch failed action
+        catchError(() => of({ type: homeAction.HomeActionTypes.UPLOAD_CALLFILE_FAIL }))
+      )
     )
   );
 
-  @Effect()
-  getUpdatedPersonnelandUnitsDistancesToCall$: Observable<Action> = this.actions$.pipe(
-    ofType<homeAction.GetUpdatedPersonnelandUnitsDistancesToCall>(
-      homeAction.HomeActionTypes.GET_UPDATEDPERSONANDUNITS_DISTANCE
-    ),
-    map((action) => {
-      if (!action.callLocation) {
-        action.personnel.forEach((person) => {
-          person.Distance = 0;
-        });
+  getUpdatedPersonnelandUnitsDistancesToCall$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType<homeAction.GetUpdatedPersonnelandUnitsDistancesToCall>(homeAction.HomeActionTypes.GET_UPDATEDPERSONANDUNITS_DISTANCE),
+      map((action) => {
+        var personnel = _.cloneDeep(action.personnel);
+        var units = _.cloneDeep(action.units);
 
-        action.units.forEach((unit) => {
-          unit.Distance = 0;
-        });
-      } else {
-        action.personnel.forEach((person) => {
-          if (person.Location) {
-            const locationParts = person.Location.split(",");
-            const distance = this.locationProvider.getDistanceBetweenTwoPoints(
-              action.callLocation,
-              new GpsLocation(
-                Number(locationParts[0]),
-                Number(locationParts[1])
-              )
-            );
+        if (!action.callLocation) {
+          personnel.forEach((person) => {
+            person.Distance = 0;
+          });
 
-            if (distance && distance > 0) {
-              person.Distance = distance / 1000;
+          action.units.forEach((unit) => {
+            unit.Distance = 0;
+          });
+        } else {
+          personnel.forEach((person) => {
+            if (person.Location) {
+              const locationParts = person.Location.split(",");
+              const distance = this.locationProvider.getDistanceBetweenTwoPoints(
+                action.callLocation,
+                new GpsLocation(Number(locationParts[0]), Number(locationParts[1]))
+              );
+
+              if (distance && distance > 0) {
+                person.Distance = distance / 1000;
+              } else {
+                person.Distance = 0;
+              }
             } else {
               person.Distance = 0;
             }
-          } else {
-            person.Distance = 0;
-          }
-        });
+          });
 
-        action.units.forEach((unit) => {
-          if (unit.Latitude && unit.Longitude) {
-            const distance = this.locationProvider.getDistanceBetweenTwoPoints(
-              action.callLocation,
-              new GpsLocation(Number(unit.Latitude), Number(unit.Longitude))
-            );
+          units.forEach((unit) => {
+            if (unit.Latitude && unit.Longitude) {
+              const distance = this.locationProvider.getDistanceBetweenTwoPoints(
+                action.callLocation,
+                new GpsLocation(Number(unit.Latitude), Number(unit.Longitude))
+              );
 
-            if (distance && distance > 0) {
-              unit.Distance = distance / 1000;
+              if (distance && distance > 0) {
+                unit.Distance = distance / 1000;
+              } else {
+                unit.Distance = 0;
+              }
             } else {
               unit.Distance = 0;
             }
-          } else {
-            unit.Distance = 0;
-          }
-        });
-      }
-      return {
-        type: homeAction.HomeActionTypes.UPDATE_PERSONANDUNITS_DISTANCE,
-        personnel: action.personnel,
-        units: action.units,
-      };
-    })
+          });
+        }
+        return {
+          type: homeAction.HomeActionTypes.UPDATE_PERSONANDUNITS_DISTANCE,
+          personnel: personnel,
+          units: units,
+        };
+      })
+    )
   );
 
   @Effect({ dispatch: false })
   openCallFormModal$: Observable<Action> = this.actions$.pipe(
-    ofType<homeAction.OpenCallFormModal>(
-      homeAction.HomeActionTypes.OPEN_CALLFORMMODAL
-    ),
+    ofType<homeAction.OpenCallFormModal>(homeAction.HomeActionTypes.OPEN_CALLFORMMODAL),
     exhaustMap((data) => this.runModal(CallFormModalComponent, "xl"))
   );
 
   @Effect({ dispatch: false })
   setCallFormData$: Observable<Action> = this.actions$.pipe(
-    ofType<homeAction.SetNewCallFormData>(
-      homeAction.HomeActionTypes.SET_NEWCALLFORMDATA
-    ),
+    ofType<homeAction.SetNewCallFormData>(homeAction.HomeActionTypes.SET_NEWCALLFORMDATA),
     tap((data) => this.closeModal())
+  );
+
+  done$ = createEffect(
+    () =>
+      this.actions$.pipe(
+        ofType(homeAction.HomeActionTypes.DONE),
+        tap((action) => {})
+      ),
+    { dispatch: false }
   );
 
   constructor(

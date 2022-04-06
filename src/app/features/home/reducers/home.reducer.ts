@@ -235,8 +235,8 @@ export function reducer(
     case HomeActionTypes.UPDATE_PERSONANDUNITS_DISTANCE:
       return {
         ...state,
-        personnelForGrid: personnel,
-        unitStatuses: units,
+        personnelForGrid: action.personnel,
+        unitStatuses: action.units,
       };
     case HomeActionTypes.SET_NEWCALLFORMDATA:
       return {
