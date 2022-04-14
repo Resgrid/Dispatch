@@ -25,11 +25,15 @@ import {
   GpsLocation,
   LocationService,
   MappingService,
+  PersonnelStaffingService,
+  PersonnelStatusesService,
   UnitsService,
   UnitStatusService,
   VoiceService,
 } from "@resgrid/ngx-resgridlib";
 import * as _ from "lodash";
+import { SetPersonStatusModalComponent } from "../modals/setPersonStatus/setPersonStatus.modal";
+import { SetPersonStaffingModalComponent } from "../modals/setPersonStaffing/setPersonStaffing.modal";
 
 @Injectable()
 export class HomeEffects {
@@ -577,6 +581,133 @@ export class HomeEffects {
     tap((data) => this.closeModal())
   );
 
+  showSetPersonStatusModal$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType<homeAction.OpenSetPersonStatusModal>(homeAction.HomeActionTypes.OPEN_SETPERSONSTATUSMODAL),
+      exhaustMap((data) => this.runModal(SetPersonStatusModalComponent, "md"))
+    )
+  );
+
+  savePersonnelStatus$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType<homeAction.SavingPersonStatuses>(homeAction.HomeActionTypes.SAVE_PERSONSTATUSES),
+      mergeMap((action) =>
+        this.personnelStatusesProvider.savePersonsStatuses({
+            UserIds: action.payload.userIds,
+            Type: action.payload.stateType,
+            RespondingTo: action.payload.destination,
+            TimestampUtc: action.payload.date.toUTCString().replace("UTC", "GMT"),
+            Timestamp: action.payload.date.toISOString(),
+            Note: action.payload.note,
+            Latitude: "",
+            Longitude: "",
+            Accuracy: "",
+            Altitude: "",
+            AltitudeAccuracy: "",
+            Speed: "",
+            Heading: "",
+            EventId: "",
+          }).pipe(
+            // If successful, dispatch success action with result
+            map((data) => ({
+              type: homeAction.HomeActionTypes.SAVE_PERSONSTATUSES_SUCCESS,
+            })),
+            tap((data) => {
+              this.closeModal();
+            }),
+            // If request fails, dispatch failed action
+            catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_PERSONSTATUSES_FAIL }))
+          )
+      )
+    )
+  );
+
+  savePersonnelStatusFail$ = createEffect(
+    () =>
+      this.actions$.pipe(
+        ofType<homeAction.SavingPersonStatusesFail>(homeAction.HomeActionTypes.SAVE_PERSONSTATUSES_FAIL),
+        tap(async (action) => {
+          this.closeModal();
+          this.alertProvider.showErrorAlert("Personnel Status Error", "", "There was an issue trying to set the personnel statuses, please try again.");
+        })
+      ),
+    { dispatch: false }
+  );
+
+  savePersonnelStatusSuccess$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType<homeAction.SavingPersonStatusesSuccess>(homeAction.HomeActionTypes.SAVE_PERSONSTATUSES_SUCCESS),
+      mergeMap((action) =>
+        this.dispatchProvider.getPersonnelForCallGrid().pipe(
+          // If successful, dispatch success action with result
+          map((data) => ({
+            type: homeAction.HomeActionTypes.UPDATE_PERSONSTATUSES,
+            payload: data.Data,
+          })),
+          tap((data) => {
+            this.alertProvider.showAutoCloseSuccessAlert("Personnel Status have been updated.");
+          }),
+          // If request fails, dispatch failed action
+          catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_PERSONSTATUSES_FAIL }))
+        )
+      )
+    )
+  );
+
+  showSetPersonStaffingModal$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType<homeAction.OpenSetPersonStaffingModal>(homeAction.HomeActionTypes.OPEN_SETPERSONSTAFFINGMODAL),
+      exhaustMap((data) => this.runModal(SetPersonStaffingModalComponent, "md"))
+    )
+  );
+
+
+  savePersonnelStaffing$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType<homeAction.SavingPersonStaffing>(homeAction.HomeActionTypes.SAVE_PERSONSTAFFING),
+      mergeMap((action) =>
+        this.personnelStaffingProvider.savePersonsStatuses({
+            UserIds: action.payload.userIds,
+            Type: action.payload.staffingType,
+            TimestampUtc: action.payload.date.toUTCString().replace("UTC", "GMT"),
+            Timestamp: action.payload.date.toISOString(),
+            Note: action.payload.note,
+            EventId: "",
+          }).pipe(
+            // If successful, dispatch success action with result
+            map((data) => ({
+              type: homeAction.HomeActionTypes.SAVE_PERSONSTAFFING_SUCCESS,
+            })),
+            tap((data) => {
+              this.closeModal();
+            }),
+            // If request fails, dispatch failed action
+            catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_PERSONSTAFFING_FAIL }))
+          )
+      )
+    )
+  );
+
+  savePersonnelStaffingSuccess$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType<homeAction.SavingPersonStaffingSuccess>(homeAction.HomeActionTypes.SAVE_PERSONSTAFFING_SUCCESS),
+      mergeMap((action) =>
+        this.dispatchProvider.getPersonnelForCallGrid().pipe(
+          // If successful, dispatch success action with result
+          map((data) => ({
+            type: homeAction.HomeActionTypes.UPDATE_PERSONSTAFFING,
+            payload: data.Data,
+          })),
+          tap((data) => {
+            this.alertProvider.showAutoCloseSuccessAlert("Personnel Staffings have been updated.");
+          }),
+          // If request fails, dispatch failed action
+          catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_PERSONSTAFFING_FAIL }))
+        )
+      )
+    )
+  );
+
   done$ = createEffect(
     () =>
       this.actions$.pipe(
@@ -601,7 +732,9 @@ export class HomeEffects {
     private mapProvider: MappingService,
     private locationProvider: LocationService,
     private voiceProvider: VoiceService,
-    private loadingProvider: LoadingProvider
+    private loadingProvider: LoadingProvider,
+    private personnelStatusesProvider: PersonnelStatusesService,
+    private personnelStaffingProvider: PersonnelStaffingService
   ) {}
 
   runModal = (component, size) => {

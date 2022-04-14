@@ -1,0 +1,73 @@
+<div>
+  <div class="modal-header">
+    <h5 class="modal-title" id="composemodalTitle">Set Persons Status</h5>
+    <button type="button" class="close" (click)="dismiss()" aria-label="Close">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div>
+  <div class="modal-body">
+    <div class="form-group row">
+      <label class="col-md-2 col-form-label">Persons</label>
+      <div class="col-md-6">
+        <ng-container *ngFor="let person of (homeState$ | async).personnelForGrid;">
+          <span *ngIf="person.Selected">
+            {{person.Name}} 
+          </span>
+        </ng-container>
+      </div>
+    </div>
+
+    <div class="form-group row">
+      <label class="col-md-2 col-form-label">Type</label>
+      <div class="col-md-6">
+        <select class="form-control" [(ngModel)]="selectedStatus">
+          <option *ngFor="let status of (homeState$ | async).personnelStatuses;" [ngValue]="status">
+            {{status.Text}}</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group row" *ngIf="selectedStatus?.Detail === 2">
+      <label class="col-md-2 col-form-label">Call</label>
+      <div class="col-md-6">
+        <select class="form-control" [(ngModel)]="selectedCall">
+          <option *ngFor="let call of (homeState$ | async).calls;" [ngValue]="call">
+            {{call.Name}}</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group row" *ngIf="selectedStatus?.Detail === 1">
+      <label class="col-md-2 col-form-label">Station</label>
+      <div class="col-md-6">
+        <select class="form-control" [(ngModel)]="selectedStation">
+          <option *ngFor="let station of (homeState$ | async).setUnitStatusModalState.Stations;" [ngValue]="station">
+            {{station.Name}}</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group row" *ngIf="selectedStatus?.Detail === 3">
+      <label class="col-md-2 col-form-label">Destination</label>
+      <div class="col-md-6">
+        <select class="form-control" [(ngModel)]="selectedDestination">
+          <option *ngFor="let station of (homeState$ | async).groupsForGrid;" [ngValue]="{id: station.GroupId, type: 1}">
+            {{station.Name}}</option>
+          <option *ngFor="let call of (homeState$ | async).calls;" [ngValue]="{id: call.CallId, type: 2}">
+            ({{call.Number}}) {{call.Name}}</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <input type="text" class="form-control" placeholder="Note" [(ngModel)]="note">
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" (click)="dismiss()">Close</button>
+    <button type="button" class="btn btn-primary w-md waves-effect waves-light" (click)="save()" *ngIf="!isSaving">Save</button>
+    <button class="btn btn-primary w-md waves-effect waves-light" type="button" disabled *ngIf="isSaving">
+      <span class="spinner-border spinner-border-sm"></span>
+    </button>
+  </div>
+</div>

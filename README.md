@@ -89,7 +89,7 @@ LOGGING_KEY=
 
 ## Deployment ##
 
-  $  docker pull resgridllc/dispatch
+    docker pull resgridllc/dispatch
 
 ## Author's ##
 * Shawn Jackson (Twitter: @DesignLimbo Blog: http://designlimbo.com)
