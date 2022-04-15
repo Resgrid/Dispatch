@@ -585,7 +585,8 @@ export class HomeEffects {
     this.actions$.pipe(
       ofType<homeAction.OpenSetPersonStatusModal>(homeAction.HomeActionTypes.OPEN_SETPERSONSTATUSMODAL),
       exhaustMap((data) => this.runModal(SetPersonStatusModalComponent, "md"))
-    )
+    ),
+    { dispatch: false }
   );
 
   savePersonnelStatus$ = createEffect(() =>
@@ -658,7 +659,8 @@ export class HomeEffects {
     this.actions$.pipe(
       ofType<homeAction.OpenSetPersonStaffingModal>(homeAction.HomeActionTypes.OPEN_SETPERSONSTAFFINGMODAL),
       exhaustMap((data) => this.runModal(SetPersonStaffingModalComponent, "md"))
-    )
+    ),
+    { dispatch: false }
   );
 
 
@@ -750,7 +752,7 @@ export class HomeEffects {
       size: size,
     });
 
-    return from(this._modalRef.result);
+    return this._modalRef.result;
   };
 
   closeModal = () => {
