@@ -9,6 +9,8 @@ import {
   CallTypesService,
   ConnectionState,
   Consts,
+  CustomStatesService,
+  CustomStatusesService,
   DispatchService,
   EventsService,
   FormsService,
@@ -46,7 +48,8 @@ export class HomeProvider {
     private store: Store<HomeState>,
     private authStore: Store<AuthState>,
     private events: EventsService,
-    private consts: Consts
+    private consts: Consts,
+    private customStatusesService: CustomStatusesService
   ) {
     //this.personnelStatusUpdated$ = this.events.subscribe(this.consts.SIGNALR_EVENTS.PERSONNEL_STATUS_UPDATED);
     //this.personnelStaffingUpdated$ = this.events.subscribe(this.consts.SIGNALR_EVENTS.PERSONNEL_STAFFING_UPDATED);
@@ -65,6 +68,8 @@ export class HomeProvider {
     const getGroupsForGrid = this.dispatchProvider.getGroupsForCallGrid();
     const getRolesForGrid = this.dispatchProvider.getRolesForCallGrid();
     const getNewCallForm = this.formsProvider.getNewCallForm();
+    const getPersonnelStatus = this.customStatusesService.getActivePersonnelStatuses();
+    const getPersonnelStaffingLevels = this.customStatusesService.getActivePersonnelStaffingLevels();
 
     return forkJoin({
       units: getUnits,
@@ -75,6 +80,8 @@ export class HomeProvider {
       groupsForGrid: getGroupsForGrid,
       rolesForGrid: getRolesForGrid,
       newCallForm: getNewCallForm,
+      personnelStatuses: getPersonnelStatus,
+      PersonnelStaffingLevels: getPersonnelStaffingLevels,
     }).pipe(
       map((results) => {
         let localCalls: CallLocalResult[] = new Array();
@@ -110,6 +117,8 @@ export class HomeProvider {
           GroupsForGrid: results.groupsForGrid.Data,
           RolesForGrid: results.rolesForGrid.Data,
           NewCallForm: results.newCallForm.Data,
+          PersonnelStatuses: results.personnelStatuses.Data,
+          PersonnelStaffingLevels: results.PersonnelStaffingLevels.Data,
         };
       })
     );

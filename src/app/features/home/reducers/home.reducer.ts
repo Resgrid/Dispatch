@@ -2,17 +2,14 @@ import { HomeState, initialState } from "../store/home.store";
 import { HomeActionTypes, HomeActionsUnion } from "../actions/home.actions";
 
 import * as _ from "lodash";
-import { CallResultData, GpsLocation } from '@resgrid/ngx-resgridlib';
+import { CallResultData, GpsLocation } from "@resgrid/ngx-resgridlib";
 import { UnitStatusResult } from "src/app/core/models/unitStatusResult";
 import { PersonnelForCallResult } from "src/app/core/models/personnelForCallResult";
 import { GroupsForCallResult } from "src/app/core/models/groupsForCallResult";
 import { RolesForCallResult } from "src/app/core/models/rolesForCallResult";
 import { CallLocalResult } from "src/app/core/models/callLocalResult";
 
-export function reducer(
-  state: HomeState = initialState,
-  action: HomeActionsUnion
-): HomeState {
+export function reducer(state: HomeState = initialState, action: HomeActionsUnion): HomeState {
   switch (action.type) {
     case HomeActionTypes.LOADING:
       return {
@@ -20,6 +17,11 @@ export function reducer(
         // user: action.payload
       };
     case HomeActionTypes.LOADING_SUCCESS:
+      let people = _.cloneDeep(action.payload.PersonnelForGrid);
+      people.forEach((p) => {
+        if (!p.Group) p.Group = "No Group";
+      });
+
       return {
         ...state,
         hasLoaded: true,
@@ -27,10 +29,12 @@ export function reducer(
         calls: action.payload.Calls as CallLocalResult[],
         callPriorties: action.payload.CallPriorties,
         callTypes: action.payload.CallTypes,
-        personnelForGrid: action.payload.PersonnelForGrid as PersonnelForCallResult[],
+        personnelForGrid: people as PersonnelForCallResult[],
         groupsForGrid: action.payload.GroupsForGrid as GroupsForCallResult[],
         rolesForGrid: action.payload.RolesForGrid as RolesForCallResult[],
         newCallForm: action.payload.NewCallForm,
+        personnelStatuses: action.payload.PersonnelStatuses,
+        personnelStaffing: action.payload.PersonnelStaffingLevels,
       };
 
     case HomeActionTypes.LOADING_FAIL:
@@ -62,7 +66,7 @@ export function reducer(
         unitStatuses: action.payload as UnitStatusResult[],
       };
     case HomeActionTypes.UPDATE_SELECTUNIT:
-      var units = _.cloneDeep(state.unitStatuses);
+      let units = _.cloneDeep(state.unitStatuses);
 
       units.forEach((unit) => {
         if (unit.UnitId == action.unitId) {
@@ -76,8 +80,21 @@ export function reducer(
         ...state,
         unitStatuses: units,
       };
+    case HomeActionTypes.UPDATE_SELECTPERSON:
+      let peopleSelect = _.cloneDeep(state.personnelForGrid);
+
+      peopleSelect.forEach((person) => {
+        if (person.UserId == action.userId) {
+          person.Selected = action.checked;
+        }
+      });
+
+      return {
+        ...state,
+        personnelForGrid: peopleSelect,
+      };
     case HomeActionTypes.UPDATE_SELECTEDCALL:
-      var calls = _.cloneDeep(state.calls);
+      let calls = _.cloneDeep(state.calls);
 
       calls.forEach((call) => {
         if (call.CallId == action.callId) {
@@ -97,7 +114,7 @@ export function reducer(
         calls: action.payload as CallLocalResult[],
       };
     case HomeActionTypes.UPDATE_SELECTEDDISPATCHPERSON:
-      var personnel = _.cloneDeep(state.personnelForGrid);
+      let personnel = _.cloneDeep(state.personnelForGrid);
 
       personnel.forEach((person) => {
         if (person.UserId == action.userId) {
@@ -110,7 +127,7 @@ export function reducer(
         personnelForGrid: personnel,
       };
     case HomeActionTypes.UPDATE_SELECTEDDISPATCHGROUP:
-      var groups = _.cloneDeep(state.groupsForGrid);
+      let groups = _.cloneDeep(state.groupsForGrid);
 
       groups.forEach((group) => {
         if (group.GroupId == action.groupId) {
@@ -123,7 +140,7 @@ export function reducer(
         groupsForGrid: groups,
       };
     case HomeActionTypes.UPDATE_SELECTEDDISPATCHROLE:
-      var roles = _.cloneDeep(state.rolesForGrid);
+      let roles = _.cloneDeep(state.rolesForGrid);
 
       roles.forEach((role) => {
         if (role.RoleId == action.roleId) {
@@ -136,9 +153,9 @@ export function reducer(
         rolesForGrid: roles,
       };
     case HomeActionTypes.UPDATE_SELECTEDDISPATCHUNIT:
-      var units = _.cloneDeep(state.unitStatuses);
+      let dispatchUnits = _.cloneDeep(state.unitStatuses);
 
-      units.forEach((unit) => {
+      dispatchUnits.forEach((unit) => {
         if (unit.UnitId == action.unitId) {
           unit.SelectedForDispatch = action.checked;
         }
@@ -149,10 +166,7 @@ export function reducer(
         unitStatuses: units,
       };
     case HomeActionTypes.UPDATE_NEWCALLLOCATION:
-      const newCallLocation = new GpsLocation(
-        action.latitude,
-        action.longitude
-      );
+      const newCallLocation = new GpsLocation(action.latitude, action.longitude);
       return {
         ...state,
         newCallLocation: newCallLocation,
@@ -178,23 +192,23 @@ export function reducer(
         isSavingCall: true,
       };
     case HomeActionTypes.SAVE_CALL_SUCCESS:
-      var units = _.cloneDeep(state.unitStatuses);
-      units.forEach((unit) => {
+      let unitsReset = _.cloneDeep(state.unitStatuses);
+      unitsReset.forEach((unit) => {
         unit.SelectedForDispatch = false;
       });
 
-      var roles = _.cloneDeep(state.rolesForGrid);
-      roles.forEach((role) => {
+      let rolesReset = _.cloneDeep(state.rolesForGrid);
+      rolesReset.forEach((role) => {
         role.Selected = false;
       });
 
-      var groups = _.cloneDeep(state.groupsForGrid);
-      groups.forEach((group) => {
+      let groupsReset = _.cloneDeep(state.groupsForGrid);
+      groupsReset.forEach((group) => {
         group.Selected = false;
       });
 
-      var personnel = _.cloneDeep(state.personnelForGrid);
-      personnel.forEach((person) => {
+      let personnelReset = _.cloneDeep(state.personnelForGrid);
+      personnelReset.forEach((person) => {
         person.Selected = false;
       });
 
@@ -207,7 +221,7 @@ export function reducer(
         personnelForGrid: personnel,
         isSavingCall: false,
       };
-      case HomeActionTypes.SAVE_CALL_FAIL:
+    case HomeActionTypes.SAVE_CALL_FAIL:
       return {
         ...state,
         isSavingCall: false,
@@ -243,6 +257,26 @@ export function reducer(
         ...state,
         newCallFormData: action.formData,
       };
+    case HomeActionTypes.UPDATE_PERSONSTATUSES:
+      let personnelForUpdate = _.cloneDeep(action.payload);
+      personnelForUpdate.forEach((person) => {
+        person.Selected = false;
+      });
+
+      return {
+        ...state,
+        personnelForGrid: personnelForUpdate,
+      };
+    case HomeActionTypes.UPDATE_PERSONSTAFFING:
+      let personnelForStaffingUpdate = _.cloneDeep(action.payload);
+      personnelForStaffingUpdate.forEach((person) => {
+        person.Selected = false;
+      });
+
+      return {
+        ...state,
+        personnelForGrid: personnelForStaffingUpdate,
+      };
     default:
       return state;
   }
@@ -253,10 +287,8 @@ export function reducer(
 // export const getIsLoginState = (state: AuthState) => state.isLogging;
 
 export const getHasLoadedState = (state: HomeState) => state.hasLoaded;
-export const getIsSavingUnitStateStatus = (state: HomeState) =>
-  state.isSavingUnitState;
-export const getIsSavingCloseCallStatus = (state: HomeState) =>
-  state.isSavingCloseCall;
+export const getIsSavingUnitStateStatus = (state: HomeState) => state.isSavingUnitState;
+export const getIsSavingCloseCallStatus = (state: HomeState) => state.isSavingCloseCall;
 export const getMapData = (state: HomeState) => state.mapData;
 export const getNewCall = (state: HomeState) => state.newCall;
 export const getCallTemplate = (state: HomeState) => state.activeCallTemplate;

@@ -5,6 +5,8 @@ import { PersonnelForCallResult } from 'src/app/core/models/personnelForCallResu
 import { UnitStatusResult } from 'src/app/core/models/unitStatusResult';
 import { DashboardPayload } from '../models/dashboardPayload';
 import { SaveCloseCallPayload } from '../models/saveCloseCallPayload';
+import { SetPersonStatffingPayload } from '../models/setPersonStatffingPayload';
+import { SetPersonStatusesPayload } from '../models/setPersonStatusesPayload';
 import { SetUnitStateModalData } from '../models/setUnitStateModalData';
 import { SetUnitStatePayload } from '../models/setUnitStatePayload';
 
@@ -69,7 +71,18 @@ export enum HomeActionTypes {
   GET_UPDATEDPERSONANDUNITS_DISTANCE = '[HOME] GET_UPDATEDPERSONANDUNITS_DISTANCE',
   OPEN_CALLFORMMODAL = '[HOME] OPEN_CALLFORMMODAL',
   SET_NEWCALLFORMDATA = '[HOME] SET_NEWCALLFORMDATA',
-  DONE = '[HOME] DONE'
+  DONE = '[HOME] DONE',
+  OPEN_SETPERSONSTATUSMODAL = '[HOME] OPEN_SETPERSONSTATUSMODAL',
+  UPDATE_SELECTPERSON = '[HOME] UPDATE_SELECTPERSON',
+  OPEN_SETPERSONSTAFFINGMODAL = '[HOME] OPEN_SETPERSONSTAFFINGMODAL',
+  SAVE_PERSONSTATUSES = '[HOME] SAVE_PERSONSTATUSES',
+  SAVE_PERSONSTATUSES_SUCCESS = '[HOME] SAVE_PERSONSTATUSES_SUCCESS',
+  SAVE_PERSONSTATUSES_FAIL = '[HOME] SAVE_PERSONSTATUSES_FAIL',
+  UPDATE_PERSONSTATUSES = '[HOME] UPDATE_PERSONSTATUSES',
+  SAVE_PERSONSTAFFING = '[HOME] SAVE_PERSONSTAFFING',
+  SAVE_PERSONSTAFFING_SUCCESS = '[HOME] SAVE_PERSONSTAFFING_SUCCESS',
+  SAVE_PERSONSTAFFING_FAIL = '[HOME] SAVE_PERSONSTAFFING_FAIL',
+  UPDATE_PERSONSTAFFING = '[HOME] UPDATE_PERSONSTAFFING',
 }
 
 // Home
@@ -149,6 +162,11 @@ export class UpdateUnitStates implements Action {
 export class UpdateSelectUnit implements Action {
   readonly type = HomeActionTypes.UPDATE_SELECTUNIT;
   constructor(public unitId: string, public checked: boolean) {}
+}
+
+export class UpdateSelectPerson implements Action {
+  readonly type = HomeActionTypes.UPDATE_SELECTPERSON;
+  constructor(public userId: string, public checked: boolean) {}
 }
 
 export class UpdateSelectedCall implements Action {
@@ -371,6 +389,56 @@ export class SetNewCallFormData implements Action {
   constructor(public formData: string) {}
 }
 
+export class OpenSetPersonStatusModal implements Action {
+  readonly type = HomeActionTypes.OPEN_SETPERSONSTATUSMODAL;
+  constructor() {}
+}
+
+export class OpenSetPersonStaffingModal implements Action {
+  readonly type = HomeActionTypes.OPEN_SETPERSONSTAFFINGMODAL;
+  constructor() {}
+}
+
+export class SavingPersonStatuses implements Action {
+  readonly type = HomeActionTypes.SAVE_PERSONSTATUSES;
+  constructor(public payload: SetPersonStatusesPayload) {}
+}
+
+export class SavingPersonStatusesSuccess implements Action {
+  readonly type = HomeActionTypes.SAVE_PERSONSTATUSES_SUCCESS;
+  constructor() {}
+}
+
+export class SavingPersonStatusesFail implements Action {
+  readonly type = HomeActionTypes.SAVE_PERSONSTATUSES_FAIL;
+  constructor() {}
+}
+
+export class UpdatePersonStatuses implements Action {
+  readonly type = HomeActionTypes.UPDATE_PERSONSTATUSES;
+  constructor(public payload: PersonnelForCallResult[]) {}
+}
+
+export class SavingPersonStaffing implements Action {
+  readonly type = HomeActionTypes.SAVE_PERSONSTAFFING;
+  constructor(public payload: SetPersonStatffingPayload) {}
+}
+
+export class SavingPersonStaffingSuccess implements Action {
+  readonly type = HomeActionTypes.SAVE_PERSONSTAFFING_SUCCESS;
+  constructor() {}
+}
+
+export class SavingPersonStaffingFail implements Action {
+  readonly type = HomeActionTypes.SAVE_PERSONSTAFFING_FAIL;
+  constructor() {}
+}
+
+export class UpdatePersonStaffings implements Action {
+  readonly type = HomeActionTypes.UPDATE_PERSONSTAFFING;
+  constructor(public payload: PersonnelForCallResult[]) {}
+}
+
 export class Done implements Action {
   readonly type = HomeActionTypes.DONE;
   constructor() {}
@@ -387,4 +455,7 @@ export type HomeActionsUnion = Loading | LoadingSuccess | LoadingFail | LoadingM
                                ShowCallNotesModal | OpenCallNotesModal | SaveCallNote | SaveCallNoteSuccess | SaveCallNoteFail | ShowCallImagesModal |
                                OpenCallImagesModal | UploadCallImage | UploadCallImageSuccess | UploadCallImageFail | ShowCallFilesModal | 
                                OpenCallFilesModal | UpdatePersonnelandUnitsDistancesToCall | GetUpdatedPersonnelandUnitsDistancesToCall |
-                               OpenCallFormModal | SetNewCallFormData | IsSavingCall | Done;
+                               OpenCallFormModal | SetNewCallFormData | IsSavingCall | Done | UpdateSelectPerson | OpenSetPersonStatusModal |  
+                               OpenSetPersonStaffingModal | SavingPersonStatuses | UpdatePersonStatuses | SavingPersonStaffing | SavingPersonStaffing |
+                               SavingPersonStaffingSuccess | SavingPersonStaffingFail | UpdatePersonStaffings
+                               ;

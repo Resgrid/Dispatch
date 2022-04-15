@@ -21,6 +21,8 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { CallFilesModalComponent } from './modals/callFiles/callFiles.modal';
 import { CallFormModalComponent } from './modals/callForm/callForm.modal';
 import { NgxResgridLibModule } from '@resgrid/ngx-resgridlib';
+import { SetPersonStatusModalComponent } from './modals/setPersonStatus/setPersonStatus.modal';
+import { SetPersonStaffingModalComponent } from './modals/setPersonStaffing/setPersonStaffing.modal';
 
 @NgModule({
   declarations: [
@@ -30,7 +32,9 @@ import { NgxResgridLibModule } from '@resgrid/ngx-resgridlib';
     CallNotesModalComponent,
     CallImagesModalComponent,
     CallFilesModalComponent,
-    CallFormModalComponent
+    CallFormModalComponent,
+    SetPersonStatusModalComponent,
+    SetPersonStaffingModalComponent
   ],
   imports: [
     CommonModule,
@@ -60,7 +64,9 @@ import { NgxResgridLibModule } from '@resgrid/ngx-resgridlib';
     CallNotesModalComponent,
     CallImagesModalComponent,
     CallFilesModalComponent,
-    CallFormModalComponent
+    CallFormModalComponent,
+    SetPersonStatusModalComponent,
+    SetPersonStaffingModalComponent
   ]
 })
 export class HomeModule { }

@@ -28,6 +28,7 @@ import { CallResultData, ConnectionState, GetCallTemplatesResultData, GpsLocatio
 import { Call } from "src/app/core/models/call";
 import { AuthState } from "src/app/features/auth/store/auth.store";
 import { HomeProvider } from "../../providers/home";
+import { NgbNavChangeEvent } from "@ng-bootstrap/ng-bootstrap";
 
 const iconRetinaUrl = './assets/marker-icon-2x.png';
 const iconUrl = './assets/marker-icon.png';
@@ -69,6 +70,7 @@ export class DashboardPage implements AfterViewInit {
   public auth: AuthState;
   public newCallForm: FormGroup;
   public unitGroups: string[];
+  public currentStatusTabSelected: number = 1;
 
   constructor(
     public formBuilder: FormBuilder,
@@ -241,6 +243,14 @@ export class DashboardPage implements AfterViewInit {
     this.store.dispatch(new HomeActions.ShowSetUnitStateModal(unitId));
   }
 
+  public setPersonnelStatus() {
+    this.store.dispatch(new HomeActions.OpenSetPersonStatusModal());
+  }
+
+  public setPersonnelStaffing() {
+    this.store.dispatch(new HomeActions.OpenSetPersonStaffingModal());
+  }
+
   public callNotes() {
     this.store
       .select(selectHomeState)
@@ -318,6 +328,13 @@ export class DashboardPage implements AfterViewInit {
     var checked = event.target.checked;
 
     this.store.dispatch(new HomeActions.UpdateSelectUnit(id, checked));
+  }
+
+  public changeCheckedPerson(event) {
+    var id = event.target.name;
+    var checked = event.target.checked;
+
+    this.store.dispatch(new HomeActions.UpdateSelectPerson(id, checked));
   }
 
   public changeCheckedCall(event) {
@@ -478,6 +495,12 @@ export class DashboardPage implements AfterViewInit {
 
       this.store.dispatch(new HomeActions.SaveCall(newCall));
     });
+  }
+
+  public onStatuseTabNavChange(changeEvent: NgbNavChangeEvent) {
+    if (changeEvent) {
+      this.currentStatusTabSelected = changeEvent.nextId;
+    }
   }
 
   /* New Call Map func */
