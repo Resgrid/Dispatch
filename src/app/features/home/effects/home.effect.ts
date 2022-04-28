@@ -358,13 +358,26 @@ export class HomeEffects {
     })
   );
 
-  @Effect({ dispatch: false })
-  saveCallSuccess$: Observable<Action> = this.actions$.pipe(
+  saveCallSuccess$ = createEffect(() =>
+  this.actions$.pipe(
     ofType<homeAction.SaveCallSuccess>(homeAction.HomeActionTypes.SAVE_CALL_SUCCESS),
-    tap((data) => {
-      this.alertProvider.showAutoCloseSuccessAlert("Call has been saved and dispatched.");
-    })
-  );
+    mergeMap((action) =>
+      this.callsProvider.getActiveCalls().pipe(
+        // If successful, dispatch success action with result
+        map((data) => ({
+          type: homeAction.HomeActionTypes.UPDATE_CALLS,
+          payload: data.Data,
+        })),
+        tap((data) => {
+          this.alertProvider.showAutoCloseSuccessAlert("Call has been saved and dispatched.");
+        }),
+        // If request fails, dispatch failed action
+        catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_CALL_FAIL }))
+      )
+    )
+  )
+);
+
 
   @Effect()
   getLatestPersonnelData$: Observable<Action> = this.actions$.pipe(
