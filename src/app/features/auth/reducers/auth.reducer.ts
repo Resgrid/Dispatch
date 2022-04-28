@@ -11,6 +11,7 @@ export function reducer(state: AuthState = initialState, action: LoginActionsUni
     case LoginActionTypes.LOGIN_SUCCESS:
       return {
         ...state,
+        isLogging: false,
         loggedIn: true,
         user: action.user
       };
