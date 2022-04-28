@@ -163,7 +163,7 @@ export function reducer(state: HomeState = initialState, action: HomeActionsUnio
 
       return {
         ...state,
-        unitStatuses: units,
+        unitStatuses: dispatchUnits,
       };
     case HomeActionTypes.UPDATE_NEWCALLLOCATION:
       const newCallLocation = new GpsLocation(action.latitude, action.longitude);
@@ -215,10 +215,10 @@ export function reducer(state: HomeState = initialState, action: HomeActionsUnio
       return {
         ...state,
         newCall: new CallResultData(),
-        unitStatuses: units,
-        rolesForGrid: roles,
-        groupsForGrid: groups,
-        personnelForGrid: personnel,
+        unitStatuses: unitsReset,
+        rolesForGrid: rolesReset,
+        groupsForGrid: groupsReset,
+        personnelForGrid: personnelReset,
         isSavingCall: false,
       };
     case HomeActionTypes.SAVE_CALL_FAIL:
