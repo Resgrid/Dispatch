@@ -197,7 +197,7 @@ export class DashboardPage implements AfterViewInit {
           .map((value, key) => ({ groupName: key, units: value }))
           .value();
 
-        if (units) {
+        if (units && Array.isArray(units) && units.length > 0) {
           this.selectedGroupName = units[0].groupName;
 
           if (!this.selectedGroupName || this.selectedGroupName == "") {
