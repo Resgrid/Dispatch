@@ -223,7 +223,7 @@ export class DashboardPage implements AfterViewInit {
         this.selectedGroupName = "No Group";
       }
 
-      this.cdr.detectChanges();
+      //this.cdr.detectChanges();
     });
 
     this.breadCrumbItems = [

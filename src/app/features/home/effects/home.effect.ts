@@ -183,13 +183,13 @@ export class HomeEffects {
     ofType<homeAction.SavingCloseCall>(homeAction.HomeActionTypes.SAVE_CLOSECALL),
     mergeMap((action) =>
       this.callsProvider.closeCall(action.payload.callId, action.payload.note, action.payload.stateType).pipe(
+        tap((data) => {
+          this.closeModal();
+        }),
         // If successful, dispatch success action with result
         map((data) => ({
           type: homeAction.HomeActionTypes.SAVE_CLOSECALL_SUCCESS,
         })),
-        tap((data) => {
-          this.closeModal();
-        }),
         // If request fails, dispatch failed action
         catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_CLOSECALL_FAIL }))
       )
@@ -219,7 +219,7 @@ export class HomeEffects {
         // If successful, dispatch success action with result
         map((data) => ({
           type: homeAction.HomeActionTypes.UPDATE_CALLS,
-          payload: data,
+          payload: data.Data,
         })),
         tap((data) => {
           this.alertProvider.showAutoCloseSuccessAlert("Call has been closed.");

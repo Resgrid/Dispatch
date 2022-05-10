@@ -19,7 +19,7 @@ export function reducer(state: HomeState = initialState, action: HomeActionsUnio
     case HomeActionTypes.LOADING_SUCCESS:
       let people = _.cloneDeep(action.payload.PersonnelForGrid);
       people.forEach((p) => {
-        if (!p.Group) p.Group = "No Group";
+        if (!p.Group || p.Group === '') p.Group = "No Group";
       });
 
       return {
