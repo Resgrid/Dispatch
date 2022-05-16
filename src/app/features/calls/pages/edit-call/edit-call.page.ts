@@ -271,13 +271,39 @@ export class EditCallPage implements AfterViewInit {
     editCall.ExternalId = call["callId"].value;
     editCall.IncidentId = call["incidentId"].value;
     editCall.ReferenceId = call["referenceId"].value;
-    editCall.Address = call["address"].value;
-    editCall.w3w = call["w3w"].value;
-    editCall.Latitude = call["latitude"].value;
-    editCall.Longitude = call["longitude"].value;
-    editCall.Redispatch = call["redispatch"].value;
+
+    if (call["address"]) {
+      editCall.Address = call["address"].value;
+    }
+
+    if (call["w3w"]) {
+      editCall.w3w = call["w3w"].value;
+    }
+
+    if (call["latitude"]) {
+      let latitude = call["latitude"].value;
+
+      if (latitude && latitude !== 'null') {
+        editCall.Latitude = call["latitude"].value;
+      }
+    }
+
+    if (call["longitude"]) {
+      let longitude = call["longitude"].value;
+
+      if (longitude && longitude !== 'null') {
+        editCall.Longitude = call["longitude"].value;
+      }
+    }
+
+    if (call["redispatch"]) {
+      editCall.Redispatch = call["redispatch"].value;
+    }
     editCall.FormData = "";
-    editCall.DispatchOn = call["dispatchOn"].value;
+
+    if (call["dispatchOn"]) {
+      editCall.DispatchOn = call["dispatchOn"].value;
+    }
 
     this.store.select(selectCallsState).pipe(take(1)).subscribe((state) => {
       if (state.callToEdit) {

@@ -15,7 +15,7 @@ import * as _ from "lodash";
 import { FormBuilder, FormGroup, Validators } from "@angular/forms";
 import { environment } from "../../../../../environments/environment";
 import { AuthState } from "src/app/features/auth/store/auth.store";
-import { CallResultData } from '@resgrid/ngx-resgridlib';
+import { CallResultData, FormResult, FormResultData } from '@resgrid/ngx-resgridlib';
 declare var $: any;
 
 @Component({
@@ -35,6 +35,7 @@ export class CallFormModalComponent implements OnInit {
   public fileName = "";
   public uploadProgress: number;
   public uploadSub: Subscription;
+  public newCallForm: FormResultData = null;
   private formRender: any;
 
   constructor(
@@ -61,8 +62,11 @@ export class CallFormModalComponent implements OnInit {
       .select(selectHomeState)
       .pipe(take(1))
       .subscribe((state) => {
-        var callData = state.newCallForm.Data;
-        this.formRender = $(document.getElementById("fb-reader")).formRender({ dataType: 'json', formData: callData });
+        if (state && state.newCallForm && state.newCallForm.Data) {
+          this.newCallForm =  state.newCallForm;
+          var callData = state.newCallForm.Data;
+          this.formRender = $(document.getElementById("fb-reader")).formRender({ dataType: 'json', formData: callData });
+        }
       });
   }
 

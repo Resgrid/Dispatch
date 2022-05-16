@@ -420,10 +420,10 @@
       <tbody>
         <tr *ngFor="let unit of group.value">
           <td style="width: 20px;"><input type="checkbox" name="{{unit.UnitId}}" (change)="changeCheckedUnit($event)" [checked]="unit.Selected"></td>
-          <td>{{unit.Name}}</td>
-          <td>{{unit.Type}}</td>
-          <td>{{unit.DestinationName}}</td>
-          <td [ngClass]="unit.StateCss" [style.color]="unit.StateStyle">{{unit.State}}</td>
+          <td style="font-size: 12px;">{{unit.Name}}</td>
+          <td style="font-size: 12px;">{{unit.Type}}</td>
+          <td style="font-size: 12px;">{{unit.DestinationName}}</td>
+          <td [ngClass]="unit.StateCss" [style.color]="unit.StateStyle" style="font-size: 12px;">{{unit.State}}</td>
           <td><a href="javascript:void(0);" class="mr-3 text-primary" ngbTooltip="Set Status" (click)="setUnitStatus(unit.UnitId)"><i class="mdi mdi-flag font-size-18"></i></a>
           </td>
         </tr>
