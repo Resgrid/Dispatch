@@ -21,6 +21,7 @@ import { AuthModule } from './features/auth/auth.module';
 import { LeafletModule } from '@asymmetrik/ngx-leaflet';
 import { VoiceModule } from './features/voice/voice.module';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { MappingModule } from './features/mapping/mapping.module';
 
 export function createTranslateLoader(http: HttpClient): any {
   return new TranslateHttpLoader(http, 'assets/i18n/', '.json');
@@ -73,7 +74,8 @@ let getBaseUrl = (): string => {
     }),
     AuthModule,
     VoiceModule,
-    LayoutsModule
+    LayoutsModule,
+    MappingModule
   ],
   providers: [
     //{ provide: HTTP_INTERCEPTORS, useClass: JwtInterceptor, multi: true },

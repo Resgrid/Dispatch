@@ -17,5 +17,11 @@ export const MENU: MenuItem[] = [
         label: 'MENUITEMS.SCHEDULEDCALLS.TEXT',
         icon: 'ri-calendar-2-line',
         link: '/calls/scheduled'
+    },
+    {
+        id: 3,
+        label: 'MENUITEMS.MAP.TEXT',
+        icon: 'ri-map-2-line',
+        link: '/mapping/map'
     }
 ];

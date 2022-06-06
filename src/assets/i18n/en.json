@@ -21,6 +21,9 @@
     },
     "SCHEDULEDCALLS": {
       "TEXT": "Scheduled Calls"
+    },
+    "MAP": {
+      "TEXT": "Map"
     }
   }
 }
