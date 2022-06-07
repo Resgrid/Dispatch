@@ -15,8 +15,6 @@ import { GalleryModule } from  'ng-gallery';
 import { NgxResgridLibModule } from '@resgrid/ngx-resgridlib';
 
 @NgModule({
-  declarations: [
-  ],
   imports: [
     CommonModule,
     FormsModule,

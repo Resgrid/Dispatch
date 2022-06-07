@@ -681,7 +681,7 @@ export class HomeEffects {
     this.actions$.pipe(
       ofType<homeAction.SavingPersonStaffing>(homeAction.HomeActionTypes.SAVE_PERSONSTAFFING),
       mergeMap((action) =>
-        this.personnelStaffingProvider.savePersonsStatuses({
+        this.personnelStaffingProvider.savePersonsStaffings({
             UserIds: action.payload.userIds,
             Type: action.payload.staffingType,
             TimestampUtc: action.payload.date.toUTCString().replace("UTC", "GMT"),
