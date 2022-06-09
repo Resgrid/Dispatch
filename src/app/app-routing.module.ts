@@ -33,6 +33,10 @@ const routes: Routes = [
   {
     path: 'profile',
     loadChildren: () => import('./features/profile/profile.module').then(m => m.ProfileModule)
+  },
+  {
+    path: 'mapping',
+    loadChildren: () => import('./features/mapping/mapping.module').then(m => m.MappingModule)
   }
 ];
 

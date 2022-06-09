@@ -1,17 +1,13 @@
 import { BrowserModule } from '@angular/platform-browser';
 import { CUSTOM_ELEMENTS_SCHEMA, NgModule } from '@angular/core';
 import { HttpClientModule, HTTP_INTERCEPTORS, HttpClient } from '@angular/common/http';
-
-import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
 import { TranslateHttpLoader } from '@ngx-translate/http-loader';
-
 import { environment } from '../environments/environment';
-
 import { LayoutsModule } from './layouts/layouts.module';
 import { NgxResgridLibModule } from '@resgrid/ngx-resgridlib';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
-import { NgxSpinnerModule } from "ngx-spinner";
+import { NgxSpinnerModule } from 'ngx-spinner';
 import { StoreModule } from '@ngrx/store';
 import { metaReducers, reducers } from './store/reducers';
 import { EffectsModule } from '@ngrx/effects';
@@ -21,6 +17,8 @@ import { AuthModule } from './features/auth/auth.module';
 import { LeafletModule } from '@asymmetrik/ngx-leaflet';
 import { VoiceModule } from './features/voice/voice.module';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { MappingModule } from './features/mapping/mapping.module';
+import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
 
 export function createTranslateLoader(http: HttpClient): any {
   return new TranslateHttpLoader(http, 'assets/i18n/', '.json');
@@ -73,7 +71,8 @@ let getBaseUrl = (): string => {
     }),
     AuthModule,
     VoiceModule,
-    LayoutsModule
+    LayoutsModule,
+    MappingModule
   ],
   providers: [
     //{ provide: HTTP_INTERCEPTORS, useClass: JwtInterceptor, multi: true },

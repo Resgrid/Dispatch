@@ -9,6 +9,7 @@ import { HomeState } from '../features/home/store/home.store';
 import { VoiceState } from '../features/voice/store/voice.store';
 import { CallsState } from '../features/calls/store/calls.store';
 import { ProfileState } from '../features/profile/store/profile.store';
+import { MappingState } from '../features/mapping/store/mapping.store';
 
 export interface State extends fromRoot.State {
   auth: AuthState;
@@ -105,3 +106,6 @@ export const selectEditCallData = createSelector(
 
 
 export const selectProfileState = createFeatureSelector<ProfileState>('profileModule');
+
+
+export const selectMappingState = createFeatureSelector<MappingState>('mappingModule');

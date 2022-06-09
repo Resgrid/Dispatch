@@ -286,8 +286,8 @@
                   </tbody>
                 </table>
               </div>
-            <div>&nbsp;</div>
-            <div>&nbsp;</div>
+              <div>&nbsp;</div>
+              <div>&nbsp;</div>
             </div>
           </div>
         </div>
@@ -295,63 +295,73 @@
 
     </div>
     <div class="col-xl-4">
+      <div class="row" *ngIf="(homeState$ | async).dispatchNote">
+        <div class="col-xl-12">
+          <div class="card">
+            <div class="card-body">
+              <h4 class="card-title mb-4">Dispatch Note</h4>
+              <div class="row">
+                <div class="col-12">
+                  <span [innerHtml]="(homeState$ | async).dispatchNote.Body"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="row">
         <div class="col-xl-12">
-          <div class="row">
-            <div class="col-xl-12">
-              <div class="card">
-                <div class="card-body">
-                  <div class="row">
-                    <div class="col-12">
-                      <div #map id="map" name="map" style="height: 300px;">
-                      </div>
-                    </div>
+          <div class="card">
+            <div class="card-body">
+              <div class="row">
+                <div class="col-12">
+                  <div #map id="map" name="map" style="height: 300px;">
                   </div>
                 </div>
               </div>
             </div>
           </div>
-          <div class="row">
-            <div class="col-xl-12">
-              <div class="card">
-                <div class="card-body">
-                  <div class="dropdown float-right" ngbDropdown>
-                    <a href="javascript: void(0);" class="dropdown-toggle arrow-none card-drop" ngbDropdownToggle data-toggle="dropdown" aria-expanded="false">
-                      <i class="mdi mdi-dots-vertical"></i>
-                    </a>
-                    <div class="dropdown-menu dropdown-menu-right" ngbDropdownMenu>
-                      <a href="javascript:void(0);" class="dropdown-item" *ngIf="currentStatusTabSelected === 1">Roles</a>
-                      <a href="javascript:void(0);" class="dropdown-item" *ngIf="currentStatusTabSelected === 2" (click)="setPersonnelStatus()">Set Status</a>
-                      <a href="javascript:void(0);" class="dropdown-item" *ngIf="currentStatusTabSelected === 2" (click)="setPersonnelStaffing()">Set Staffing</a>
-                    </div>
-                  </div>
-                  <h4 class="card-title mb-4">Statuses</h4>
-                  <div class="row">
-                    <div class="col-12">
-                      <ul ngbNav #statusesTabNav="ngbNav" [activeId]="1" class="nav-tabs" (navChange)="onStatuseTabNavChange($event)">
-                        <li [ngbNavItem]="1">
-                          <a ngbNavLink>
-                            <span class="d-block d-sm-none"></span>
-                            <span class="d-none d-sm-block">Units</span>
-                          </a>
-                          <ng-template ngbNavContent>
-                            <ng-template [ngTemplateOutlet]="UnitsStatusTabContent"></ng-template>
-                          </ng-template>
-                        </li>
-                        <li [ngbNavItem]="2">
-                          <a ngbNavLink>
-                            <span class="d-block d-sm-none"></span>
-                            <span class="d-none d-sm-block">Personnel</span>
-                          </a>
-                          <ng-template ngbNavContent>
-                            <ng-template [ngTemplateOutlet]="PersonnelStatusTabContent"></ng-template>
-                          </ng-template>
-                        </li>
-                      </ul>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-xl-12">
+          <div class="card">
+            <div class="card-body">
+              <div class="dropdown float-right" ngbDropdown>
+                <a href="javascript: void(0);" class="dropdown-toggle arrow-none card-drop" ngbDropdownToggle data-toggle="dropdown" aria-expanded="false">
+                  <i class="mdi mdi-dots-vertical"></i>
+                </a>
+                <div class="dropdown-menu dropdown-menu-right" ngbDropdownMenu>
+                  <a href="javascript:void(0);" class="dropdown-item" *ngIf="currentStatusTabSelected === 1">Roles</a>
+                  <a href="javascript:void(0);" class="dropdown-item" *ngIf="currentStatusTabSelected === 2" (click)="setPersonnelStatus()">Set Status</a>
+                  <a href="javascript:void(0);" class="dropdown-item" *ngIf="currentStatusTabSelected === 2" (click)="setPersonnelStaffing()">Set Staffing</a>
+                </div>
+              </div>
+              <h4 class="card-title mb-4">Statuses</h4>
+              <div class="row">
+                <div class="col-12">
+                  <ul ngbNav #statusesTabNav="ngbNav" [activeId]="1" class="nav-tabs" (navChange)="onStatuseTabNavChange($event)">
+                    <li [ngbNavItem]="1">
+                      <a ngbNavLink>
+                        <span class="d-block d-sm-none"></span>
+                        <span class="d-none d-sm-block">Units</span>
+                      </a>
+                      <ng-template ngbNavContent>
+                        <ng-template [ngTemplateOutlet]="UnitsStatusTabContent"></ng-template>
+                      </ng-template>
+                    </li>
+                    <li [ngbNavItem]="2">
+                      <a ngbNavLink>
+                        <span class="d-block d-sm-none"></span>
+                        <span class="d-none d-sm-block">Personnel</span>
+                      </a>
+                      <ng-template ngbNavContent>
+                        <ng-template [ngTemplateOutlet]="PersonnelStatusTabContent"></ng-template>
+                      </ng-template>
+                    </li>
+                  </ul>
 
-                      <div [ngbNavOutlet]="statusesTabNav"></div>
-                    </div>
-                  </div>
+                  <div [ngbNavOutlet]="statusesTabNav"></div>
                 </div>
               </div>
             </div>

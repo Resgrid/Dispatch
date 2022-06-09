@@ -14,6 +14,8 @@ import {
   DispatchService,
   EventsService,
   FormsService,
+  NoteResultData,
+  NotesService,
   SignalRService,
   UnitsService,
   UnitStatusService,
@@ -26,6 +28,7 @@ import { selectHomeState } from "src/app/store";
 import { AuthState } from "../../auth/store/auth.store";
 import { selectAuthState } from "src/app/store";
 import * as HomeActions from "../../../features/home/actions/home.actions";
+import { NoteResult } from "@resgrid/ngx-resgridlib/lib/models/v4/notes/noteResult";
 
 @Injectable({
   providedIn: "root",
@@ -49,7 +52,8 @@ export class HomeProvider {
     private authStore: Store<AuthState>,
     private events: EventsService,
     private consts: Consts,
-    private customStatusesService: CustomStatusesService
+    private customStatusesService: CustomStatusesService,
+    private noteService: NotesService
   ) {
     //this.personnelStatusUpdated$ = this.events.subscribe(this.consts.SIGNALR_EVENTS.PERSONNEL_STATUS_UPDATED);
     //this.personnelStaffingUpdated$ = this.events.subscribe(this.consts.SIGNALR_EVENTS.PERSONNEL_STAFFING_UPDATED);
@@ -70,6 +74,7 @@ export class HomeProvider {
     const getNewCallForm = this.formsProvider.getNewCallForm();
     const getPersonnelStatus = this.customStatusesService.getActivePersonnelStatuses();
     const getPersonnelStaffingLevels = this.customStatusesService.getActivePersonnelStaffingLevels();
+    const getDispatchNote = this.noteService.getDispatchNote();
 
     return forkJoin({
       units: getUnits,
@@ -82,6 +87,7 @@ export class HomeProvider {
       newCallForm: getNewCallForm,
       personnelStatuses: getPersonnelStatus,
       PersonnelStaffingLevels: getPersonnelStaffingLevels,
+      dispatchNote: getDispatchNote
     }).pipe(
       map((results) => {
         let localCalls: CallLocalResult[] = new Array();
@@ -108,6 +114,11 @@ export class HomeProvider {
           });
         }
 
+        let dispatchNote: NoteResultData = null;
+
+        if (results.dispatchNote && results.dispatchNote.Data)
+          dispatchNote = results.dispatchNote.Data;
+
         return {
           UnitStatuses: results.units.Data,
           Calls: results.calls.Data,
@@ -119,6 +130,7 @@ export class HomeProvider {
           NewCallForm: results.newCallForm.Data,
           PersonnelStatuses: results.personnelStatuses.Data,
           PersonnelStaffingLevels: results.PersonnelStaffingLevels.Data,
+          DispatchNote: dispatchNote
         };
       })
     );
