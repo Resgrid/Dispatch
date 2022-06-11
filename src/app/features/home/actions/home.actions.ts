@@ -44,6 +44,9 @@ export enum HomeActionTypes {
   GET_COORDINATESFORADDRESS = '[HOME] GET_COORDINATESFORADDRESS',
   GET_COORDINATESFORADDRESS_SUCCESS = '[HOME] GET_COORDINATESFORADDRESS_SUCCESS',
   GET_COORDINATESFORADDRESS_FAIL = '[HOME] GET_COORDINATESFORADDRESS_FAIL',
+  GET_ADDRESSFORCOORDINATES = '[HOME] GET_ADDRESSFORCOORDINATES',
+  GET_ADDRESSFORCOORDINATES_SUCCESS = '[HOME] GET_ADDRESSFORCOORDINATES_SUCCESS',
+  GET_ADDRESSFORCOORDINATES_FAIL = '[HOME] GET_ADDRESSFORCOORDINATES_FAIL',
   SAVE_CALL = '[HOME] SAVE_CALL',
   SAVE_CALL_START = '[HOME] SAVE_CALL_START',
   SAVE_CALL_SUCCESS = '[HOME] SAVE_CALL_SUCCESS',
@@ -254,6 +257,21 @@ export class GetCoordinatesForAddressFail implements Action {
   constructor(public payload: string) {}
 }
 
+export class GetAddressForCoordinates implements Action {
+  readonly type = HomeActionTypes.GET_ADDRESSFORCOORDINATES;
+  constructor(public latitude: string, public longitude: string) {}
+}
+
+export class GetAddressForCoordinatesSuccess implements Action {
+  readonly type = HomeActionTypes.GET_ADDRESSFORCOORDINATES_SUCCESS;
+  constructor(public address: string) {}
+}
+
+export class GetAddressForCoordinatesFail implements Action {
+  readonly type = HomeActionTypes.GET_ADDRESSFORCOORDINATES_FAIL;
+  constructor(public payload: string) {}
+}
+
 export class IsSavingCall implements Action {
   readonly type = HomeActionTypes.SAVE_CALL_START;
   constructor() {}
@@ -457,5 +475,6 @@ export type HomeActionsUnion = Loading | LoadingSuccess | LoadingFail | LoadingM
                                OpenCallFilesModal | UpdatePersonnelandUnitsDistancesToCall | GetUpdatedPersonnelandUnitsDistancesToCall |
                                OpenCallFormModal | SetNewCallFormData | IsSavingCall | Done | UpdateSelectPerson | OpenSetPersonStatusModal |  
                                OpenSetPersonStaffingModal | SavingPersonStatuses | UpdatePersonStatuses | SavingPersonStaffing | SavingPersonStaffing |
-                               SavingPersonStaffingSuccess | SavingPersonStaffingFail | UpdatePersonStaffings
+                               SavingPersonStaffingSuccess | SavingPersonStaffingFail | UpdatePersonStaffings | GetAddressForCoordinates | 
+                               GetAddressForCoordinatesSuccess | GetAddressForCoordinatesFail
                                ;

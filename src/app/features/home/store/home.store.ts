@@ -25,6 +25,7 @@ export interface HomeState {
     // New Call data
     newCall: CallResultData;
     newCallLocation: GpsLocation;
+    newCallAddress: string;
     newCallFormData: string;
     isSavingCall: boolean;
     
@@ -73,6 +74,7 @@ export const initialState: HomeState = {
     groupsForGrid: null,
     rolesForGrid: null,
     newCallLocation: null,
+    newCallAddress: null,
     callTemplates: null,
     activeCallTemplate: null,
     callNotes: null,

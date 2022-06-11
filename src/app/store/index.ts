@@ -66,6 +66,11 @@ export const selectNewCallAddressState = createSelector(
   homeReducers.getNewCallAddress
 );
 
+export const selectNewCallLocationState = createSelector(
+  selectHomeState,
+  homeReducers.getNewCallLocation
+);
+
 export const selectNewCallState = createSelector(
   selectHomeState,
   homeReducers.getNewCall
@@ -75,7 +80,6 @@ export const selectIsSavingCall = createSelector(
   selectHomeState,
   homeReducers.getIsSavingCall
 );
-
 
 
 export const selectVoiceState = createFeatureSelector<VoiceState>('voiceModule');
