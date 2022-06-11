@@ -19,7 +19,7 @@ export function reducer(state: HomeState = initialState, action: HomeActionsUnio
     case HomeActionTypes.LOADING_SUCCESS:
       let people = _.cloneDeep(action.payload.PersonnelForGrid);
       people.forEach((p) => {
-        if (!p.Group || p.Group === '') p.Group = "No Group";
+        if (!p.Group || p.Group === "") p.Group = "No Group";
       });
 
       return {
@@ -36,6 +36,7 @@ export function reducer(state: HomeState = initialState, action: HomeActionsUnio
         personnelStatuses: action.payload.PersonnelStatuses,
         personnelStaffing: action.payload.PersonnelStaffingLevels,
         dispatchNote: action.payload.DispatchNote,
+        callNoteTemplates: action.payload.CallNotes
       };
 
     case HomeActionTypes.LOADING_FAIL:
@@ -187,6 +188,11 @@ export function reducer(state: HomeState = initialState, action: HomeActionsUnio
         ...state,
         newCallLocation: action.payload,
       };
+    case HomeActionTypes.GET_ADDRESSFORCOORDINATES_SUCCESS:
+      return {
+        ...state,
+        newCallAddress: action.address,
+      };
     case HomeActionTypes.SAVE_CALL_START:
       return {
         ...state,
@@ -295,3 +301,4 @@ export const getNewCall = (state: HomeState) => state.newCall;
 export const getCallTemplate = (state: HomeState) => state.activeCallTemplate;
 export const getNewCallAddress = (state: HomeState) => state.newCallLocation;
 export const getIsSavingCall = (state: HomeState) => state.isSavingCall;
+export const getNewCallLocation = (state: HomeState) => state.newCallAddress;

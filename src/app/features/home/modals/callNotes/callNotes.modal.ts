@@ -15,7 +15,7 @@ import * as _ from "lodash";
 import { FormBuilder, FormGroup, Validators } from "@angular/forms";
 import { environment } from "../../../../../environments/environment";
 import { AuthState } from "src/app/features/auth/store/auth.store";
-import { CallResultData } from '@resgrid/ngx-resgridlib';
+import { CallNoteTemplateResultData, CallResultData } from '@resgrid/ngx-resgridlib';
 
 @Component({
   selector: "app-resgrid-modal-callNotes",
@@ -28,6 +28,7 @@ export class CallNotesModalComponent implements OnInit {
   public selectedCall: CallResultData;
   public note: string;
   public isSaving: boolean = false;
+  public isShowingQuickNotes: boolean = false;
   @Input() auth: AuthState;
   public formData: FormGroup;
 
@@ -70,6 +71,19 @@ export class CallNotesModalComponent implements OnInit {
       "/Avatars/Get?id=" +
       userId
     );
+  }
+
+  public showCallNoteTemplates() {
+    this.isShowingQuickNotes = !this.isShowingQuickNotes;
+  }
+
+  public populateQuickNote(note: CallNoteTemplateResultData) {
+    if (note) {
+      this.form["message"].setValue(note.Data);
+      this.form["message"].patchValue(note.Data);
+    }
+
+    this.isShowingQuickNotes = false;
   }
 
   public dismiss() {

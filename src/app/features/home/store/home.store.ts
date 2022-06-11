@@ -1,4 +1,4 @@
-import { CallFileResultData, CallNoteResultData, CallPriorityResultData, CallResultData, CallTypeResultData, CustomStatusResultData, FormResultData, GetCallTemplatesResultData, GpsLocation, MapDataAndMarkersData, NoteResultData } from '@resgrid/ngx-resgridlib';
+import { CallFileResultData, CallNoteResultData, CallNoteTemplateResultData, CallPriorityResultData, CallResultData, CallTypeResultData, CustomStatusResultData, FormResultData, GetCallTemplatesResultData, GpsLocation, MapDataAndMarkersData, NoteResultData } from '@resgrid/ngx-resgridlib';
 import { CallLocalResult } from 'src/app/core/models/callLocalResult';
 import { GroupsForCallResult } from 'src/app/core/models/groupsForCallResult';
 import { PersonnelForCallResult } from 'src/app/core/models/personnelForCallResult';
@@ -25,6 +25,7 @@ export interface HomeState {
     // New Call data
     newCall: CallResultData;
     newCallLocation: GpsLocation;
+    newCallAddress: string;
     newCallFormData: string;
     isSavingCall: boolean;
     
@@ -54,6 +55,9 @@ export interface HomeState {
     personnelStaffing: CustomStatusResultData[];
 
     dispatchNote: NoteResultData;
+
+    // Call Note Templates
+    callNoteTemplates: CallNoteTemplateResultData[];
 }
 
 export const initialState: HomeState = {
@@ -73,6 +77,7 @@ export const initialState: HomeState = {
     groupsForGrid: null,
     rolesForGrid: null,
     newCallLocation: null,
+    newCallAddress: null,
     callTemplates: null,
     activeCallTemplate: null,
     callNotes: null,
@@ -83,5 +88,6 @@ export const initialState: HomeState = {
     editCall: null,
     personnelStatuses: null,
     personnelStaffing: null,
-    dispatchNote: null
+    dispatchNote: null,
+    callNoteTemplates: null
 };

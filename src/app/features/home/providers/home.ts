@@ -17,6 +17,7 @@ import {
   NoteResultData,
   NotesService,
   SignalRService,
+  TemplatesService,
   UnitsService,
   UnitStatusService,
 } from "@resgrid/ngx-resgridlib";
@@ -53,7 +54,8 @@ export class HomeProvider {
     private events: EventsService,
     private consts: Consts,
     private customStatusesService: CustomStatusesService,
-    private noteService: NotesService
+    private noteService: NotesService,
+    private templateService: TemplatesService
   ) {
     //this.personnelStatusUpdated$ = this.events.subscribe(this.consts.SIGNALR_EVENTS.PERSONNEL_STATUS_UPDATED);
     //this.personnelStaffingUpdated$ = this.events.subscribe(this.consts.SIGNALR_EVENTS.PERSONNEL_STAFFING_UPDATED);
@@ -75,6 +77,7 @@ export class HomeProvider {
     const getPersonnelStatus = this.customStatusesService.getActivePersonnelStatuses();
     const getPersonnelStaffingLevels = this.customStatusesService.getActivePersonnelStaffingLevels();
     const getDispatchNote = this.noteService.getDispatchNote();
+    const getQuickNotes = this.templateService.getAllCallNoteTemplates();
 
     return forkJoin({
       units: getUnits,
@@ -87,7 +90,8 @@ export class HomeProvider {
       newCallForm: getNewCallForm,
       personnelStatuses: getPersonnelStatus,
       PersonnelStaffingLevels: getPersonnelStaffingLevels,
-      dispatchNote: getDispatchNote
+      dispatchNote: getDispatchNote,
+      callNotes: getQuickNotes
     }).pipe(
       map((results) => {
         let localCalls: CallLocalResult[] = new Array();
@@ -130,7 +134,8 @@ export class HomeProvider {
           NewCallForm: results.newCallForm.Data,
           PersonnelStatuses: results.personnelStatuses.Data,
           PersonnelStaffingLevels: results.PersonnelStaffingLevels.Data,
-          DispatchNote: dispatchNote
+          DispatchNote: dispatchNote,
+          CallNotes: results.callNotes.Data
         };
       })
     );

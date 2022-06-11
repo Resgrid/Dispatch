@@ -29,7 +29,7 @@ export const reducers: ActionReducerMap < State > = {
 
 function localStorageSyncReducer(reducer: ActionReducer<State>): ActionReducer<State> {
   return localStorageSync({
-    keys:  ['homeModule'],
+    keys:  ['authModule'],
     rehydrate: true
   })(reducer);
 }
@@ -51,5 +51,5 @@ export function logger(reducer: ActionReducer < State >): ActionReducer < State 
  * that will be composed to form the root meta-reducer.
  */
  export const metaReducers: MetaReducer < State > [] = !environment.production
- ? [logger, storeFreeze/*, localStorageSyncReducer*/]
- : [/*, localStorageSyncReducer*/];
+ ? [logger, storeFreeze, localStorageSyncReducer]
+ : [localStorageSyncReducer];

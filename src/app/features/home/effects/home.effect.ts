@@ -34,6 +34,7 @@ import {
 import * as _ from "lodash";
 import { SetPersonStatusModalComponent } from "../modals/setPersonStatus/setPersonStatus.modal";
 import { SetPersonStaffingModalComponent } from "../modals/setPersonStaffing/setPersonStaffing.modal";
+import { GeocodingProvider } from "src/app/providers/geocoding";
 
 @Injectable()
 export class HomeEffects {
@@ -298,7 +299,8 @@ export class HomeEffects {
   getCoordinatesForAddress$: Observable<Action> = this.actions$.pipe(
     ofType<homeAction.GetCoordinatesForAddress>(homeAction.HomeActionTypes.GET_COORDINATESFORADDRESS),
     mergeMap((action) =>
-      this.locationProvider.getCoordinatesForAddressFromGoogle(action.address).pipe(
+      //this.locationProvider.getCoordinatesForAddressFromGoogle(action.address).pipe(
+       this.geocodingProvider.getLocationFromAddress(action.address).pipe(
         // If successful, dispatch success action with result
         map((data) => ({
           type: homeAction.HomeActionTypes.GET_COORDINATESFORADDRESS_SUCCESS,
@@ -308,6 +310,27 @@ export class HomeEffects {
         catchError(() =>
           of({
             type: homeAction.HomeActionTypes.GET_COORDINATESFORADDRESS_FAIL,
+          })
+        )
+      )
+    )
+  );
+
+  @Effect()
+  getAddressForCoordinates$: Observable<Action> = this.actions$.pipe(
+    ofType<homeAction.GetAddressForCoordinates>(homeAction.HomeActionTypes.GET_ADDRESSFORCOORDINATES),
+    mergeMap((action) =>
+      //this.locationProvider.getCoordinatesForAddressFromGoogle(action.address).pipe(
+       this.geocodingProvider.getAddressFromLocation(new GpsLocation(parseInt(action.latitude), parseInt(action.longitude))).pipe(
+        // If successful, dispatch success action with result
+        map((data) => ({
+          type: homeAction.HomeActionTypes.GET_ADDRESSFORCOORDINATES_SUCCESS,
+          address: data,
+        })),
+        // If request fails, dispatch failed action
+        catchError(() =>
+          of({
+            type: homeAction.HomeActionTypes.GET_ADDRESSFORCOORDINATES_FAIL,
           })
         )
       )
@@ -749,7 +772,8 @@ export class HomeEffects {
     private voiceProvider: VoiceService,
     private loadingProvider: LoadingProvider,
     private personnelStatusesProvider: PersonnelStatusesService,
-    private personnelStaffingProvider: PersonnelStaffingService
+    private personnelStaffingProvider: PersonnelStaffingService,
+    private geocodingProvider: GeocodingProvider
   ) {}
 
   runModal = (component, size) => {
