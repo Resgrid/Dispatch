@@ -1,11 +1,12 @@
 <div>
   <div class="modal-header">
-    <h5 class="modal-title" id="composemodalTitle">Call Notes</h5>
+    <h5 class="modal-title" id="composemodalTitle" *ngIf="!isShowingQuickNotes">Call Notes</h5>
+    <h5 class="modal-title" id="composemodalTitle" *ngIf="isShowingQuickNotes">Select Call Note Quick Fill</h5>
     <button type="button" class="close" (click)="dismiss()" aria-label="Close">
       <span aria-hidden="true">&times;</span>
     </button>
   </div>
-  <div>
+  <div *ngIf="!isShowingQuickNotes">
     <perfect-scrollbar style="position: relative; height: 345px;">
       <ul class="list-unstyled chat-list">
         <li *ngFor="let note of (homeState$ | async).callNotes;">
@@ -25,15 +26,33 @@
       </ul>
     </perfect-scrollbar>
   </div>
+  <div *ngIf="isShowingQuickNotes">
+    <perfect-scrollbar style="position: relative; height: 345px;">
+      <ul class="list-unstyled chat-list">
+        <li *ngFor="let template of (homeState$ | async).callNoteTemplates;">
+          <a (click)="populateQuickNote(template)">
+            <div class="media">
+              <div class="media-body overflow-hidden">
+                <h5 class="text-truncate font-size-14 mb-1">{{template.Name}}</h5>
+              </div>
+            </div>
+          </a>
+        </li>
+      </ul>
+    </perfect-scrollbar>
+  </div>
   <div style="display: inherit;" class="modal-footer">
     <form (ngSubmit)="save()" [formGroup]="formData">
       <div class="row chat-input-section">
-        <div class="col-md-10">
+        <div class="col-md-9">
           <input type="text" class="form-control chat-input" placeholder="Enter Note..." formControlName="message"
             [ngClass]="{'is-invalid': isSaving && form.message.errors}">
           <div *ngIf="isSaving && form.message.errors" class="invalid-feedback">
             <span *ngIf="form.message.errors.required">This value is required.</span>
           </div>
+        </div>
+        <div class="col-md-1" *ngIf="(homeState$ | async).callNoteTemplates && (homeState$ | async).callNoteTemplates.length > 0">
+          <button type="button" class="btn btn-secondary" (click)="showCallNoteTemplates()"><i class="ri-record-mail-line"></i></button>
         </div>
         <div class="col-md-2">
           <button type="submit" class="btn btn-primary chat-send w-md waves-effect waves-light">Save</button>

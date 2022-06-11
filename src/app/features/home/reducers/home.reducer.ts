@@ -36,6 +36,7 @@ export function reducer(state: HomeState = initialState, action: HomeActionsUnio
         personnelStatuses: action.payload.PersonnelStatuses,
         personnelStaffing: action.payload.PersonnelStaffingLevels,
         dispatchNote: action.payload.DispatchNote,
+        callNoteTemplates: action.payload.CallNotes
       };
 
     case HomeActionTypes.LOADING_FAIL:
