@@ -1,5 +1,5 @@
 import { Action } from '@ngrx/store';
-import { CallFileResultData, CallNoteResultData, CallResultData, DepartmentVoiceResultData, GetCallTemplatesResultData, GpsLocation, MapDataAndMarkersData, UnitStatusResultData } from '@resgrid/ngx-resgridlib';
+import { CallExtraDataResultData, CallFileResultData, CallNoteResultData, CallResultData, DepartmentVoiceResultData, GetCallTemplatesResultData, GpsLocation, MapDataAndMarkersData, UnitStatusResultData } from '@resgrid/ngx-resgridlib';
 import { Call } from 'src/app/core/models/call';
 import { PersonnelForCallResult } from 'src/app/core/models/personnelForCallResult';
 import { UnitStatusResult } from 'src/app/core/models/unitStatusResult';
@@ -86,6 +86,8 @@ export enum HomeActionTypes {
   SAVE_PERSONSTAFFING_SUCCESS = '[HOME] SAVE_PERSONSTAFFING_SUCCESS',
   SAVE_PERSONSTAFFING_FAIL = '[HOME] SAVE_PERSONSTAFFING_FAIL',
   UPDATE_PERSONSTAFFING = '[HOME] UPDATE_PERSONSTAFFING',
+  SHOW_VIEW_CALL_FORM = '[HOME] SHOW_VIEW_CALL_FORM',
+  OPEN_VIEW_CALL_FORM = '[HOME] OPEN_VIEW_CALL_FORM',
 }
 
 // Home
@@ -457,6 +459,16 @@ export class UpdatePersonStaffings implements Action {
   constructor(public payload: PersonnelForCallResult[]) {}
 }
 
+export class ShowViewCallForm implements Action {
+  readonly type = HomeActionTypes.SHOW_VIEW_CALL_FORM;
+  constructor(public callId: string) {}
+}
+
+export class OpenViewCallForm implements Action {
+  readonly type = HomeActionTypes.OPEN_VIEW_CALL_FORM;
+  constructor(public payload: CallExtraDataResultData) {}
+}
+
 export class Done implements Action {
   readonly type = HomeActionTypes.DONE;
   constructor() {}
@@ -476,5 +488,5 @@ export type HomeActionsUnion = Loading | LoadingSuccess | LoadingFail | LoadingM
                                OpenCallFormModal | SetNewCallFormData | IsSavingCall | Done | UpdateSelectPerson | OpenSetPersonStatusModal |  
                                OpenSetPersonStaffingModal | SavingPersonStatuses | UpdatePersonStatuses | SavingPersonStaffing | SavingPersonStaffing |
                                SavingPersonStaffingSuccess | SavingPersonStaffingFail | UpdatePersonStaffings | GetAddressForCoordinates | 
-                               GetAddressForCoordinatesSuccess | GetAddressForCoordinatesFail
+                               GetAddressForCoordinatesSuccess | GetAddressForCoordinatesFail | ShowViewCallForm | OpenViewCallForm
                                ;

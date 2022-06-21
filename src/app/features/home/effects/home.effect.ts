@@ -35,6 +35,7 @@ import * as _ from "lodash";
 import { SetPersonStatusModalComponent } from "../modals/setPersonStatus/setPersonStatus.modal";
 import { SetPersonStaffingModalComponent } from "../modals/setPersonStaffing/setPersonStaffing.modal";
 import { GeocodingProvider } from "src/app/providers/geocoding";
+import { ViewCallFormModalComponent } from "../modals/viewCallForm/view-callForm.modal";
 
 @Injectable()
 export class HomeEffects {
@@ -300,7 +301,7 @@ export class HomeEffects {
     ofType<homeAction.GetCoordinatesForAddress>(homeAction.HomeActionTypes.GET_COORDINATESFORADDRESS),
     mergeMap((action) =>
       //this.locationProvider.getCoordinatesForAddressFromGoogle(action.address).pipe(
-       this.geocodingProvider.getLocationFromAddress(action.address).pipe(
+      this.geocodingProvider.getLocationFromAddress(action.address).pipe(
         // If successful, dispatch success action with result
         map((data) => ({
           type: homeAction.HomeActionTypes.GET_COORDINATESFORADDRESS_SUCCESS,
@@ -321,7 +322,7 @@ export class HomeEffects {
     ofType<homeAction.GetAddressForCoordinates>(homeAction.HomeActionTypes.GET_ADDRESSFORCOORDINATES),
     mergeMap((action) =>
       //this.locationProvider.getCoordinatesForAddressFromGoogle(action.address).pipe(
-       this.geocodingProvider.getAddressFromLocation(new GpsLocation(parseInt(action.latitude), parseInt(action.longitude))).pipe(
+      this.geocodingProvider.getAddressFromLocation(new GpsLocation(parseInt(action.latitude), parseInt(action.longitude))).pipe(
         // If successful, dispatch success action with result
         map((data) => ({
           type: homeAction.HomeActionTypes.GET_ADDRESSFORCOORDINATES_SUCCESS,
@@ -382,25 +383,24 @@ export class HomeEffects {
   );
 
   saveCallSuccess$ = createEffect(() =>
-  this.actions$.pipe(
-    ofType<homeAction.SaveCallSuccess>(homeAction.HomeActionTypes.SAVE_CALL_SUCCESS),
-    mergeMap((action) =>
-      this.callsProvider.getActiveCalls().pipe(
-        // If successful, dispatch success action with result
-        map((data) => ({
-          type: homeAction.HomeActionTypes.UPDATE_CALLS,
-          payload: data.Data,
-        })),
-        tap((data) => {
-          this.alertProvider.showAutoCloseSuccessAlert("Call has been saved and dispatched.");
-        }),
-        // If request fails, dispatch failed action
-        catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_CALL_FAIL }))
+    this.actions$.pipe(
+      ofType<homeAction.SaveCallSuccess>(homeAction.HomeActionTypes.SAVE_CALL_SUCCESS),
+      mergeMap((action) =>
+        this.callsProvider.getActiveCalls().pipe(
+          // If successful, dispatch success action with result
+          map((data) => ({
+            type: homeAction.HomeActionTypes.UPDATE_CALLS,
+            payload: data.Data,
+          })),
+          tap((data) => {
+            this.alertProvider.showAutoCloseSuccessAlert("Call has been saved and dispatched.");
+          }),
+          // If request fails, dispatch failed action
+          catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_CALL_FAIL }))
+        )
       )
     )
-  )
-);
-
+  );
 
   @Effect()
   getLatestPersonnelData$: Observable<Action> = this.actions$.pipe(
@@ -617,11 +617,12 @@ export class HomeEffects {
     tap((data) => this.closeModal())
   );
 
-  showSetPersonStatusModal$ = createEffect(() =>
-    this.actions$.pipe(
-      ofType<homeAction.OpenSetPersonStatusModal>(homeAction.HomeActionTypes.OPEN_SETPERSONSTATUSMODAL),
-      exhaustMap((data) => this.runModal(SetPersonStatusModalComponent, "md"))
-    ),
+  showSetPersonStatusModal$ = createEffect(
+    () =>
+      this.actions$.pipe(
+        ofType<homeAction.OpenSetPersonStatusModal>(homeAction.HomeActionTypes.OPEN_SETPERSONSTATUSMODAL),
+        exhaustMap((data) => this.runModal(SetPersonStatusModalComponent, "md"))
+      ),
     { dispatch: false }
   );
 
@@ -629,7 +630,8 @@ export class HomeEffects {
     this.actions$.pipe(
       ofType<homeAction.SavingPersonStatuses>(homeAction.HomeActionTypes.SAVE_PERSONSTATUSES),
       mergeMap((action) =>
-        this.personnelStatusesProvider.savePersonsStatuses({
+        this.personnelStatusesProvider
+          .savePersonsStatuses({
             UserIds: action.payload.userIds,
             Type: action.payload.stateType,
             RespondingTo: action.payload.destination,
@@ -644,7 +646,8 @@ export class HomeEffects {
             Speed: "",
             Heading: "",
             EventId: "",
-          }).pipe(
+          })
+          .pipe(
             // If successful, dispatch success action with result
             map((data) => ({
               type: homeAction.HomeActionTypes.SAVE_PERSONSTATUSES_SUCCESS,
@@ -665,7 +668,11 @@ export class HomeEffects {
         ofType<homeAction.SavingPersonStatusesFail>(homeAction.HomeActionTypes.SAVE_PERSONSTATUSES_FAIL),
         tap(async (action) => {
           this.closeModal();
-          this.alertProvider.showErrorAlert("Personnel Status Error", "", "There was an issue trying to set the personnel statuses, please try again.");
+          this.alertProvider.showErrorAlert(
+            "Personnel Status Error",
+            "",
+            "There was an issue trying to set the personnel statuses, please try again."
+          );
         })
       ),
     { dispatch: false }
@@ -691,27 +698,29 @@ export class HomeEffects {
     )
   );
 
-  showSetPersonStaffingModal$ = createEffect(() =>
-    this.actions$.pipe(
-      ofType<homeAction.OpenSetPersonStaffingModal>(homeAction.HomeActionTypes.OPEN_SETPERSONSTAFFINGMODAL),
-      exhaustMap((data) => this.runModal(SetPersonStaffingModalComponent, "md"))
-    ),
+  showSetPersonStaffingModal$ = createEffect(
+    () =>
+      this.actions$.pipe(
+        ofType<homeAction.OpenSetPersonStaffingModal>(homeAction.HomeActionTypes.OPEN_SETPERSONSTAFFINGMODAL),
+        exhaustMap((data) => this.runModal(SetPersonStaffingModalComponent, "md"))
+      ),
     { dispatch: false }
   );
-
 
   savePersonnelStaffing$ = createEffect(() =>
     this.actions$.pipe(
       ofType<homeAction.SavingPersonStaffing>(homeAction.HomeActionTypes.SAVE_PERSONSTAFFING),
       mergeMap((action) =>
-        this.personnelStaffingProvider.savePersonsStaffings({
+        this.personnelStaffingProvider
+          .savePersonsStaffings({
             UserIds: action.payload.userIds,
             Type: action.payload.staffingType,
             TimestampUtc: action.payload.date.toUTCString().replace("UTC", "GMT"),
             Timestamp: action.payload.date.toISOString(),
             Note: action.payload.note,
             EventId: "",
-          }).pipe(
+          })
+          .pipe(
             // If successful, dispatch success action with result
             map((data) => ({
               type: homeAction.HomeActionTypes.SAVE_PERSONSTAFFING_SUCCESS,
@@ -743,6 +752,30 @@ export class HomeEffects {
           catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_PERSONSTAFFING_FAIL }))
         )
       )
+    )
+  );
+
+  showViewCallFormModal$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType<homeAction.ShowViewCallForm>(homeAction.HomeActionTypes.SHOW_VIEW_CALL_FORM),
+      mergeMap((action) =>
+        this.callsProvider.getCallExtraData(action.callId).pipe(
+          map((data) => ({
+            type: homeAction.HomeActionTypes.OPEN_VIEW_CALL_FORM,
+            payload: data.Data,
+          }))
+        )
+      )
+    )
+  );
+
+  openViewCallFormModal$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType<homeAction.OpenCallFormModal>(homeAction.HomeActionTypes.OPEN_VIEW_CALL_FORM),
+      exhaustMap((data) => this.runModal(ViewCallFormModalComponent, "md")),
+      map((data) => ({
+        type: homeAction.HomeActionTypes.DONE
+      }))
     )
   );
 

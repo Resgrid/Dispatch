@@ -395,7 +395,17 @@ export class DashboardPage implements AfterViewInit {
 
   public updateAssignments() {}
 
-  public viewCallForm() {}
+  public viewCallForm() {
+
+    this.store
+      .select(selectHomeState)
+      .pipe(take(1))
+      .subscribe((state) => {
+        const selectedCall = _.find(state.calls, ["Selected", true]);
+
+        this.store.dispatch(new HomeActions.ShowViewCallForm(selectedCall.CallId));
+      });
+  }
 
   public saveCall() {
     this.store.dispatch(new HomeActions.IsSavingCall());
