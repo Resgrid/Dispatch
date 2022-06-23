@@ -131,7 +131,9 @@ export class EditCallPage implements AfterViewInit {
           .value();
 
         if (units) {
-          this.selectedGroupName = units[0].groupName;
+          if (units[0] && units[0].groupName) {
+            this.selectedGroupName = units[0].groupName;
+          }
 
           if (!this.selectedGroupName || this.selectedGroupName == "") {
             this.selectedGroupName = "No Group";
@@ -159,7 +161,7 @@ export class EditCallPage implements AfterViewInit {
       this.cdr.detectChanges();
     });
 
-    this.callsState$.subscribe((callsState) => {
+    this.callsState$.pipe(take(1)).subscribe((callsState) => {
       if (callsState && callsState.callToEdit) {
         const editCallData = callsState.callToEdit;
 
@@ -172,8 +174,8 @@ export class EditCallPage implements AfterViewInit {
         this.form["priority"].setValue(editCallData.Priority);
         this.form["priority"].patchValue(editCallData.Priority);
 
-        this.form["type"].setValue(editCallData.Type);
-        this.form["type"].patchValue(editCallData.Type);
+        //this.form["type"].setValue(editCallData.Type);
+        //this.form["type"].patchValue(editCallData.Type);
 
         this.form["reportingPartyName"].setValue(editCallData.ContactName);
         this.form["reportingPartyName"].patchValue(editCallData.ContactName);
@@ -205,8 +207,20 @@ export class EditCallPage implements AfterViewInit {
         this.form["w3w"].setValue(editCallData.What3Words);
         this.form["w3w"].patchValue(editCallData.What3Words);
 
-        this.form["dispatchOn"].setValue(editCallData.DispatchedOnUtc);
-        this.form["dispatchOn"].patchValue(editCallData.DispatchedOnUtc);
+        this.form["dispatchOn"].setValue(editCallData.DispatchedOn);
+        this.form["dispatchOn"].patchValue(editCallData.DispatchedOn);
+
+        this.store
+          .select(selectHomeState)
+          .pipe(take(1))
+          .subscribe((state) => {
+            const selectedCallType = _.find(state.callTypes, ["Name", editCallData.Type]);
+
+            if (selectedCallType) {
+              this.form["type"].setValue(selectedCallType.Id);
+              this.form["type"].patchValue(selectedCallType.Id);
+            }
+          });
 
         if (editCallData.Latitude && editCallData.Longitude) {
           this.setupNewCallMap(parseInt(editCallData.Latitude), parseInt(editCallData.Longitude), 13);

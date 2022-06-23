@@ -1,4 +1,4 @@
-import { CallFileResultData, CallNoteResultData, CallNoteTemplateResultData, CallPriorityResultData, CallResultData, CallTypeResultData, CustomStatusResultData, FormResultData, GetCallTemplatesResultData, GpsLocation, MapDataAndMarkersData, NoteResultData } from '@resgrid/ngx-resgridlib';
+import { CallExtraDataResultData, CallFileResultData, CallNoteResultData, CallNoteTemplateResultData, CallPriorityResultData, CallResultData, CallTypeResultData, CustomStatusResultData, FormResultData, GetCallTemplatesResultData, GpsLocation, MapDataAndMarkersData, NoteResultData } from '@resgrid/ngx-resgridlib';
 import { CallLocalResult } from 'src/app/core/models/callLocalResult';
 import { GroupsForCallResult } from 'src/app/core/models/groupsForCallResult';
 import { PersonnelForCallResult } from 'src/app/core/models/personnelForCallResult';
@@ -58,6 +58,9 @@ export interface HomeState {
 
     // Call Note Templates
     callNoteTemplates: CallNoteTemplateResultData[];
+
+    // View Call
+    viewCallExtraData: CallExtraDataResultData;
 }
 
 export const initialState: HomeState = {
@@ -89,5 +92,6 @@ export const initialState: HomeState = {
     personnelStatuses: null,
     personnelStaffing: null,
     dispatchNote: null,
-    callNoteTemplates: null
+    callNoteTemplates: null,
+    viewCallExtraData: null
 };

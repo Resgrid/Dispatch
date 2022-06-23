@@ -36,7 +36,7 @@ export function reducer(state: HomeState = initialState, action: HomeActionsUnio
         personnelStatuses: action.payload.PersonnelStatuses,
         personnelStaffing: action.payload.PersonnelStaffingLevels,
         dispatchNote: action.payload.DispatchNote,
-        callNoteTemplates: action.payload.CallNotes
+        callNoteTemplates: action.payload.CallNotes,
       };
 
     case HomeActionTypes.LOADING_FAIL:
@@ -283,6 +283,11 @@ export function reducer(state: HomeState = initialState, action: HomeActionsUnio
       return {
         ...state,
         personnelForGrid: personnelForStaffingUpdate,
+      };
+    case HomeActionTypes.OPEN_VIEW_CALL_FORM:
+      return {
+        ...state,
+        viewCallExtraData: action.payload,
       };
     default:
       return state;

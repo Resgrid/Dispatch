@@ -23,6 +23,7 @@ import { CallFormModalComponent } from './modals/callForm/callForm.modal';
 import { NgxResgridLibModule } from '@resgrid/ngx-resgridlib';
 import { SetPersonStatusModalComponent } from './modals/setPersonStatus/setPersonStatus.modal';
 import { SetPersonStaffingModalComponent } from './modals/setPersonStaffing/setPersonStaffing.modal';
+import { ViewCallFormModalComponent } from './modals/viewCallForm/view-callForm.modal';
 
 @NgModule({
   declarations: [
@@ -34,7 +35,8 @@ import { SetPersonStaffingModalComponent } from './modals/setPersonStaffing/setP
     CallFilesModalComponent,
     CallFormModalComponent,
     SetPersonStatusModalComponent,
-    SetPersonStaffingModalComponent
+    SetPersonStaffingModalComponent,
+    ViewCallFormModalComponent
   ],
   imports: [
     CommonModule,
@@ -66,7 +68,8 @@ import { SetPersonStaffingModalComponent } from './modals/setPersonStaffing/setP
     CallFilesModalComponent,
     CallFormModalComponent,
     SetPersonStatusModalComponent,
-    SetPersonStaffingModalComponent
+    SetPersonStaffingModalComponent,
+    ViewCallFormModalComponent
   ]
 })
 export class HomeModule { }
