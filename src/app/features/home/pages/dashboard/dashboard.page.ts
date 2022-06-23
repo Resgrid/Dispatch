@@ -124,14 +124,23 @@ export class DashboardPage implements AfterViewInit {
         this.form["name"].setValue(activeCallTemplate.CallName);
         this.form["name"].patchValue(activeCallTemplate.CallName);
 
-        this.form["type"].setValue(activeCallTemplate.CallType);
-        this.form["type"].patchValue(activeCallTemplate.CallType);
-
         this.form["nature"].setValue(activeCallTemplate.CallNature);
         this.form["nature"].patchValue(activeCallTemplate.CallNature);
 
         this.form["priority"].setValue(activeCallTemplate.CallPriority);
         this.form["priority"].patchValue(activeCallTemplate.CallPriority);
+
+        this.store
+          .select(selectHomeState)
+          .pipe(take(1))
+          .subscribe((state) => {
+            const selectedCallType = _.find(state.callTypes, ["Name", activeCallTemplate.CallType]);
+
+            if (selectedCallType) {
+              this.form["type"].setValue(selectedCallType.Id);
+              this.form["type"].patchValue(selectedCallType.Id);
+            }
+          });
       }
     });
 
@@ -150,7 +159,7 @@ export class DashboardPage implements AfterViewInit {
     this.newCallLocation$.subscribe((address) => {
       if (address) {
         const currentAddress = this.newCallForm.get("address").value;
-        if (!currentAddress || currentAddress === '') {
+        if (!currentAddress || currentAddress === "") {
           this.form["address"].setValue(address);
           this.form["address"].patchValue(address);
         }
@@ -212,7 +221,9 @@ export class DashboardPage implements AfterViewInit {
           .value();
 
         if (units && Array.isArray(units) && units.length > 0) {
-          this.selectedGroupName = units[0].groupName;
+          if (units[0] && units[0].groupName) {
+            this.selectedGroupName = units[0].groupName;
+          }
 
           if (!this.selectedGroupName || this.selectedGroupName == "") {
             this.selectedGroupName = "No Group";
@@ -379,7 +390,9 @@ export class DashboardPage implements AfterViewInit {
 
     const address = this.newCallForm.get("address").value;
     if (!address || address == "") {
-      this.store.dispatch(new HomeActions.GetAddressForCoordinates(this.newCallForm.get("latitude").value, this.newCallForm.get("longitude").value));
+      this.store.dispatch(
+        new HomeActions.GetAddressForCoordinates(this.newCallForm.get("latitude").value, this.newCallForm.get("longitude").value)
+      );
     }
   }
 
@@ -396,7 +409,6 @@ export class DashboardPage implements AfterViewInit {
   public updateAssignments() {}
 
   public viewCallForm() {
-
     this.store
       .select(selectHomeState)
       .pipe(take(1))
