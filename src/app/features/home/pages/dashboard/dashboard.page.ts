@@ -1,7 +1,7 @@
-import { AfterViewInit, ChangeDetectorRef, Component, OnInit, ViewChild } from "@angular/core";
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, OnInit, ViewChild } from "@angular/core";
 import { Store } from "@ngrx/store";
 import { HomeState } from "../../store/home.store";
-import { Observable } from "rxjs";
+import { fromEvent, Observable, Subscription } from "rxjs";
 import {
   selectActiveCallTemplateState,
   selectHomeState,
@@ -11,8 +11,8 @@ import {
   selectNewCallState,
 } from "src/app/store";
 import * as HomeActions from "../../actions/home.actions";
-import { FormBuilder, FormGroup, Validators } from "@angular/forms";
-import { take } from "rxjs/operators";
+import { AbstractControl, FormBuilder, FormControl, FormGroup, Validators } from "@angular/forms";
+import { filter, take } from "rxjs/operators";
 import * as L from "leaflet";
 import { environment } from "../../../../../environments/environment";
 import * as _ from "lodash";
@@ -31,6 +31,10 @@ import { Call } from "src/app/core/models/call";
 import { AuthState } from "src/app/features/auth/store/auth.store";
 import { HomeProvider } from "../../providers/home";
 import { NgbNavChangeEvent } from "@ng-bootstrap/ng-bootstrap";
+import { debounceTime, distinctUntilChanged, tap } from "rxjs/operators";
+import { UnitStatusResult } from "src/app/core/models/unitStatusResult";
+import { PersonnelForCallResult } from "src/app/core/models/personnelForCallResult";
+import { PerfectScrollbarComponent } from "ngx-perfect-scrollbar";
 
 const iconRetinaUrl = "./assets/marker-icon-2x.png";
 const iconUrl = "./assets/marker-icon.png";
@@ -60,6 +64,9 @@ export class DashboardPage implements AfterViewInit {
   public newCallLocation$: Observable<string | null>;
   public newCall$: Observable<CallResultData | null>;
   public breadCrumbItems: Array<{}>;
+  public submitted = false;
+
+  @ViewChild('perfectScroll') perfectScroll: PerfectScrollbarComponent;
 
   @ViewChild("map") mapContainer;
   public map: any;
@@ -74,6 +81,60 @@ export class DashboardPage implements AfterViewInit {
   public newCallForm: FormGroup;
   public unitGroups: string[];
   public currentStatusTabSelected: number = 1;
+
+  private unitSearchTerm: string = "";
+  private searchUnitsInput: ElementRef;
+  private $searchUnitsInput: Subscription;
+
+  @ViewChild('searchUnits', { static: false }) set searchUnitsContent(content: ElementRef) {
+    if(content) { // initially setter gets called with undefined
+        this.searchUnitsInput = content;
+
+        if (this.$searchUnitsInput) {
+          this.$searchUnitsInput.unsubscribe();
+          this.$searchUnitsInput = null;
+        }
+
+        this.$searchUnitsInput = fromEvent(this.searchUnitsInput.nativeElement, "keyup")
+        .pipe(
+          filter(Boolean),
+          debounceTime(150),
+          distinctUntilChanged(),
+          tap((text) => {
+            if (this.searchUnitsInput && this.searchUnitsInput.nativeElement) {
+              this.unitSearchTerm = this.searchUnitsInput.nativeElement.value;
+            }
+          })
+        ).subscribe();
+    }
+ }
+
+  private personnelSearchTerm: string = "";
+  private searchPersonnelInput: ElementRef;
+  private $searchPersonnelInput: Subscription;
+
+  @ViewChild('searchPersonnel', { static: false }) set content(content: ElementRef) {
+    if(content) { // initially setter gets called with undefined
+        this.searchPersonnelInput = content;
+
+        if (this.$searchPersonnelInput) {
+          this.$searchPersonnelInput.unsubscribe();
+          this.$searchPersonnelInput = null;
+        }
+
+        this.$searchPersonnelInput = fromEvent(this.searchPersonnelInput.nativeElement, "keyup")
+        .pipe(
+          filter(Boolean),
+          debounceTime(150),
+          distinctUntilChanged(),
+          tap((text) => {
+            if (this.searchPersonnelInput && this.searchPersonnelInput.nativeElement) {
+              this.personnelSearchTerm = this.searchPersonnelInput.nativeElement.value;
+            }
+          })
+        ).subscribe();
+    }
+ }
 
   constructor(
     public formBuilder: FormBuilder,
@@ -115,33 +176,22 @@ export class DashboardPage implements AfterViewInit {
   ngAfterViewInit(): void {
     this.store.dispatch(new HomeActions.Loading());
 
+    if (this.searchUnitsInput && this.searchUnitsInput.nativeElement) {
+    fromEvent(this.searchUnitsInput.nativeElement, "keyup")
+      .pipe(
+        filter(Boolean),
+        debounceTime(150),
+        distinctUntilChanged(),
+        tap((text) => {
+          if (this.searchUnitsInput && this.searchUnitsInput.nativeElement) {
+            this.unitSearchTerm = this.searchUnitsInput.nativeElement.value;
+          }
+        })
+      ).subscribe();
+    }
+
     this.mapData$.subscribe((state) => {
       this.processMapData(state);
-    });
-
-    this.activeCallTemplate$.subscribe((activeCallTemplate) => {
-      if (activeCallTemplate) {
-        this.form["name"].setValue(activeCallTemplate.CallName);
-        this.form["name"].patchValue(activeCallTemplate.CallName);
-
-        this.form["nature"].setValue(activeCallTemplate.CallNature);
-        this.form["nature"].patchValue(activeCallTemplate.CallNature);
-
-        this.form["priority"].setValue(activeCallTemplate.CallPriority);
-        this.form["priority"].patchValue(activeCallTemplate.CallPriority);
-
-        this.store
-          .select(selectHomeState)
-          .pipe(take(1))
-          .subscribe((state) => {
-            const selectedCallType = _.find(state.callTypes, ["Name", activeCallTemplate.CallType]);
-
-            if (selectedCallType) {
-              this.form["type"].setValue(selectedCallType.Id);
-              this.form["type"].patchValue(selectedCallType.Id);
-            }
-          });
-      }
     });
 
     this.newCallAddress$.subscribe((geolocation) => {
@@ -211,6 +261,8 @@ export class DashboardPage implements AfterViewInit {
 
       this.form["dispatchOn"].setValue("");
       this.form["dispatchOn"].patchValue("");
+
+      this.submitted = false;
     });
 
     this.store.select(selectHomeState).subscribe((state) => {
@@ -255,7 +307,7 @@ export class DashboardPage implements AfterViewInit {
     this.store.dispatch(new VoiceActions.GetVoipInfo());
   }
 
-  get form() {
+  public get form(): { [key: string]: AbstractControl } {
     return this.newCallForm.controls;
   }
 
@@ -269,6 +321,62 @@ export class DashboardPage implements AfterViewInit {
 
   public setPersonnelStaffing() {
     this.store.dispatch(new HomeActions.OpenSetPersonStaffingModal());
+  }
+
+  public filterUnits(units: UnitStatusResult[]) {
+    if (this.unitSearchTerm) {
+      if (units) {
+        let filteredUnits = new Array<UnitStatusResult>();
+
+        units.forEach((unit) => {
+          if (unit.Name && unit.Name.toLowerCase().includes(this.unitSearchTerm.toLowerCase())) {
+            filteredUnits.push(unit);
+          } else if (unit.GroupName && unit.GroupName.toLowerCase().includes(this.unitSearchTerm.toLowerCase())) {
+            filteredUnits.push(unit);
+          } else if (unit.State && unit.State.toLowerCase().includes(this.unitSearchTerm.toLowerCase())) {
+            filteredUnits.push(unit);
+          } else if (unit.Type && unit.Type.toLowerCase().includes(this.unitSearchTerm.toLowerCase())) {
+            filteredUnits.push(unit);
+          }
+        });
+
+        return filteredUnits;
+      }
+    } else {
+      return units;
+    }
+  }
+
+  public filterPersonnel(personnel: PersonnelForCallResult[]) {
+    if (this.personnelSearchTerm) {
+      if (personnel) {
+        let filteredPersonnel = new Array<PersonnelForCallResult>();
+
+        personnel.forEach((person) => {
+
+          let rolesString = '';
+          if (person.Roles && person.Roles.length > 0) {
+            rolesString = person.Roles.map((x) => x).join(', ');
+          }
+
+          if (person.Name && person.Name.toLowerCase().includes(this.personnelSearchTerm.toLowerCase())) {
+            filteredPersonnel.push(person);
+          } else if (person.Group && person.Group.toLowerCase().includes(this.personnelSearchTerm.toLowerCase())) {
+            filteredPersonnel.push(person);
+          } else if (person.Staffing && person.Staffing.toLowerCase().includes(this.personnelSearchTerm.toLowerCase())) {
+            filteredPersonnel.push(person);
+          } else if (person.Status && person.Status.toLowerCase().includes(this.personnelSearchTerm.toLowerCase())) {
+            filteredPersonnel.push(person);
+          } else if (rolesString && rolesString.toLowerCase().includes(this.personnelSearchTerm.toLowerCase())) {
+            filteredPersonnel.push(person);
+          }
+        });
+
+        return filteredPersonnel;
+      }
+    } else {
+      return personnel;
+    }
   }
 
   public callNotes() {
@@ -419,7 +527,27 @@ export class DashboardPage implements AfterViewInit {
       });
   }
 
+  public onReset(): void {
+    this.submitted = false;
+    this.newCallForm.reset();
+  }
+
   public saveCall() {
+    this.submitted = true;
+    if (this.newCallForm.invalid) {
+      this.store.dispatch(new HomeActions.SaveCallFormInvalid());
+
+      let nameField: any = document.querySelector('#name')
+      if (nameField) {
+        nameField.focus();
+      }
+
+      if (this.perfectScroll && this.perfectScroll.directiveRef) {
+        this.perfectScroll.directiveRef.scrollToTop();
+      }
+      return;
+    }
+    
     this.store.dispatch(new HomeActions.IsSavingCall());
 
     const call = this.form;
@@ -508,6 +636,12 @@ export class DashboardPage implements AfterViewInit {
   public onStatuseTabNavChange(changeEvent: NgbNavChangeEvent) {
     if (changeEvent) {
       this.currentStatusTabSelected = changeEvent.nextId;
+
+      if (this.currentStatusTabSelected == 1) { // Units Active
+        this.personnelSearchTerm = '';
+      } else if (this.currentStatusTabSelected == 2) { // Personnel Active
+        this.unitSearchTerm = '';
+      }
     }
   }
 
