@@ -1,7 +1,7 @@
 import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, OnInit, ViewChild } from "@angular/core";
 import { Store } from "@ngrx/store";
 import { HomeState } from "../../store/home.store";
-import { fromEvent, Observable } from "rxjs";
+import { fromEvent, Observable, Subscription } from "rxjs";
 import {
   selectActiveCallTemplateState,
   selectHomeState,
@@ -80,12 +80,18 @@ export class DashboardPage implements AfterViewInit {
 
   private unitSearchTerm: string = "";
   private searchUnitsInput: ElementRef;
+  private $searchUnitsInput: Subscription;
 
   @ViewChild('searchUnits', { static: false }) set searchUnitsContent(content: ElementRef) {
     if(content) { // initially setter gets called with undefined
         this.searchUnitsInput = content;
 
-        fromEvent(this.searchUnitsInput.nativeElement, "keyup")
+        if (this.$searchUnitsInput) {
+          this.$searchUnitsInput.unsubscribe();
+          this.$searchUnitsInput = null;
+        }
+
+        this.$searchUnitsInput = fromEvent(this.searchUnitsInput.nativeElement, "keyup")
         .pipe(
           filter(Boolean),
           debounceTime(150),
@@ -101,12 +107,18 @@ export class DashboardPage implements AfterViewInit {
 
   private personnelSearchTerm: string = "";
   private searchPersonnelInput: ElementRef;
+  private $searchPersonnelInput: Subscription;
 
   @ViewChild('searchPersonnel', { static: false }) set content(content: ElementRef) {
     if(content) { // initially setter gets called with undefined
         this.searchPersonnelInput = content;
 
-        fromEvent(this.searchPersonnelInput.nativeElement, "keyup")
+        if (this.$searchPersonnelInput) {
+          this.$searchPersonnelInput.unsubscribe();
+          this.$searchPersonnelInput = null;
+        }
+
+        this.$searchPersonnelInput = fromEvent(this.searchPersonnelInput.nativeElement, "keyup")
         .pipe(
           filter(Boolean),
           debounceTime(150),
@@ -317,6 +329,8 @@ export class DashboardPage implements AfterViewInit {
             filteredUnits.push(unit);
           } else if (unit.State && unit.State.toLowerCase().includes(this.unitSearchTerm.toLowerCase())) {
             filteredUnits.push(unit);
+          } else if (unit.Type && unit.Type.toLowerCase().includes(this.unitSearchTerm.toLowerCase())) {
+            filteredUnits.push(unit);
           }
         });
 
@@ -333,6 +347,12 @@ export class DashboardPage implements AfterViewInit {
         let filteredPersonnel = new Array<PersonnelForCallResult>();
 
         personnel.forEach((person) => {
+
+          let rolesString = '';
+          if (person.Roles && person.Roles.length > 0) {
+            rolesString = person.Roles.map((x) => x).join(', ');
+          }
+
           if (person.Name && person.Name.toLowerCase().includes(this.personnelSearchTerm.toLowerCase())) {
             filteredPersonnel.push(person);
           } else if (person.Group && person.Group.toLowerCase().includes(this.personnelSearchTerm.toLowerCase())) {
@@ -340,6 +360,8 @@ export class DashboardPage implements AfterViewInit {
           } else if (person.Staffing && person.Staffing.toLowerCase().includes(this.personnelSearchTerm.toLowerCase())) {
             filteredPersonnel.push(person);
           } else if (person.Status && person.Status.toLowerCase().includes(this.personnelSearchTerm.toLowerCase())) {
+            filteredPersonnel.push(person);
+          } else if (rolesString && rolesString.toLowerCase().includes(this.personnelSearchTerm.toLowerCase())) {
             filteredPersonnel.push(person);
           }
         });
