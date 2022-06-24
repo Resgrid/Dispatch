@@ -88,6 +88,7 @@ export enum HomeActionTypes {
   UPDATE_PERSONSTAFFING = '[HOME] UPDATE_PERSONSTAFFING',
   SHOW_VIEW_CALL_FORM = '[HOME] SHOW_VIEW_CALL_FORM',
   OPEN_VIEW_CALL_FORM = '[HOME] OPEN_VIEW_CALL_FORM',
+  SAVE_CALL_FORM_INVALID = '[HOME] SAVE_CALL_FORM_INVALID',
 }
 
 // Home
@@ -469,6 +470,11 @@ export class OpenViewCallForm implements Action {
   constructor(public payload: CallExtraDataResultData) {}
 }
 
+export class SaveCallFormInvalid implements Action {
+  readonly type = HomeActionTypes.SAVE_CALL_FORM_INVALID;
+  constructor() {}
+}
+
 export class Done implements Action {
   readonly type = HomeActionTypes.DONE;
   constructor() {}
@@ -488,5 +494,5 @@ export type HomeActionsUnion = Loading | LoadingSuccess | LoadingFail | LoadingM
                                OpenCallFormModal | SetNewCallFormData | IsSavingCall | Done | UpdateSelectPerson | OpenSetPersonStatusModal |  
                                OpenSetPersonStaffingModal | SavingPersonStatuses | UpdatePersonStatuses | SavingPersonStaffing | SavingPersonStaffing |
                                SavingPersonStaffingSuccess | SavingPersonStaffingFail | UpdatePersonStaffings | GetAddressForCoordinates | 
-                               GetAddressForCoordinatesSuccess | GetAddressForCoordinatesFail | ShowViewCallForm | OpenViewCallForm
+                               GetAddressForCoordinatesSuccess | GetAddressForCoordinatesFail | ShowViewCallForm | OpenViewCallForm | SaveCallFormInvalid
                                ;

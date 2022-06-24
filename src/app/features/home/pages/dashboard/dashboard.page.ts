@@ -11,7 +11,7 @@ import {
   selectNewCallState,
 } from "src/app/store";
 import * as HomeActions from "../../actions/home.actions";
-import { FormBuilder, FormGroup, Validators } from "@angular/forms";
+import { AbstractControl, FormBuilder, FormControl, FormGroup, Validators } from "@angular/forms";
 import { filter, take } from "rxjs/operators";
 import * as L from "leaflet";
 import { environment } from "../../../../../environments/environment";
@@ -34,6 +34,7 @@ import { NgbNavChangeEvent } from "@ng-bootstrap/ng-bootstrap";
 import { debounceTime, distinctUntilChanged, tap } from "rxjs/operators";
 import { UnitStatusResult } from "src/app/core/models/unitStatusResult";
 import { PersonnelForCallResult } from "src/app/core/models/personnelForCallResult";
+import { PerfectScrollbarComponent } from "ngx-perfect-scrollbar";
 
 const iconRetinaUrl = "./assets/marker-icon-2x.png";
 const iconUrl = "./assets/marker-icon.png";
@@ -63,6 +64,9 @@ export class DashboardPage implements AfterViewInit {
   public newCallLocation$: Observable<string | null>;
   public newCall$: Observable<CallResultData | null>;
   public breadCrumbItems: Array<{}>;
+  public submitted = false;
+
+  @ViewChild('perfectScroll') perfectScroll: PerfectScrollbarComponent;
 
   @ViewChild("map") mapContainer;
   public map: any;
@@ -257,6 +261,8 @@ export class DashboardPage implements AfterViewInit {
 
       this.form["dispatchOn"].setValue("");
       this.form["dispatchOn"].patchValue("");
+
+      this.submitted = false;
     });
 
     this.store.select(selectHomeState).subscribe((state) => {
@@ -301,7 +307,7 @@ export class DashboardPage implements AfterViewInit {
     this.store.dispatch(new VoiceActions.GetVoipInfo());
   }
 
-  get form() {
+  public get form(): { [key: string]: AbstractControl } {
     return this.newCallForm.controls;
   }
 
@@ -521,7 +527,27 @@ export class DashboardPage implements AfterViewInit {
       });
   }
 
+  public onReset(): void {
+    this.submitted = false;
+    this.newCallForm.reset();
+  }
+
   public saveCall() {
+    this.submitted = true;
+    if (this.newCallForm.invalid) {
+      this.store.dispatch(new HomeActions.SaveCallFormInvalid());
+
+      let nameField: any = document.querySelector('#name')
+      if (nameField) {
+        nameField.focus();
+      }
+
+      if (this.perfectScroll && this.perfectScroll.directiveRef) {
+        this.perfectScroll.directiveRef.scrollToTop();
+      }
+      return;
+    }
+    
     this.store.dispatch(new HomeActions.IsSavingCall());
 
     const call = this.form;

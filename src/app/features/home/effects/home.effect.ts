@@ -1,7 +1,7 @@
 import * as homeAction from "../actions/home.actions";
 import { Action, Store } from "@ngrx/store";
 import { Actions, createEffect, Effect, ofType } from "@ngrx/effects";
-import { catchError, exhaustMap, map, mergeMap, tap } from "rxjs/operators";
+import { catchError, exhaustMap, map, mergeMap, tap, switchMap } from "rxjs/operators";
 import { Injectable } from "@angular/core";
 import { from, Observable, of } from "rxjs";
 import { HomeProvider } from "../providers/home";
@@ -777,6 +777,20 @@ export class HomeEffects {
         type: homeAction.HomeActionTypes.DONE
       }))
     )
+  );
+
+  saveCallFormInvalid$ = createEffect(
+    () =>
+      this.actions$.pipe(
+        ofType(homeAction.HomeActionTypes.SAVE_CALL_FORM_INVALID),
+        switchMap((action) => this.loadingProvider.hide()),
+        tap((action) => this.alertProvider.showErrorAlert(
+          'Missing Fields',
+          '',
+          'There are fields missing to submit this call.'
+        ))
+      ),
+    { dispatch: false }
   );
 
   done$ = createEffect(
