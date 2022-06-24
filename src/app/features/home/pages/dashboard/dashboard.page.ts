@@ -1,7 +1,7 @@
-import { AfterViewInit, ChangeDetectorRef, Component, OnInit, ViewChild } from "@angular/core";
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, OnInit, ViewChild } from "@angular/core";
 import { Store } from "@ngrx/store";
 import { HomeState } from "../../store/home.store";
-import { Observable } from "rxjs";
+import { fromEvent, Observable } from "rxjs";
 import {
   selectActiveCallTemplateState,
   selectHomeState,
@@ -12,7 +12,7 @@ import {
 } from "src/app/store";
 import * as HomeActions from "../../actions/home.actions";
 import { FormBuilder, FormGroup, Validators } from "@angular/forms";
-import { take } from "rxjs/operators";
+import { filter, take } from "rxjs/operators";
 import * as L from "leaflet";
 import { environment } from "../../../../../environments/environment";
 import * as _ from "lodash";
@@ -31,6 +31,9 @@ import { Call } from "src/app/core/models/call";
 import { AuthState } from "src/app/features/auth/store/auth.store";
 import { HomeProvider } from "../../providers/home";
 import { NgbNavChangeEvent } from "@ng-bootstrap/ng-bootstrap";
+import { debounceTime, distinctUntilChanged, tap } from "rxjs/operators";
+import { UnitStatusResult } from "src/app/core/models/unitStatusResult";
+import { PersonnelForCallResult } from "src/app/core/models/personnelForCallResult";
 
 const iconRetinaUrl = "./assets/marker-icon-2x.png";
 const iconUrl = "./assets/marker-icon.png";
@@ -75,6 +78,48 @@ export class DashboardPage implements AfterViewInit {
   public unitGroups: string[];
   public currentStatusTabSelected: number = 1;
 
+  private unitSearchTerm: string = "";
+  private searchUnitsInput: ElementRef;
+
+  @ViewChild('searchUnits', { static: false }) set searchUnitsContent(content: ElementRef) {
+    if(content) { // initially setter gets called with undefined
+        this.searchUnitsInput = content;
+
+        fromEvent(this.searchUnitsInput.nativeElement, "keyup")
+        .pipe(
+          filter(Boolean),
+          debounceTime(150),
+          distinctUntilChanged(),
+          tap((text) => {
+            if (this.searchUnitsInput && this.searchUnitsInput.nativeElement) {
+              this.unitSearchTerm = this.searchUnitsInput.nativeElement.value;
+            }
+          })
+        ).subscribe();
+    }
+ }
+
+  private personnelSearchTerm: string = "";
+  private searchPersonnelInput: ElementRef;
+
+  @ViewChild('searchPersonnel', { static: false }) set content(content: ElementRef) {
+    if(content) { // initially setter gets called with undefined
+        this.searchPersonnelInput = content;
+
+        fromEvent(this.searchPersonnelInput.nativeElement, "keyup")
+        .pipe(
+          filter(Boolean),
+          debounceTime(150),
+          distinctUntilChanged(),
+          tap((text) => {
+            if (this.searchPersonnelInput && this.searchPersonnelInput.nativeElement) {
+              this.personnelSearchTerm = this.searchPersonnelInput.nativeElement.value;
+            }
+          })
+        ).subscribe();
+    }
+ }
+
   constructor(
     public formBuilder: FormBuilder,
     private store: Store<HomeState>,
@@ -115,33 +160,22 @@ export class DashboardPage implements AfterViewInit {
   ngAfterViewInit(): void {
     this.store.dispatch(new HomeActions.Loading());
 
+    if (this.searchUnitsInput && this.searchUnitsInput.nativeElement) {
+    fromEvent(this.searchUnitsInput.nativeElement, "keyup")
+      .pipe(
+        filter(Boolean),
+        debounceTime(150),
+        distinctUntilChanged(),
+        tap((text) => {
+          if (this.searchUnitsInput && this.searchUnitsInput.nativeElement) {
+            this.unitSearchTerm = this.searchUnitsInput.nativeElement.value;
+          }
+        })
+      ).subscribe();
+    }
+
     this.mapData$.subscribe((state) => {
       this.processMapData(state);
-    });
-
-    this.activeCallTemplate$.subscribe((activeCallTemplate) => {
-      if (activeCallTemplate) {
-        this.form["name"].setValue(activeCallTemplate.CallName);
-        this.form["name"].patchValue(activeCallTemplate.CallName);
-
-        this.form["nature"].setValue(activeCallTemplate.CallNature);
-        this.form["nature"].patchValue(activeCallTemplate.CallNature);
-
-        this.form["priority"].setValue(activeCallTemplate.CallPriority);
-        this.form["priority"].patchValue(activeCallTemplate.CallPriority);
-
-        this.store
-          .select(selectHomeState)
-          .pipe(take(1))
-          .subscribe((state) => {
-            const selectedCallType = _.find(state.callTypes, ["Name", activeCallTemplate.CallType]);
-
-            if (selectedCallType) {
-              this.form["type"].setValue(selectedCallType.Id);
-              this.form["type"].patchValue(selectedCallType.Id);
-            }
-          });
-      }
     });
 
     this.newCallAddress$.subscribe((geolocation) => {
@@ -269,6 +303,52 @@ export class DashboardPage implements AfterViewInit {
 
   public setPersonnelStaffing() {
     this.store.dispatch(new HomeActions.OpenSetPersonStaffingModal());
+  }
+
+  public filterUnits(units: UnitStatusResult[]) {
+    if (this.unitSearchTerm) {
+      if (units) {
+        let filteredUnits = new Array<UnitStatusResult>();
+
+        units.forEach((unit) => {
+          if (unit.Name && unit.Name.toLowerCase().includes(this.unitSearchTerm.toLowerCase())) {
+            filteredUnits.push(unit);
+          } else if (unit.GroupName && unit.GroupName.toLowerCase().includes(this.unitSearchTerm.toLowerCase())) {
+            filteredUnits.push(unit);
+          } else if (unit.State && unit.State.toLowerCase().includes(this.unitSearchTerm.toLowerCase())) {
+            filteredUnits.push(unit);
+          }
+        });
+
+        return filteredUnits;
+      }
+    } else {
+      return units;
+    }
+  }
+
+  public filterPersonnel(personnel: PersonnelForCallResult[]) {
+    if (this.personnelSearchTerm) {
+      if (personnel) {
+        let filteredPersonnel = new Array<PersonnelForCallResult>();
+
+        personnel.forEach((person) => {
+          if (person.Name && person.Name.toLowerCase().includes(this.personnelSearchTerm.toLowerCase())) {
+            filteredPersonnel.push(person);
+          } else if (person.Group && person.Group.toLowerCase().includes(this.personnelSearchTerm.toLowerCase())) {
+            filteredPersonnel.push(person);
+          } else if (person.Staffing && person.Staffing.toLowerCase().includes(this.personnelSearchTerm.toLowerCase())) {
+            filteredPersonnel.push(person);
+          } else if (person.Status && person.Status.toLowerCase().includes(this.personnelSearchTerm.toLowerCase())) {
+            filteredPersonnel.push(person);
+          }
+        });
+
+        return filteredPersonnel;
+      }
+    } else {
+      return personnel;
+    }
   }
 
   public callNotes() {
@@ -508,6 +588,12 @@ export class DashboardPage implements AfterViewInit {
   public onStatuseTabNavChange(changeEvent: NgbNavChangeEvent) {
     if (changeEvent) {
       this.currentStatusTabSelected = changeEvent.nextId;
+
+      if (this.currentStatusTabSelected == 1) { // Units Active
+        this.personnelSearchTerm = '';
+      } else if (this.currentStatusTabSelected == 2) { // Personnel Active
+        this.unitSearchTerm = '';
+      }
     }
   }
 

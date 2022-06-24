@@ -424,11 +424,12 @@
 
 
 <ng-template #UnitsStatusTabContent>
+  <input type="text" class="form-control" placeholder="Filter Units" #searchUnits>
   <div *ngFor="let group of (homeState$ | async).unitStatuses | groupBy:'GroupName'">
     <span class="mt-4" style="font-weight: 700 !important;">{{group.key}}</span>
     <table class="table table-centered">
       <tbody>
-        <tr *ngFor="let unit of group.value">
+        <tr *ngFor="let unit of filterUnits(group.value)">
           <td style="width: 20px;"><input type="checkbox" name="{{unit.UnitId}}" (change)="changeCheckedUnit($event)" [checked]="unit.Selected"></td>
           <td style="font-size: 12px;">{{unit.Name}}</td>
           <td style="font-size: 12px;">{{unit.Type}}</td>
@@ -443,11 +444,12 @@
 </ng-template>
 
 <ng-template #PersonnelStatusTabContent>
+  <input type="text" class="form-control" placeholder="Filter Personnel" #searchPersonnel>
   <div *ngFor="let group of (homeState$ | async).personnelForGrid | groupBy:'Group'">
     <span class="mt-4" style="font-weight: 700 !important;">{{group.key}}</span>
     <table class="table table-centered">
       <tbody>
-        <tr *ngFor="let personnel of group.value">
+        <tr *ngFor="let personnel of filterPersonnel(group.value)">
           <td style="width: 20px;"><input type="checkbox" name="{{personnel.UserId}}" (change)="changeCheckedPerson($event)" [checked]="personnel.Selected">
           </td>
           <td style="font-size: 12px;">{{personnel.Name}}</td>
