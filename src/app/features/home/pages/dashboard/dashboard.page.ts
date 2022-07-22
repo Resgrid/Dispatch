@@ -35,6 +35,7 @@ import { debounceTime, distinctUntilChanged, tap } from "rxjs/operators";
 import { UnitStatusResult } from "src/app/core/models/unitStatusResult";
 import { PersonnelForCallResult } from "src/app/core/models/personnelForCallResult";
 import { PerfectScrollbarComponent } from "ngx-perfect-scrollbar";
+import { SubSink } from 'subsink';
 
 const iconRetinaUrl = "./assets/marker-icon-2x.png";
 const iconUrl = "./assets/marker-icon.png";
@@ -57,6 +58,8 @@ L.Marker.prototype.options.icon = iconDefault;
   styleUrls: ["dashboard.page.scss"],
 })
 export class DashboardPage implements AfterViewInit {
+  private subs = new SubSink();
+
   public homeState$: Observable<HomeState | null>;
   public mapData$: Observable<MapDataAndMarkersData | null>;
   public activeCallTemplate$: Observable<GetCallTemplatesResultData | null>;
@@ -66,7 +69,7 @@ export class DashboardPage implements AfterViewInit {
   public breadCrumbItems: Array<{}>;
   public submitted = false;
 
-  @ViewChild('perfectScroll') perfectScroll: PerfectScrollbarComponent;
+  @ViewChild("perfectScroll") perfectScroll: PerfectScrollbarComponent;
 
   @ViewChild("map") mapContainer;
   public map: any;
@@ -86,16 +89,17 @@ export class DashboardPage implements AfterViewInit {
   private searchUnitsInput: ElementRef;
   private $searchUnitsInput: Subscription;
 
-  @ViewChild('searchUnits', { static: false }) set searchUnitsContent(content: ElementRef) {
-    if(content) { // initially setter gets called with undefined
-        this.searchUnitsInput = content;
+  @ViewChild("searchUnits", { static: false }) set searchUnitsContent(content: ElementRef) {
+    if (content) {
+      // initially setter gets called with undefined
+      this.searchUnitsInput = content;
 
-        if (this.$searchUnitsInput) {
-          this.$searchUnitsInput.unsubscribe();
-          this.$searchUnitsInput = null;
-        }
+      if (this.$searchUnitsInput) {
+        this.$searchUnitsInput.unsubscribe();
+        this.$searchUnitsInput = null;
+      }
 
-        this.$searchUnitsInput = fromEvent(this.searchUnitsInput.nativeElement, "keyup")
+      this.$searchUnitsInput = fromEvent(this.searchUnitsInput.nativeElement, "keyup")
         .pipe(
           filter(Boolean),
           debounceTime(150),
@@ -105,24 +109,26 @@ export class DashboardPage implements AfterViewInit {
               this.unitSearchTerm = this.searchUnitsInput.nativeElement.value;
             }
           })
-        ).subscribe();
+        )
+        .subscribe();
     }
- }
+  }
 
   private personnelSearchTerm: string = "";
   private searchPersonnelInput: ElementRef;
   private $searchPersonnelInput: Subscription;
 
-  @ViewChild('searchPersonnel', { static: false }) set content(content: ElementRef) {
-    if(content) { // initially setter gets called with undefined
-        this.searchPersonnelInput = content;
+  @ViewChild("searchPersonnel", { static: false }) set content(content: ElementRef) {
+    if (content) {
+      // initially setter gets called with undefined
+      this.searchPersonnelInput = content;
 
-        if (this.$searchPersonnelInput) {
-          this.$searchPersonnelInput.unsubscribe();
-          this.$searchPersonnelInput = null;
-        }
+      if (this.$searchPersonnelInput) {
+        this.$searchPersonnelInput.unsubscribe();
+        this.$searchPersonnelInput = null;
+      }
 
-        this.$searchPersonnelInput = fromEvent(this.searchPersonnelInput.nativeElement, "keyup")
+      this.$searchPersonnelInput = fromEvent(this.searchPersonnelInput.nativeElement, "keyup")
         .pipe(
           filter(Boolean),
           debounceTime(150),
@@ -132,9 +138,10 @@ export class DashboardPage implements AfterViewInit {
               this.personnelSearchTerm = this.searchPersonnelInput.nativeElement.value;
             }
           })
-        ).subscribe();
+        )
+        .subscribe();
     }
- }
+  }
 
   constructor(
     public formBuilder: FormBuilder,
@@ -177,24 +184,25 @@ export class DashboardPage implements AfterViewInit {
     this.store.dispatch(new HomeActions.Loading());
 
     if (this.searchUnitsInput && this.searchUnitsInput.nativeElement) {
-    fromEvent(this.searchUnitsInput.nativeElement, "keyup")
-      .pipe(
-        filter(Boolean),
-        debounceTime(150),
-        distinctUntilChanged(),
-        tap((text) => {
-          if (this.searchUnitsInput && this.searchUnitsInput.nativeElement) {
-            this.unitSearchTerm = this.searchUnitsInput.nativeElement.value;
-          }
-        })
-      ).subscribe();
+      fromEvent(this.searchUnitsInput.nativeElement, "keyup")
+        .pipe(
+          filter(Boolean),
+          debounceTime(150),
+          distinctUntilChanged(),
+          tap((text) => {
+            if (this.searchUnitsInput && this.searchUnitsInput.nativeElement) {
+              this.unitSearchTerm = this.searchUnitsInput.nativeElement.value;
+            }
+          })
+        )
+        .subscribe();
     }
 
-    this.mapData$.subscribe((state) => {
+    this.subs.sink = this.mapData$.subscribe((state) => {
       this.processMapData(state);
     });
 
-    this.newCallAddress$.subscribe((geolocation) => {
+    this.subs.sink = this.newCallAddress$.subscribe((geolocation) => {
       if (geolocation) {
         this.form["latitude"].setValue(geolocation.Latitude.toString());
         this.form["latitude"].patchValue(geolocation.Latitude.toString());
@@ -206,7 +214,40 @@ export class DashboardPage implements AfterViewInit {
       }
     });
 
-    this.newCallLocation$.subscribe((address) => {
+    this.subs.sink = this.activeCallTemplate$.subscribe((template) => {
+      if (template) {
+        if (template.CallName) {
+          this.form["name"].setValue(template.CallName);
+          this.form["name"].patchValue(template.CallName);
+        }
+
+        if (template.CallNature) {
+          this.form["nature"].setValue(template.CallNature);
+          this.form["nature"].patchValue(template.CallNature);
+        }
+
+        if (template.CallPriority) {
+          this.form["priority"].setValue(template.CallPriority);
+          this.form["priority"].patchValue(template.CallPriority);
+        }
+
+        if (template.CallType) {
+          this.store
+            .select(selectHomeState)
+            .pipe(take(1))
+            .subscribe((state) => {
+              const type = _.find(state.callTypes, ["Name", template.CallType]);
+
+              if (type) {
+                this.form["type"].setValue(type.Id);
+                this.form["type"].patchValue(type.Id);
+              }
+            });
+        }
+      }
+    });
+
+    this.subs.sink = this.newCallLocation$.subscribe((address) => {
       if (address) {
         const currentAddress = this.newCallForm.get("address").value;
         if (!currentAddress || currentAddress === "") {
@@ -216,7 +257,7 @@ export class DashboardPage implements AfterViewInit {
       }
     });
 
-    this.newCall$.subscribe((newCallData) => {
+    this.subs.sink = this.newCall$.subscribe((newCallData) => {
       this.form["name"].setValue("");
       this.form["name"].patchValue("");
 
@@ -265,7 +306,7 @@ export class DashboardPage implements AfterViewInit {
       this.submitted = false;
     });
 
-    this.store.select(selectHomeState).subscribe((state) => {
+    this.subs.sink = this.store.select(selectHomeState).subscribe((state) => {
       if (state.unitStatuses) {
         var units = _(state.unitStatuses)
           .groupBy((x) => x.GroupName)
@@ -305,6 +346,12 @@ export class DashboardPage implements AfterViewInit {
 
     this.homeProvider.startSignalR();
     this.store.dispatch(new VoiceActions.GetVoipInfo());
+  }
+
+  public ngOnDestroy(): void {
+    if (this.subs) {
+      this.subs.unsubscribe();
+    }
   }
 
   public get form(): { [key: string]: AbstractControl } {
@@ -353,10 +400,9 @@ export class DashboardPage implements AfterViewInit {
         let filteredPersonnel = new Array<PersonnelForCallResult>();
 
         personnel.forEach((person) => {
-
-          let rolesString = '';
+          let rolesString = "";
           if (person.Roles && person.Roles.length > 0) {
-            rolesString = person.Roles.map((x) => x).join(', ');
+            rolesString = person.Roles.map((x) => x).join(", ");
           }
 
           if (person.Name && person.Name.toLowerCase().includes(this.personnelSearchTerm.toLowerCase())) {
@@ -537,7 +583,7 @@ export class DashboardPage implements AfterViewInit {
     if (this.newCallForm.invalid) {
       this.store.dispatch(new HomeActions.SaveCallFormInvalid());
 
-      let nameField: any = document.querySelector('#name')
+      let nameField: any = document.querySelector("#name");
       if (nameField) {
         nameField.focus();
       }
@@ -547,7 +593,7 @@ export class DashboardPage implements AfterViewInit {
       }
       return;
     }
-    
+
     this.store.dispatch(new HomeActions.IsSavingCall());
 
     const call = this.form;
@@ -637,10 +683,12 @@ export class DashboardPage implements AfterViewInit {
     if (changeEvent) {
       this.currentStatusTabSelected = changeEvent.nextId;
 
-      if (this.currentStatusTabSelected == 1) { // Units Active
-        this.personnelSearchTerm = '';
-      } else if (this.currentStatusTabSelected == 2) { // Personnel Active
-        this.unitSearchTerm = '';
+      if (this.currentStatusTabSelected == 1) {
+        // Units Active
+        this.personnelSearchTerm = "";
+      } else if (this.currentStatusTabSelected == 2) {
+        // Personnel Active
+        this.unitSearchTerm = "";
       }
     }
   }
