@@ -32,7 +32,6 @@
   }
 }
 
-
 .mail-list {
   a {
     display: block;
@@ -56,15 +55,15 @@
     height: 50px;
     line-height: 50px;
     cursor: default;
-    transition-duration: .3s;
+    transition-duration: 0.3s;
 
-    a{
+    a {
       color: $gray-600;
     }
 
     &:hover {
       background: $gray-300;
-      transition-duration: .05s;
+      transition-duration: 0.05s;
     }
 
     .col-mail {
@@ -146,18 +145,16 @@
       box-shadow: inset 3px 0 0 $primary;
     }
 
-    
-  &.unread  {
-    background-color: $gray-300;
-    font-weight: 500;
-    color: darken($dark,5%);
-      a{
-        color: darken($dark,5%);
+    &.unread {
+      background-color: $gray-300;
+      font-weight: 500;
+      color: darken($dark, 5%);
+      a {
+        color: darken($dark, 5%);
         font-weight: 500;
       }
     }
   }
-
 
   .checkbox-wrapper-mail {
     cursor: pointer;
@@ -184,14 +181,14 @@
       cursor: pointer;
       opacity: 0;
       margin-bottom: 0;
-      transition-duration: .05s;
+      transition-duration: 0.05s;
       top: 0;
       &:before {
         content: "\F012C";
         font-family: "Material Design Icons";
         top: 0;
         height: 20px;
-        color: darken($dark,5%);
+        color: darken($dark, 5%);
         width: 20px;
         position: absolute;
         margin-top: -16px;
@@ -202,8 +199,8 @@
   }
 }
 
-@media (max-width: 575.98px) { 
+@media (max-width: 575.98px) {
   .message-list li .col-mail-1 {
-      width: 200px;
+    width: 200px;
   }
 }

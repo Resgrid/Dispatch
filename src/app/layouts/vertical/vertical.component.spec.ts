@@ -1,16 +1,15 @@
-import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
+import { ComponentFixture, TestBed, waitForAsync } from "@angular/core/testing";
 
-import { VerticalComponent } from './vertical.component';
+import { VerticalComponent } from "./vertical.component";
 
-describe('VerticalComponent', () => {
+describe("VerticalComponent", () => {
   let component: VerticalComponent;
   let fixture: ComponentFixture<VerticalComponent>;
 
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-      declarations: [ VerticalComponent ]
-    })
-    .compileComponents();
+      declarations: [VerticalComponent],
+    }).compileComponents();
   }));
 
   beforeEach(() => {
@@ -19,7 +18,7 @@ describe('VerticalComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should create', () => {
+  it("should create", () => {
     expect(component).toBeTruthy();
   });
 });

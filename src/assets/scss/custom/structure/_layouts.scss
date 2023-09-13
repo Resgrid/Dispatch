@@ -1,41 +1,43 @@
-// 
+//
 // _layouts.scss
-// 
+//
 
 body[data-layout-size="boxed"] {
-    background-color: $boxed-body-bg;
-    #layout-wrapper {
-        background-color: $body-bg;
-        max-width: $boxed-layout-width;
-        margin: 0 auto;
-        box-shadow: $box-shadow;
-    }
+  background-color: $boxed-body-bg;
+  #layout-wrapper {
+    background-color: $body-bg;
+    max-width: $boxed-layout-width;
+    margin: 0 auto;
+    box-shadow: $box-shadow;
+  }
 
-    #page-topbar {
-        max-width: $boxed-layout-width;
-        margin: 0 auto;
-    }
+  #page-topbar {
+    max-width: $boxed-layout-width;
+    margin: 0 auto;
+  }
 
+  .footer {
+    margin: 0 auto;
+    max-width: calc(#{$boxed-layout-width} - #{$sidebar-width});
+  }
+
+  &.vertical-collpsed {
     .footer {
-        margin: 0 auto;
-        max-width: calc(#{$boxed-layout-width} - #{$sidebar-width});
+      max-width: calc(#{$boxed-layout-width} - #{$sidebar-collapsed-width});
     }
-
-    &.vertical-collpsed {
-        .footer {
-            max-width: calc(#{$boxed-layout-width} - #{$sidebar-collapsed-width});
-        }
-    }
+  }
 }
-
 
 // Horizontal Boxed Layout
 
-body[data-layout="horizontal"][data-layout-size="boxed"]{
-    #page-topbar, #layout-wrapper, .footer {
-        max-width: 100%;
-    }
-    .container-fluid, .navbar-header {
-        max-width: $boxed-layout-width;
-    }
+body[data-layout="horizontal"][data-layout-size="boxed"] {
+  #page-topbar,
+  #layout-wrapper,
+  .footer {
+    max-width: 100%;
+  }
+  .container-fluid,
+  .navbar-header {
+    max-width: $boxed-layout-width;
+  }
 }

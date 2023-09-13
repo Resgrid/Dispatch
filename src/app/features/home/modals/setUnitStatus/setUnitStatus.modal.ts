@@ -7,7 +7,7 @@ import { HomeState } from "../../store/home.store";
 import * as HomeActions from "../../actions/home.actions";
 import { take } from "rxjs/operators";
 import { Actions, ofType } from "@ngrx/effects";
-import { CallResultData, CustomStatusResultData, GroupResultData } from '@resgrid/ngx-resgridlib';
+import { CallResultData, CustomStatusResultData, GroupResultData } from "@resgrid/ngx-resgridlib";
 
 @Component({
   selector: "app-resgrid-modal-setUnitStatus",
@@ -26,7 +26,7 @@ export class SetUnitStatusModalComponent implements OnInit {
   constructor(
     public activeModal: NgbActiveModal,
     private store: Store<HomeState>,
-    private actions$: Actions
+    private actions$: Actions,
   ) {
     this.homeState$ = this.store.select(selectHomeState);
   }
@@ -72,7 +72,7 @@ export class SetUnitStatusModalComponent implements OnInit {
             destination: destination,
             destinationType: destinationType,
             note: this.note,
-            date: new Date()
+            date: new Date(),
           };
 
           this.store.dispatch(new HomeActions.SavingUnitState(setUnitStatusData));

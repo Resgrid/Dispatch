@@ -1,21 +1,21 @@
-import { NgModule } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
-import { Ng2SearchPipeModule } from 'ng2-search-filter';
-import { DashboardPage } from './dashboard.page';
-import { UnitListComponent } from '../../components/unitsList/units-list';
-import { DigitalClockComponent } from '../../components/digital-clock/digital-clock.component';
-import { CallsListComponent } from '../../components/calls-list/calls-list';
-import { NgbAlertModule, NgbDropdownModule, NgbNavModule, NgbTooltipModule } from '@ng-bootstrap/ng-bootstrap';
-import { PerfectScrollbarConfigInterface, PerfectScrollbarModule, PERFECT_SCROLLBAR_CONFIG } from 'ngx-perfect-scrollbar';
-import { LeafletModule } from '@asymmetrik/ngx-leaflet';
-import { UiModule } from 'src/app/shared/ui/ui.module';
-import { NgxResgridLibModule } from '@resgrid/ngx-resgridlib';
+import { NgModule } from "@angular/core";
+import { CommonModule } from "@angular/common";
+import { FormsModule, ReactiveFormsModule } from "@angular/forms";
+import { RouterModule } from "@angular/router";
+import { Ng2SearchPipeModule } from "ng2-search-filter";
+import { DashboardPage } from "./dashboard.page";
+import { UnitListComponent } from "../../components/unitsList/units-list";
+import { DigitalClockComponent } from "../../components/digital-clock/digital-clock.component";
+import { CallsListComponent } from "../../components/calls-list/calls-list";
+import { NgbAlertModule, NgbDropdownModule, NgbNavModule, NgbTooltipModule } from "@ng-bootstrap/ng-bootstrap";
+import { PerfectScrollbarConfigInterface, PerfectScrollbarModule, PERFECT_SCROLLBAR_CONFIG } from "ngx-perfect-scrollbar";
+import { LeafletModule } from "@asymmetrik/ngx-leaflet";
+import { UiModule } from "src/app/shared/ui/ui.module";
+import { NgxResgridLibModule } from "@resgrid/ngx-resgridlib";
 
 const DEFAULT_PERFECT_SCROLLBAR_CONFIG: PerfectScrollbarConfigInterface = {
   suppressScrollX: true,
-  wheelSpeed: 0.3
+  wheelSpeed: 0.3,
 };
 
 @NgModule({
@@ -34,17 +34,17 @@ const DEFAULT_PERFECT_SCROLLBAR_CONFIG: PerfectScrollbarConfigInterface = {
     UiModule,
     RouterModule.forChild([
       {
-        path: '',
-        component: DashboardPage
-      }
-    ])
+        path: "",
+        component: DashboardPage,
+      },
+    ]),
   ],
   providers: [
     {
       provide: PERFECT_SCROLLBAR_CONFIG,
-      useValue: DEFAULT_PERFECT_SCROLLBAR_CONFIG
-    }
+      useValue: DEFAULT_PERFECT_SCROLLBAR_CONFIG,
+    },
   ],
-  declarations: [DashboardPage, UnitListComponent, DigitalClockComponent, CallsListComponent]
+  declarations: [DashboardPage, UnitListComponent, DigitalClockComponent, CallsListComponent],
 })
 export class DashboardPageModule {}

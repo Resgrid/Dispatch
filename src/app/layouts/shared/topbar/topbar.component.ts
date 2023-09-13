@@ -1,24 +1,22 @@
-import { Component, OnInit, Inject, Output, EventEmitter, Input } from '@angular/core';
-import { DOCUMENT } from '@angular/common';
-import { CookieService } from 'ngx-cookie-service';
-import { Router } from '@angular/router';
+import { Component, OnInit, Inject, Output, EventEmitter, Input } from "@angular/core";
+import { DOCUMENT } from "@angular/common";
+import { CookieService } from "ngx-cookie-service";
+import { Router } from "@angular/router";
 
-import { LanguageService } from '../../../core/services/language.service';
-import { environment } from '../../../../environments/environment';
-import { AuthState } from 'src/app/features/auth/store/auth.store';
-import { Store } from '@ngrx/store';
-import { take } from 'rxjs/operators';
-import { selectAuthState } from 'src/app/store';
+import { LanguageService } from "../../../core/services/language.service";
+import { environment } from "../../../../environments/environment";
+import { AuthState } from "src/app/features/auth/store/auth.store";
+import { Store } from "@ngrx/store";
+import { take } from "rxjs/operators";
+import { selectAuthState } from "src/app/store";
 
 @Component({
-  selector: 'app-topbar',
-  templateUrl: './topbar.component.html',
-  styleUrls: ['./topbar.component.scss']
+  selector: "app-topbar",
+  templateUrl: "./topbar.component.html",
+  styleUrls: ["./topbar.component.scss"],
 })
 export class TopbarComponent implements OnInit {
   @Input() auth: AuthState;
-
-
 
   element: any;
   configData: any;
@@ -28,7 +26,7 @@ export class TopbarComponent implements OnInit {
   valueset: string;
 
   listLang = [
-    { text: 'English', flag: 'assets/images/flags/us.jpg', lang: 'en' },
+    { text: "English", flag: "assets/images/flags/us.jpg", lang: "en" },
     //{ text: 'Spanish', flag: 'assets/images/flags/spain.jpg', lang: 'es' },
     //{ text: 'German', flag: 'assets/images/flags/germany.jpg', lang: 'de' },
     //{ text: 'Italian', flag: 'assets/images/flags/italy.jpg', lang: 'it' },
@@ -36,33 +34,38 @@ export class TopbarComponent implements OnInit {
   ];
 
   // tslint:disable-next-line: max-line-length
-  constructor(@Inject(DOCUMENT) private document: any, 
-              private router: Router, 
-              public languageService: LanguageService, 
-              public cookiesService: CookieService,
-              private authStore: Store<AuthState>) { }
+  constructor(
+    @Inject(DOCUMENT) private document: any,
+    private router: Router,
+    public languageService: LanguageService,
+    public cookiesService: CookieService,
+    private authStore: Store<AuthState>,
+  ) {}
 
   @Output() mobileMenuButtonClicked = new EventEmitter();
   @Output() settingsButtonClicked = new EventEmitter();
 
   ngOnInit(): void {
-    this.authStore.select(selectAuthState).pipe(take(1)).subscribe(
-      s => this.auth = s
-   )
+    this.authStore
+      .select(selectAuthState)
+      .pipe(take(1))
+      .subscribe((s) => (this.auth = s));
 
     this.element = document.documentElement;
     this.configData = {
       suppressScrollX: true,
-      wheelSpeed: 0.3
+      wheelSpeed: 0.3,
     };
 
-    this.cookieValue = this.cookiesService.get('lang');
-    const val = this.listLang.filter(x => x.lang === this.cookieValue);
-    this.countryName = val.map(element => element.text);
+    this.cookieValue = this.cookiesService.get("lang");
+    const val = this.listLang.filter((x) => x.lang === this.cookieValue);
+    this.countryName = val.map((element) => element.text);
     if (val.length === 0) {
-      if (this.flagvalue === undefined) { this.valueset = 'assets/images/flags/us.jpg'; }
+      if (this.flagvalue === undefined) {
+        this.valueset = "assets/images/flags/us.jpg";
+      }
     } else {
-      this.flagvalue = val.map(element => element.flag);
+      this.flagvalue = val.map((element) => element.flag);
     }
   }
 
@@ -91,19 +94,18 @@ export class TopbarComponent implements OnInit {
     this.languageService.setLanguage(lang);
   }
 
-
   /**
    * Logout the user
    */
   logout() {
-    this.router.navigate(['/auth/login']);
+    this.router.navigate(["/auth/login"]);
   }
 
   navToEditProfile() {
-    this.router.navigate(['/profile/edit-profile']);
+    this.router.navigate(["/profile/edit-profile"]);
   }
 
   getAvatarUrl() {
-    return environment.baseApiUrl + environment.resgridApiUrl + '/Avatars/Get?id=' + this.auth?.user?.userId
+    return environment.baseApiUrl + environment.resgridApiUrl + "/Avatars/Get?id=" + this.auth?.user?.userId;
   }
 }

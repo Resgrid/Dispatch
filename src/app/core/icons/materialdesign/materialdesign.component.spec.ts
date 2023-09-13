@@ -1,16 +1,15 @@
-import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
+import { ComponentFixture, TestBed, waitForAsync } from "@angular/core/testing";
 
-import { MaterialdesignComponent } from './materialdesign.component';
+import { MaterialdesignComponent } from "./materialdesign.component";
 
-describe('MaterialdesignComponent', () => {
+describe("MaterialdesignComponent", () => {
   let component: MaterialdesignComponent;
   let fixture: ComponentFixture<MaterialdesignComponent>;
 
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-      declarations: [ MaterialdesignComponent ]
-    })
-    .compileComponents();
+      declarations: [MaterialdesignComponent],
+    }).compileComponents();
   }));
 
   beforeEach(() => {
@@ -19,7 +18,7 @@ describe('MaterialdesignComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should create', () => {
+  it("should create", () => {
     expect(component).toBeTruthy();
   });
 });

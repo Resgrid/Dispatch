@@ -76,7 +76,7 @@ export class OpenViduDevicesService {
   }
 
   private getCamFromStorage() {
-    let storageDevice = this.storageSrv.read('openviduCallVideoDevice');
+    let storageDevice = this.storageSrv.read("openviduCallVideoDevice");
     storageDevice = this.getCameraByDeviceField(storageDevice?.device);
     if (storageDevice) {
       return storageDevice;
@@ -96,7 +96,7 @@ export class OpenViduDevicesService {
   }
 
   private getMicFromStogare(): IDevice {
-    let storageDevice = this.storageSrv.read('openviduCallAudioDevice');
+    let storageDevice = this.storageSrv.read("openviduCallAudioDevice");
     storageDevice = this.getMicrophoneByDeviceField(storageDevice?.device);
     if (storageDevice) {
       return storageDevice;
@@ -109,7 +109,7 @@ export class OpenViduDevicesService {
   }
 
   private saveCamToStorage(cam: IDevice) {
-    this.storageSrv.write('openviduCallVideoDevice', cam);
+    this.storageSrv.write("openviduCallVideoDevice", cam);
   }
 
   setMicSelected(deviceField: any) {
@@ -117,7 +117,7 @@ export class OpenViduDevicesService {
     this.saveMicToStorage(this.micSelected);
   }
   private saveMicToStorage(mic: IDevice) {
-    this.storageSrv.write('openviduCallAudioDevice', mic);
+    this.storageSrv.write("openviduCallAudioDevice", mic);
   }
 
   needUpdateVideoTrack(newVideoSource: string): boolean {

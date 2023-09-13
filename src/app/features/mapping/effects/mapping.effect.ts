@@ -4,9 +4,9 @@ import { catchError, map, mergeMap } from "rxjs/operators";
 import { Injectable } from "@angular/core";
 import { from, of } from "rxjs";
 import { NgbModal, NgbModalRef } from "@ng-bootstrap/ng-bootstrap";
-import { MappingService } from '@resgrid/ngx-resgridlib';
+import { MappingService } from "@resgrid/ngx-resgridlib";
 import * as _ from "lodash";
-import * as mappingAction from '../actions/mapping.actions';
+import * as mappingAction from "../actions/mapping.actions";
 import { MappingState } from "../store/mapping.store";
 
 @Injectable()
@@ -14,25 +14,23 @@ export class MappingEffects {
   private _modalRef: NgbModalRef;
 
   getUnitsList$ = createEffect(() =>
-		this.actions$.pipe(
-			ofType<mappingAction.LoadMapData>(
-				mappingAction.MappingActionTypes.LOADING_MAP_DATA
-			),
-			mergeMap((action) =>
-				this.mapProvider.getMapDataAndMarkers().pipe(
-					map((data) => ({
-						type: mappingAction.MappingActionTypes.LOADING_MAP_DATA_SUCCESS,
-						payload: data.Data,
-					})),
-					catchError(() =>
-						of({
-							type: mappingAction.MappingActionTypes.LOADING_MAP_DATA_FAIL,
-						})
-					)
-				)
-			)
-		)
-	);
+    this.actions$.pipe(
+      ofType<mappingAction.LoadMapData>(mappingAction.MappingActionTypes.LOADING_MAP_DATA),
+      mergeMap((action) =>
+        this.mapProvider.getMapDataAndMarkers().pipe(
+          map((data) => ({
+            type: mappingAction.MappingActionTypes.LOADING_MAP_DATA_SUCCESS,
+            payload: data.Data,
+          })),
+          catchError(() =>
+            of({
+              type: mappingAction.MappingActionTypes.LOADING_MAP_DATA_FAIL,
+            }),
+          ),
+        ),
+      ),
+    ),
+  );
 
   constructor(
     private actions$: Actions,

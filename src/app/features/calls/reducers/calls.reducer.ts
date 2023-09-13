@@ -4,10 +4,7 @@ import { CallsActionsUnion, CallsActionTypes } from "../actions/calls.actions";
 import * as _ from "lodash";
 import { CallLocalResult } from "src/app/core/models/callLocalResult";
 
-export function reducer(
-  state: CallsState = initialState,
-  action: CallsActionsUnion
-): CallsState {
+export function reducer(state: CallsState = initialState, action: CallsActionsUnion): CallsState {
   switch (action.type) {
     case CallsActionTypes.GET_SCHEDULED_CALLS_SUCCESS:
       return {
@@ -134,7 +131,6 @@ export function reducer(
         unitStatuses: units,
         rolesForGrid: roles,
         groupsForGrid: groups,
-
       };
     case CallsActionTypes.SHOW_CALLDISPATCHTIMEMODAL:
       return {
@@ -163,7 +159,6 @@ export function reducer(
   }
 }
 
-export const getPendingScheduledCalls = (state: CallsState) =>
-  state.pendingScheduledCalls;
+export const getPendingScheduledCalls = (state: CallsState) => state.pendingScheduledCalls;
 export const getEditCall = (state: CallsState) => state.callToEdit;
 export const getEditCallData = (state: CallsState) => state.callEditData;

@@ -1,38 +1,44 @@
 <div>
-    <div class="modal-header">
-      <h5 class="modal-title" id="composemodalTitle">Close Call</h5>
-      <button type="button" class="close" (click)="dismiss()" aria-label="Close">
-        <span aria-hidden="true">&times;</span>
-      </button>
+  <div class="modal-header">
+    <h5 class="modal-title" id="composemodalTitle">Close Call</h5>
+    <button type="button" class="close" (click)="dismiss()" aria-label="Close">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div>
+  <div class="modal-body">
+    <div class="form-group row">
+      <label class="col-md-2 col-form-label">Call</label>
+      <div class="col-md-6">{{selectedCall ? selectedCall?.Name : "No Call Selected"}}</div>
     </div>
-    <div class="modal-body">
-        <div class="form-group row">
-          <label class="col-md-2 col-form-label">Call</label>
-          <div class="col-md-6">
-            {{selectedCall ? selectedCall?.Name : "No Call Selected"}}
-          </div>
-        </div>
 
-        <div class="form-group row">
-          <label class="col-md-2 col-form-label">Type</label>
-          <div class="col-md-6">
-            <select class="form-control" [(ngModel)]="selectedCallStatus">
-              <option value="1">Closed</option>
-              <option value="2">Cancelled</option>
-              <option value="3">Unfounded</option>
-            </select>
-          </div>
-        </div>
-  
-        <div class="form-group">
-          <input type="text" class="form-control" placeholder="Note" [(ngModel)]="note">
-        </div>
+    <div class="form-group row">
+      <label class="col-md-2 col-form-label">Type</label>
+      <div class="col-md-6">
+        <select class="form-control" [(ngModel)]="selectedCallStatus">
+          <option value="1">Closed</option>
+          <option value="2">Cancelled</option>
+          <option value="3">Unfounded</option>
+        </select>
+      </div>
     </div>
-    <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" (click)="dismiss()">Close</button>
-      <button type="button" class="btn btn-primary w-md waves-effect waves-light" (click)="save()" *ngIf="!isSaving" [disabled]="!selectedCall">Save</button>
-      <button class="btn btn-primary w-md waves-effect waves-light" type="button" disabled *ngIf="isSaving">
-        <span class="spinner-border spinner-border-sm"></span>
-      </button>
+
+    <div class="form-group">
+      <input type="text" class="form-control" placeholder="Note" [(ngModel)]="note" />
     </div>
   </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" (click)="dismiss()">Close</button>
+    <button
+      type="button"
+      class="btn btn-primary w-md waves-effect waves-light"
+      (click)="save()"
+      *ngIf="!isSaving"
+      [disabled]="!selectedCall"
+    >
+      Save
+    </button>
+    <button class="btn btn-primary w-md waves-effect waves-light" type="button" disabled *ngIf="isSaving">
+      <span class="spinner-border spinner-border-sm"></span>
+    </button>
+  </div>
+</div>

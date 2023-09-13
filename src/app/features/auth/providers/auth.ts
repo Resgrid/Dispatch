@@ -1,10 +1,6 @@
 import { Injectable, Inject } from "@angular/core";
 import { combineLatest, concat, Observable, of } from "rxjs";
-import {
-  AuthService,
-  ProfileModel,
-  SecurityService,
-} from '@resgrid/ngx-resgridlib';
+import { AuthService, ProfileModel, SecurityService } from "@resgrid/ngx-resgridlib";
 import { concatMap, flatMap, map, mergeMap } from "rxjs/operators";
 import { LoginResult } from "src/app/core/models/loginResult";
 
@@ -14,7 +10,7 @@ import { LoginResult } from "src/app/core/models/loginResult";
 export class AuthProvider {
   constructor(
     private authProvider: AuthService,
-    private securityService: SecurityService
+    private securityService: SecurityService,
   ) {}
 
   //public login(username: string, password: string): Observable<ProfileModel> {
@@ -38,7 +34,7 @@ export class AuthProvider {
         result.Rights = rightsResult.Data;
 
         return result;
-      })
+      }),
     );
   }
 

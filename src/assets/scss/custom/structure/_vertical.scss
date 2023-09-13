@@ -1,6 +1,6 @@
 //
 // _menu.scss
-// 
+//
 
 .metismenu {
   margin: 0;
@@ -18,7 +18,7 @@
     }
 
     &.mm-show {
-      display: block
+      display: block;
     }
   }
 
@@ -27,11 +27,10 @@
     height: 0;
     overflow: hidden;
     transition-timing-function: ease;
-    transition-duration: .35s;
+    transition-duration: 0.35s;
     transition-property: height, visibility;
   }
 }
-
 
 .vertical-menu {
   width: $sidebar-width;
@@ -54,12 +53,11 @@
   }
 }
 
-
 #sidebar-menu {
   padding: 10px 0 30px 0;
 
   .mm-active {
-    >.has-arrow {
+    > .has-arrow {
       &:after {
         transform: rotate(-180deg);
       }
@@ -69,10 +67,10 @@
   .has-arrow {
     &:after {
       content: "\F0140";
-      font-family: 'Material Design Icons';
+      font-family: "Material Design Icons";
       display: block;
       float: right;
-      transition: transform .2s;
+      transition: transform 0.2s;
       font-size: 1rem;
     }
   }
@@ -81,24 +79,24 @@
     li {
       a {
         display: block;
-        padding: .625rem 1.5rem;
+        padding: 0.625rem 1.5rem;
         color: $sidebar-menu-item-color;
         position: relative;
         font-size: 13.3px;
-        transition: all .4s;
+        transition: all 0.4s;
         font-family: $font-family-secondary;
         font-weight: 500;
 
         i {
           display: inline-block;
           min-width: 1.5rem;
-          padding-bottom: .125em;
+          padding-bottom: 0.125em;
           font-size: 1.1rem;
           line-height: 1.40625rem;
           vertical-align: middle;
           color: $sidebar-menu-item-icon-color;
-          transition: all .4s;
-          opacity: .75;
+          transition: all 0.4s;
+          opacity: 0.75;
         }
 
         &:hover {
@@ -118,9 +116,8 @@
         padding: 0;
 
         li {
-
           a {
-            padding: .4rem 1.5rem .4rem 3.2rem;
+            padding: 0.4rem 1.5rem 0.4rem 3.2rem;
             font-size: 13px;
             color: $sidebar-menu-sub-item-color;
           }
@@ -130,7 +127,7 @@
 
             li {
               a {
-                padding: .4rem 1.5rem .4rem 4.2rem;
+                padding: 0.4rem 1.5rem 0.4rem 4.2rem;
                 font-size: 13.5px;
               }
             }
@@ -138,13 +135,12 @@
         }
       }
     }
-
   }
 }
 
 .menu-title {
   padding: 12px 20px !important;
-  letter-spacing: .05em;
+  letter-spacing: 0.05em;
   pointer-events: none;
   cursor: default;
   font-size: 11px;
@@ -152,7 +148,7 @@
   color: $sidebar-menu-item-icon-color;
   font-weight: $font-weight-semibold;
   font-family: $font-family-secondary;
-  opacity: .5;
+  opacity: 0.5;
 }
 
 .mm-active {
@@ -166,7 +162,7 @@
     }
   }
 
-  >i {
+  > i {
     color: $sidebar-menu-item-active-color !important;
   }
 }
@@ -189,7 +185,6 @@
 
 // Enlarge menu
 .vertical-collpsed {
-
   .main-content {
     margin-left: $sidebar-collapsed-width;
   }
@@ -224,7 +219,6 @@
 
     // Sidebar Menu
     #sidebar-menu {
-
       .menu-title,
       .badge,
       .collapse.in {
@@ -241,12 +235,12 @@
         }
       }
 
-      >ul {
-        >li {
+      > ul {
+        > li {
           position: relative;
           white-space: nowrap;
 
-          >a {
+          > a {
             padding: 15px 20px;
             min-height: 55px;
             transition: none;
@@ -269,7 +263,7 @@
           }
 
           &:hover {
-            >a {
+            > a {
               position: relative;
               width: calc(190px + #{$sidebar-collapsed-width});
               color: $primary;
@@ -285,7 +279,7 @@
               }
             }
 
-            >ul {
+            > ul {
               display: block;
               left: $sidebar-collapsed-width;
               position: absolute;
@@ -321,7 +315,7 @@
 
           li {
             &:hover {
-              >ul {
+              > ul {
                 display: block;
                 left: 190px;
                 height: auto !important;
@@ -331,7 +325,7 @@
               }
             }
 
-            >a {
+            > a {
               span.pull-right {
                 position: absolute;
                 right: 20px;
@@ -349,10 +343,8 @@
         }
       }
     }
-
   }
 }
-
 
 body[data-sidebar="dark"] {
   .vertical-menu {
@@ -360,7 +352,6 @@ body[data-sidebar="dark"] {
   }
 
   #sidebar-menu {
-
     ul {
       li {
         a {
@@ -381,7 +372,6 @@ body[data-sidebar="dark"] {
 
         ul.sub-menu {
           li {
-
             a {
               color: $sidebar-dark-menu-sub-item-color;
 
@@ -401,15 +391,12 @@ body[data-sidebar="dark"] {
 
     // Side menu
     .vertical-menu {
-
       // Sidebar Menu
       #sidebar-menu {
-
-        >ul {
-          >li {
-
+        > ul {
+          > li {
             &:hover {
-              >a {
+              > a {
                 background: lighten($sidebar-dark-bg, 2%);
                 color: $sidebar-dark-menu-item-hover-color;
 
@@ -418,7 +405,7 @@ body[data-sidebar="dark"] {
                 }
               }
 
-              >ul {
+              > ul {
                 a {
                   color: $sidebar-dark-menu-sub-item-color;
 
@@ -433,11 +420,9 @@ body[data-sidebar="dark"] {
           ul {
             background-color: lighten($card-bg, 1%);
           }
-
         }
 
         ul {
-
           li {
             &.mm-active .active {
               color: $sidebar-menu-item-active-color !important;
@@ -448,17 +433,14 @@ body[data-sidebar="dark"] {
             }
           }
         }
-
       }
-
-
     }
   }
 
   .mm-active {
     color: $sidebar-dark-menu-item-active-color !important;
 
-    >i {
+    > i {
       color: $sidebar-dark-menu-item-active-color !important;
     }
 
@@ -475,7 +457,6 @@ body[data-sidebar="dark"] {
     color: $sidebar-dark-menu-item-icon-color;
   }
 }
-
 
 body[data-layout="horizontal"] {
   .main-content {
@@ -555,9 +536,9 @@ body[data-sidebar-size="small"] {
       #sidebar-menu {
         text-align: left;
 
-        >ul {
-          >li {
-            >a {
+        > ul {
+          > li {
+            > a {
               i {
                 display: inline-block;
               }
@@ -595,7 +576,7 @@ body[data-sidebar="colored"] {
   .mm-active {
     color: $white !important;
 
-    >i,
+    > i,
     .active {
       color: $white !important;
     }
@@ -625,7 +606,7 @@ body[data-sidebar="colored"] {
         ul.sub-menu {
           li {
             a {
-              color: rgba($white, .5);
+              color: rgba($white, 0.5);
             }
           }
         }
@@ -636,9 +617,9 @@ body[data-sidebar="colored"] {
   &.vertical-collpsed {
     .vertical-menu {
       #sidebar-menu {
-        >ul {
-          >li {
-            &:hover>a {
+        > ul {
+          > li {
+            &:hover > a {
               background-color: lighten($primary, 2%);
               color: $white;
 

@@ -1,15 +1,12 @@
-Resgrid Dispatch
-===========================
+# Resgrid Dispatch
 
-Resgrid Dispatch an Ionic progressive web application (pwa), mobile app and Electron app that is intended for Dispatchers for Computer Aided Dispatch (CAD) user interface for Resgrid. 
+Resgrid Dispatch an Ionic progressive web application (pwa), mobile app and Electron app that is intended for Dispatchers for Computer Aided Dispatch (CAD) user interface for Resgrid.
 
-*********
+---
 
+## About Resgrid
 
-
-About Resgrid
--------------
-Resgrid is an open-source Computer Aided Dispatch (CAD) solution for first responders, businesses and industrial environments. 
+Resgrid is an open-source Computer Aided Dispatch (CAD) solution for first responders, businesses and industrial environments.
 
 [Sign up for your free Resgrid Account Today!](https://resgrid.com)
 
@@ -32,6 +29,7 @@ LOGGING_KEY=
 ## Settings
 
 ### .env Values
+
 <table>
   <tr>
     <th>Setting</th>
@@ -87,15 +85,17 @@ LOGGING_KEY=
   </tr>
 </table>
 
-## Deployment ##
+## Deployment
 
     docker pull resgridllc/dispatch
 
-## Author's ##
-* Shawn Jackson (Twitter: @DesignLimbo Blog: http://designlimbo.com)
-* Jason Jarrett (Twitter: @staxmanade Blog: http://staxmanade.com)
+## Author's
 
-## License ##
+- Shawn Jackson (Twitter: @DesignLimbo Blog: http://designlimbo.com)
+- Jason Jarrett (Twitter: @staxmanade Blog: http://staxmanade.com)
+
+## License
+
 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0)
 
 ## Acknowledgments

@@ -5,18 +5,15 @@
       <div class="card">
         <div class="card-body">
           <div class="row mb-md-2">
-            <div class="col-sm-12 col-md-6">
-
-            </div>
-            <div class="col-sm-12 col-md-6" style="float: right; text-align: right;">
-              Show Calls: <input type="checkbox" [checked]="showCalls" (change)="changeShowCalls($event)"> &nbsp;&nbsp;&nbsp;
-              Show Stations: <input type="checkbox" [checked]="showStations" (change)="changeShowStations($event)"> &nbsp;&nbsp;&nbsp;
-              Show Units: <input type="checkbox" [checked]="showUnits" (change)="changeShowUnits($event)"> &nbsp;&nbsp;&nbsp;
-              Show Personnel: <input type="checkbox" [checked]="showPersonnel" (change)="changeShowPeople($event)">
+            <div class="col-sm-12 col-md-6"></div>
+            <div class="col-sm-12 col-md-6" style="float: right; text-align: right">
+              Show Calls: <input type="checkbox" [checked]="showCalls" (change)="changeShowCalls($event)" /> &nbsp;&nbsp;&nbsp; Show
+              Stations: <input type="checkbox" [checked]="showStations" (change)="changeShowStations($event)" /> &nbsp;&nbsp;&nbsp; Show
+              Units: <input type="checkbox" [checked]="showUnits" (change)="changeShowUnits($event)" /> &nbsp;&nbsp;&nbsp; Show Personnel:
+              <input type="checkbox" [checked]="showPersonnel" (change)="changeShowPeople($event)" />
             </div>
           </div>
-          <div #map id="map" name="map" style="width: 100%; height: 680px;">
-          </div>
+          <div #map id="map" name="map" style="width: 100%; height: 680px"></div>
         </div>
       </div>
     </div>

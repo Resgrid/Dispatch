@@ -6,10 +6,10 @@
       <div class="page-title-right">
         <ol class="breadcrumb m-0">
           <ng-container *ngFor="let item of breadcrumbItems">
-            <li class="breadcrumb-item" *ngIf="!item.active"><a href="javascript: void(0);">{{ item.label }}</a>
+            <li class="breadcrumb-item" *ngIf="!item.active">
+              <a href="javascript: void(0);">{{ item.label }}</a>
             </li>
-            <li class="breadcrumb-item active" *ngIf="item.active">{{ item.label }}
-            </li>
+            <li class="breadcrumb-item active" *ngIf="item.active">{{ item.label }}</li>
           </ng-container>
         </ol>
       </div>

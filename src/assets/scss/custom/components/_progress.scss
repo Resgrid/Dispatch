@@ -1,18 +1,16 @@
-// 
+//
 // _progress.scss
-// 
+//
 
 // Progress height small
 .progress-sm {
   height: 5px;
 }
 
-
 // Progress height medium
 .progress-md {
   height: 8px;
 }
-
 
 // Progress height large
 .progress-lg {
@@ -24,7 +22,7 @@
   height: 16px;
 }
 
-.animated-progess{
+.animated-progess {
   position: relative;
   .progress-bar {
     position: relative;
@@ -35,6 +33,6 @@
 
 @keyframes animate-positive {
   0% {
-      width: 0;
+    width: 0;
   }
 }

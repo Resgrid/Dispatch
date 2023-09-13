@@ -1,94 +1,104 @@
-import { Action } from '@ngrx/store';
-import { CallExtraDataResultData, CallFileResultData, CallNoteResultData, CallResultData, DepartmentVoiceResultData, GetCallTemplatesResultData, GpsLocation, MapDataAndMarkersData, UnitStatusResultData } from '@resgrid/ngx-resgridlib';
-import { Call } from 'src/app/core/models/call';
-import { PersonnelForCallResult } from 'src/app/core/models/personnelForCallResult';
-import { UnitStatusResult } from 'src/app/core/models/unitStatusResult';
-import { DashboardPayload } from '../models/dashboardPayload';
-import { SaveCloseCallPayload } from '../models/saveCloseCallPayload';
-import { SetPersonStatffingPayload } from '../models/setPersonStatffingPayload';
-import { SetPersonStatusesPayload } from '../models/setPersonStatusesPayload';
-import { SetUnitStateModalData } from '../models/setUnitStateModalData';
-import { SetUnitStatePayload } from '../models/setUnitStatePayload';
+import { Action } from "@ngrx/store";
+import {
+  CallExtraDataResultData,
+  CallFileResultData,
+  CallNoteResultData,
+  CallResultData,
+  DepartmentVoiceResultData,
+  GetCallTemplatesResultData,
+  GpsLocation,
+  MapDataAndMarkersData,
+  UnitStatusResultData,
+} from "@resgrid/ngx-resgridlib";
+import { Call } from "src/app/core/models/call";
+import { PersonnelForCallResult } from "src/app/core/models/personnelForCallResult";
+import { UnitStatusResult } from "src/app/core/models/unitStatusResult";
+import { DashboardPayload } from "../models/dashboardPayload";
+import { SaveCloseCallPayload } from "../models/saveCloseCallPayload";
+import { SetPersonStatffingPayload } from "../models/setPersonStatffingPayload";
+import { SetPersonStatusesPayload } from "../models/setPersonStatusesPayload";
+import { SetUnitStateModalData } from "../models/setUnitStateModalData";
+import { SetUnitStatePayload } from "../models/setUnitStatePayload";
 
 // [AUTH] Auth module
 export enum HomeActionTypes {
-  LOADING = '[HOME] LOADING',
-  LOADING_SUCCESS = '[HOME] LOADING_SUCCESS',
-  LOADING_FAIL = '[HOME] LOADING_FAIL',
-  LOADING_MAP = '[HOME] LOADING MAP',
-  LOADING_MAP_SUCCESS = '[HOME] LOADING_MAP_SUCCESS',
-  LOADING_MAP_FAIL = '[HOME] LOADING_MAP_FAIL',
-  SHOW_SETUNITSTATUSMODAL = '[HOME] SHOW_SETUNITSTATUSMODAL',
-  OPEN_SETUNITSTATUSMODAL = '[HOME] OPEN_SETUNITSTATUSMODAL',
-  SAVING_SETUNITSTATUSMODAL = '[HOME] SAVING_SETUNITSTATUSMODAL',
-  SAVE_UNITSTATE = '[HOME] SAVE_UNITSTATE',
-  SAVE_UNITSTATE_SUCCESS = '[HOME] SAVE_UNITSTATE_SUCCESS',
-  SAVE_UNITSTATE_FAIL = '[HOME] SAVE_UNITSTATE_FAIL',
-  GET_LATESTUNITSTATES = '[HOME] GET_LATESTUNITSTATES',
-  UPDATE_UNITSTATES = '[HOME] UPDATE_UNITSTATES',
-  UPDATE_SELECTUNIT = '[HOME] UPDATE_SELECTUNIT',
-  UPDATE_SELECTEDCALL = '[HOME] UPDATE_SELECTEDCALL',
-  SAVE_CLOSECALL = '[HOME] SAVE_CLOSECALL',
-  SAVE_CLOSECALL_SUCCESS = '[HOME] SAVE_CLOSECALL_SUCCESS',
-  SAVE_CLOSECALL_FAIL = '[HOME] SAVE_CLOSECALL_FAIL',
-  SHOW_CLOSECALLMODAL = '[HOME] SHOW_CLOSECALLMODAL',
-  UPDATE_CALLS = '[HOME] UPDATE_CALLS',
-  UPDATE_SELECTEDDISPATCHPERSON = '[HOME] UPDATE_SELECTEDDISPATCHPERSON',
-  UPDATE_SELECTEDDISPATCHGROUP = '[HOME] UPDATE_SELECTEDDISPATCHGROUP',
-  UPDATE_SELECTEDDISPATCHROLE = '[HOME] UPDATE_SELECTEDDISPATCHROLE',
-  UPDATE_SELECTEDDISPATCHUNIT = '[HOME] UPDATE_SELECTEDDISPATCHUNIT',
-  UPDATE_NEWCALLLOCATION = '[HOME] UPDATE_NEWCALLLOCATION',
-  SHOW_SELECTCALLTEMPLATEMODAL = '[HOME] SHOW_SELECTCALLTEMPLATEMODAL',
-  OPEN_SELECTCALLTEMPLATEMODAL = '[HOME] OPEN_SELECTCALLTEMPLATEMODAL',
-  UPDATE_APPLYCALLTEMPLATE = '[HOME] UPDATE_APPLYCALLTEMPLATE',
-  GET_COORDINATESFORADDRESS = '[HOME] GET_COORDINATESFORADDRESS',
-  GET_COORDINATESFORADDRESS_SUCCESS = '[HOME] GET_COORDINATESFORADDRESS_SUCCESS',
-  GET_COORDINATESFORADDRESS_FAIL = '[HOME] GET_COORDINATESFORADDRESS_FAIL',
-  GET_ADDRESSFORCOORDINATES = '[HOME] GET_ADDRESSFORCOORDINATES',
-  GET_ADDRESSFORCOORDINATES_SUCCESS = '[HOME] GET_ADDRESSFORCOORDINATES_SUCCESS',
-  GET_ADDRESSFORCOORDINATES_FAIL = '[HOME] GET_ADDRESSFORCOORDINATES_FAIL',
-  SAVE_CALL = '[HOME] SAVE_CALL',
-  SAVE_CALL_START = '[HOME] SAVE_CALL_START',
-  SAVE_CALL_SUCCESS = '[HOME] SAVE_CALL_SUCCESS',
-  SAVE_CALL_FAIL = '[HOME] SAVE_CALL_FAIL',
-  GENERAL_FAILURE = '[HOME] GENERAL_FAILURE',
-  GET_LATESTPERSONNELDATA = '[HOME] GET_LATESTPERSONNELDATA',
-  UPDATE_PERSONNELDATA = '[HOME] UPDATE_PERSONNELDATA',
-  GET_LATESTCALLS = '[HOME] GET_LATESTCALLS',
-  SHOW_CALLNOTESMODAL = '[HOME] SHOW_CALLNOTESMODAL',
-  OPEN_CALLNOTESMODAL = '[HOME] OPEN_CALLNOTESMODAL',
-  SAVE_CALLNOTE = '[HOME] SAVE_CALLNOTE',
-  SAVE_CALLNOTE_SUCCESS = '[HOME] SAVE_CALLNOTE_SUCCESS',
-  SAVE_CALLNOTE_FAIL = '[HOME] SAVE_CALLNOTE_FAIL',
-  SHOW_CALLIMAGESMODAL = '[HOME] SHOW_CALLIMAGESMODAL',
-  OPEN_CALLIMAGESMODAL = '[HOME] OPEN_CALLIMAGESMODAL',
-  UPLOAD_CALLIMAGE = '[HOME] UPLOAD_CALLIMAGE',
-  UPLOAD_CALLIMAGE_SUCCESS = '[HOME] UPLOAD_CALLIMAGE_SUCCESS',
-  UPLOAD_CALLIMAGE_FAIL = '[HOME] UPLOAD_CALLIMAGE_FAIL',
-  SHOW_CALLFILESMODAL = '[HOME] SHOW_CALLFILESMODAL',
-  OPEN_CALLFILESMODAL = '[HOME] OPEN_CALLFILESMODAL',
-  UPLOAD_CALLFILE = '[HOME] UPLOAD_CALLFILE',
-  UPLOAD_CALLFILE_SUCCESS = '[HOME] UPLOAD_CALLFILE_SUCCESS',
-  UPLOAD_CALLFILE_FAIL = '[HOME] UPLOAD_CALLFILE_FAIL',
-  UPDATE_PERSONANDUNITS_DISTANCE = '[HOME] UPDATE_PERSONANDUNITS_DISTANCE',
-  GET_UPDATEDPERSONANDUNITS_DISTANCE = '[HOME] GET_UPDATEDPERSONANDUNITS_DISTANCE',
-  OPEN_CALLFORMMODAL = '[HOME] OPEN_CALLFORMMODAL',
-  SET_NEWCALLFORMDATA = '[HOME] SET_NEWCALLFORMDATA',
-  DONE = '[HOME] DONE',
-  OPEN_SETPERSONSTATUSMODAL = '[HOME] OPEN_SETPERSONSTATUSMODAL',
-  UPDATE_SELECTPERSON = '[HOME] UPDATE_SELECTPERSON',
-  OPEN_SETPERSONSTAFFINGMODAL = '[HOME] OPEN_SETPERSONSTAFFINGMODAL',
-  SAVE_PERSONSTATUSES = '[HOME] SAVE_PERSONSTATUSES',
-  SAVE_PERSONSTATUSES_SUCCESS = '[HOME] SAVE_PERSONSTATUSES_SUCCESS',
-  SAVE_PERSONSTATUSES_FAIL = '[HOME] SAVE_PERSONSTATUSES_FAIL',
-  UPDATE_PERSONSTATUSES = '[HOME] UPDATE_PERSONSTATUSES',
-  SAVE_PERSONSTAFFING = '[HOME] SAVE_PERSONSTAFFING',
-  SAVE_PERSONSTAFFING_SUCCESS = '[HOME] SAVE_PERSONSTAFFING_SUCCESS',
-  SAVE_PERSONSTAFFING_FAIL = '[HOME] SAVE_PERSONSTAFFING_FAIL',
-  UPDATE_PERSONSTAFFING = '[HOME] UPDATE_PERSONSTAFFING',
-  SHOW_VIEW_CALL_FORM = '[HOME] SHOW_VIEW_CALL_FORM',
-  OPEN_VIEW_CALL_FORM = '[HOME] OPEN_VIEW_CALL_FORM',
-  SAVE_CALL_FORM_INVALID = '[HOME] SAVE_CALL_FORM_INVALID',
+  LOADING = "[HOME] LOADING",
+  LOADING_SUCCESS = "[HOME] LOADING_SUCCESS",
+  LOADING_FAIL = "[HOME] LOADING_FAIL",
+  LOADING_MAP = "[HOME] LOADING MAP",
+  LOADING_MAP_SUCCESS = "[HOME] LOADING_MAP_SUCCESS",
+  LOADING_MAP_FAIL = "[HOME] LOADING_MAP_FAIL",
+  SHOW_SETUNITSTATUSMODAL = "[HOME] SHOW_SETUNITSTATUSMODAL",
+  OPEN_SETUNITSTATUSMODAL = "[HOME] OPEN_SETUNITSTATUSMODAL",
+  SAVING_SETUNITSTATUSMODAL = "[HOME] SAVING_SETUNITSTATUSMODAL",
+  SAVE_UNITSTATE = "[HOME] SAVE_UNITSTATE",
+  SAVE_UNITSTATE_SUCCESS = "[HOME] SAVE_UNITSTATE_SUCCESS",
+  SAVE_UNITSTATE_FAIL = "[HOME] SAVE_UNITSTATE_FAIL",
+  GET_LATESTUNITSTATES = "[HOME] GET_LATESTUNITSTATES",
+  UPDATE_UNITSTATES = "[HOME] UPDATE_UNITSTATES",
+  UPDATE_SELECTUNIT = "[HOME] UPDATE_SELECTUNIT",
+  UPDATE_SELECTEDCALL = "[HOME] UPDATE_SELECTEDCALL",
+  SAVE_CLOSECALL = "[HOME] SAVE_CLOSECALL",
+  SAVE_CLOSECALL_SUCCESS = "[HOME] SAVE_CLOSECALL_SUCCESS",
+  SAVE_CLOSECALL_FAIL = "[HOME] SAVE_CLOSECALL_FAIL",
+  SHOW_CLOSECALLMODAL = "[HOME] SHOW_CLOSECALLMODAL",
+  UPDATE_CALLS = "[HOME] UPDATE_CALLS",
+  UPDATE_SELECTEDDISPATCHPERSON = "[HOME] UPDATE_SELECTEDDISPATCHPERSON",
+  UPDATE_SELECTEDDISPATCHGROUP = "[HOME] UPDATE_SELECTEDDISPATCHGROUP",
+  UPDATE_SELECTEDDISPATCHROLE = "[HOME] UPDATE_SELECTEDDISPATCHROLE",
+  UPDATE_SELECTEDDISPATCHUNIT = "[HOME] UPDATE_SELECTEDDISPATCHUNIT",
+  UPDATE_NEWCALLLOCATION = "[HOME] UPDATE_NEWCALLLOCATION",
+  SHOW_SELECTCALLTEMPLATEMODAL = "[HOME] SHOW_SELECTCALLTEMPLATEMODAL",
+  OPEN_SELECTCALLTEMPLATEMODAL = "[HOME] OPEN_SELECTCALLTEMPLATEMODAL",
+  UPDATE_APPLYCALLTEMPLATE = "[HOME] UPDATE_APPLYCALLTEMPLATE",
+  GET_COORDINATESFORADDRESS = "[HOME] GET_COORDINATESFORADDRESS",
+  GET_COORDINATESFORADDRESS_SUCCESS = "[HOME] GET_COORDINATESFORADDRESS_SUCCESS",
+  GET_COORDINATESFORADDRESS_FAIL = "[HOME] GET_COORDINATESFORADDRESS_FAIL",
+  GET_ADDRESSFORCOORDINATES = "[HOME] GET_ADDRESSFORCOORDINATES",
+  GET_ADDRESSFORCOORDINATES_SUCCESS = "[HOME] GET_ADDRESSFORCOORDINATES_SUCCESS",
+  GET_ADDRESSFORCOORDINATES_FAIL = "[HOME] GET_ADDRESSFORCOORDINATES_FAIL",
+  SAVE_CALL = "[HOME] SAVE_CALL",
+  SAVE_CALL_START = "[HOME] SAVE_CALL_START",
+  SAVE_CALL_SUCCESS = "[HOME] SAVE_CALL_SUCCESS",
+  SAVE_CALL_FAIL = "[HOME] SAVE_CALL_FAIL",
+  GENERAL_FAILURE = "[HOME] GENERAL_FAILURE",
+  GET_LATESTPERSONNELDATA = "[HOME] GET_LATESTPERSONNELDATA",
+  UPDATE_PERSONNELDATA = "[HOME] UPDATE_PERSONNELDATA",
+  GET_LATESTCALLS = "[HOME] GET_LATESTCALLS",
+  SHOW_CALLNOTESMODAL = "[HOME] SHOW_CALLNOTESMODAL",
+  OPEN_CALLNOTESMODAL = "[HOME] OPEN_CALLNOTESMODAL",
+  SAVE_CALLNOTE = "[HOME] SAVE_CALLNOTE",
+  SAVE_CALLNOTE_SUCCESS = "[HOME] SAVE_CALLNOTE_SUCCESS",
+  SAVE_CALLNOTE_FAIL = "[HOME] SAVE_CALLNOTE_FAIL",
+  SHOW_CALLIMAGESMODAL = "[HOME] SHOW_CALLIMAGESMODAL",
+  OPEN_CALLIMAGESMODAL = "[HOME] OPEN_CALLIMAGESMODAL",
+  UPLOAD_CALLIMAGE = "[HOME] UPLOAD_CALLIMAGE",
+  UPLOAD_CALLIMAGE_SUCCESS = "[HOME] UPLOAD_CALLIMAGE_SUCCESS",
+  UPLOAD_CALLIMAGE_FAIL = "[HOME] UPLOAD_CALLIMAGE_FAIL",
+  SHOW_CALLFILESMODAL = "[HOME] SHOW_CALLFILESMODAL",
+  OPEN_CALLFILESMODAL = "[HOME] OPEN_CALLFILESMODAL",
+  UPLOAD_CALLFILE = "[HOME] UPLOAD_CALLFILE",
+  UPLOAD_CALLFILE_SUCCESS = "[HOME] UPLOAD_CALLFILE_SUCCESS",
+  UPLOAD_CALLFILE_FAIL = "[HOME] UPLOAD_CALLFILE_FAIL",
+  UPDATE_PERSONANDUNITS_DISTANCE = "[HOME] UPDATE_PERSONANDUNITS_DISTANCE",
+  GET_UPDATEDPERSONANDUNITS_DISTANCE = "[HOME] GET_UPDATEDPERSONANDUNITS_DISTANCE",
+  OPEN_CALLFORMMODAL = "[HOME] OPEN_CALLFORMMODAL",
+  SET_NEWCALLFORMDATA = "[HOME] SET_NEWCALLFORMDATA",
+  DONE = "[HOME] DONE",
+  OPEN_SETPERSONSTATUSMODAL = "[HOME] OPEN_SETPERSONSTATUSMODAL",
+  UPDATE_SELECTPERSON = "[HOME] UPDATE_SELECTPERSON",
+  OPEN_SETPERSONSTAFFINGMODAL = "[HOME] OPEN_SETPERSONSTAFFINGMODAL",
+  SAVE_PERSONSTATUSES = "[HOME] SAVE_PERSONSTATUSES",
+  SAVE_PERSONSTATUSES_SUCCESS = "[HOME] SAVE_PERSONSTATUSES_SUCCESS",
+  SAVE_PERSONSTATUSES_FAIL = "[HOME] SAVE_PERSONSTATUSES_FAIL",
+  UPDATE_PERSONSTATUSES = "[HOME] UPDATE_PERSONSTATUSES",
+  SAVE_PERSONSTAFFING = "[HOME] SAVE_PERSONSTAFFING",
+  SAVE_PERSONSTAFFING_SUCCESS = "[HOME] SAVE_PERSONSTAFFING_SUCCESS",
+  SAVE_PERSONSTAFFING_FAIL = "[HOME] SAVE_PERSONSTAFFING_FAIL",
+  UPDATE_PERSONSTAFFING = "[HOME] UPDATE_PERSONSTAFFING",
+  SHOW_VIEW_CALL_FORM = "[HOME] SHOW_VIEW_CALL_FORM",
+  OPEN_VIEW_CALL_FORM = "[HOME] OPEN_VIEW_CALL_FORM",
+  SAVE_CALL_FORM_INVALID = "[HOME] SAVE_CALL_FORM_INVALID",
 }
 
 // Home
@@ -106,7 +116,6 @@ export class LoadingFail implements Action {
   readonly type = HomeActionTypes.LOADING_FAIL;
   constructor(public payload: string) {}
 }
-
 
 // Map
 export class LoadingMap implements Action {
@@ -167,17 +176,26 @@ export class UpdateUnitStates implements Action {
 
 export class UpdateSelectUnit implements Action {
   readonly type = HomeActionTypes.UPDATE_SELECTUNIT;
-  constructor(public unitId: string, public checked: boolean) {}
+  constructor(
+    public unitId: string,
+    public checked: boolean,
+  ) {}
 }
 
 export class UpdateSelectPerson implements Action {
   readonly type = HomeActionTypes.UPDATE_SELECTPERSON;
-  constructor(public userId: string, public checked: boolean) {}
+  constructor(
+    public userId: string,
+    public checked: boolean,
+  ) {}
 }
 
 export class UpdateSelectedCall implements Action {
   readonly type = HomeActionTypes.UPDATE_SELECTEDCALL;
-  constructor(public callId: string, public checked: boolean) {}
+  constructor(
+    public callId: string,
+    public checked: boolean,
+  ) {}
 }
 
 export class SavingCloseCall implements Action {
@@ -207,27 +225,42 @@ export class UpdateCalls implements Action {
 
 export class UpdateSelectedDispatchPerson implements Action {
   readonly type = HomeActionTypes.UPDATE_SELECTEDDISPATCHPERSON;
-  constructor(public userId: string, public checked: boolean) {}
+  constructor(
+    public userId: string,
+    public checked: boolean,
+  ) {}
 }
 
 export class UpdateSelectedDispatchGroup implements Action {
   readonly type = HomeActionTypes.UPDATE_SELECTEDDISPATCHGROUP;
-  constructor(public groupId: string, public checked: boolean) {}
+  constructor(
+    public groupId: string,
+    public checked: boolean,
+  ) {}
 }
 
 export class UpdateSelectedDispatchRole implements Action {
   readonly type = HomeActionTypes.UPDATE_SELECTEDDISPATCHROLE;
-  constructor(public roleId: string, public checked: boolean) {}
+  constructor(
+    public roleId: string,
+    public checked: boolean,
+  ) {}
 }
 
 export class UpdateSelectedDispatchRoleUnit implements Action {
   readonly type = HomeActionTypes.UPDATE_SELECTEDDISPATCHUNIT;
-  constructor(public unitId: string, public checked: boolean) {}
+  constructor(
+    public unitId: string,
+    public checked: boolean,
+  ) {}
 }
 
 export class UpdateNewCallLocation implements Action {
   readonly type = HomeActionTypes.UPDATE_NEWCALLLOCATION;
-  constructor(public latitude: number, public longitude: number) {}
+  constructor(
+    public latitude: number,
+    public longitude: number,
+  ) {}
 }
 
 export class ShowSelectCallTemplateModal implements Action {
@@ -262,7 +295,10 @@ export class GetCoordinatesForAddressFail implements Action {
 
 export class GetAddressForCoordinates implements Action {
   readonly type = HomeActionTypes.GET_ADDRESSFORCOORDINATES;
-  constructor(public latitude: string, public longitude: string) {}
+  constructor(
+    public latitude: string,
+    public longitude: string,
+  ) {}
 }
 
 export class GetAddressForCoordinatesSuccess implements Action {
@@ -327,7 +363,11 @@ export class OpenCallNotesModal implements Action {
 
 export class SaveCallNote implements Action {
   readonly type = HomeActionTypes.SAVE_CALLNOTE;
-  constructor(public callId: string, public callNote: string, public userId: string) {}
+  constructor(
+    public callId: string,
+    public callNote: string,
+    public userId: string,
+  ) {}
 }
 
 export class SaveCallNoteSuccess implements Action {
@@ -352,7 +392,12 @@ export class OpenCallImagesModal implements Action {
 
 export class UploadCallImage implements Action {
   readonly type = HomeActionTypes.UPLOAD_CALLIMAGE;
-  constructor(public callId: string, public userId: string, public name: string, public image: string) {}
+  constructor(
+    public callId: string,
+    public userId: string,
+    public name: string,
+    public image: string,
+  ) {}
 }
 
 export class UploadCallImageSuccess implements Action {
@@ -377,7 +422,12 @@ export class OpenCallFilesModal implements Action {
 
 export class UploadCallFile implements Action {
   readonly type = HomeActionTypes.UPLOAD_CALLFILE;
-  constructor(public callId: string, public userId: string, public name: string, public image: string) {}
+  constructor(
+    public callId: string,
+    public userId: string,
+    public name: string,
+    public image: string,
+  ) {}
 }
 
 export class UploadCallFileSuccess implements Action {
@@ -392,12 +442,19 @@ export class UploadCallFileFail implements Action {
 
 export class UpdatePersonnelandUnitsDistancesToCall implements Action {
   readonly type = HomeActionTypes.UPDATE_PERSONANDUNITS_DISTANCE;
-  constructor(public personnel: PersonnelForCallResult[], public units: UnitStatusResult[]) {}
+  constructor(
+    public personnel: PersonnelForCallResult[],
+    public units: UnitStatusResult[],
+  ) {}
 }
 
 export class GetUpdatedPersonnelandUnitsDistancesToCall implements Action {
   readonly type = HomeActionTypes.GET_UPDATEDPERSONANDUNITS_DISTANCE;
-  constructor(public callLocation: GpsLocation, public personnel: PersonnelForCallResult[], public units: UnitStatusResult[]) {}
+  constructor(
+    public callLocation: GpsLocation,
+    public personnel: PersonnelForCallResult[],
+    public units: UnitStatusResult[],
+  ) {}
 }
 
 export class OpenCallFormModal implements Action {
@@ -480,19 +537,77 @@ export class Done implements Action {
   constructor() {}
 }
 
-export type HomeActionsUnion = Loading | LoadingSuccess | LoadingFail | LoadingMap | LoadingMapSuccess | LoadingMapFail | 
-                               ShowSetUnitStateModal | OpenSetUnitStateModal | SavingSetUnitState | SavingUnitState | SavingUnitStateSuccess |
-                               SavingUnitStateFail | UpdateUnitStates | UpdateSelectUnit | UpdateSelectedCall | SavingCloseCall |
-                               SavingCloseCallSuccess | SavingCloseCallFail | ShowCloseCallModal | UpdateCalls | UpdateSelectedDispatchPerson |
-                               UpdateSelectedDispatchGroup | UpdateSelectedDispatchRole | UpdateSelectedDispatchRoleUnit | UpdateNewCallLocation |
-                               ShowSelectCallTemplateModal | OpenSelectCallTemplateModal | ApplyCallTemplate | GetCoordinatesForAddress | 
-                               GetCoordinatesForAddressSuccess | GetCoordinatesForAddressFail | SaveCall | SaveCallSuccess | SaveCallFail |
-                               GetLatestUnitStates | GeneralNetworkFailure | GetLatestPersonnelData | UpdatePersonnelData | GetLatestCalls |
-                               ShowCallNotesModal | OpenCallNotesModal | SaveCallNote | SaveCallNoteSuccess | SaveCallNoteFail | ShowCallImagesModal |
-                               OpenCallImagesModal | UploadCallImage | UploadCallImageSuccess | UploadCallImageFail | ShowCallFilesModal | 
-                               OpenCallFilesModal | UpdatePersonnelandUnitsDistancesToCall | GetUpdatedPersonnelandUnitsDistancesToCall |
-                               OpenCallFormModal | SetNewCallFormData | IsSavingCall | Done | UpdateSelectPerson | OpenSetPersonStatusModal |  
-                               OpenSetPersonStaffingModal | SavingPersonStatuses | UpdatePersonStatuses | SavingPersonStaffing | SavingPersonStaffing |
-                               SavingPersonStaffingSuccess | SavingPersonStaffingFail | UpdatePersonStaffings | GetAddressForCoordinates | 
-                               GetAddressForCoordinatesSuccess | GetAddressForCoordinatesFail | ShowViewCallForm | OpenViewCallForm | SaveCallFormInvalid
-                               ;
+export type HomeActionsUnion =
+  | Loading
+  | LoadingSuccess
+  | LoadingFail
+  | LoadingMap
+  | LoadingMapSuccess
+  | LoadingMapFail
+  | ShowSetUnitStateModal
+  | OpenSetUnitStateModal
+  | SavingSetUnitState
+  | SavingUnitState
+  | SavingUnitStateSuccess
+  | SavingUnitStateFail
+  | UpdateUnitStates
+  | UpdateSelectUnit
+  | UpdateSelectedCall
+  | SavingCloseCall
+  | SavingCloseCallSuccess
+  | SavingCloseCallFail
+  | ShowCloseCallModal
+  | UpdateCalls
+  | UpdateSelectedDispatchPerson
+  | UpdateSelectedDispatchGroup
+  | UpdateSelectedDispatchRole
+  | UpdateSelectedDispatchRoleUnit
+  | UpdateNewCallLocation
+  | ShowSelectCallTemplateModal
+  | OpenSelectCallTemplateModal
+  | ApplyCallTemplate
+  | GetCoordinatesForAddress
+  | GetCoordinatesForAddressSuccess
+  | GetCoordinatesForAddressFail
+  | SaveCall
+  | SaveCallSuccess
+  | SaveCallFail
+  | GetLatestUnitStates
+  | GeneralNetworkFailure
+  | GetLatestPersonnelData
+  | UpdatePersonnelData
+  | GetLatestCalls
+  | ShowCallNotesModal
+  | OpenCallNotesModal
+  | SaveCallNote
+  | SaveCallNoteSuccess
+  | SaveCallNoteFail
+  | ShowCallImagesModal
+  | OpenCallImagesModal
+  | UploadCallImage
+  | UploadCallImageSuccess
+  | UploadCallImageFail
+  | ShowCallFilesModal
+  | OpenCallFilesModal
+  | UpdatePersonnelandUnitsDistancesToCall
+  | GetUpdatedPersonnelandUnitsDistancesToCall
+  | OpenCallFormModal
+  | SetNewCallFormData
+  | IsSavingCall
+  | Done
+  | UpdateSelectPerson
+  | OpenSetPersonStatusModal
+  | OpenSetPersonStaffingModal
+  | SavingPersonStatuses
+  | UpdatePersonStatuses
+  | SavingPersonStaffing
+  | SavingPersonStaffing
+  | SavingPersonStaffingSuccess
+  | SavingPersonStaffingFail
+  | UpdatePersonStaffings
+  | GetAddressForCoordinates
+  | GetAddressForCoordinatesSuccess
+  | GetAddressForCoordinatesFail
+  | ShowViewCallForm
+  | OpenViewCallForm
+  | SaveCallFormInvalid;

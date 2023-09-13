@@ -16,17 +16,16 @@
                 <label for="example-datetime-local-input" class="col-md-2 col-form-label">Dispatch On</label>
                 <div class="col-md-5">
                   <input class="form-control" type="datetime-local" formControlName="dispatchOn" />
-                  <span class="help-inline">Leave this blank to disptach the call immediately, enter a date/time
-                    to
-                    dispatch in the future</span>
+                  <span class="help-inline"
+                    >Leave this blank to disptach the call immediately, enter a date/time to dispatch in the future</span
+                  >
                 </div>
               </div>
               <div class="form-group row">
                 <label class="col-md-2 col-form-label">Priority</label>
                 <div class="col-md-6">
                   <select formControlName="priority" class="form-control">
-                    <option *ngFor="let priority of (homeState$ | async).callPriorties;" value="{{priority.Id}}">
-                      {{priority.Name}}</option>
+                    <option *ngFor="let priority of (homeState$ | async).callPriorties;" value="{{priority.Id}}">{{priority.Name}}</option>
                   </select>
                 </div>
               </div>
@@ -34,23 +33,30 @@
                 <label class="col-md-2 col-form-label">Type</label>
                 <div class="col-md-6">
                   <select formControlName="type" class="form-control">
-                    <option *ngFor="let type of (homeState$ | async).callTypes;" value="{{type.Id}}">
-                      {{type.Name}}</option>
+                    <option *ngFor="let type of (homeState$ | async).callTypes;" value="{{type.Id}}">{{type.Name}}</option>
                   </select>
                 </div>
               </div>
               <div class="form-group row">
                 <label for="example-search-input" class="col-md-2 col-form-label">Contact Name</label>
                 <div class="col-md-5">
-                  <input formControlName="reportingPartyName" class="form-control" type="text"
-                    placeholder="Name of the Contact or Reporting Party" />
+                  <input
+                    formControlName="reportingPartyName"
+                    class="form-control"
+                    type="text"
+                    placeholder="Name of the Contact or Reporting Party"
+                  />
                 </div>
               </div>
               <div class="form-group row">
                 <label for="example-search-input" class="col-md-2 col-form-label">Contact Info</label>
                 <div class="col-md-5">
-                  <input formControlName="reportingPartyContact" class="form-control" type="text"
-                    placeholder="Phone or Email of the Reporter or Contact" />
+                  <input
+                    formControlName="reportingPartyContact"
+                    class="form-control"
+                    type="text"
+                    placeholder="Phone or Email of the Reporter or Contact"
+                  />
                 </div>
               </div>
               <div class="form-group row">
@@ -64,14 +70,12 @@
                     </div>
                     <div class="col-md-3" style="padding-left: 0px">
                       <div class="input-group input-group-sm">
-                        <input formControlName="incidentId" type="text" class="form-control"
-                          placeholder="Incident Id" />
+                        <input formControlName="incidentId" type="text" class="form-control" placeholder="Incident Id" />
                       </div>
                     </div>
                     <div class="col-md-3" style="padding-left: 0px">
                       <div class="input-group input-group-sm">
-                        <input formControlName="referenceId" type="text" class="form-control"
-                          placeholder="Reference Id" />
+                        <input formControlName="referenceId" type="text" class="form-control" placeholder="Reference Id" />
                       </div>
                     </div>
                   </div>
@@ -80,15 +84,19 @@
               <div class="form-group row">
                 <label for="example-search-input" class="col-md-2 col-form-label">Nature</label>
                 <div class="col-md-9">
-                  <textarea formControlName="nature" cols="30" rows="10" class="form-control"
-                    placeholder="A description of the nature of the call"></textarea>
+                  <textarea
+                    formControlName="nature"
+                    cols="30"
+                    rows="10"
+                    class="form-control"
+                    placeholder="A description of the nature of the call"
+                  ></textarea>
                 </div>
               </div>
               <div class="form-group row">
                 <label for="example-search-input" class="col-md-2 col-form-label">Notes</label>
                 <div class="col-md-9">
-                  <textarea formControlName="notes" cols="30" rows="10" class="form-control"
-                    placeholder="Call notes"></textarea>
+                  <textarea formControlName="notes" cols="30" rows="10" class="form-control" placeholder="Call notes"></textarea>
                 </div>
               </div>
               <div class="form-group row">
@@ -97,54 +105,57 @@
                   <div class="row">
                     <div class="col-md-7">
                       <div class="input-group input-group-sm">
-                        <input formControlName="address" type="text" class="form-control"
-                          placeholder="Full Address (Street, City, State, Zip)" style="width:320px;">
+                        <input
+                          formControlName="address"
+                          type="text"
+                          class="form-control"
+                          placeholder="Full Address (Street, City, State, Zip)"
+                          style="width: 320px"
+                        />
                         <div class="input-group-append">
-                          <a id="searchButton" href="javascript:void(0);" class="btn btn-outline-info"
-                            (click)="getCoordinatesForAddress()">Find Address</a>
+                          <a id="searchButton" href="javascript:void(0);" class="btn btn-outline-info" (click)="getCoordinatesForAddress()"
+                            >Find Address</a
+                          >
                         </div>
                       </div>
                     </div>
-                    <div class="col-md-5" style="padding-left: 0px;">
+                    <div class="col-md-5" style="padding-left: 0px">
                       <div class="input-group input-group-sm">
-                        <input formControlName="w3w" type="text" class="form-control" placeholder="what.three.words"
-                          style="width:180px;">
+                        <input formControlName="w3w" type="text" class="form-control" placeholder="what.three.words" style="width: 180px" />
                         <div class="input-group-append">
                           <a id="findw3wButton" href="#" class="btn btn-outline-info">Find Location</a>
                         </div>
                       </div>
-                      <span class="help-inline">This is a what3words address. <a href="https://what3words.com/about/"
-                          target="_blank">Learn More.</a></span>
+                      <span class="help-inline"
+                        >This is a what3words address. <a href="https://what3words.com/about/" target="_blank">Learn More.</a></span
+                      >
                     </div>
                   </div>
                   <div class="row">
                     <div class="col-md-5">
                       <div class="input-group input-group-sm">
-                        <input formControlName="latitude" type="text" class="form-control" placeholder="Latitude">
+                        <input formControlName="latitude" type="text" class="form-control" placeholder="Latitude" />
                       </div>
                       <span class="help-inline">Latitude (Decimal Notation: i.e. 39.1517)</span>
                     </div>
                     <div class="col-md-6">
                       <div class="input-group input-group-sm">
-                        <input formControlName="longitude" type="text" class="form-control" placeholder="Longitude"
-                          style="width:280px;">
+                        <input formControlName="longitude" type="text" class="form-control" placeholder="Longitude" style="width: 280px" />
                         <div class="input-group-append">
-                          <a id="findgpsButton" class="btn btn-outline-info" href="javascript:void(0);"
-                            (click)="findCoordinates()">Find Lat/Lon</a>
+                          <a id="findgpsButton" class="btn btn-outline-info" href="javascript:void(0);" (click)="findCoordinates()"
+                            >Find Lat/Lon</a
+                          >
                         </div>
                       </div>
                       <span class="help-inline">Longitude (Decimal Notation: i.e. -119.4571)</span>
                     </div>
                   </div>
-                  <div #editCallMapContainer id="editCallMapContainer" name="editCallMapContainer" style="height: 300px; width: 95%;">
-                  </div>
+                  <div #editCallMapContainer id="editCallMapContainer" name="editCallMapContainer" style="height: 300px; width: 95%"></div>
                 </div>
               </div>
               <div class="form-group row">
                 <label for="example-search-input" class="col-md-2 col-form-label">Protocols</label>
-                <div class="col-md-9">
-
-                </div>
+                <div class="col-md-9"></div>
               </div>
               <div class="form-group row">
                 <label for="example-search-input" class="col-md-2 col-form-label">Personnel</label>
@@ -185,8 +196,10 @@
                 <label for="example-search-input" class="col-md-2 col-form-label">Units</label>
                 <div class="col-md-9">
                   <ul ngbNav #unitsForDispatchNav="ngbNav" [activeId]="selectedGroupName" class="nav-tabs">
-                    <li [ngbNavItem]="group.key ? group.key : 'No Group'"
-                      *ngFor="let group of (callsState$ | async).unitStatuses | groupBy:'GroupName'">
+                    <li
+                      [ngbNavItem]="group.key ? group.key : 'No Group'"
+                      *ngFor="let group of (callsState$ | async).unitStatuses | groupBy:'GroupName'"
+                    >
                       <a ngbNavLink>
                         <span class="d-block d-sm-none"><i class="fas fa-home"></i></span>
                         <span class="d-none d-sm-block">{{group.key ? group.key : 'No Group'}}</span>
@@ -196,16 +209,18 @@
                           <table class="table table-centered">
                             <tbody>
                               <tr *ngFor="let unit of group.value">
-                                <td style="width: 20px;">
-                                  <input type="checkbox" name="{{unit.UnitId}}"
+                                <td style="width: 20px">
+                                  <input
+                                    type="checkbox"
+                                    name="{{unit.UnitId}}"
                                     (change)="changeCheckedUnitDispatch($event);"
-                                    [checked]="unit.SelectedForDispatch" />
+                                    [checked]="unit.SelectedForDispatch"
+                                  />
                                 </td>
                                 <td>{{unit.Name}}</td>
                                 <td>{{unit.Type}}</td>
                                 <td>{{unit.Distance | number: '1.0-2'}}km</td>
-                                <td [ngClass]="unit.StateCss" [style.color]="unit.StateStyle">{{unit.State}}
-                                </td>
+                                <td [ngClass]="unit.StateCss" [style.color]="unit.StateStyle">{{unit.State}}</td>
                               </tr>
                             </tbody>
                           </table>
@@ -220,25 +235,24 @@
               <div class="form-group row">
                 <label for="example-search-input" class="col-md-2 col-form-label">Redispatch</label>
                 <div class="col-md-5">
-                  <span><input formControlName="Redispatch" type="checkbox"><br/></span>
-                  <span class="help-inline">If you want to rebroadcast this call check this box. This will dispatch the call to all users selected, regardless if they were on the first dispatch or not.</span>
+                  <span><input formControlName="Redispatch" type="checkbox" /><br /></span>
+                  <span class="help-inline"
+                    >If you want to rebroadcast this call check this box. This will dispatch the call to all users selected, regardless if
+                    they were on the first dispatch or not.</span
+                  >
                 </div>
               </div>
               <div class="form-group row">
                 <label for="example-search-input" class="col-md-2 col-form-label"></label>
-                <div class="col-md-9">
-
-                </div>
+                <div class="col-md-9"></div>
               </div>
               <div class="form-group row">
                 <label for="example-search-input" class="col-md-2 col-form-label"></label>
-                <div class="col-md-9">
-
-                </div>
+                <div class="col-md-9"></div>
               </div>
               <div class="row">
-                <div class="col-md-12" style="text-align: right;">
-                  <button type="submit" class="btn btn-primary" style="margin-right:10px;">Update Call</button>
+                <div class="col-md-12" style="text-align: right">
+                  <button type="submit" class="btn btn-primary" style="margin-right: 10px">Update Call</button>
                 </div>
               </div>
             </div>
@@ -253,29 +267,33 @@
       <table class="table table-centered">
         <tbody>
           <tr *ngFor="let personnel of (callsState$ | async).personnelForGrid;">
-            <td style="width: 20px;"><input type="checkbox" name="{{personnel.UserId}}"
-                (change)="changeCheckedPersonnelDispatch($event)" [checked]="personnel.Selected">
+            <td style="width: 20px">
+              <input
+                type="checkbox"
+                name="{{personnel.UserId}}"
+                (change)="changeCheckedPersonnelDispatch($event)"
+                [checked]="personnel.Selected"
+              />
             </td>
             <td>{{personnel.Name}}</td>
             <td [style.color]="personnel.StatusColor">{{personnel.Status}}</td>
             <td [style.color]="personnel.StaffingColor">{{personnel.Staffing}}</td>
             <td>{{personnel.Distance | number: '1.0-2'}}km</td>
             <td>{{personnel.Group}}</td>
-            <td style="font-size: 10px;">{{personnel?.Roles?.toString()}}</td>
+            <td style="font-size: 10px">{{personnel?.Roles?.toString()}}</td>
           </tr>
         </tbody>
       </table>
     </div>
   </ng-template>
-  
-  
+
   <ng-template #GroupsTabContent>
     <div class="table-responsive">
       <table class="table table-centered">
         <tbody>
           <tr *ngFor="let group of (callsState$ | async).groupsForGrid;">
-            <td style="width: 20px;"><input type="checkbox" name="{{group.GroupId}}"
-                (change)="changeCheckedGroupDispatch($event)" [checked]="group.Selected">
+            <td style="width: 20px">
+              <input type="checkbox" name="{{group.GroupId}}" (change)="changeCheckedGroupDispatch($event)" [checked]="group.Selected" />
             </td>
             <td>{{group.Name}}</td>
             <td>{{group.Count}}</td>
@@ -284,14 +302,14 @@
       </table>
     </div>
   </ng-template>
-  
+
   <ng-template #RolesTabContent>
     <div class="table-responsive">
       <table class="table table-centered">
         <tbody>
           <tr *ngFor="let role of (callsState$ | async).rolesForGrid;">
-            <td style="width: 20px;"><input type="checkbox" name="{{role.RoleId}}"
-                (change)="changeCheckedRoleDispatch($event)" [checked]="role.Selected">
+            <td style="width: 20px">
+              <input type="checkbox" name="{{role.RoleId}}" (change)="changeCheckedRoleDispatch($event)" [checked]="role.Selected" />
             </td>
             <td>{{role.Name}}</td>
             <td>{{role.Count}}</td>
@@ -300,3 +318,4 @@
       </table>
     </div>
   </ng-template>
+</div>

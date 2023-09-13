@@ -1,7 +1,6 @@
-// 
+//
 // pages-rtl.scss
 //
-
 
 // timeline
 
@@ -37,11 +36,10 @@
     }
 
     .col-mail-1 {
-
       .star-toggle,
       .checkbox-wrapper-mail,
       .dot {
-        float: right
+        float: right;
       }
 
       .checkbox-wrapper-mail {
@@ -73,7 +71,6 @@
         padding-right: 80px;
         padding-left: 0px;
       }
-
     }
   }
 
@@ -104,7 +101,6 @@
   left: 25px;
   right: auto;
 }
-
 
 // Chat
 
@@ -146,7 +142,6 @@
   right: 16px;
 }
 
-
 // Ecommerce
 
 .product-img {
@@ -159,7 +154,6 @@
   .product-like {
     right: auto;
     left: 0;
-
   }
 }
 
@@ -172,13 +166,12 @@
   }
 }
 
-
 // Kanbanboard
 
 .task-box {
   .team .team-member {
     margin-right: 0;
-    margin-left: 6px
+    margin-left: 6px;
   }
 }
 
@@ -201,7 +194,6 @@
   }
 }
 
-
 // Timeline
 
 .timeline {
@@ -215,8 +207,6 @@
     }
   }
 }
-
-
 
 // datatable icon
 .datatables {

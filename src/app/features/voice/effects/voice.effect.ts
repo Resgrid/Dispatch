@@ -27,9 +27,9 @@ export class VoiceEffects {
         })),
         tap((data) => {}),
         // If request fails, dispatch failed action
-        catchError(() => of({ type: voiceAction.VoiceActionTypes.GET_VOIPINFO_FAIL }))
-      )
-    )
+        catchError(() => of({ type: voiceAction.VoiceActionTypes.GET_VOIPINFO_FAIL })),
+      ),
+    ),
   );
 
   @Effect()
@@ -38,7 +38,7 @@ export class VoiceEffects {
     map((data) => ({
       type: voiceAction.VoiceActionTypes.START_VOIP_SERVICES,
       payload: data.payload,
-    }))
+    })),
   );
 
   startVoipServices$ = createEffect(
@@ -47,9 +47,9 @@ export class VoiceEffects {
         ofType<voiceAction.StartVoipServices>(voiceAction.VoiceActionTypes.START_VOIP_SERVICES),
         tap((action) => {
           //this.voiceProvider.startVoipServices(action.payload);
-        })
+        }),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   @Effect({ dispatch: false })
@@ -58,32 +58,31 @@ export class VoiceEffects {
     tap((data) => {
       //this.voiceProvider.disconnect();
       this.openViduService.leaveSession();
-    })
+    }),
   );
 
-  setActiveChannel$ = createEffect(
-    () =>
-      this.actions$.pipe(
-        ofType<voiceAction.SetActiveChannel>(voiceAction.VoiceActionTypes.SET_ACTIVECHANNEL),
-        concatLatestFrom(() => [this.authStore.select(selectAuthState)]),
-        exhaustMap(([action, authState], index) =>
-          of(action).pipe(
-            concatMap((data) => {
-              if (data && data.channel) {
-                if (data.channel.Id === "") {
-                  this.openViduService.leaveSession();
-                  return of(data);
-                } else {
-                  return this.openViduService.joinChannel(data.channel, authState.user.fullName + "(Dispatch)");
-                }
+  setActiveChannel$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType<voiceAction.SetActiveChannel>(voiceAction.VoiceActionTypes.SET_ACTIVECHANNEL),
+      concatLatestFrom(() => [this.authStore.select(selectAuthState)]),
+      exhaustMap(([action, authState], index) =>
+        of(action).pipe(
+          concatMap((data) => {
+            if (data && data.channel) {
+              if (data.channel.Id === "") {
+                this.openViduService.leaveSession();
+                return of(data);
+              } else {
+                return this.openViduService.joinChannel(data.channel, authState.user.fullName + "(Dispatch)");
               }
-            }),
-            map((data) => ({
-              type: voiceAction.VoiceActionTypes.DONE,
-            }))
-          )
-        )
-      )
+            }
+          }),
+          map((data) => ({
+            type: voiceAction.VoiceActionTypes.DONE,
+          })),
+        ),
+      ),
+    ),
   );
 
   @Effect({ dispatch: false })
@@ -92,7 +91,7 @@ export class VoiceEffects {
     tap((data) => {
       //this.voiceProvider.unmute();
       this.openViduService.unmute();
-    })
+    }),
   );
 
   @Effect({ dispatch: false })
@@ -101,7 +100,7 @@ export class VoiceEffects {
     tap((data) => {
       //this.voiceProvider.mute();
       this.openViduService.mute();
-    })
+    }),
   );
 
   addOpenViduStream$ = createEffect(() =>
@@ -109,8 +108,8 @@ export class VoiceEffects {
       ofType<voiceAction.AddOpenViduStream>(voiceAction.VoiceActionTypes.ADD_OPENVIDU_STREAM),
       map((data) => ({
         type: voiceAction.VoiceActionTypes.DONE,
-      }))
-    )
+      })),
+    ),
   );
 
   removeOpenViduStream$ = createEffect(() =>
@@ -118,8 +117,8 @@ export class VoiceEffects {
       ofType<voiceAction.RemoveOpenViduStream>(voiceAction.VoiceActionTypes.REMOVE_OPENVIDU_STREAM),
       map((data) => ({
         type: voiceAction.VoiceActionTypes.DONE,
-      }))
-    )
+      })),
+    ),
   );
 
   done$ = createEffect(() => this.actions$.pipe(ofType<voiceAction.Done>(voiceAction.VoiceActionTypes.DONE)), { dispatch: false });
@@ -131,6 +130,6 @@ export class VoiceEffects {
     private voiceService: VoiceService,
     private openViduService: OpenViduService,
     private homeStore: Store<HomeState>,
-    private authStore: Store<AuthState>
+    private authStore: Store<AuthState>,
   ) {}
 }

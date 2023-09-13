@@ -1,19 +1,14 @@
-import { NgModule } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { NgModule } from "@angular/core";
+import { CommonModule } from "@angular/common";
+import { FormsModule } from "@angular/forms";
 
-import { StatComponent } from './stat/stat.component';
+import { StatComponent } from "./stat/stat.component";
 
-import { NgbTypeaheadModule, NgbPaginationModule } from '@ng-bootstrap/ng-bootstrap';
+import { NgbTypeaheadModule, NgbPaginationModule } from "@ng-bootstrap/ng-bootstrap";
 
 @NgModule({
   declarations: [StatComponent],
-  imports: [
-    CommonModule,
-    FormsModule,
-    NgbTypeaheadModule,
-    NgbPaginationModule
-  ],
-  exports: [StatComponent]
+  imports: [CommonModule, FormsModule, NgbTypeaheadModule, NgbPaginationModule],
+  exports: [StatComponent],
 })
-export class WidgetModule { }
+export class WidgetModule {}

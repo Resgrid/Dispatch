@@ -8,10 +8,10 @@
   }
 
   .card {
-      margin-bottom: 0px;
-      .card-body {
-          padding: 0px;
-      }
+    margin-bottom: 0px;
+    .card-body {
+      padding: 0px;
+    }
   }
 
   .accordion-list {
@@ -50,7 +50,7 @@
 
 .custom-accordion {
   .card {
-    +.card {
+    + .card {
       margin-top: 0.5rem;
     }
   }

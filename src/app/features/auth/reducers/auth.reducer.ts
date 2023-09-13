@@ -1,5 +1,5 @@
-import {LoginActionsUnion, LoginActionTypes} from '../actions/auth.actions';
-import { AuthState, initialState } from '../store/auth.store';
+import { LoginActionsUnion, LoginActionTypes } from "../actions/auth.actions";
+import { AuthState, initialState } from "../store/auth.store";
 
 export function reducer(state: AuthState = initialState, action: LoginActionsUnion): AuthState {
   switch (action.type) {
@@ -13,23 +13,23 @@ export function reducer(state: AuthState = initialState, action: LoginActionsUni
         ...state,
         isLogging: false,
         loggedIn: true,
-        user: action.user
+        user: action.user,
       };
     case LoginActionTypes.LOGIN_FAIL:
       return {
         ...state,
-        errorMsg: 'Invalid user credentials',
-        isLogging: false
+        errorMsg: "Invalid user credentials",
+        isLogging: false,
       };
     case LoginActionTypes.IS_LOGIN:
       return {
         ...state,
-        isLogging: true
+        isLogging: true,
       };
     case LoginActionTypes.LOGIN_DONE:
       return {
         ...state,
-        isLogging: false
+        isLogging: false,
       };
     default:
       return state;

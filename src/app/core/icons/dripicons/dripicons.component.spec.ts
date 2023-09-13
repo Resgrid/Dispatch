@@ -1,16 +1,15 @@
-import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
+import { ComponentFixture, TestBed, waitForAsync } from "@angular/core/testing";
 
-import { DripiconsComponent } from './dripicons.component';
+import { DripiconsComponent } from "./dripicons.component";
 
-describe('DripiconsComponent', () => {
+describe("DripiconsComponent", () => {
   let component: DripiconsComponent;
   let fixture: ComponentFixture<DripiconsComponent>;
 
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-      declarations: [ DripiconsComponent ]
-    })
-    .compileComponents();
+      declarations: [DripiconsComponent],
+    }).compileComponents();
   }));
 
   beforeEach(() => {
@@ -19,7 +18,7 @@ describe('DripiconsComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should create', () => {
+  it("should create", () => {
     expect(component).toBeTruthy();
   });
 });

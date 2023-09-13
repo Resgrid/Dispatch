@@ -17,7 +17,7 @@ export class GeocodingProvider {
       loader.load().then(() => subscriber.next());
     }).pipe(
       map(() => this._createGeocoder()),
-      publishReplay(1)
+      publishReplay(1),
     ) as ConnectableObservable<google.maps.Geocoder>;
 
     connectableGeocoder$.connect(); // ignore the subscription
@@ -32,15 +32,15 @@ export class GeocodingProvider {
 
   private _getGoogleResults(
     geocoder: google.maps.Geocoder,
-    request: google.maps.GeocoderRequest
+    request: google.maps.GeocoderRequest,
   ): Observable<google.maps.GeocoderResult[]> {
     //const loader = new Loader({
     //  apiKey: "YOUR_API_KEY",
-   //   version: "weekly"
+    //   version: "weekly"
     //});
-    
+
     //loader.load().then(() => {
-    // 
+    //
     //});
 
     const geocodeObservable = bindCallback(geocoder.geocode);
@@ -51,14 +51,12 @@ export class GeocodingProvider {
         }
 
         return throwError(status);
-      })
+      }),
     );
   }
 
   private geocode(request: google.maps.GeocoderRequest): Observable<google.maps.GeocoderResult[]> {
-    return this.geocoder$.pipe(
-      switchMap((geocoder) => this._getGoogleResults(geocoder, request))
-    );
+    return this.geocoder$.pipe(switchMap((geocoder) => this._getGoogleResults(geocoder, request)));
   }
 
   public getAddressFromLocation(location: GpsLocation) {
@@ -70,7 +68,7 @@ export class GeocodingProvider {
         }
 
         return null;
-      })
+      }),
     );
   }
 
@@ -78,17 +76,12 @@ export class GeocodingProvider {
     return this.geocode({ address: address }).pipe(
       map((data) => {
         if (data && data.length > 0) {
-          return new GpsLocation(
-            data[0].geometry.location.lat(),
-            data[0].geometry.location.lng()
-          );
+          return new GpsLocation(data[0].geometry.location.lat(), data[0].geometry.location.lng());
         }
 
         return null;
-      })
+      }),
     );
-
-
 
     var geocoder = new Geocoder({
       key: environment.osmMapKey,
@@ -123,10 +116,9 @@ export class GeocodingProvider {
 
   private parseMapTilerResults(results: any): GpsLocation | null {
     if (results && results.features && results.features.length > 0) {
-
       for (let index = 0; index < results.features.length; index++) {
         const feature = results.features[index];
-        
+
         if (this.doesMapTilerPlaceTypeContain("street", feature.place_type)) {
           if (feature.center && feature.center.length === 2) {
             return new GpsLocation(feature.center[1], feature.center[0]);
@@ -148,16 +140,14 @@ export class GeocodingProvider {
 }
 
 @Injectable({
-  providedIn: 'root',
+  providedIn: "root",
 })
 export class LazyGoogleMapsLoader {
   protected _scriptLoadingPromise: any;
-  protected readonly _SCRIPT_ID: string = 'googleMapsApiScript';
+  protected readonly _SCRIPT_ID: string = "googleMapsApiScript";
   protected readonly callbackName: string = `lazyMapsAPILoader`;
 
-  constructor(private config: ResgridConfig) {
-
-  }
+  constructor(private config: ResgridConfig) {}
 
   load(): Promise<void> {
     //const window = this._windowRef.nativeWindow() as any;
@@ -171,15 +161,14 @@ export class LazyGoogleMapsLoader {
     }
 
     // this can happen in HMR situations or Stackblitz.io editors.
-    const scriptOnPage = document
-      .getElementById(this._SCRIPT_ID);
+    const scriptOnPage = document.getElementById(this._SCRIPT_ID);
     if (scriptOnPage) {
       this._assignScriptLoadingPromise(scriptOnPage);
       return this._scriptLoadingPromise;
     }
 
-    const script = document.createElement('script');
-    script.type = 'text/javascript';
+    const script = document.createElement("script");
+    script.type = "text/javascript";
     script.async = true;
     script.defer = true;
     script.id = this._SCRIPT_ID;
@@ -202,38 +191,35 @@ export class LazyGoogleMapsLoader {
   }
 
   protected _getScriptSrc(callbackName: string): string {
-    const hostAndPath: string = 'maps.googleapis.com/maps/api/js';
+    const hostAndPath: string = "maps.googleapis.com/maps/api/js";
     const queryParams: { [key: string]: string | string[] } = {
-      v: 'quarterly',
+      v: "quarterly",
       callback: callbackName,
       key: this.config.googleApiKey,
       //client: this._config.clientId,
       //channel: this._config.channel,
       //libraries: this._config.libraries,
       //region: this._config.region,
-      language: 'en-US',
+      language: "en-US",
     };
     const params: string = Object.keys(queryParams)
       .filter((k: string) => queryParams[k] != null)
       .filter((k: string) => {
         // remove empty arrays
-        return (
-          !Array.isArray(queryParams[k]) ||
-          (Array.isArray(queryParams[k]) && queryParams[k].length > 0)
-        );
+        return !Array.isArray(queryParams[k]) || (Array.isArray(queryParams[k]) && queryParams[k].length > 0);
       })
       .map((k: string) => {
         // join arrays as comma seperated strings
         const i = queryParams[k];
         if (Array.isArray(i)) {
-          return { key: k, value: i.join(',') };
+          return { key: k, value: i.join(",") };
         }
         return { key: k, value: queryParams[k] };
       })
       .map((entry: { key: string; value: string | string[] }) => {
         return `${entry.key}=${entry.value}`;
       })
-      .join('&');
+      .join("&");
     return `https://${hostAndPath}?${params}`;
   }
 }
