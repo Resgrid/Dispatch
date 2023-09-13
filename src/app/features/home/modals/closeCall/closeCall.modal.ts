@@ -7,8 +7,8 @@ import { HomeState } from "../../store/home.store";
 import * as HomeActions from "../../actions/home.actions";
 import { take } from "rxjs/operators";
 import { Actions, ofType } from "@ngrx/effects";
-import * as _ from 'lodash';
-import { CallResultData } from '@resgrid/ngx-resgridlib';
+import * as _ from "lodash";
+import { CallResultData } from "@resgrid/ngx-resgridlib";
 
 @Component({
   selector: "app-resgrid-modal-closeCall",
@@ -25,7 +25,7 @@ export class CloseCallModalComponent implements OnInit {
   constructor(
     public activeModal: NgbActiveModal,
     private store: Store<HomeState>,
-    private actions$: Actions
+    private actions$: Actions,
   ) {
     this.homeState$ = this.store.select(selectHomeState);
   }
@@ -35,7 +35,7 @@ export class CloseCallModalComponent implements OnInit {
       .select(selectHomeState)
       .pipe(take(1))
       .subscribe((state) => {
-        this.selectedCall = _.find(state.calls, ['Selected', true]);
+        this.selectedCall = _.find(state.calls, ["Selected", true]);
       });
   }
 

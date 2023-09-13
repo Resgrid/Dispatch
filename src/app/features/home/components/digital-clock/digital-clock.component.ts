@@ -1,14 +1,14 @@
 // From https://github.com/Mohammed9531/ngx-digital-clock
 
-import { Subscription, timer } from 'rxjs';
-import { Component, OnInit, OnDestroy, Input } from '@angular/core';
-import { DAYS_SHORT, CLASS_LIST } from './calendar.constants';
-import { UtilsProvider } from 'src/app/providers/utils';
+import { Subscription, timer } from "rxjs";
+import { Component, OnInit, OnDestroy, Input } from "@angular/core";
+import { DAYS_SHORT, CLASS_LIST } from "./calendar.constants";
+import { UtilsProvider } from "src/app/providers/utils";
 
 @Component({
-  selector: 'app-digital-clock',
-  templateUrl: './digital-clock.component.html',
-  styleUrls: ['./digital-clock.component.scss']
+  selector: "app-digital-clock",
+  templateUrl: "./digital-clock.component.html",
+  styleUrls: ["./digital-clock.component.scss"],
 })
 export class DigitalClockComponent implements OnInit, OnDestroy {
   /**
@@ -58,7 +58,7 @@ export class DigitalClockComponent implements OnInit, OnDestroy {
    * @param: {util<UtilService>}
    */
   constructor(private util: UtilsProvider) {
-    this.borders = 'd1 d2 d3 d4 d5 d6 d7'.split(' ');
+    this.borders = "d1 d2 d3 d4 d5 d6 d7".split(" ");
     this._init();
   }
 
@@ -70,10 +70,9 @@ export class DigitalClockComponent implements OnInit, OnDestroy {
    */
   public ngOnInit(): void {
     this.subscriptions.push(
-      timer(0, 1000)
-        .subscribe((t) => {
-          this._init();
-        })
+      timer(0, 1000).subscribe((t) => {
+        this._init();
+      }),
     );
   }
 
@@ -85,14 +84,14 @@ export class DigitalClockComponent implements OnInit, OnDestroy {
    */
   private _init(): void {
     const now: Date = new Date();
-    const t: string[] = now.toLocaleTimeString().split(' ');
+    const t: string[] = now.toLocaleTimeString().split(" ");
 
     if (Array.isArray(t) && t[0]) {
       let digits: any = t[0]
-        .split(':')
-        .map(v => this.util.to2Digit(v))
-        .join(':')
-        .split('');
+        .split(":")
+        .map((v) => this.util.to2Digit(v))
+        .join(":")
+        .split("");
 
       this.timeFormatList = [];
       for (const i of digits) {
@@ -111,21 +110,19 @@ export class DigitalClockComponent implements OnInit, OnDestroy {
    * the calendar.
    */
   private _run(_meridian: string): void {
-    const d: string[] = (new Date())
-      .toDateString()
-      .split(' ');
+    const d: string[] = new Date().toDateString().split(" ");
 
     // toggles the dots
     this.displayDots = !this.displayDots;
 
     // sets the day today
-    this.today = (d[0] || '').toUpperCase();
+    this.today = (d[0] || "").toUpperCase();
 
     // sets the month & year
     this.monthYear = `${d[1]} ${d[2]}, ${d[3]}`;
 
     // sets am/pm
-    this.meridian = (_meridian || '').toUpperCase();
+    this.meridian = (_meridian || "").toUpperCase();
   }
 
   /**

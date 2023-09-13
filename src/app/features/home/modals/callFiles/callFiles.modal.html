@@ -6,7 +6,7 @@
     </button>
   </div>
   <div>
-    <perfect-scrollbar style="position: relative; height: 345px;">
+    <perfect-scrollbar style="position: relative; height: 345px">
       <div class="table-responsive">
         <table id="basic-datatable" class="table table-centered dt-responsive nowrap datatables no-footer dtr-inline">
           <thead>
@@ -43,13 +43,13 @@
       </div>
     </perfect-scrollbar>
   </div>
-  <div style="display: inherit;" class="modal-footer">
+  <div style="display: inherit" class="modal-footer">
     <div class="row">
       <div class="col-md-3">
         <label class="col-md-3 col-form-label">Upload New File</label>
       </div>
       <div class="col-md-7">
-        <input type="file" class="file-input" (change)="onFileSelected($event)" #fileUpload>
+        <input type="file" class="file-input" (change)="onFileSelected($event)" #fileUpload />
       </div>
       <div class="col-md-2">
         <button type="button" class="btn btn-secondary" (click)="dismiss()">Close</button>

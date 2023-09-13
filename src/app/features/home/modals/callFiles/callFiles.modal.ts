@@ -2,11 +2,7 @@ import { Component, Input, OnInit } from "@angular/core";
 import { NgbModal, NgbActiveModal } from "@ng-bootstrap/ng-bootstrap";
 import { Store } from "@ngrx/store";
 import { Observable, Subscription } from "rxjs";
-import {
-  selectAuthState,
-  selectHomeState,
-  selectIsSavingUnitState,
-} from "src/app/store";
+import { selectAuthState, selectHomeState, selectIsSavingUnitState } from "src/app/store";
 import { HomeState } from "../../store/home.store";
 import * as HomeActions from "../../actions/home.actions";
 import { take } from "rxjs/operators";
@@ -16,7 +12,7 @@ import { FormBuilder, FormGroup, Validators } from "@angular/forms";
 import { environment } from "../../../../../environments/environment";
 import { AuthState } from "src/app/features/auth/store/auth.store";
 import { encode } from "base64-arraybuffer";
-import { CallResultData } from '@resgrid/ngx-resgridlib';
+import { CallResultData } from "@resgrid/ngx-resgridlib";
 
 @Component({
   selector: "app-resgrid-modal-callFiles",
@@ -41,7 +37,7 @@ export class CallFilesModalComponent implements OnInit {
     private store: Store<HomeState>,
     private actions$: Actions,
     public formBuilder: FormBuilder,
-    private authStore: Store<AuthState>
+    private authStore: Store<AuthState>,
   ) {
     this.homeState$ = this.store.select(selectHomeState);
 
@@ -69,12 +65,7 @@ export class CallFilesModalComponent implements OnInit {
   }
 
   public getAvatarUrl(userId) {
-    return (
-      environment.baseApiUrl +
-      environment.resgridApiUrl +
-      "/Avatars/Get?id=" +
-      userId
-    );
+    return environment.baseApiUrl + environment.resgridApiUrl + "/Avatars/Get?id=" + userId;
   }
 
   public dismiss() {
@@ -91,14 +82,7 @@ export class CallFilesModalComponent implements OnInit {
       this.isSaving = true;
 
       this.getBase64EncodedFileData(file).subscribe((base64Encoded) => {
-        this.store.dispatch(
-          new HomeActions.UploadCallFile(
-            this.selectedCall.CallId,
-            this.auth.user.userId,
-            this.fileName,
-            base64Encoded
-          )
-        );
+        this.store.dispatch(new HomeActions.UploadCallFile(this.selectedCall.CallId, this.auth.user.userId, this.fileName, base64Encoded));
       });
     }
   }

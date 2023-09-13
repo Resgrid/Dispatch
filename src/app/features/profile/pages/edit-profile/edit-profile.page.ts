@@ -13,15 +13,13 @@ export class EditProfilePage implements OnInit, AfterViewInit {
   public microphones: IDevice[] = [];
   public selectedMicrophone: IDevice;
 
-  constructor(private deviceService: OpenViduDevicesService, private router: Router) {
-
-  }
+  constructor(
+    private deviceService: OpenViduDevicesService,
+    private router: Router,
+  ) {}
 
   ngOnInit(): void {
-    this.breadCrumbItems = [
-        { label: "Resgrid Dispatch" },
-        { label: "Edit Profile", active: true },
-      ];
+    this.breadCrumbItems = [{ label: "Resgrid Dispatch" }, { label: "Edit Profile", active: true }];
   }
 
   ngAfterViewInit(): void {
@@ -33,6 +31,6 @@ export class EditProfilePage implements OnInit, AfterViewInit {
 
   public save() {
     this.deviceService.setMicSelected(this.selectedMicrophone?.device);
-    this.router.navigate(['/home']);
+    this.router.navigate(["/home"]);
   }
 }

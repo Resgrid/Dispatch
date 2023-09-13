@@ -1,14 +1,14 @@
-import {Action} from '@ngrx/store';
-import { LoginPayload } from '../models/loginPayload';
-import { UserInfo } from 'src/app/core/models/userInfo';
+import { Action } from "@ngrx/store";
+import { LoginPayload } from "../models/loginPayload";
+import { UserInfo } from "src/app/core/models/userInfo";
 
 // [AUTH] Auth module
 export enum LoginActionTypes {
-  LOGIN = '[AUTH] LOGIN',
-  LOGIN_SUCCESS = '[AUTH] LOGIN_SUCCESS',
-  LOGIN_FAIL = '[AUTH] LOGIN_FAIL',
-  IS_LOGIN = '[AUTH] IS_LOGIN',
-  LOGIN_DONE = '[AUTH] LOGIN_DONE'
+  LOGIN = "[AUTH] LOGIN",
+  LOGIN_SUCCESS = "[AUTH] LOGIN_SUCCESS",
+  LOGIN_FAIL = "[AUTH] LOGIN_FAIL",
+  IS_LOGIN = "[AUTH] IS_LOGIN",
+  LOGIN_DONE = "[AUTH] LOGIN_DONE",
 }
 
 export class Login implements Action {

@@ -10,9 +10,7 @@
       <label class="col-md-2 col-form-label">Persons</label>
       <div class="col-md-6">
         <ng-container *ngFor="let person of (homeState$ | async).personnelForGrid;">
-          <span *ngIf="person.Selected">
-            {{person.Name}} 
-          </span>
+          <span *ngIf="person.Selected"> {{person.Name}} </span>
         </ng-container>
       </div>
     </div>
@@ -21,8 +19,7 @@
       <label class="col-md-2 col-form-label">Type</label>
       <div class="col-md-6">
         <select class="form-control" [(ngModel)]="selectedStatus">
-          <option *ngFor="let status of (homeState$ | async).personnelStatuses;" [ngValue]="status">
-            {{status.Text}}</option>
+          <option *ngFor="let status of (homeState$ | async).personnelStatuses;" [ngValue]="status">{{status.Text}}</option>
         </select>
       </div>
     </div>
@@ -31,8 +28,7 @@
       <label class="col-md-2 col-form-label">Call</label>
       <div class="col-md-6">
         <select class="form-control" [(ngModel)]="selectedCall">
-          <option *ngFor="let call of (homeState$ | async).calls;" [ngValue]="call">
-            {{call.Name}}</option>
+          <option *ngFor="let call of (homeState$ | async).calls;" [ngValue]="call">{{call.Name}}</option>
         </select>
       </div>
     </div>
@@ -42,7 +38,8 @@
       <div class="col-md-6">
         <select class="form-control" [(ngModel)]="selectedStation">
           <option *ngFor="let station of (homeState$ | async).setUnitStatusModalState.Stations;" [ngValue]="station">
-            {{station.Name}}</option>
+            {{station.Name}}
+          </option>
         </select>
       </div>
     </div>
@@ -52,15 +49,17 @@
       <div class="col-md-6">
         <select class="form-control" [(ngModel)]="selectedDestination">
           <option *ngFor="let station of (homeState$ | async).groupsForGrid;" [ngValue]="{id: station.GroupId, type: 1}">
-            {{station.Name}}</option>
+            {{station.Name}}
+          </option>
           <option *ngFor="let call of (homeState$ | async).calls;" [ngValue]="{id: call.CallId, type: 2}">
-            ({{call.Number}}) {{call.Name}}</option>
+            ({{call.Number}}) {{call.Name}}
+          </option>
         </select>
       </div>
     </div>
 
     <div class="form-group">
-      <input type="text" class="form-control" placeholder="Note" [(ngModel)]="note">
+      <input type="text" class="form-control" placeholder="Note" [(ngModel)]="note" />
     </div>
   </div>
   <div class="modal-footer">

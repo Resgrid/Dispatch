@@ -39,7 +39,7 @@ export class OpenViduService {
     private store: Store<VoiceState>,
     private voiceService: VoiceService,
     private alertProvider: AlertProvider,
-    private devicesService: OpenViduDevicesService
+    private devicesService: OpenViduDevicesService,
   ) {}
 
   public joinChannel(channel: DepartmentVoiceChannelResultData, name: string): Observable<any> {
@@ -58,7 +58,7 @@ export class OpenViduService {
     return this.voiceService.connectToSession(channel.Id).pipe(
       concatMap(async (data) => {
         if (data.Data && data.Data.Token && data.Status === "success") {
-          return this.session.connect(data.Data.Token, { clientData: name })
+          return this.session.connect(data.Data.Token, { clientData: name });
         }
 
         return of(data).pipe(delay(1500));
@@ -71,7 +71,7 @@ export class OpenViduService {
       }),
       concatMap(async (data) => {
         return this.initPublisher(that);
-      })
+      }),
     );
   }
 

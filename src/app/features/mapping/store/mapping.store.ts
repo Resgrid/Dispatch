@@ -1,9 +1,9 @@
-import { MapDataAndMarkersData } from '@resgrid/ngx-resgridlib';
+import { MapDataAndMarkersData } from "@resgrid/ngx-resgridlib";
 
 export interface MappingState {
-    mapData: MapDataAndMarkersData
+  mapData: MapDataAndMarkersData;
 }
 
 export const initialState: MappingState = {
-    mapData: null
+  mapData: null,
 };

@@ -8,7 +8,7 @@ import { SortDirection } from "../../directives/calls-sortable.directive";
 import { Store } from "@ngrx/store";
 import { CallsState } from "../../store/calls.store";
 import { selectCallsState } from "src/app/store";
-import { CallResultData } from '@resgrid/ngx-resgridlib';
+import { CallResultData } from "@resgrid/ngx-resgridlib";
 import { CallLocalResult } from "src/app/core/models/callLocalResult";
 
 // Search Data
@@ -38,11 +38,7 @@ function compare(v1, v2) {
  * @param column Fetch the column
  * @param direction Sort direction Ascending or Descending
  */
-function sort(
-  calls: CallLocalResult[],
-  column: string,
-  direction: string
-): CallLocalResult[] {
+function sort(calls: CallLocalResult[], column: string, direction: string): CallLocalResult[] {
   if (direction === "") {
     return calls;
   } else {
@@ -108,7 +104,7 @@ export class ScheduledCallsPageService {
         debounceTime(200),
         switchMap(() => this._search()),
         delay(200),
-        tap(() => this._loading$.next(false))
+        tap(() => this._loading$.next(false)),
       )
       .subscribe((result) => {
         this._calls$.next(result.calls);
@@ -194,8 +190,7 @@ export class ScheduledCallsPageService {
    * Search Method
    */
   private _search(): Observable<SearchResult> {
-    const { sortColumn, sortDirection, pageSize, page, searchTerm } =
-      this._state;
+    const { sortColumn, sortDirection, pageSize, page, searchTerm } = this._state;
 
     // 1. sort
     let calls = sort(this._pendingCalls, sortColumn, sortDirection);

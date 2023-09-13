@@ -1,11 +1,4 @@
-import {
-  AfterViewInit,
-  ChangeDetectorRef,
-  Component,
-  OnInit,
-  QueryList,
-  ViewChildren,
-} from "@angular/core";
+import { AfterViewInit, ChangeDetectorRef, Component, OnInit, QueryList, ViewChildren } from "@angular/core";
 import { Store } from "@ngrx/store";
 import * as _ from "lodash";
 import { CallsState } from "../../store/calls.store";
@@ -29,26 +22,22 @@ export class ScheduledPage implements AfterViewInit {
     public service: ScheduledCallsPageService,
     public utilsProvider: UtilsProvider,
     private router: Router,
-    private cdr: ChangeDetectorRef) {
-
-  }
+    private cdr: ChangeDetectorRef,
+  ) {}
 
   ngAfterViewInit(): void {
     this.store.dispatch(new CallsActions.GetScheduledCalls());
 
-    this.breadCrumbItems = [
-      { label: "Resgrid Dispatch" },
-      { label: "Scheduled Calls", active: true },
-    ];
+    this.breadCrumbItems = [{ label: "Resgrid Dispatch" }, { label: "Scheduled Calls", active: true }];
 
     this.cdr.detectChanges();
   }
 
   onSort({ column, direction }: SortEvent) {
     // resetting other headers
-    this.headers.forEach(header => {
+    this.headers.forEach((header) => {
       if (header.sortable !== column) {
-        header.direction = '';
+        header.direction = "";
       }
     });
     this.service.sortColumn = column;
@@ -56,17 +45,14 @@ export class ScheduledPage implements AfterViewInit {
   }
 
   public editCall(callId: string) {
-    this.router.navigate(['/calls/edit-call', callId, "1"]);
+    this.router.navigate(["/calls/edit-call", callId, "1"]);
   }
 
   public updateDispatchTime(callId: string) {
-    this.store.dispatch(
-      new CallsActions.ShowUpdateCallDispatchTimeModal(callId)
-    );
+    this.store.dispatch(new CallsActions.ShowUpdateCallDispatchTimeModal(callId));
   }
 }
 
 function SortableDirective(CallsSortableDirective: any) {
   throw new Error("Function not implemented.");
 }
-

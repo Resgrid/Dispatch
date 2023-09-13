@@ -1,10 +1,10 @@
-import { NgModule } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
-import { NgbAlertModule } from '@ng-bootstrap/ng-bootstrap';
-import { LoginPage } from './login.page';
-import { BrowserModule } from '@angular/platform-browser';
+import { NgModule } from "@angular/core";
+import { CommonModule } from "@angular/common";
+import { FormsModule, ReactiveFormsModule } from "@angular/forms";
+import { RouterModule } from "@angular/router";
+import { NgbAlertModule } from "@ng-bootstrap/ng-bootstrap";
+import { LoginPage } from "./login.page";
+import { BrowserModule } from "@angular/platform-browser";
 
 @NgModule({
   imports: [
@@ -14,11 +14,11 @@ import { BrowserModule } from '@angular/platform-browser';
     ReactiveFormsModule,
     RouterModule.forChild([
       {
-        path: '',
-        component: LoginPage
-      }
-    ])
+        path: "",
+        component: LoginPage,
+      },
+    ]),
   ],
-  declarations: [LoginPage]
+  declarations: [LoginPage],
 })
-export class LoginPageModule { }
+export class LoginPageModule {}

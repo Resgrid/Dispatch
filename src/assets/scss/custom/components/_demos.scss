@@ -1,42 +1,41 @@
-// 
+//
 // _demos.scss
-// 
+//
 
 // Demo Only
 .button-items {
-    margin-left: -8px;
-    margin-bottom: -12px;
-    
-    .btn {
-        margin-bottom: 12px;
-        margin-left: 8px;
-    }
+  margin-left: -8px;
+  margin-bottom: -12px;
+
+  .btn {
+    margin-bottom: 12px;
+    margin-left: 8px;
+  }
 }
 
-// Lightbox 
+// Lightbox
 
 .mfp-popup-form {
-    max-width: 1140px;
+  max-width: 1140px;
 }
 
 // Modals
 
 .bs-example-modal {
-    position: relative;
-    top: auto;
-    right: auto;
-    bottom: auto;
-    left: auto;
-    z-index: 1;
-    display: block;
-  }
-
+  position: relative;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  z-index: 1;
+  display: block;
+}
 
 // Icon demo ( Demo only )
 .icon-demo-content {
   color: $gray-500;
 
-  i{
+  i {
     display: inline-block;
     width: 40px;
     height: 40px;
@@ -64,23 +63,21 @@
   }
 }
 
-
 // Grid
 
 .grid-structure {
-    .grid-container {
-        background-color: $gray-100;
-        margin-top: 10px;
-        font-size: .8rem;
-        font-weight: $font-weight-medium;
-        padding: 10px 20px;
-    }
+  .grid-container {
+    background-color: $gray-100;
+    margin-top: 10px;
+    font-size: 0.8rem;
+    font-weight: $font-weight-medium;
+    padding: 10px 20px;
+  }
 }
-
 
 // card radio
 
-.card-radio{
+.card-radio {
   background-color: $card-bg;
   border: 2px solid $card-border-color;
   border-radius: $border-radius;
@@ -89,35 +86,34 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 
-  &:hover{
+  &:hover {
     cursor: pointer;
   }
 }
 
-.card-radio-label{
+.card-radio-label {
   display: block;
 }
 
-
-.card-radio-input{
+.card-radio-input {
   display: none;
   &:checked + .card-radio {
     border-color: $primary !important;
   }
 }
 
-.navs-carousel{
-  .owl-nav{
-      margin-top: 16px;
-      button{
-          width: 30px;
-          height: 30px;
-          line-height: 28px !important;
-          font-size: 20px !important;
-          border-radius: 50% !important;
-          background-color: rgba($primary, 0.25) !important;
-          color: $primary !important;
-          margin: 4px 8px !important;
-      }
+.navs-carousel {
+  .owl-nav {
+    margin-top: 16px;
+    button {
+      width: 30px;
+      height: 30px;
+      line-height: 28px !important;
+      font-size: 20px !important;
+      border-radius: 50% !important;
+      background-color: rgba($primary, 0.25) !important;
+      color: $primary !important;
+      margin: 4px 8px !important;
+    }
   }
 }

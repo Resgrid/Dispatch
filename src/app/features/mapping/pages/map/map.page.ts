@@ -33,7 +33,7 @@ export class MapPage implements AfterViewInit {
     private mappingStore: Store<MappingState>,
     public utilsProvider: UtilsProvider,
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
   ) {
     this.mappingState$ = this.mappingStore.select(selectMappingState);
     this.markers = new Array<any>();
@@ -120,10 +120,11 @@ export class MapPage implements AfterViewInit {
       if (data.MapMakerInfos && data.MapMakerInfos.length > 0) {
         if (data && data.MapMakerInfos) {
           data.MapMakerInfos.forEach((markerInfo) => {
-
-            if ((markerInfo.Type == 0 && this.showCalls) || 
-                (markerInfo.Type == 1 && this.showUnits) ||
-                (markerInfo.Type == 2 && this.showStations)) {
+            if (
+              (markerInfo.Type == 0 && this.showCalls) ||
+              (markerInfo.Type == 1 && this.showUnits) ||
+              (markerInfo.Type == 2 && this.showStations)
+            ) {
               let marker = L.marker([markerInfo.Latitude, markerInfo.Longitude], {
                 icon: L.icon({
                   iconUrl: "assets/images/mapping/" + markerInfo.ImagePath + ".png",

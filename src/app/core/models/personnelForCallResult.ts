@@ -1,6 +1,6 @@
-import { GetPersonnelForCallGridResultData } from '@resgrid/ngx-resgridlib';
+import { GetPersonnelForCallGridResultData } from "@resgrid/ngx-resgridlib";
 
 export class PersonnelForCallResult extends GetPersonnelForCallGridResultData {
-    public Selected: boolean = false;
-    public Distance: number = 0;
+  public Selected: boolean = false;
+  public Distance: number = 0;
 }

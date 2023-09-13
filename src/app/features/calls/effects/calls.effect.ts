@@ -6,7 +6,7 @@ import { Injectable } from "@angular/core";
 import { forkJoin, from, Observable, of } from "rxjs";
 import { NgbModal, NgbModalRef } from "@ng-bootstrap/ng-bootstrap";
 import { CallsState } from "../store/calls.store";
-import { CallsService, GpsLocation, LocationService, MappingService } from '@resgrid/ngx-resgridlib';
+import { CallsService, GpsLocation, LocationService, MappingService } from "@resgrid/ngx-resgridlib";
 import * as _ from "lodash";
 import { AlertProvider } from "src/app/providers/alert";
 import { LoadChildren, Router } from "@angular/router";
@@ -20,9 +20,7 @@ export class CallsEffects {
 
   @Effect()
   getScheduledCalls$: Observable<Action> = this.actions$.pipe(
-    ofType<callsAction.GetScheduledCalls>(
-      callsAction.CallsActionTypes.GET_SCHEDULED_CALLS
-    ),
+    ofType<callsAction.GetScheduledCalls>(callsAction.CallsActionTypes.GET_SCHEDULED_CALLS),
     mergeMap((action) =>
       this.callsProvider.getAllPendingScheduledCalls().pipe(
         // If successful, dispatch success action with result
@@ -32,43 +30,35 @@ export class CallsEffects {
         })),
         tap((data) => {}),
         // If request fails, dispatch failed action
-        catchError(() =>
-          of({ type: callsAction.CallsActionTypes.GET_SCHEDULED_CALLS_FAIL })
-        )
-      )
-    )
+        catchError(() => of({ type: callsAction.CallsActionTypes.GET_SCHEDULED_CALLS_FAIL })),
+      ),
+    ),
   );
 
   @Effect({ dispatch: false })
   getScheduledCallsFail$ = this.actions$.pipe(
-    ofType<callsAction.GetScheduledCallsFail>(
-      callsAction.CallsActionTypes.GET_SCHEDULED_CALLS_FAIL
-    ),
+    ofType<callsAction.GetScheduledCallsFail>(callsAction.CallsActionTypes.GET_SCHEDULED_CALLS_FAIL),
     tap(async (action) => {
       this.loadingProvider.hide();
       this.alertProvider.showErrorAlert(
         "Get Scheduled Calls Error",
         "",
-        "There was an issue trying to get scheduled calls, please try again."
+        "There was an issue trying to get scheduled calls, please try again.",
       );
-    })
+    }),
   );
 
   @Effect({ dispatch: false })
   getScheduledCallsSuccess$: Observable<Action> = this.actions$.pipe(
-    ofType<callsAction.GetScheduledCallsSuccess>(
-      callsAction.CallsActionTypes.GET_SCHEDULED_CALLS_SUCCESS
-    ),
+    ofType<callsAction.GetScheduledCallsSuccess>(callsAction.CallsActionTypes.GET_SCHEDULED_CALLS_SUCCESS),
     tap((data) => {
       this.loadingProvider.hide();
-    })
+    }),
   );
 
   @Effect({ dispatch: false })
   getUpdatedPersonnelandUnitsDistancesToCall$: Observable<Action> = this.actions$.pipe(
-    ofType<callsAction.GetUpdatedPersonnelandUnitsDistancesToCall>(
-      callsAction.CallsActionTypes.GET_UPDATEDPERSONANDUNITS_DISTANCE
-    ),
+    ofType<callsAction.GetUpdatedPersonnelandUnitsDistancesToCall>(callsAction.CallsActionTypes.GET_UPDATEDPERSONANDUNITS_DISTANCE),
     map((action) => {
       let personnel = _.cloneDeep(action.personnel);
       let units = _.cloneDeep(action.units);
@@ -87,10 +77,7 @@ export class CallsEffects {
             const locationParts = person.Location.split(",");
             const distance = this.locationProvider.getDistanceBetweenTwoPoints(
               action.callLocation,
-              new GpsLocation(
-                Number(locationParts[0]),
-                Number(locationParts[1])
-              )
+              new GpsLocation(Number(locationParts[0]), Number(locationParts[1])),
             );
 
             if (distance && distance > 0) {
@@ -107,7 +94,7 @@ export class CallsEffects {
           if (unit.Latitude && unit.Longitude) {
             const distance = this.locationProvider.getDistanceBetweenTwoPoints(
               action.callLocation,
-              new GpsLocation(Number(unit.Latitude), Number(unit.Longitude))
+              new GpsLocation(Number(unit.Latitude), Number(unit.Longitude)),
             );
 
             if (distance && distance > 0) {
@@ -125,7 +112,7 @@ export class CallsEffects {
         personnel: personnel,
         units: units,
       };
-    })
+    }),
   );
 
   @Effect()
@@ -147,37 +134,26 @@ export class CallsEffects {
         })),
         tap((data) => {}),
         // If request fails, dispatch failed action
-        catchError(() =>
-          of({ type: callsAction.CallsActionTypes.GET_CALL_BYID_FAIL })
-        )
-      )
-    )
+        catchError(() => of({ type: callsAction.CallsActionTypes.GET_CALL_BYID_FAIL })),
+      ),
+    ),
   );
-
 
   @Effect({ dispatch: false })
   getCallByIdFail$ = this.actions$.pipe(
-    ofType<callsAction.GetCallByIdFailure>(
-      callsAction.CallsActionTypes.GET_CALL_BYID_FAIL
-    ),
+    ofType<callsAction.GetCallByIdFailure>(callsAction.CallsActionTypes.GET_CALL_BYID_FAIL),
     tap(async (action) => {
       this.loadingProvider.hide();
-      this.alertProvider.showErrorAlert(
-        "Get Call Error",
-        "",
-        "There was an issue trying to get this call, please try again."
-      );
-    })
+      this.alertProvider.showErrorAlert("Get Call Error", "", "There was an issue trying to get this call, please try again.");
+    }),
   );
 
   @Effect({ dispatch: false })
   getCallByIdSuccess$: Observable<Action> = this.actions$.pipe(
-    ofType<callsAction.GetCallByIdSuccess>(
-      callsAction.CallsActionTypes.GET_CALL_BYID_SUCCESS
-    ),
+    ofType<callsAction.GetCallByIdSuccess>(callsAction.CallsActionTypes.GET_CALL_BYID_SUCCESS),
     tap((data) => {
       this.loadingProvider.hide();
-    })
+    }),
   );
 
   @Effect()
@@ -204,7 +180,7 @@ export class CallsEffects {
           action.call.DispatchList,
           action.call.DispatchOn,
           action.call.FormData,
-          action.call.Redispatch
+          action.call.Redispatch,
         )
         .pipe(
           // If successful, dispatch success action with result
@@ -212,95 +188,69 @@ export class CallsEffects {
             type: callsAction.CallsActionTypes.UPDATE_CALL_SUCCESS,
           })),
           // If request fails, dispatch failed action
-          catchError(() =>
-            of({ type: callsAction.CallsActionTypes.UPDATE_CALL_FAIL })
-          )
-        )
-    )
+          catchError(() => of({ type: callsAction.CallsActionTypes.UPDATE_CALL_FAIL })),
+        ),
+    ),
   );
 
   @Effect({ dispatch: false })
   saveCallFail$ = this.actions$.pipe(
-    ofType<callsAction.UpdateCallFail>(
-      callsAction.CallsActionTypes.UPDATE_CALL_FAIL
-    ),
+    ofType<callsAction.UpdateCallFail>(callsAction.CallsActionTypes.UPDATE_CALL_FAIL),
     tap(async (action) => {
       this.closeModal();
-      this.alertProvider.showErrorAlert(
-        "Update Save Error",
-        "",
-        "There was an issue trying to save the call, please try again."
-      );
-    })
+      this.alertProvider.showErrorAlert("Update Save Error", "", "There was an issue trying to save the call, please try again.");
+    }),
   );
 
   @Effect({ dispatch: false })
   saveCallSuccess$: Observable<Action> = this.actions$.pipe(
-    ofType<callsAction.UpdateCallSuccess>(
-      callsAction.CallsActionTypes.UPDATE_CALL_SUCCESS
-    ),
+    ofType<callsAction.UpdateCallSuccess>(callsAction.CallsActionTypes.UPDATE_CALL_SUCCESS),
     tap((data) => {
       this.loadingProvider.hide();
       this.router.navigate(["/home"]);
       this.alertProvider.showAutoCloseSuccessAlert("Call has been updated.");
-    })
+    }),
   );
 
   @Effect({ dispatch: false })
   showUpdateCallDispatchTimeModal$: Observable<Action> = this.actions$.pipe(
-    ofType<callsAction.ShowUpdateCallDispatchTimeModal>(
-      callsAction.CallsActionTypes.SHOW_CALLDISPATCHTIMEMODAL
-    ),
-    exhaustMap((data) => this.runModal(UpdateDispatchTimeModalComponent, "md"))
+    ofType<callsAction.ShowUpdateCallDispatchTimeModal>(callsAction.CallsActionTypes.SHOW_CALLDISPATCHTIMEMODAL),
+    exhaustMap((data) => this.runModal(UpdateDispatchTimeModalComponent, "md")),
   );
 
   @Effect()
   updateCallDispatchTime$: Observable<Action> = this.actions$.pipe(
     ofType<callsAction.UpdateCallDispatchTime>(callsAction.CallsActionTypes.UPDATE_CALL_DISPATCHTIME),
     mergeMap((action) =>
-      this.callsProvider
-        .updateCallDisptachTime(
-          action.callId,
-          action.date,
-        ).pipe(
-          // If successful, dispatch success action with result
-          map((data) => ({
-            type: callsAction.CallsActionTypes.UPDATE_CALL_DISPATCHTIME_SUCCESS,
-          })),
-          tap((data) => {
-            this.closeModal();
-          }),
-          // If request fails, dispatch failed action
-          catchError(() =>
-            of({ type: callsAction.CallsActionTypes.UPDATE_CALL_DISPATCHTIME_FAIL })
-          )
-        )
-    )
+      this.callsProvider.updateCallDisptachTime(action.callId, action.date).pipe(
+        // If successful, dispatch success action with result
+        map((data) => ({
+          type: callsAction.CallsActionTypes.UPDATE_CALL_DISPATCHTIME_SUCCESS,
+        })),
+        tap((data) => {
+          this.closeModal();
+        }),
+        // If request fails, dispatch failed action
+        catchError(() => of({ type: callsAction.CallsActionTypes.UPDATE_CALL_DISPATCHTIME_FAIL })),
+      ),
+    ),
   );
 
   @Effect({ dispatch: false })
   updateCallDispatchTimeFail$ = this.actions$.pipe(
-    ofType<callsAction.UpdateCallDispatchTimeFail>(
-      callsAction.CallsActionTypes.UPDATE_CALL_DISPATCHTIME_FAIL
-    ),
+    ofType<callsAction.UpdateCallDispatchTimeFail>(callsAction.CallsActionTypes.UPDATE_CALL_DISPATCHTIME_FAIL),
     tap(async (action) => {
       this.closeModal();
-      this.alertProvider.showErrorAlert(
-        "Update Save Error",
-        "",
-        "There was an issue trying to save the call, please try again."
-      );
-    })
+      this.alertProvider.showErrorAlert("Update Save Error", "", "There was an issue trying to save the call, please try again.");
+    }),
   );
 
   @Effect({ dispatch: false })
   updateCallDispatchTimeSuccess$: Observable<Action> = this.actions$.pipe(
-    ofType<callsAction.UpdateCallDispatchTimeSuccess>(
-      callsAction.CallsActionTypes.UPDATE_CALL_DISPATCHTIME_SUCCESS
-    ),
+    ofType<callsAction.UpdateCallDispatchTimeSuccess>(callsAction.CallsActionTypes.UPDATE_CALL_DISPATCHTIME_SUCCESS),
     tap((data) => {
       this.alertProvider.showAutoCloseSuccessAlert("Call has been updated.");
-    })
+    }),
   );
 
   constructor(

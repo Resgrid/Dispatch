@@ -1,8 +1,8 @@
-import { NgModule } from '@angular/core';
-import { Routes, RouterModule } from '@angular/router';
-import { AuthGuard } from './core/guards/auth.guard';
+import { NgModule } from "@angular/core";
+import { Routes, RouterModule } from "@angular/router";
+import { AuthGuard } from "./core/guards/auth.guard";
 
-import { LayoutComponent } from './layouts/layout/layout.component';
+import { LayoutComponent } from "./layouts/layout/layout.component";
 
 /*
 const routes: Routes = [
@@ -14,34 +14,34 @@ const routes: Routes = [
 */
 const routes: Routes = [
   {
-    path: '',
-    redirectTo: 'auth',
-    pathMatch: 'full'
+    path: "",
+    redirectTo: "auth",
+    pathMatch: "full",
   },
   {
-    path: 'auth',
-    loadChildren: () => import('./features/auth/auth.module').then(m => m.AuthModule)
+    path: "auth",
+    loadChildren: () => import("./features/auth/auth.module").then((m) => m.AuthModule),
   },
   {
-    path: 'home',
-    loadChildren: () => import('./features/home/home.module').then(m => m.HomeModule)
+    path: "home",
+    loadChildren: () => import("./features/home/home.module").then((m) => m.HomeModule),
   },
   {
-    path: 'calls',
-    loadChildren: () => import('./features/calls/calls.module').then(m => m.CallsModule)
+    path: "calls",
+    loadChildren: () => import("./features/calls/calls.module").then((m) => m.CallsModule),
   },
   {
-    path: 'profile',
-    loadChildren: () => import('./features/profile/profile.module').then(m => m.ProfileModule)
+    path: "profile",
+    loadChildren: () => import("./features/profile/profile.module").then((m) => m.ProfileModule),
   },
   {
-    path: 'mapping',
-    loadChildren: () => import('./features/mapping/mapping.module').then(m => m.MappingModule)
-  }
+    path: "mapping",
+    loadChildren: () => import("./features/mapping/mapping.module").then((m) => m.MappingModule),
+  },
 ];
 
 @NgModule({
-  imports: [RouterModule.forRoot(routes, { scrollPositionRestoration: 'top', relativeLinkResolution: 'legacy' })],
-  exports: [RouterModule]
+  imports: [RouterModule.forRoot(routes, { scrollPositionRestoration: "top", relativeLinkResolution: "legacy" })],
+  exports: [RouterModule],
 })
-export class AppRoutingModule { }
+export class AppRoutingModule {}

@@ -11,19 +11,24 @@
         <label class="col-md-2 col-form-label">Template</label>
         <div class="col-md-10">
           <input class="form-control" type="datetime-local" formControlName="dispatchOn" />
-          <span class="help-inline">Enter a date/time to dispatch in the future. If you supply a date/time that is now
-            or
-            in the past the call won't be dispatched.</span>
+          <span class="help-inline"
+            >Enter a date/time to dispatch in the future. If you supply a date/time that is now or in the past the call won't be
+            dispatched.</span
+          >
         </div>
       </div>
     </div>
     <div class="modal-footer">
       <button type="button" class="btn btn-secondary" (click)="dismiss()">Close</button>
-      <button class="btn btn-primary w-md waves-effect waves-light" type="submit"
-        *ngIf="!(callsState$ | async).isUpdatingDispatchTime">Update 
-        Call</button>
-      <button class="btn btn-primary w-md waves-effect waves-light" type="button" disabled
-        *ngIf="(callsState$ | async).isUpdatingDispatchTime">
+      <button class="btn btn-primary w-md waves-effect waves-light" type="submit" *ngIf="!(callsState$ | async).isUpdatingDispatchTime">
+        Update Call
+      </button>
+      <button
+        class="btn btn-primary w-md waves-effect waves-light"
+        type="button"
+        disabled
+        *ngIf="(callsState$ | async).isUpdatingDispatchTime"
+      >
         <span class="spinner-border spinner-border-sm"></span>
       </button>
     </div>

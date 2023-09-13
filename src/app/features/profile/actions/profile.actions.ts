@@ -9,6 +9,4 @@ export class UpdateProfile implements Action {
   constructor() {}
 }
 
-
-export type ProfileActionsUnion =
-  | UpdateProfile;
+export type ProfileActionsUnion = UpdateProfile;

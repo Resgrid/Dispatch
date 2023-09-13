@@ -28,14 +28,12 @@ export class SetPersonStaffingModalComponent implements OnInit {
   constructor(
     public activeModal: NgbActiveModal,
     private store: Store<HomeState>,
-    private actions$: Actions
+    private actions$: Actions,
   ) {
     this.homeState$ = this.store.select(selectHomeState);
   }
 
-  ngOnInit() {
-
-  }
+  ngOnInit() {}
 
   public dismiss() {
     this.activeModal.close();
@@ -50,7 +48,7 @@ export class SetPersonStaffingModalComponent implements OnInit {
         .pipe(take(1))
         .subscribe((state) => {
           var userIds: string[] = [];
-          state.personnelForGrid.forEach(person => {
+          state.personnelForGrid.forEach((person) => {
             if (person.Selected) {
               userIds.push(person.UserId);
             }

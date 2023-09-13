@@ -1,12 +1,13 @@
-// 
+//
 // _buttons.scss
-// 
+//
 
-button,a {
+button,
+a {
   outline: none !important;
 }
 
-.btn-light{
+.btn-light {
   border: 1px solid darken($light, 2%);
 }
 
@@ -15,10 +16,11 @@ button,a {
   border-radius: 30px;
 }
 
-.btn-dark, .btn-secondary{
+.btn-dark,
+.btn-secondary {
   color: $gray-200 !important;
 }
 
-.btn-outline-light{
+.btn-outline-light {
   color: $gray-900;
 }

@@ -1,24 +1,29 @@
-import { NgModule } from '@angular/core';
-import { StoreModule } from '@ngrx/store';
-import { EffectsModule } from '@ngrx/effects';
-import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormsModule } from '@angular/forms';
-import { CallsRoutingModule } from './calls-routing.module';
-import { reducer } from './reducers/calls.reducer';
-import { CallsEffects } from './effects/calls.effect';
-import { NgbAlertModule, NgbDropdownModule, NgbNavModule, NgbPaginationModule, NgbTooltipModule, NgbTypeaheadModule } from '@ng-bootstrap/ng-bootstrap';
-import { Ng2SearchPipeModule } from 'ng2-search-filter';
-import { PerfectScrollbarModule } from 'ngx-perfect-scrollbar';
-import { LeafletModule } from '@asymmetrik/ngx-leaflet';
-import { UiModule } from 'src/app/shared/ui/ui.module';
-import { GalleryModule } from  'ng-gallery';
-import { UpdateDispatchTimeModalComponent } from './modals/updateDispatchTime/updateDispatchTime.modal';
-import { NgxResgridLibModule } from '@resgrid/ngx-resgridlib';
+import { NgModule } from "@angular/core";
+import { StoreModule } from "@ngrx/store";
+import { EffectsModule } from "@ngrx/effects";
+import { CommonModule } from "@angular/common";
+import { ReactiveFormsModule, FormsModule } from "@angular/forms";
+import { CallsRoutingModule } from "./calls-routing.module";
+import { reducer } from "./reducers/calls.reducer";
+import { CallsEffects } from "./effects/calls.effect";
+import {
+  NgbAlertModule,
+  NgbDropdownModule,
+  NgbNavModule,
+  NgbPaginationModule,
+  NgbTooltipModule,
+  NgbTypeaheadModule,
+} from "@ng-bootstrap/ng-bootstrap";
+import { Ng2SearchPipeModule } from "ng2-search-filter";
+import { PerfectScrollbarModule } from "ngx-perfect-scrollbar";
+import { LeafletModule } from "@asymmetrik/ngx-leaflet";
+import { UiModule } from "src/app/shared/ui/ui.module";
+import { GalleryModule } from "ng-gallery";
+import { UpdateDispatchTimeModalComponent } from "./modals/updateDispatchTime/updateDispatchTime.modal";
+import { NgxResgridLibModule } from "@resgrid/ngx-resgridlib";
 
 @NgModule({
-  declarations: [
-    UpdateDispatchTimeModalComponent
-  ],
+  declarations: [UpdateDispatchTimeModalComponent],
   imports: [
     CommonModule,
     FormsModule,
@@ -33,18 +38,14 @@ import { NgxResgridLibModule } from '@resgrid/ngx-resgridlib';
     PerfectScrollbarModule,
     LeafletModule,
     UiModule,
-    StoreModule.forFeature('callsModule', reducer),
+    StoreModule.forFeature("callsModule", reducer),
     EffectsModule.forFeature([CallsEffects]),
     GalleryModule,
     NgbPaginationModule,
-    NgbTypeaheadModule
+    NgbTypeaheadModule,
   ],
   providers: [],
-  exports: [
-    
-  ],
-  entryComponents: [
-    UpdateDispatchTimeModalComponent
-  ]
+  exports: [],
+  entryComponents: [UpdateDispatchTimeModalComponent],
 })
-export class CallsModule { }
+export class CallsModule {}

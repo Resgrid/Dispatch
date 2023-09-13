@@ -1,16 +1,15 @@
-import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
+import { ComponentFixture, TestBed, waitForAsync } from "@angular/core/testing";
 
-import { RemixComponent } from './remix.component';
+import { RemixComponent } from "./remix.component";
 
-describe('RemixComponent', () => {
+describe("RemixComponent", () => {
   let component: RemixComponent;
   let fixture: ComponentFixture<RemixComponent>;
 
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-      declarations: [ RemixComponent ]
-    })
-    .compileComponents();
+      declarations: [RemixComponent],
+    }).compileComponents();
   }));
 
   beforeEach(() => {
@@ -19,7 +18,7 @@ describe('RemixComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should create', () => {
+  it("should create", () => {
     expect(component).toBeTruthy();
   });
 });

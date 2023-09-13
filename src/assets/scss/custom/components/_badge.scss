@@ -1,6 +1,6 @@
-// 
+//
 // _badge.scss
-// 
+//
 
 // Soft badge
 @mixin badge-variant-soft($bg) {
@@ -18,12 +18,12 @@
 
 @each $color, $value in $theme-colors {
   .badge-soft-#{$color} {
-      @include badge-variant-soft($value);
+    @include badge-variant-soft($value);
   }
 }
 
 // Dark badge
 
-.badge-dark{
+.badge-dark {
   color: $light;
 }

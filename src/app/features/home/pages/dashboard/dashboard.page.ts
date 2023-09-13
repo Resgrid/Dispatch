@@ -35,7 +35,7 @@ import { debounceTime, distinctUntilChanged, tap } from "rxjs/operators";
 import { UnitStatusResult } from "src/app/core/models/unitStatusResult";
 import { PersonnelForCallResult } from "src/app/core/models/personnelForCallResult";
 import { PerfectScrollbarComponent } from "ngx-perfect-scrollbar";
-import { SubSink } from 'subsink';
+import { SubSink } from "subsink";
 
 const iconRetinaUrl = "./assets/marker-icon-2x.png";
 const iconUrl = "./assets/marker-icon.png";
@@ -108,7 +108,7 @@ export class DashboardPage implements AfterViewInit {
             if (this.searchUnitsInput && this.searchUnitsInput.nativeElement) {
               this.unitSearchTerm = this.searchUnitsInput.nativeElement.value;
             }
-          })
+          }),
         )
         .subscribe();
     }
@@ -137,7 +137,7 @@ export class DashboardPage implements AfterViewInit {
             if (this.searchPersonnelInput && this.searchPersonnelInput.nativeElement) {
               this.personnelSearchTerm = this.searchPersonnelInput.nativeElement.value;
             }
-          })
+          }),
         )
         .subscribe();
     }
@@ -149,7 +149,7 @@ export class DashboardPage implements AfterViewInit {
     private voiceStore: Store<VoiceState>,
     private router: Router,
     private cdr: ChangeDetectorRef,
-    private homeProvider: HomeProvider
+    private homeProvider: HomeProvider,
   ) {
     this.homeState$ = this.store.select(selectHomeState);
     this.mapData$ = this.store.select(selectMapDataState);
@@ -193,7 +193,7 @@ export class DashboardPage implements AfterViewInit {
             if (this.searchUnitsInput && this.searchUnitsInput.nativeElement) {
               this.unitSearchTerm = this.searchUnitsInput.nativeElement.value;
             }
-          })
+          }),
         )
         .subscribe();
     }
@@ -545,7 +545,7 @@ export class DashboardPage implements AfterViewInit {
     const address = this.newCallForm.get("address").value;
     if (!address || address == "") {
       this.store.dispatch(
-        new HomeActions.GetAddressForCoordinates(this.newCallForm.get("latitude").value, this.newCallForm.get("longitude").value)
+        new HomeActions.GetAddressForCoordinates(this.newCallForm.get("latitude").value, this.newCallForm.get("longitude").value),
       );
     }
   }
@@ -771,7 +771,7 @@ export class DashboardPage implements AfterViewInit {
       .subscribe((state) => {
         if (state && state.personnelForGrid && state.unitStatuses) {
           this.store.dispatch(
-            new HomeActions.GetUpdatedPersonnelandUnitsDistancesToCall(location, state.personnelForGrid, state.unitStatuses)
+            new HomeActions.GetUpdatedPersonnelandUnitsDistancesToCall(location, state.personnelForGrid, state.unitStatuses),
           );
         }
       });

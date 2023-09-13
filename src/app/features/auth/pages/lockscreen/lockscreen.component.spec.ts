@@ -1,16 +1,15 @@
-import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
+import { ComponentFixture, TestBed, waitForAsync } from "@angular/core/testing";
 
-import { LockscreenComponent } from './lockscreen.component';
+import { LockscreenComponent } from "./lockscreen.component";
 
-describe('LockscreenComponent', () => {
+describe("LockscreenComponent", () => {
   let component: LockscreenComponent;
   let fixture: ComponentFixture<LockscreenComponent>;
 
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-      declarations: [ LockscreenComponent ]
-    })
-    .compileComponents();
+      declarations: [LockscreenComponent],
+    }).compileComponents();
   }));
 
   beforeEach(() => {
@@ -19,7 +18,7 @@ describe('LockscreenComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should create', () => {
+  it("should create", () => {
     expect(component).toBeTruthy();
   });
 });

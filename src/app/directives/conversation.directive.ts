@@ -1,7 +1,7 @@
-import { Injectable, Pipe, PipeTransform } from '@angular/core';
+import { Injectable, Pipe, PipeTransform } from "@angular/core";
 
 @Pipe({
-  name: 'conversationFilter'
+  name: "conversationFilter",
 })
 @Injectable()
 export class ConversationPipe implements PipeTransform {
@@ -14,7 +14,10 @@ export class ConversationPipe implements PipeTransform {
       return conversations;
     } else {
       let term = search.toLowerCase();
-      return conversations.filter(conversation => conversation.friend.name.toLowerCase().indexOf(term) > -1 || conversation.friend.username.toLowerCase().indexOf(term) > -1);
+      return conversations.filter(
+        (conversation) =>
+          conversation.friend.name.toLowerCase().indexOf(term) > -1 || conversation.friend.username.toLowerCase().indexOf(term) > -1,
+      );
     }
   }
 }

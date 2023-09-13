@@ -1,16 +1,15 @@
-import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
+import { ComponentFixture, TestBed, waitForAsync } from "@angular/core/testing";
 
-import { FontawesomeComponent } from './fontawesome.component';
+import { FontawesomeComponent } from "./fontawesome.component";
 
-describe('FontawesomeComponent', () => {
+describe("FontawesomeComponent", () => {
   let component: FontawesomeComponent;
   let fixture: ComponentFixture<FontawesomeComponent>;
 
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-      declarations: [ FontawesomeComponent ]
-    })
-    .compileComponents();
+      declarations: [FontawesomeComponent],
+    }).compileComponents();
   }));
 
   beforeEach(() => {
@@ -19,7 +18,7 @@ describe('FontawesomeComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should create', () => {
+  it("should create", () => {
     expect(component).toBeTruthy();
   });
 });

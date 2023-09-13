@@ -1,16 +1,13 @@
-import {Pipe} from '@angular/core';
-import { UtilsProvider } from '../providers/utils';
+import { Pipe } from "@angular/core";
+import { UtilsProvider } from "../providers/utils";
 
 @Pipe({
-  name: 'rgTimeAgo'
+  name: "rgTimeAgo",
 })
 export class RGTimeAgoPipe {
+  constructor(private utilsProvider: UtilsProvider) {}
 
-	constructor(private utilsProvider: UtilsProvider) {
-
-	}
-
-  transform(value: string, args: string[]) : string {
+  transform(value: string, args: string[]): string {
     return this.utilsProvider.getTimeAgo(value);
   }
 }

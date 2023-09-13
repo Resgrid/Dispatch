@@ -16,7 +16,7 @@ import { CallResultData, CustomStatesService, CustomStatusResultData, GroupResul
 })
 export class SetPersonStatusModalComponent implements OnInit {
   public homeState$: Observable<HomeState | null>;
-  
+
   public selectedStatus: CustomStatusResultData;
 
   public selectedCall: CallResultData;
@@ -29,14 +29,12 @@ export class SetPersonStatusModalComponent implements OnInit {
     public activeModal: NgbActiveModal,
     private store: Store<HomeState>,
     private actions$: Actions,
-    private customStatesService: CustomStatesService
+    private customStatesService: CustomStatesService,
   ) {
     this.homeState$ = this.store.select(selectHomeState);
   }
 
-  ngOnInit() {
-
-  }
+  ngOnInit() {}
 
   public dismiss() {
     this.activeModal.close();
@@ -72,7 +70,7 @@ export class SetPersonStatusModalComponent implements OnInit {
           }
 
           var userIds: string[] = [];
-          state.personnelForGrid.forEach(person => {
+          state.personnelForGrid.forEach((person) => {
             if (person.Selected) {
               userIds.push(person.UserId);
             }
