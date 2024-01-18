@@ -12,7 +12,7 @@ import * as HomeActions from "../../actions/home.actions";
 import { take } from "rxjs/operators";
 import { Actions, ofType } from "@ngrx/effects";
 import * as _ from "lodash";
-import { FormBuilder, FormGroup, Validators } from "@angular/forms";
+import { UntypedFormBuilder, UntypedFormGroup, Validators } from "@angular/forms";
 import { environment } from "../../../../../environments/environment";
 import { AuthState } from "src/app/features/auth/store/auth.store";
 import { encode } from "base64-arraybuffer";
@@ -30,7 +30,7 @@ export class CallFilesModalComponent implements OnInit {
   public note: string;
   public isSaving: boolean = false;
   @Input() auth: AuthState;
-  public formData: FormGroup;
+  public formData: UntypedFormGroup;
   public searchTerm: string;
   public fileName = "";
   public uploadProgress: number;
@@ -40,7 +40,7 @@ export class CallFilesModalComponent implements OnInit {
     public activeModal: NgbActiveModal,
     private store: Store<HomeState>,
     private actions$: Actions,
-    public formBuilder: FormBuilder,
+    public formBuilder: UntypedFormBuilder,
     private authStore: Store<AuthState>
   ) {
     this.homeState$ = this.store.select(selectHomeState);

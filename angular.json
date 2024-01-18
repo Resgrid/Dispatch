@@ -147,7 +147,6 @@
       }
     }
   },
-  "defaultProject": "dispatch",
   "cli": {
     "analytics": "915204d4-f209-4eda-93c6-37a8757fd25c"
   }

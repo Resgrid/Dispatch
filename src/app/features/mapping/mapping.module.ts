@@ -15,31 +15,27 @@ import { GalleryModule } from  'ng-gallery';
 import { NgxResgridLibModule } from '@resgrid/ngx-resgridlib';
 
 @NgModule({
-  imports: [
-    CommonModule,
-    FormsModule,
-    ReactiveFormsModule,
-    CallsRoutingModule,
-    NgbAlertModule,
-    NgxResgridLibModule,
-    Ng2SearchPipeModule,
-    NgbNavModule,
-    NgbDropdownModule,
-    NgbTooltipModule,
-    PerfectScrollbarModule,
-    LeafletModule,
-    UiModule,
-    StoreModule.forFeature('mappingModule', reducer),
-    EffectsModule.forFeature([MappingEffects]),
-    GalleryModule,
-    NgbPaginationModule,
-    NgbTypeaheadModule
-  ],
-  providers: [],
-  exports: [
-    
-  ],
-  entryComponents: [
-  ]
+    imports: [
+        CommonModule,
+        FormsModule,
+        ReactiveFormsModule,
+        CallsRoutingModule,
+        NgbAlertModule,
+        NgxResgridLibModule,
+        Ng2SearchPipeModule,
+        NgbNavModule,
+        NgbDropdownModule,
+        NgbTooltipModule,
+        PerfectScrollbarModule,
+        LeafletModule,
+        UiModule,
+        StoreModule.forFeature('mappingModule', reducer),
+        EffectsModule.forFeature([MappingEffects]),
+        GalleryModule,
+        NgbPaginationModule,
+        NgbTypeaheadModule
+    ],
+    providers: [],
+    exports: []
 })
 export class MappingModule { }

@@ -11,7 +11,7 @@ import {
   selectNewCallState,
 } from "src/app/store";
 import * as HomeActions from "../../actions/home.actions";
-import { AbstractControl, FormBuilder, FormControl, FormGroup, Validators } from "@angular/forms";
+import { AbstractControl, UntypedFormBuilder, FormControl, UntypedFormGroup, Validators } from "@angular/forms";
 import { filter, take } from "rxjs/operators";
 import * as L from "leaflet";
 import { environment } from "../../../../../environments/environment";
@@ -81,7 +81,7 @@ export class DashboardPage implements AfterViewInit {
   public markers: any[];
   public selectedGroupName: string = "";
   public auth: AuthState;
-  public newCallForm: FormGroup;
+  public newCallForm: UntypedFormGroup;
   public unitGroups: string[];
   public currentStatusTabSelected: number = 1;
 
@@ -144,7 +144,7 @@ export class DashboardPage implements AfterViewInit {
   }
 
   constructor(
-    public formBuilder: FormBuilder,
+    public formBuilder: UntypedFormBuilder,
     private store: Store<HomeState>,
     private voiceStore: Store<VoiceState>,
     private router: Router,

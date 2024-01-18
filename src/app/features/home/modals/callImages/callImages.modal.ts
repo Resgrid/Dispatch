@@ -12,7 +12,7 @@ import * as HomeActions from "../../actions/home.actions";
 import { finalize, take } from "rxjs/operators";
 import { Actions, ofType } from "@ngrx/effects";
 import * as _ from "lodash";
-import { FormBuilder, FormGroup, Validators } from "@angular/forms";
+import { UntypedFormBuilder, UntypedFormGroup, Validators } from "@angular/forms";
 import { environment } from "../../../../../environments/environment";
 import { AuthState } from "src/app/features/auth/store/auth.store";
 import { Gallery, GalleryItem, GalleryRef, ImageItem } from "ng-gallery";
@@ -31,7 +31,7 @@ export class CallImagesModalComponent implements OnInit {
   public note: string;
   public isSaving: boolean = false;
   @Input() auth: AuthState;
-  public formData: FormGroup;
+  public formData: UntypedFormGroup;
   public images: GalleryItem[];
   public fileName = "";
   public uploadProgress: number;
@@ -41,7 +41,7 @@ export class CallImagesModalComponent implements OnInit {
     public activeModal: NgbActiveModal,
     private store: Store<HomeState>,
     private actions$: Actions,
-    public formBuilder: FormBuilder,
+    public formBuilder: UntypedFormBuilder,
     private authStore: Store<AuthState>,
     private gallery: Gallery
   ) {

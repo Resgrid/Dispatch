@@ -16,35 +16,30 @@ import { UpdateDispatchTimeModalComponent } from './modals/updateDispatchTime/up
 import { NgxResgridLibModule } from '@resgrid/ngx-resgridlib';
 
 @NgModule({
-  declarations: [
-    UpdateDispatchTimeModalComponent
-  ],
-  imports: [
-    CommonModule,
-    FormsModule,
-    ReactiveFormsModule,
-    CallsRoutingModule,
-    NgbAlertModule,
-    NgxResgridLibModule,
-    Ng2SearchPipeModule,
-    NgbNavModule,
-    NgbDropdownModule,
-    NgbTooltipModule,
-    PerfectScrollbarModule,
-    LeafletModule,
-    UiModule,
-    StoreModule.forFeature('callsModule', reducer),
-    EffectsModule.forFeature([CallsEffects]),
-    GalleryModule,
-    NgbPaginationModule,
-    NgbTypeaheadModule
-  ],
-  providers: [],
-  exports: [
-    
-  ],
-  entryComponents: [
-    UpdateDispatchTimeModalComponent
-  ]
+    declarations: [
+        UpdateDispatchTimeModalComponent
+    ],
+    imports: [
+        CommonModule,
+        FormsModule,
+        ReactiveFormsModule,
+        CallsRoutingModule,
+        NgbAlertModule,
+        NgxResgridLibModule,
+        Ng2SearchPipeModule,
+        NgbNavModule,
+        NgbDropdownModule,
+        NgbTooltipModule,
+        PerfectScrollbarModule,
+        LeafletModule,
+        UiModule,
+        StoreModule.forFeature('callsModule', reducer),
+        EffectsModule.forFeature([CallsEffects]),
+        GalleryModule,
+        NgbPaginationModule,
+        NgbTypeaheadModule
+    ],
+    providers: [],
+    exports: []
 })
 export class CallsModule { }

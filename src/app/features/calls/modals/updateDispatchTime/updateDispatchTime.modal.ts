@@ -8,7 +8,7 @@ import { Actions, ofType } from "@ngrx/effects";
 import * as _ from 'lodash';
 import { CallsState } from "../../store/calls.store";
 import * as CallsActions from "../../actions/calls.actions";
-import { FormBuilder, FormGroup, Validators } from "@angular/forms";
+import { UntypedFormBuilder, UntypedFormGroup, Validators } from "@angular/forms";
 
 @Component({
   selector: "app-resgrid-modal-updateDispatchTime",
@@ -17,13 +17,13 @@ import { FormBuilder, FormGroup, Validators } from "@angular/forms";
 })
 export class UpdateDispatchTimeModalComponent implements OnInit {
   public callsState$: Observable<CallsState | null>;
-  public updateCallForm: FormGroup;
+  public updateCallForm: UntypedFormGroup;
 
   constructor(
     public activeModal: NgbActiveModal,
     private store: Store<CallsState>,
     private actions$: Actions,
-    public formBuilder: FormBuilder
+    public formBuilder: UntypedFormBuilder
   ) {
     this.callsState$ = this.store.select(selectCallsState);
 

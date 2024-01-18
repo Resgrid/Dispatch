@@ -16,37 +16,33 @@ import { VoiceFooterComponent } from './shared/voice-footer/voice-footer.compone
 import { OpenViduVideoComponent } from './shared/video-component/ov-video.component';
 
 @NgModule({
-  declarations: [
-    VoiceFooterComponent,
-    OpenViduVideoComponent
-  ],
-  imports: [
-    CommonModule,
-    FormsModule,
-    ReactiveFormsModule,
-    VoiceRoutingModule,
-    NgbAlertModule,
-    Ng2SearchPipeModule,
-    NgbNavModule,
-    NgbDropdownModule,
-    NgbTooltipModule,
-    PerfectScrollbarModule,
-    LeafletModule,
-    UiModule,
-    StoreModule.forFeature('voiceModule', reducer),
-    EffectsModule.forFeature([VoiceEffects]),
-    GalleryModule,
-    NgbPaginationModule,
-    NgbTypeaheadModule
-  ],
-  providers: [],
-  exports: [
-    VoiceFooterComponent,
-    OpenViduVideoComponent
-  ],
-  entryComponents: [
-    VoiceFooterComponent,
-    OpenViduVideoComponent
-  ]
+    declarations: [
+        VoiceFooterComponent,
+        OpenViduVideoComponent
+    ],
+    imports: [
+        CommonModule,
+        FormsModule,
+        ReactiveFormsModule,
+        VoiceRoutingModule,
+        NgbAlertModule,
+        Ng2SearchPipeModule,
+        NgbNavModule,
+        NgbDropdownModule,
+        NgbTooltipModule,
+        PerfectScrollbarModule,
+        LeafletModule,
+        UiModule,
+        StoreModule.forFeature('voiceModule', reducer),
+        EffectsModule.forFeature([VoiceEffects]),
+        GalleryModule,
+        NgbPaginationModule,
+        NgbTypeaheadModule
+    ],
+    providers: [],
+    exports: [
+        VoiceFooterComponent,
+        OpenViduVideoComponent
+    ]
 })
 export class VoiceModule { }
