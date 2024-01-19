@@ -12,7 +12,7 @@ export class LoadingProvider {
 
   // Show loading
   public show() {
-    return this.spinner.show();
+    return this.spinner.show('Loading...', {type: "line-scale"});
   }
 
   // Hide loading

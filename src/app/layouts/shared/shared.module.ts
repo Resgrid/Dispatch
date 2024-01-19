@@ -4,7 +4,7 @@ import { RouterModule } from '@angular/router';
 
 import { PerfectScrollbarModule } from 'ngx-perfect-scrollbar';
 import { NgbDropdownModule } from '@ng-bootstrap/ng-bootstrap';
-import { ClickOutsideModule } from 'ng-click-outside';
+//import { ClickOutsideModule } from 'ng-click-outside';
 import { LanguageService } from '../../core/services/language.service';
 import { TranslateModule } from '@ngx-translate/core';
 
@@ -24,7 +24,7 @@ import { RightsidebarComponent } from './rightsidebar/rightsidebar.component';
     TranslateModule,
     PerfectScrollbarModule,
     NgbDropdownModule,
-    ClickOutsideModule,
+    //ClickOutsideModule,
     RouterModule
   ],
   exports: [TopbarComponent, 
