@@ -13,5 +13,6 @@ export const environment = {
   osmMapKey: window["env"]["osmMapKey"] || 'OSMKEY',
   mapTilerKey: window["env"]["mapTilerKey"] || 'MTKEY',
   googleMapsKey: window["env"]["googleMapsKey"] || 'GOOGLEMAPKEY',
-  loggingKey: window["env"]["loggingKey"] || 'LOGGINGKEY'
+  loggingKey: window["env"]["loggingKey"] || 'LOGGINGKEY',
+  appKey: window["env"]["appKey"] || 'APPKEY'
 };

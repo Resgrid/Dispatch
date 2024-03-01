@@ -81,6 +81,11 @@ export const selectIsSavingCall = createSelector(
   homeReducers.getIsSavingCall
 );
 
+export const selectConfigData = createSelector(
+  selectHomeState,
+  homeReducers.getConfigData
+);
+
 
 export const selectVoiceState = createFeatureSelector<VoiceState>('voiceModule');
 

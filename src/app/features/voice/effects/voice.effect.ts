@@ -6,7 +6,7 @@ import { Injectable } from "@angular/core";
 import { from, Observable, of } from "rxjs";
 import { NgbModal, NgbModalRef } from "@ng-bootstrap/ng-bootstrap";
 import { VoiceState } from "../store/voice.store";
-import { KazooVoiceService, VoiceService } from "@resgrid/ngx-resgridlib";
+import { VoiceService } from "@resgrid/ngx-resgridlib";
 import { OpenViduService } from "src/app/providers/openvidu";
 import { HomeState } from "../../home/store/home.store";
 import { selectAuthState } from "src/app/store";

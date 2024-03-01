@@ -14,4 +14,5 @@
     window['env']['mapTilerKey'] = '${MAPTILER_KEY}';
     window['env']['googleMapsKey'] = '${GOOGLE_MAPS_KEY}';
     window['env']['loggingKey'] = '${LOGGING_KEY}';
+    window['env']['appKey'] = '${APP_KEY}';
   })(this);

@@ -14,6 +14,7 @@ import { UiModule } from 'src/app/shared/ui/ui.module';
 import { GalleryModule } from  'ng-gallery';
 import { VoiceFooterComponent } from './shared/voice-footer/voice-footer.component';
 import { OpenViduVideoComponent } from './shared/video-component/ov-video.component';
+import { NgxResgridLibModule } from '@resgrid/ngx-resgridlib';
 
 @NgModule({
     declarations: [
@@ -37,7 +38,8 @@ import { OpenViduVideoComponent } from './shared/video-component/ov-video.compon
         EffectsModule.forFeature([VoiceEffects]),
         GalleryModule,
         NgbPaginationModule,
-        NgbTypeaheadModule
+        NgbTypeaheadModule,
+        NgxResgridLibModule
     ],
     providers: [],
     exports: [

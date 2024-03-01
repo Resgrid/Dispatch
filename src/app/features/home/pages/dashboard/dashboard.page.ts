@@ -4,6 +4,7 @@ import { HomeState } from "../../store/home.store";
 import { fromEvent, Observable, Subscription } from "rxjs";
 import {
   selectActiveCallTemplateState,
+  selectConfigData,
   selectHomeState,
   selectMapDataState,
   selectNewCallAddressState,
@@ -23,6 +24,7 @@ import {
   CallResultData,
   ConnectionState,
   GetCallTemplatesResultData,
+  GetConfigResultData,
   GpsLocation,
   MapDataAndMarkersData,
   SignalRService,
@@ -35,7 +37,7 @@ import { debounceTime, distinctUntilChanged, tap } from "rxjs/operators";
 import { UnitStatusResult } from "src/app/core/models/unitStatusResult";
 import { PersonnelForCallResult } from "src/app/core/models/personnelForCallResult";
 import { PerfectScrollbarComponent } from "ngx-perfect-scrollbar";
-import { SubSink } from 'subsink';
+import { SubSink } from "subsink";
 
 const iconRetinaUrl = "./assets/marker-icon-2x.png";
 const iconUrl = "./assets/marker-icon.png";
@@ -66,6 +68,7 @@ export class DashboardPage implements AfterViewInit {
   public newCallAddress$: Observable<GpsLocation | null>;
   public newCallLocation$: Observable<string | null>;
   public newCall$: Observable<CallResultData | null>;
+  public configData$: Observable<GetConfigResultData | null>;
   public breadCrumbItems: Array<{}>;
   public submitted = false;
 
@@ -76,6 +79,9 @@ export class DashboardPage implements AfterViewInit {
 
   @ViewChild("newCallMapContainer") newCallMapContainer;
   public newCallMap: any;
+  private creatingMap: boolean = false;
+  private creatingNewCallMap: boolean = false;
+  private mapData: MapDataAndMarkersData;
 
   public newCallMarker: L.Marker;
   public markers: any[];
@@ -84,6 +90,7 @@ export class DashboardPage implements AfterViewInit {
   public newCallForm: UntypedFormGroup;
   public unitGroups: string[];
   public currentStatusTabSelected: number = 1;
+  private configData: GetConfigResultData = null;
 
   private unitSearchTerm: string = "";
   private searchUnitsInput: ElementRef;
@@ -157,6 +164,7 @@ export class DashboardPage implements AfterViewInit {
     this.newCallAddress$ = this.store.select(selectNewCallAddressState);
     this.newCallLocation$ = this.store.select(selectNewCallLocationState);
     this.newCall$ = this.store.select(selectNewCallState);
+    this.configData$ = this.store.select(selectConfigData);
 
     this.markers = new Array<any>();
     this.unitGroups = new Array<any>();
@@ -199,7 +207,11 @@ export class DashboardPage implements AfterViewInit {
     }
 
     this.subs.sink = this.mapData$.subscribe((state) => {
-      this.processMapData(state);
+      this.mapData = state;
+
+      if (this.configData && this.configData.MapUrl) {
+        this.processMapData(state);
+      }
     });
 
     this.subs.sink = this.newCallAddress$.subscribe((geolocation) => {
@@ -340,6 +352,24 @@ export class DashboardPage implements AfterViewInit {
       }
 
       //this.cdr.detectChanges();
+    });
+
+    this.subs.sink = this.configData$.subscribe((config) => {
+      if (config) {
+        this.configData = config;
+
+        if (this.configData && this.configData.NavigationMapKey) {
+          if (!this.map && this.mapData) {
+            if (!this.creatingMap) {
+              this.processMapData(this.mapData);
+            }
+
+            if (!this.creatingNewCallMap) {
+              this.setupNewCallMap(this.mapData);
+            }
+          }
+        }
+      }
     });
 
     this.breadCrumbItems = [{ label: "Resgrid Dispatch" }, { label: "Dashboard", active: true }];
@@ -695,27 +725,36 @@ export class DashboardPage implements AfterViewInit {
 
   /* New Call Map func */
   private setupNewCallMap(data: MapDataAndMarkersData) {
-    if (!this.newCallMap) {
-      this.newCallMap = L.map(this.newCallMapContainer.nativeElement, {
-        scrollWheelZoom: false,
-      });
+    const that = this;
 
-      L.tileLayer("https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=" + environment.osmMapKey, {
-        attribution:
-          '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>',
-      }).addTo(this.newCallMap);
+    if (this.configData && this.configData.MapUrl) {
+      if (!this.creatingNewCallMap) {
 
-      this.newCallMap.scrollWheelZoom.disable();
-      var mapCenter = this.getMapCenter(data);
-      this.newCallMap.setView(mapCenter, this.getMapZoomLevel(data));
+        if (!this.newCallMap) {
+          this.creatingNewCallMap = true;
+          this.newCallMap = L.map(this.newCallMapContainer.nativeElement, {
+            scrollWheelZoom: false,
+          });
 
-      this.newCallMap.on("click", (e) => {
-        var coord = e.latlng;
-        var lat = coord.lat;
-        var lng = coord.lng;
+          L.tileLayer(that.configData.MapUrl, {
+              attribution: that.configData.MapAttribution,
+            }).addTo(this.newCallMap);
 
-        this.addPinToMap(lat, lng);
-      });
+          this.newCallMap.scrollWheelZoom.disable();
+          var mapCenter = this.getMapCenter(data);
+          this.newCallMap.setView(mapCenter, this.getMapZoomLevel(data));
+
+          this.newCallMap.on("click", (e) => {
+            var coord = e.latlng;
+            var lat = coord.lat;
+            var lng = coord.lng;
+
+            this.addPinToMap(lat, lng);
+          });
+
+          this.creatingNewCallMap = false;
+        }
+      }
     }
   }
 
@@ -780,68 +819,77 @@ export class DashboardPage implements AfterViewInit {
 
   /* Map func */
   private processMapData(data: MapDataAndMarkersData) {
+    const that = this;
+
     if (data) {
-      this.setupNewCallMap(data);
+      if (this.configData && this.configData.MapUrl) {
+        if (!this.creatingMap) {
+          this.creatingMap = true;
 
-      var mapCenter = this.getMapCenter(data);
+          this.setupNewCallMap(data);
 
-      if (!this.map) {
-        this.map = L.map(this.mapContainer.nativeElement, {
-          //dragging: false,
-          doubleClickZoom: false,
-          zoomControl: false,
-        });
+          var mapCenter = this.getMapCenter(data);
 
-        L.tileLayer("https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=" + environment.osmMapKey, {
-          attribution:
-            '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>',
-        }).addTo(this.map);
-      }
+          if (!this.map) {
+            this.map = L.map(this.mapContainer.nativeElement, {
+              //dragging: false,
+              doubleClickZoom: false,
+              zoomControl: false,
+            });
 
-      //this.mapProvider.setMarkersForMap(this.map);
+            L.tileLayer(that.configData.MapUrl, {
+              attribution: that.configData.MapAttribution,
+            }).addTo(this.map);
+          }
 
-      //this.setMapBounds();
+          //this.mapProvider.setMarkersForMap(this.map);
 
-      //if (this.map) {
-      this.map.setView(mapCenter, this.getMapZoomLevel(data));
-      //}
+          //this.setMapBounds();
 
-      // clear map markers
-      if (this.markers && this.markers.length >= 0) {
-        for (var i = 0; i < this.markers.length; i++) {
-          if (this.markers[i]) {
-            this.map.removeLayer(this.markers[i]);
+          //if (this.map) {
+          this.map.setView(mapCenter, this.getMapZoomLevel(data));
+          //}
+
+          // clear map markers
+          if (this.markers && this.markers.length >= 0) {
+            for (var i = 0; i < this.markers.length; i++) {
+              if (this.markers[i]) {
+                this.map.removeLayer(this.markers[i]);
+              }
+            }
+
+            this.markers = new Array<any>();
+          }
+
+          if (data.MapMakerInfos && data.MapMakerInfos.length > 0) {
+            if (data && data.MapMakerInfos) {
+              data.MapMakerInfos.forEach((markerInfo) => {
+                let marker = L.marker([markerInfo.Latitude, markerInfo.Longitude], {
+                  icon: L.icon({
+                    iconUrl: "assets/images/mapping/" + markerInfo.ImagePath + ".png",
+                    iconSize: [32, 37],
+                    iconAnchor: [16, 37],
+                  }),
+                  draggable: false,
+                  title: markerInfo.Title,
+                  //tooltip: markerInfo.Title,
+                })
+                  .bindTooltip(markerInfo.Title, {
+                    permanent: true,
+                    direction: "bottom",
+                  })
+                  .addTo(this.map);
+
+                this.markers.push(marker);
+              });
+
+              that.creatingMap = false;
+            }
+
+            var group = L.featureGroup(this.markers);
+            this.map.fitBounds(group.getBounds());
           }
         }
-
-        this.markers = new Array<any>();
-      }
-
-      if (data.MapMakerInfos && data.MapMakerInfos.length > 0) {
-        if (data && data.MapMakerInfos) {
-          data.MapMakerInfos.forEach((markerInfo) => {
-            let marker = L.marker([markerInfo.Latitude, markerInfo.Longitude], {
-              icon: L.icon({
-                iconUrl: "assets/images/mapping/" + markerInfo.ImagePath + ".png",
-                iconSize: [32, 37],
-                iconAnchor: [16, 37],
-              }),
-              draggable: false,
-              title: markerInfo.Title,
-              //tooltip: markerInfo.Title,
-            })
-              .bindTooltip(markerInfo.Title, {
-                permanent: true,
-                direction: "bottom",
-              })
-              .addTo(this.map);
-
-            this.markers.push(marker);
-          });
-        }
-
-        var group = L.featureGroup(this.markers);
-        this.map.fitBounds(group.getBounds());
       }
     }
   }

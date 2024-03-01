@@ -7,6 +7,7 @@ import {
   CallPrioritiesService,
   CallsService,
   CallTypesService,
+  ConfigService,
   ConnectionState,
   Consts,
   CustomStatesService,
@@ -16,6 +17,7 @@ import {
   FormsService,
   NoteResultData,
   NotesService,
+  SecurityService,
   SignalRService,
   TemplatesService,
   UnitsService,
@@ -30,6 +32,7 @@ import { AuthState } from "../../auth/store/auth.store";
 import { selectAuthState } from "src/app/store";
 import * as HomeActions from "../../../features/home/actions/home.actions";
 import { NoteResult } from "@resgrid/ngx-resgridlib/lib/models/v4/notes/noteResult";
+import { environment } from "src/environments/environment";
 
 @Injectable({
   providedIn: "root",
@@ -55,7 +58,9 @@ export class HomeProvider {
     private consts: Consts,
     private customStatusesService: CustomStatusesService,
     private noteService: NotesService,
-    private templateService: TemplatesService
+    private templateService: TemplatesService,
+    private configService: ConfigService,
+    private securityProvider: SecurityService
   ) {
     //this.personnelStatusUpdated$ = this.events.subscribe(this.consts.SIGNALR_EVENTS.PERSONNEL_STATUS_UPDATED);
     //this.personnelStaffingUpdated$ = this.events.subscribe(this.consts.SIGNALR_EVENTS.PERSONNEL_STAFFING_UPDATED);
@@ -78,6 +83,8 @@ export class HomeProvider {
     const getPersonnelStaffingLevels = this.customStatusesService.getActivePersonnelStaffingLevels();
     const getDispatchNote = this.noteService.getDispatchNote();
     const getQuickNotes = this.templateService.getAllCallNoteTemplates();
+    const getConfig = this.configService.getConfig(environment.appKey);
+    const getCurrentUserRights = this.securityProvider.applySecurityRights();
 
     return forkJoin({
       units: getUnits,
@@ -91,7 +98,9 @@ export class HomeProvider {
       personnelStatuses: getPersonnelStatus,
       PersonnelStaffingLevels: getPersonnelStaffingLevels,
       dispatchNote: getDispatchNote,
-      callNotes: getQuickNotes
+      callNotes: getQuickNotes,
+      config: getConfig,
+      currentUserRights: getCurrentUserRights
     }).pipe(
       map((results) => {
         let localCalls: CallLocalResult[] = new Array();
@@ -135,7 +144,9 @@ export class HomeProvider {
           PersonnelStatuses: results.personnelStatuses.Data,
           PersonnelStaffingLevels: results.PersonnelStaffingLevels.Data,
           DispatchNote: dispatchNote,
-          CallNotes: results.callNotes.Data
+          CallNotes: results.callNotes.Data,
+          Config: results.config.Data,
+          Rights: results.currentUserRights,
         };
       })
     );

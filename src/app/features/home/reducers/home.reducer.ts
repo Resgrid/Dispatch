@@ -38,6 +38,8 @@ export function reducer(state: HomeState = initialState, action: HomeActionsUnio
         personnelStaffing: action.payload.PersonnelStaffingLevels,
         dispatchNote: action.payload.DispatchNote,
         callNoteTemplates: action.payload.CallNotes,
+        config: action.payload.Config,
+				rights: action.payload.Rights,
       };
 
     case HomeActionTypes.LOADING_FAIL:
@@ -308,3 +310,4 @@ export const getCallTemplate = (state: HomeState) => state.activeCallTemplate;
 export const getNewCallAddress = (state: HomeState) => state.newCallLocation;
 export const getIsSavingCall = (state: HomeState) => state.isSavingCall;
 export const getNewCallLocation = (state: HomeState) => state.newCallAddress;
+export const getConfigData = (state: HomeState) => state.config;

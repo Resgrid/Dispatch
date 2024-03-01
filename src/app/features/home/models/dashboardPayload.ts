@@ -1,4 +1,4 @@
-import { CallPriorityResultData, CallResultData, CallTypeResultData, FormResultData, GetPersonnelForCallGridResultData, GetRolesForCallGridResultData, UnitStatusResultData, GroupsForCallGridData, CustomStatusResultData, NoteResultData, CallNoteTemplateResultData } from "@resgrid/ngx-resgridlib";
+import { CallPriorityResultData, CallResultData, CallTypeResultData, FormResultData, GetPersonnelForCallGridResultData, GetRolesForCallGridResultData, UnitStatusResultData, GroupsForCallGridData, CustomStatusResultData, NoteResultData, CallNoteTemplateResultData, GetConfigResultData, DepartmentRightsResult } from "@resgrid/ngx-resgridlib";
 
 export class DashboardPayload {
     public UnitStatuses: UnitStatusResultData[];
@@ -13,4 +13,6 @@ export class DashboardPayload {
     public PersonnelStaffingLevels: CustomStatusResultData[];
     public DispatchNote: NoteResultData
     public CallNotes: CallNoteTemplateResultData[];
+    public Config: GetConfigResultData;
+    public Rights: DepartmentRightsResult;
 }
