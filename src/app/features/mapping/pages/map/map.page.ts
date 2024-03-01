@@ -40,7 +40,7 @@ export class MapPage implements AfterViewInit {
     private mappingStore: Store<MappingState>,
     public utilsProvider: UtilsProvider,
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
   ) {
     this.mappingState$ = this.mappingStore.select(selectMappingState);
     this.markers = new Array<any>();

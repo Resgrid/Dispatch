@@ -32,10 +32,10 @@ export class AuthEffects {
             this.authProvider.startTrackingRefreshToken();
           }),
           // If request fails, dispatch failed action
-          catchError(() => of({ type: authAction.LoginActionTypes.LOGIN_FAIL }))
-        )
-      )
-    )
+          catchError(() => of({ type: authAction.LoginActionTypes.LOGIN_FAIL })),
+        ),
+      ),
+    ),
   );
 
   loginSuccess$ = createEffect(
@@ -45,9 +45,9 @@ export class AuthEffects {
         tap(() => {
           this.loadingProvider.hide();
           this.router.navigate(["/home"]);
-        })
+        }),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   loginDone$ = createEffect(
@@ -56,9 +56,9 @@ export class AuthEffects {
         ofType<authAction.LoginDone>(authAction.LoginActionTypes.LOGIN_DONE),
         tap((action) => {
           console.log(action);
-        })
+        }),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   loginFail$ = createEffect(
@@ -71,11 +71,11 @@ export class AuthEffects {
           await this.alertProvider.showErrorAlert(
             "Login Error",
             "",
-            "There was an issue trying to log you in, please check your username and password and try again."
+            "There was an issue trying to log you in, please check your username and password and try again.",
           );
-        })
+        }),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   loggingIn$ = createEffect(
@@ -84,9 +84,9 @@ export class AuthEffects {
         ofType<authAction.IsLogin>(authAction.LoginActionTypes.IS_LOGIN),
         tap((action) => {
           this.loadingProvider.show();
-        })
+        }),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   constructor(
@@ -94,6 +94,6 @@ export class AuthEffects {
     private authProvider: AuthProvider,
     private router: Router,
     private loadingProvider: LoadingProvider,
-    private alertProvider: AlertProvider
+    private alertProvider: AlertProvider,
   ) {}
 }

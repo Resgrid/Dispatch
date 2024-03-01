@@ -5,7 +5,7 @@ import { Observable } from "rxjs";
 import { selectCallsState } from "src/app/store";
 import { take } from "rxjs/operators";
 import { Actions, ofType } from "@ngrx/effects";
-import * as _ from 'lodash';
+import * as _ from "lodash";
 import { CallsState } from "../../store/calls.store";
 import * as CallsActions from "../../actions/calls.actions";
 import { UntypedFormBuilder, UntypedFormGroup, Validators } from "@angular/forms";
@@ -23,18 +23,16 @@ export class UpdateDispatchTimeModalComponent implements OnInit {
     public activeModal: NgbActiveModal,
     private store: Store<CallsState>,
     private actions$: Actions,
-    public formBuilder: UntypedFormBuilder
+    public formBuilder: UntypedFormBuilder,
   ) {
     this.callsState$ = this.store.select(selectCallsState);
 
     this.updateCallForm = this.formBuilder.group({
-      dispatchOn: ["", Validators.required]
+      dispatchOn: ["", Validators.required],
     });
   }
 
-  ngOnInit() {
-
-  }
+  ngOnInit() {}
 
   public dismiss() {
     this.activeModal.close();
@@ -45,11 +43,14 @@ export class UpdateDispatchTimeModalComponent implements OnInit {
   }
 
   public save() {
-    this.store.select(selectCallsState).pipe(take(1)).subscribe((state) => {
-      this.store.dispatch(new CallsActions.IsUpdatingCallDispatchTime());
+    this.store
+      .select(selectCallsState)
+      .pipe(take(1))
+      .subscribe((state) => {
+        this.store.dispatch(new CallsActions.IsUpdatingCallDispatchTime());
 
-      const call = this.form;
-      this.store.dispatch(new CallsActions.UpdateCallDispatchTime(state.callIdToUpdateDispatchTime, call["dispatchOn"].value));
-    });
+        const call = this.form;
+        this.store.dispatch(new CallsActions.UpdateCallDispatchTime(state.callIdToUpdateDispatchTime, call["dispatchOn"].value));
+      });
   }
 }
