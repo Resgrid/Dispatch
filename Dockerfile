@@ -1,5 +1,5 @@
 ### STAGE 1: Build ###
-FROM node:16.10.0-alpine3.14 AS build
+FROM node:18.19-alpine3.19 AS build
 WORKDIR /usr/src/app
 COPY package.json package-lock.json ./
 RUN npm ci
