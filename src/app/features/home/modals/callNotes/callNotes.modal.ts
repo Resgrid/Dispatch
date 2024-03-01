@@ -12,7 +12,7 @@ import * as HomeActions from "../../actions/home.actions";
 import { take } from "rxjs/operators";
 import { Actions, ofType } from "@ngrx/effects";
 import * as _ from "lodash";
-import { FormBuilder, FormGroup, Validators } from "@angular/forms";
+import { UntypedFormBuilder, UntypedFormGroup, Validators } from "@angular/forms";
 import { environment } from "../../../../../environments/environment";
 import { AuthState } from "src/app/features/auth/store/auth.store";
 import { CallNoteTemplateResultData, CallResultData } from '@resgrid/ngx-resgridlib';
@@ -30,13 +30,13 @@ export class CallNotesModalComponent implements OnInit {
   public isSaving: boolean = false;
   public isShowingQuickNotes: boolean = false;
   @Input() auth: AuthState;
-  public formData: FormGroup;
+  public formData: UntypedFormGroup;
 
   constructor(
     public activeModal: NgbActiveModal,
     private store: Store<HomeState>,
     private actions$: Actions,
-    public formBuilder: FormBuilder,
+    public formBuilder: UntypedFormBuilder,
     private authStore: Store<AuthState>
   ) {
     this.homeState$ = this.store.select(selectHomeState);

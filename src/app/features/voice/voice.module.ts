@@ -14,39 +14,37 @@ import { UiModule } from 'src/app/shared/ui/ui.module';
 import { GalleryModule } from  'ng-gallery';
 import { VoiceFooterComponent } from './shared/voice-footer/voice-footer.component';
 import { OpenViduVideoComponent } from './shared/video-component/ov-video.component';
+import { NgxResgridLibModule } from '@resgrid/ngx-resgridlib';
 
 @NgModule({
-  declarations: [
-    VoiceFooterComponent,
-    OpenViduVideoComponent
-  ],
-  imports: [
-    CommonModule,
-    FormsModule,
-    ReactiveFormsModule,
-    VoiceRoutingModule,
-    NgbAlertModule,
-    Ng2SearchPipeModule,
-    NgbNavModule,
-    NgbDropdownModule,
-    NgbTooltipModule,
-    PerfectScrollbarModule,
-    LeafletModule,
-    UiModule,
-    StoreModule.forFeature('voiceModule', reducer),
-    EffectsModule.forFeature([VoiceEffects]),
-    GalleryModule,
-    NgbPaginationModule,
-    NgbTypeaheadModule
-  ],
-  providers: [],
-  exports: [
-    VoiceFooterComponent,
-    OpenViduVideoComponent
-  ],
-  entryComponents: [
-    VoiceFooterComponent,
-    OpenViduVideoComponent
-  ]
+    declarations: [
+        VoiceFooterComponent,
+        OpenViduVideoComponent
+    ],
+    imports: [
+        CommonModule,
+        FormsModule,
+        ReactiveFormsModule,
+        VoiceRoutingModule,
+        NgbAlertModule,
+        Ng2SearchPipeModule,
+        NgbNavModule,
+        NgbDropdownModule,
+        NgbTooltipModule,
+        PerfectScrollbarModule,
+        LeafletModule,
+        UiModule,
+        StoreModule.forFeature('voiceModule', reducer),
+        EffectsModule.forFeature([VoiceEffects]),
+        GalleryModule,
+        NgbPaginationModule,
+        NgbTypeaheadModule,
+        NgxResgridLibModule
+    ],
+    providers: [],
+    exports: [
+        VoiceFooterComponent,
+        OpenViduVideoComponent
+    ]
 })
 export class VoiceModule { }

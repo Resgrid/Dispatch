@@ -1,5 +1,5 @@
 import { Component, OnInit } from "@angular/core";
-import { FormGroup, FormBuilder, Validators } from "@angular/forms";
+import { UntypedFormGroup, UntypedFormBuilder, Validators } from "@angular/forms";
 import { Store } from "@ngrx/store";
 import { selectAuthState, selectIsLoginState, selectLoginState } from "src/app/store";
 import * as AuthActions from "../../actions/auth.actions";
@@ -14,7 +14,7 @@ import { Observable } from "rxjs";
   styleUrls: ["./login.page.scss"],
 })
 export class LoginPage implements OnInit {
-  loginForm: FormGroup;
+  loginForm: UntypedFormGroup;
   error$ = null;
   isLogging$ = false;
   year: number = new Date().getFullYear();
@@ -22,7 +22,7 @@ export class LoginPage implements OnInit {
   public authState$: Observable<AuthState | null>;
 
   constructor(
-    private fb: FormBuilder,
+    private fb: UntypedFormBuilder,
     private store: Store<AuthState>
   ) {
     this.authState$ = this.store.select(selectAuthState);

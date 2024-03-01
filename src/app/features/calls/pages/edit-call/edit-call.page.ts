@@ -17,7 +17,7 @@ import {
 } from "../../directives/calls-sortable.directive";
 import { UtilsProvider } from "src/app/providers/utils";
 import { ActivatedRoute, Router } from "@angular/router";
-import { FormBuilder, FormGroup, Validators } from "@angular/forms";
+import { UntypedFormBuilder, UntypedFormGroup, Validators } from "@angular/forms";
 import { Observable } from "rxjs";
 import { HomeState } from "src/app/features/home/store/home.store";
 import {
@@ -44,7 +44,7 @@ export class EditCallPage implements AfterViewInit {
   private id: string;
   private source: number;
   private activatedRouteSub: any;
-  public editCallForm: FormGroup;
+  public editCallForm: UntypedFormGroup;
 
   public callsState$: Observable<CallsState | null>;
   public homeState$: Observable<HomeState | null>;
@@ -62,7 +62,7 @@ export class EditCallPage implements AfterViewInit {
   }
 
   constructor(
-    public formBuilder: FormBuilder,
+    public formBuilder: UntypedFormBuilder,
     private store: Store<CallsState>,
     private homeStore: Store<HomeState>,
     public utilsProvider: UtilsProvider,

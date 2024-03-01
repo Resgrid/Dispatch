@@ -8,6 +8,7 @@ export const environment = {
   resgridApiUrl: window["env"]["resgridApiUrl"] || '/api/v4',
   channelUrl: window["env"]["channelUrl"] || 'https://events.resgrid.com/',
   channelHubName: window["env"]["channelHubName"] || 'eventingHub',
+  realtimeGeolocationHubName: window["env"]["realtimeGeolocationHubName"] || 'geolocationHub',
   logLevel: window["env"]["logLevel"] || 0,
   what3WordsKey: window["env"]["what3WordsKey"] || 'W3WKEY',
   isDemo: window["env"]["isDemo"] || false,
@@ -16,7 +17,8 @@ export const environment = {
   osmMapKey: window["env"]["osmMapKey"] || 'OSMKEY',
   mapTilerKey: window["env"]["mapTilerKey"] || 'MTKEY',
   googleMapsKey: window["env"]["googleMapsKey"] || 'GOOGLEMAPKEY',
-  loggingKey: window["env"]["loggingKey"] || 'LOGGINGKEY'
+  loggingKey: window["env"]["loggingKey"] || 'LOGGINGKEY',
+  appKey: window["env"]["appKey"] || 'APPKEY'
 };
 
 /*

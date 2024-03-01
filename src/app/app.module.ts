@@ -48,8 +48,10 @@ let getBaseUrl = (): string => {
       googleApiKey: environment.googleMapsKey,
       channelUrl: environment.channelUrl,
       channelHubName: environment.channelHubName,
+      realtimeGeolocationHubName: environment.realtimeGeolocationHubName,
       logLevel: environment.logLevel,
-      isMobileApp: false
+      isMobileApp: true,
+      cacheProvider: null
   }),
     BrowserAnimationsModule,
     LeafletModule,

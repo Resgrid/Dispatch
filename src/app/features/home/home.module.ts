@@ -26,50 +26,38 @@ import { SetPersonStaffingModalComponent } from './modals/setPersonStaffing/setP
 import { ViewCallFormModalComponent } from './modals/viewCallForm/view-callForm.modal';
 
 @NgModule({
-  declarations: [
-    SetUnitStatusModalComponent,
-    CloseCallModalComponent,
-    SelectTemplateModalComponent,
-    CallNotesModalComponent,
-    CallImagesModalComponent,
-    CallFilesModalComponent,
-    CallFormModalComponent,
-    SetPersonStatusModalComponent,
-    SetPersonStaffingModalComponent,
-    ViewCallFormModalComponent
-  ],
-  imports: [
-    CommonModule,
-    FormsModule,
-    ReactiveFormsModule,
-    HomeRoutingModule,
-    NgxResgridLibModule,
-    NgbAlertModule,
-    Ng2SearchPipeModule,
-    NgbNavModule,
-    NgbDropdownModule,
-    NgbTooltipModule,
-    PerfectScrollbarModule,
-    LeafletModule,
-    UiModule,
-    StoreModule.forFeature('homeModule', reducer),
-    EffectsModule.forFeature([HomeEffects]),
-    GalleryModule,
-    NgbPaginationModule,
-    NgbTypeaheadModule
-  ],
-  providers: [],
-  entryComponents: [
-    SetUnitStatusModalComponent,
-    CloseCallModalComponent,
-    SelectTemplateModalComponent,
-    CallNotesModalComponent,
-    CallImagesModalComponent,
-    CallFilesModalComponent,
-    CallFormModalComponent,
-    SetPersonStatusModalComponent,
-    SetPersonStaffingModalComponent,
-    ViewCallFormModalComponent
-  ]
+    declarations: [
+        SetUnitStatusModalComponent,
+        CloseCallModalComponent,
+        SelectTemplateModalComponent,
+        CallNotesModalComponent,
+        CallImagesModalComponent,
+        CallFilesModalComponent,
+        CallFormModalComponent,
+        SetPersonStatusModalComponent,
+        SetPersonStaffingModalComponent,
+        ViewCallFormModalComponent
+    ],
+    imports: [
+        CommonModule,
+        FormsModule,
+        ReactiveFormsModule,
+        HomeRoutingModule,
+        NgxResgridLibModule,
+        NgbAlertModule,
+        Ng2SearchPipeModule,
+        NgbNavModule,
+        NgbDropdownModule,
+        NgbTooltipModule,
+        PerfectScrollbarModule,
+        LeafletModule,
+        UiModule,
+        StoreModule.forFeature('homeModule', reducer),
+        EffectsModule.forFeature([HomeEffects]),
+        GalleryModule,
+        NgbPaginationModule,
+        NgbTypeaheadModule
+    ],
+    providers: []
 })
 export class HomeModule { }

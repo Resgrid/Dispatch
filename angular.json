@@ -35,7 +35,9 @@
               "src/assets/scss/bootstrap.scss",
               "src/assets/scss/app.scss",
               "src/styles.scss",
-              "./node_modules/leaflet/dist/leaflet.css"
+              "./node_modules/leaflet/dist/leaflet.css",
+              "./node_modules/ngx-spinner/animations/ball-scale-multiple.css",
+              "./node_modules/ngx-spinner/animations/line-scale.css"
             ],
             "scripts": [
               "node_modules/jquery/dist/jquery.min.js",
@@ -147,7 +149,6 @@
       }
     }
   },
-  "defaultProject": "dispatch",
   "cli": {
     "analytics": "915204d4-f209-4eda-93c6-37a8757fd25c"
   }

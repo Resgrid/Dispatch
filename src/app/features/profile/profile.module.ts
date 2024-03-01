@@ -15,35 +15,28 @@ import { NgxResgridLibModule } from '@resgrid/ngx-resgridlib';
 import { ProfileRoutingModule } from './profile-routing.module';
 
 @NgModule({
-  declarations: [
-    
-  ],
-  imports: [
-    CommonModule,
-    FormsModule,
-    ReactiveFormsModule,
-    ProfileRoutingModule,
-    NgbAlertModule,
-    NgxResgridLibModule,
-    Ng2SearchPipeModule,
-    NgbNavModule,
-    NgbDropdownModule,
-    NgbTooltipModule,
-    PerfectScrollbarModule,
-    LeafletModule,
-    UiModule,
-    StoreModule.forFeature('profileModule', reducer),
-    EffectsModule.forFeature([ProfileEffects]),
-    GalleryModule,
-    NgbPaginationModule,
-    NgbTypeaheadModule
-  ],
-  providers: [],
-  exports: [
-    
-  ],
-  entryComponents: [
-
-  ]
+    declarations: [],
+    imports: [
+        CommonModule,
+        FormsModule,
+        ReactiveFormsModule,
+        ProfileRoutingModule,
+        NgbAlertModule,
+        NgxResgridLibModule,
+        Ng2SearchPipeModule,
+        NgbNavModule,
+        NgbDropdownModule,
+        NgbTooltipModule,
+        PerfectScrollbarModule,
+        LeafletModule,
+        UiModule,
+        StoreModule.forFeature('profileModule', reducer),
+        EffectsModule.forFeature([ProfileEffects]),
+        GalleryModule,
+        NgbPaginationModule,
+        NgbTypeaheadModule
+    ],
+    providers: [],
+    exports: []
 })
 export class ProfileModule { }
