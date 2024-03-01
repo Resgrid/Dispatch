@@ -55,10 +55,10 @@ export class HomeEffects {
             payload: data,
           })),
           // If request fails, dispatch failed action
-          catchError(() => of({ type: homeAction.HomeActionTypes.LOADING_FAIL }))
-        )
-      )
-    )
+          catchError(() => of({ type: homeAction.HomeActionTypes.LOADING_FAIL })),
+        ),
+      ),
+    ),
   );
 
   loadingSuccess$ = createEffect(() =>
@@ -66,8 +66,8 @@ export class HomeEffects {
       ofType<homeAction.LoadingSuccess>(homeAction.HomeActionTypes.LOADING_SUCCESS),
       map((data) => ({
         type: homeAction.HomeActionTypes.LOADING_MAP,
-      }))
-    )
+      })),
+    ),
   );
 
   loadingFail$ = createEffect(
@@ -79,11 +79,11 @@ export class HomeEffects {
           this.alertProvider.showErrorAlert(
             "Unable to load data",
             "",
-            "There was an issue trying to fetch the dashboard data, please try again."
+            "There was an issue trying to fetch the dashboard data, please try again.",
           );
-        })
+        }),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   showSetUnitStatusModal$ = createEffect(() =>
@@ -94,19 +94,19 @@ export class HomeEffects {
           map((data) => ({
             type: homeAction.HomeActionTypes.OPEN_SETUNITSTATUSMODAL,
             payload: data.Data,
-          }))
-        )
-      )
-    )
+          })),
+        ),
+      ),
+    ),
   );
 
   openSetUnitStatusModal$ = createEffect(
     () =>
       this.actions$.pipe(
         ofType<homeAction.OpenSetUnitStateModal>(homeAction.HomeActionTypes.OPEN_SETUNITSTATUSMODAL),
-        exhaustMap((data) => this.runModal(SetUnitStatusModalComponent, "md"))
+        exhaustMap((data) => this.runModal(SetUnitStatusModalComponent, "md")),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   saveUnitState$ = createEffect(() =>
@@ -140,10 +140,10 @@ export class HomeEffects {
               this.closeModal();
             }),
             // If request fails, dispatch failed action
-            catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_UNITSTATE_FAIL }))
-          )
-      )
-    )
+            catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_UNITSTATE_FAIL })),
+          ),
+      ),
+    ),
   );
 
   saveUnitStateFail$ = createEffect(
@@ -153,9 +153,9 @@ export class HomeEffects {
         tap(async (action) => {
           this.closeModal();
           this.alertProvider.showErrorAlert("Unit Status Error", "", "There was an issue trying to set the unit status, please try again.");
-        })
+        }),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   saveUnitStateSuccess$ = createEffect(() =>
@@ -172,10 +172,10 @@ export class HomeEffects {
             this.alertProvider.showAutoCloseSuccessAlert("Unit State has been saved.");
           }),
           // If request fails, dispatch failed action
-          catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_UNITSTATE_FAIL }))
-        )
-      )
-    )
+          catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_UNITSTATE_FAIL })),
+        ),
+      ),
+    ),
   );
 
   getLastestUnitStates$ = createEffect(() =>
@@ -189,10 +189,10 @@ export class HomeEffects {
             payload: data.Data,
           })),
           // If request fails, dispatch failed action
-          catchError(() => of({ type: homeAction.HomeActionTypes.GENERAL_FAILURE }))
-        )
-      )
-    )
+          catchError(() => of({ type: homeAction.HomeActionTypes.GENERAL_FAILURE })),
+        ),
+      ),
+    ),
   );
 
   saveCloseCall$ = createEffect(() =>
@@ -208,19 +208,19 @@ export class HomeEffects {
             type: homeAction.HomeActionTypes.SAVE_CLOSECALL_SUCCESS,
           })),
           // If request fails, dispatch failed action
-          catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_CLOSECALL_FAIL }))
-        )
-      )
-    )
+          catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_CLOSECALL_FAIL })),
+        ),
+      ),
+    ),
   );
 
   openCloseCallModal$ = createEffect(
     () =>
       this.actions$.pipe(
         ofType<homeAction.ShowCloseCallModal>(homeAction.HomeActionTypes.SHOW_CLOSECALLMODAL),
-        exhaustMap((data) => this.runModal(CloseCallModalComponent, "md"))
+        exhaustMap((data) => this.runModal(CloseCallModalComponent, "md")),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   saveCloseCallFail$ = createEffect(
@@ -230,9 +230,9 @@ export class HomeEffects {
         tap(async (action) => {
           this.closeModal();
           this.alertProvider.showErrorAlert("Close Call Error", "", "There was an issue trying to close the call, please try again.");
-        })
+        }),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   saveCloseCallSuccess$ = createEffect(() =>
@@ -249,10 +249,10 @@ export class HomeEffects {
             this.alertProvider.showAutoCloseSuccessAlert("Call has been closed.");
           }),
           // If request fails, dispatch failed action
-          catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_CLOSECALL_FAIL }))
-        )
-      )
-    )
+          catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_CLOSECALL_FAIL })),
+        ),
+      ),
+    ),
   );
 
   loadingMap$ = createEffect(() =>
@@ -266,10 +266,10 @@ export class HomeEffects {
             payload: data.Data,
           })),
           // If request fails, dispatch failed action
-          catchError(() => of({ type: homeAction.HomeActionTypes.LOADING_MAP_FAIL }))
-        )
-      )
-    )
+          catchError(() => of({ type: homeAction.HomeActionTypes.LOADING_MAP_FAIL })),
+        ),
+      ),
+    ),
   );
 
   loadingMapSuccess$ = createEffect(
@@ -278,9 +278,9 @@ export class HomeEffects {
         ofType<homeAction.LoadingMapSuccess>(homeAction.HomeActionTypes.LOADING_MAP_SUCCESS),
         tap((action) => {
           this.loadingProvider.hide();
-        })
+        }),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   loadingMapFail$ = createEffect(
@@ -292,11 +292,11 @@ export class HomeEffects {
           this.alertProvider.showErrorAlert(
             "Unable to load map data",
             "",
-            "There was an issue trying to fetch the map data, please try again."
+            "There was an issue trying to fetch the map data, please try again.",
           );
-        })
+        }),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   showSelectCallTemplateModal$ = createEffect(() =>
@@ -307,19 +307,19 @@ export class HomeEffects {
           map((data) => ({
             type: homeAction.HomeActionTypes.OPEN_SELECTCALLTEMPLATEMODAL,
             payload: data.Data,
-          }))
-        )
-      )
-    )
+          })),
+        ),
+      ),
+    ),
   );
 
   openSelectCallTemplateModal$ = createEffect(
     () =>
       this.actions$.pipe(
         ofType<homeAction.OpenSelectCallTemplateModal>(homeAction.HomeActionTypes.OPEN_SELECTCALLTEMPLATEMODAL),
-        exhaustMap((data) => this.runModal(SelectTemplateModalComponent, "md"))
+        exhaustMap((data) => this.runModal(SelectTemplateModalComponent, "md")),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   applyCallTemplateModal$ = createEffect(
@@ -328,9 +328,9 @@ export class HomeEffects {
         ofType<homeAction.ApplyCallTemplate>(homeAction.HomeActionTypes.UPDATE_APPLYCALLTEMPLATE),
         tap(async (action) => {
           this.closeModal();
-        })
+        }),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   getCoordinatesForAddress$ = createEffect(() =>
@@ -348,11 +348,11 @@ export class HomeEffects {
           catchError(() =>
             of({
               type: homeAction.HomeActionTypes.GET_COORDINATESFORADDRESS_FAIL,
-            })
-          )
-        )
-      )
-    )
+            }),
+          ),
+        ),
+      ),
+    ),
   );
 
   getAddressForCoordinates$ = createEffect(() =>
@@ -370,11 +370,11 @@ export class HomeEffects {
           catchError(() =>
             of({
               type: homeAction.HomeActionTypes.GET_ADDRESSFORCOORDINATES_FAIL,
-            })
-          )
-        )
-      )
-    )
+            }),
+          ),
+        ),
+      ),
+    ),
   );
 
   saveCall$ = createEffect(() =>
@@ -399,7 +399,7 @@ export class HomeEffects {
             action.call.Longitude,
             action.call.DispatchList,
             action.call.DispatchOn,
-            action.call.FormData
+            action.call.FormData,
           )
           .pipe(
             // If successful, dispatch success action with result
@@ -407,10 +407,10 @@ export class HomeEffects {
               type: homeAction.HomeActionTypes.SAVE_CALL_SUCCESS,
             })),
             // If request fails, dispatch failed action
-            catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_CALL_FAIL }))
-          )
-      )
-    )
+            catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_CALL_FAIL })),
+          ),
+      ),
+    ),
   );
 
   saveCallFail$ = createEffect(
@@ -420,9 +420,9 @@ export class HomeEffects {
         tap(async (action) => {
           this.closeModal();
           this.alertProvider.showErrorAlert("Call Save Error", "", "There was an issue trying to save the call, please try again.");
-        })
+        }),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   saveCallSuccess$ = createEffect(() =>
@@ -439,10 +439,10 @@ export class HomeEffects {
             this.alertProvider.showAutoCloseSuccessAlert("Call has been saved and dispatched.");
           }),
           // If request fails, dispatch failed action
-          catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_CALL_FAIL }))
-        )
-      )
-    )
+          catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_CALL_FAIL })),
+        ),
+      ),
+    ),
   );
 
   getLatestPersonnelData$ = createEffect(() =>
@@ -456,10 +456,10 @@ export class HomeEffects {
             payload: data.Data,
           })),
           // If request fails, dispatch failed action
-          catchError(() => of({ type: homeAction.HomeActionTypes.GENERAL_FAILURE }))
-        )
-      )
-    )
+          catchError(() => of({ type: homeAction.HomeActionTypes.GENERAL_FAILURE })),
+        ),
+      ),
+    ),
   );
 
   getLatestCalls$ = createEffect(() =>
@@ -473,10 +473,10 @@ export class HomeEffects {
             payload: data.Data,
           })),
           // If request fails, dispatch failed action
-          catchError(() => of({ type: homeAction.HomeActionTypes.GENERAL_FAILURE }))
-        )
-      )
-    )
+          catchError(() => of({ type: homeAction.HomeActionTypes.GENERAL_FAILURE })),
+        ),
+      ),
+    ),
   );
 
   showCallNotesModal$ = createEffect(() =>
@@ -487,19 +487,19 @@ export class HomeEffects {
           map((data) => ({
             type: homeAction.HomeActionTypes.OPEN_CALLNOTESMODAL,
             payload: data.Data,
-          }))
-        )
-      )
-    )
+          })),
+        ),
+      ),
+    ),
   );
 
   openCallNotesModal$ = createEffect(
     () =>
       this.actions$.pipe(
         ofType<homeAction.OpenCallNotesModal>(homeAction.HomeActionTypes.OPEN_CALLNOTESMODAL),
-        exhaustMap((data) => this.runModal(CallNotesModalComponent, "lg"))
+        exhaustMap((data) => this.runModal(CallNotesModalComponent, "lg")),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   saveCallNote$ = createEffect(() =>
@@ -515,10 +515,10 @@ export class HomeEffects {
             this.closeModal();
           }),
           // If request fails, dispatch failed action
-          catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_CALLNOTE_FAIL }))
-        )
-      )
-    )
+          catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_CALLNOTE_FAIL })),
+        ),
+      ),
+    ),
   );
 
   showCallImagesModal$ = createEffect(() =>
@@ -529,19 +529,19 @@ export class HomeEffects {
           map((data) => ({
             type: homeAction.HomeActionTypes.OPEN_CALLIMAGESMODAL,
             payload: data.Data,
-          }))
-        )
-      )
-    )
+          })),
+        ),
+      ),
+    ),
   );
 
   openCallImagesModal$ = createEffect(
     () =>
       this.actions$.pipe(
         ofType<homeAction.OpenCallImagesModal>(homeAction.HomeActionTypes.OPEN_CALLIMAGESMODAL),
-        exhaustMap((data) => this.runModal(CallImagesModalComponent, "xl"))
+        exhaustMap((data) => this.runModal(CallImagesModalComponent, "xl")),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   uploadCallImage$ = createEffect(() =>
@@ -557,10 +557,10 @@ export class HomeEffects {
             this.closeModal();
           }),
           // If request fails, dispatch failed action
-          catchError(() => of({ type: homeAction.HomeActionTypes.UPLOAD_CALLIMAGE_FAIL }))
-        )
-      )
-    )
+          catchError(() => of({ type: homeAction.HomeActionTypes.UPLOAD_CALLIMAGE_FAIL })),
+        ),
+      ),
+    ),
   );
 
   showCallFilesModal$ = createEffect(() =>
@@ -571,19 +571,19 @@ export class HomeEffects {
           map((data) => ({
             type: homeAction.HomeActionTypes.OPEN_CALLFILESMODAL,
             payload: data.Data,
-          }))
-        )
-      )
-    )
+          })),
+        ),
+      ),
+    ),
   );
 
   openCallFilesModal$ = createEffect(
     () =>
       this.actions$.pipe(
         ofType<homeAction.OpenCallFilesModal>(homeAction.HomeActionTypes.OPEN_CALLFILESMODAL),
-        exhaustMap((data) => this.runModal(CallFilesModalComponent, "lg"))
+        exhaustMap((data) => this.runModal(CallFilesModalComponent, "lg")),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   uploadCallFile$ = createEffect(() =>
@@ -599,10 +599,10 @@ export class HomeEffects {
             this.closeModal();
           }),
           // If request fails, dispatch failed action
-          catchError(() => of({ type: homeAction.HomeActionTypes.UPLOAD_CALLFILE_FAIL }))
-        )
-      )
-    )
+          catchError(() => of({ type: homeAction.HomeActionTypes.UPLOAD_CALLFILE_FAIL })),
+        ),
+      ),
+    ),
   );
 
   getUpdatedPersonnelandUnitsDistancesToCall$ = createEffect(() =>
@@ -626,7 +626,7 @@ export class HomeEffects {
               const locationParts = person.Location.split(",");
               const distance = this.locationProvider.getDistanceBetweenTwoPoints(
                 action.callLocation,
-                new GpsLocation(Number(locationParts[0]), Number(locationParts[1]))
+                new GpsLocation(Number(locationParts[0]), Number(locationParts[1])),
               );
 
               if (distance && distance > 0) {
@@ -643,7 +643,7 @@ export class HomeEffects {
             if (unit.Latitude && unit.Longitude) {
               const distance = this.locationProvider.getDistanceBetweenTwoPoints(
                 action.callLocation,
-                new GpsLocation(Number(unit.Latitude), Number(unit.Longitude))
+                new GpsLocation(Number(unit.Latitude), Number(unit.Longitude)),
               );
 
               if (distance && distance > 0) {
@@ -661,35 +661,35 @@ export class HomeEffects {
           personnel: personnel,
           units: units,
         };
-      })
-    )
+      }),
+    ),
   );
 
   openCallFormModal$ = createEffect(
     () =>
       this.actions$.pipe(
         ofType<homeAction.OpenCallFormModal>(homeAction.HomeActionTypes.OPEN_CALLFORMMODAL),
-        exhaustMap((data) => this.runModal(CallFormModalComponent, "xl"))
+        exhaustMap((data) => this.runModal(CallFormModalComponent, "xl")),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   setCallFormData$ = createEffect(
     () =>
       this.actions$.pipe(
         ofType<homeAction.SetNewCallFormData>(homeAction.HomeActionTypes.SET_NEWCALLFORMDATA),
-        tap((data) => this.closeModal())
+        tap((data) => this.closeModal()),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   showSetPersonStatusModal$ = createEffect(
     () =>
       this.actions$.pipe(
         ofType<homeAction.OpenSetPersonStatusModal>(homeAction.HomeActionTypes.OPEN_SETPERSONSTATUSMODAL),
-        exhaustMap((data) => this.runModal(SetPersonStatusModalComponent, "md"))
+        exhaustMap((data) => this.runModal(SetPersonStatusModalComponent, "md")),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   savePersonnelStatus$ = createEffect(() =>
@@ -722,10 +722,10 @@ export class HomeEffects {
               this.closeModal();
             }),
             // If request fails, dispatch failed action
-            catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_PERSONSTATUSES_FAIL }))
-          )
-      )
-    )
+            catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_PERSONSTATUSES_FAIL })),
+          ),
+      ),
+    ),
   );
 
   savePersonnelStatusFail$ = createEffect(
@@ -737,11 +737,11 @@ export class HomeEffects {
           this.alertProvider.showErrorAlert(
             "Personnel Status Error",
             "",
-            "There was an issue trying to set the personnel statuses, please try again."
+            "There was an issue trying to set the personnel statuses, please try again.",
           );
-        })
+        }),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   savePersonnelStatusSuccess$ = createEffect(() =>
@@ -758,19 +758,19 @@ export class HomeEffects {
             this.alertProvider.showAutoCloseSuccessAlert("Personnel Status have been updated.");
           }),
           // If request fails, dispatch failed action
-          catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_PERSONSTATUSES_FAIL }))
-        )
-      )
-    )
+          catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_PERSONSTATUSES_FAIL })),
+        ),
+      ),
+    ),
   );
 
   showSetPersonStaffingModal$ = createEffect(
     () =>
       this.actions$.pipe(
         ofType<homeAction.OpenSetPersonStaffingModal>(homeAction.HomeActionTypes.OPEN_SETPERSONSTAFFINGMODAL),
-        exhaustMap((data) => this.runModal(SetPersonStaffingModalComponent, "md"))
+        exhaustMap((data) => this.runModal(SetPersonStaffingModalComponent, "md")),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   savePersonnelStaffing$ = createEffect(() =>
@@ -795,10 +795,10 @@ export class HomeEffects {
               this.closeModal();
             }),
             // If request fails, dispatch failed action
-            catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_PERSONSTAFFING_FAIL }))
-          )
-      )
-    )
+            catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_PERSONSTAFFING_FAIL })),
+          ),
+      ),
+    ),
   );
 
   savePersonnelStaffingSuccess$ = createEffect(() =>
@@ -815,10 +815,10 @@ export class HomeEffects {
             this.alertProvider.showAutoCloseSuccessAlert("Personnel Staffings have been updated.");
           }),
           // If request fails, dispatch failed action
-          catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_PERSONSTAFFING_FAIL }))
-        )
-      )
-    )
+          catchError(() => of({ type: homeAction.HomeActionTypes.SAVE_PERSONSTAFFING_FAIL })),
+        ),
+      ),
+    ),
   );
 
   showViewCallFormModal$ = createEffect(() =>
@@ -829,10 +829,10 @@ export class HomeEffects {
           map((data) => ({
             type: homeAction.HomeActionTypes.OPEN_VIEW_CALL_FORM,
             payload: data.Data,
-          }))
-        )
-      )
-    )
+          })),
+        ),
+      ),
+    ),
   );
 
   openViewCallFormModal$ = createEffect(() =>
@@ -841,8 +841,8 @@ export class HomeEffects {
       exhaustMap((data) => this.runModal(ViewCallFormModalComponent, "md")),
       map((data) => ({
         type: homeAction.HomeActionTypes.DONE,
-      }))
-    )
+      })),
+    ),
   );
 
   saveCallFormInvalid$ = createEffect(
@@ -850,18 +850,18 @@ export class HomeEffects {
       this.actions$.pipe(
         ofType(homeAction.HomeActionTypes.SAVE_CALL_FORM_INVALID),
         switchMap((action) => this.loadingProvider.hide()),
-        tap((action) => this.alertProvider.showErrorAlert("Missing Fields", "", "There are fields missing to submit this call."))
+        tap((action) => this.alertProvider.showErrorAlert("Missing Fields", "", "There are fields missing to submit this call.")),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   done$ = createEffect(
     () =>
       this.actions$.pipe(
         ofType(homeAction.HomeActionTypes.DONE),
-        tap((action) => {})
+        tap((action) => {}),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   constructor(
@@ -882,7 +882,7 @@ export class HomeEffects {
     private loadingProvider: LoadingProvider,
     private personnelStatusesProvider: PersonnelStatusesService,
     private personnelStaffingProvider: PersonnelStaffingService,
-    private geocodingProvider: GeocodingProvider
+    private geocodingProvider: GeocodingProvider,
   ) {}
 
   runModal = (component, size) => {

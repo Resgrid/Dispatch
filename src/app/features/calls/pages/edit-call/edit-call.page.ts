@@ -1,35 +1,19 @@
-import {
-  AfterViewInit,
-  ChangeDetectorRef,
-  Component,
-  OnInit,
-  QueryList,
-  ViewChild,
-  ViewChildren,
-} from "@angular/core";
+import { AfterViewInit, ChangeDetectorRef, Component, OnInit, QueryList, ViewChild, ViewChildren } from "@angular/core";
 import { Store } from "@ngrx/store";
 import * as _ from "lodash";
 import { CallsState } from "../../store/calls.store";
 import * as CallsActions from "../../actions/calls.actions";
-import {
-  CallsSortableDirective,
-  SortEvent,
-} from "../../directives/calls-sortable.directive";
+import { CallsSortableDirective, SortEvent } from "../../directives/calls-sortable.directive";
 import { UtilsProvider } from "src/app/providers/utils";
 import { ActivatedRoute, Router } from "@angular/router";
 import { UntypedFormBuilder, UntypedFormGroup, Validators } from "@angular/forms";
 import { Observable } from "rxjs";
 import { HomeState } from "src/app/features/home/store/home.store";
-import {
-  selectCallsState,
-  selectEditCallData,
-  selectEditCallState,
-  selectHomeState,
-} from "src/app/store";
+import { selectCallsState, selectEditCallData, selectEditCallState, selectHomeState } from "src/app/store";
 import * as L from "leaflet";
 import { environment } from "../../../../../environments/environment";
 import { take } from "rxjs/operators";
-import { CallResult, CallResultData, GetMapDataAndMarkersResult, GpsLocation, MapDataAndMarkersData } from '@resgrid/ngx-resgridlib';
+import { CallResult, CallResultData, GetMapDataAndMarkersResult, GpsLocation, MapDataAndMarkersData } from "@resgrid/ngx-resgridlib";
 import { Call } from "src/app/core/models/call";
 
 @Component({
@@ -68,7 +52,7 @@ export class EditCallPage implements AfterViewInit {
     public utilsProvider: UtilsProvider,
     private activatedroute: ActivatedRoute,
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
   ) {
     this.callsState$ = this.store.select(selectCallsState);
     this.homeState$ = this.store.select(selectHomeState);
@@ -95,23 +79,18 @@ export class EditCallPage implements AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    this.breadCrumbItems = [
-      { label: "Resgrid Dispatch" },
-      { label: "Edit Call", active: true },
-    ];
+    this.breadCrumbItems = [{ label: "Resgrid Dispatch" }, { label: "Edit Call", active: true }];
 
     this.unitGroups = new Array<any>();
 
-    this.activatedRouteSub = this.activatedroute.paramMap.subscribe(
-      (params) => {
-        if (params) {
-          this.id = params.get("id");
-          this.source = parseInt(params.get("source"), 10);
+    this.activatedRouteSub = this.activatedroute.paramMap.subscribe((params) => {
+      if (params) {
+        this.id = params.get("id");
+        this.source = parseInt(params.get("source"), 10);
 
-          this.store.dispatch(new CallsActions.GetCallById(this.id));
-        }
+        this.store.dispatch(new CallsActions.GetCallById(this.id));
       }
-    );
+    });
 
     this.store.select(selectHomeState).subscribe((state) => {
       this.store.dispatch(
@@ -120,8 +99,8 @@ export class EditCallPage implements AfterViewInit {
           state.rolesForGrid,
           state.groupsForGrid,
           state.personnelForGrid,
-          state.mapData
-        )
+          state.mapData,
+        ),
       );
 
       if (state.unitStatuses) {
@@ -144,9 +123,7 @@ export class EditCallPage implements AfterViewInit {
 
         if (!this.unitGroups || this.unitGroups.length == 0) {
           this.unitGroups.push("No Group");
-          const groups = _.uniqBy(state.unitStatuses, "GroupName").map(
-            (item) => item.GroupName
-          );
+          const groups = _.uniqBy(state.unitStatuses, "GroupName").map((item) => item.GroupName);
 
           groups.forEach((group) => {
             if (group && group.length > 0) {
@@ -226,7 +203,11 @@ export class EditCallPage implements AfterViewInit {
           this.setupNewCallMap(parseInt(editCallData.Latitude), parseInt(editCallData.Longitude), 13);
           this.addPinToMap(editCallData.Latitude, editCallData.Longitude);
         } else {
-          this.setupNewCallMap(parseInt(callsState.mapData.CenterLat), parseInt(callsState.mapData.CenterLon), parseInt(callsState.mapData.ZoomLevel));
+          this.setupNewCallMap(
+            parseInt(callsState.mapData.CenterLat),
+            parseInt(callsState.mapData.CenterLon),
+            parseInt(callsState.mapData.ZoomLevel),
+          );
         }
 
         this.cdr.detectChanges();
@@ -238,36 +219,28 @@ export class EditCallPage implements AfterViewInit {
     var id = event.target.name;
     var checked = event.target.checked;
 
-    this.store.dispatch(
-      new CallsActions.UpdateSelectedDispatchPerson(id, checked)
-    );
+    this.store.dispatch(new CallsActions.UpdateSelectedDispatchPerson(id, checked));
   }
 
   public changeCheckedGroupDispatch(event) {
     var id = event.target.name;
     var checked = event.target.checked;
 
-    this.store.dispatch(
-      new CallsActions.UpdateSelectedDispatchGroup(id, checked)
-    );
+    this.store.dispatch(new CallsActions.UpdateSelectedDispatchGroup(id, checked));
   }
 
   public changeCheckedRoleDispatch(event) {
     var id = event.target.name;
     var checked = event.target.checked;
 
-    this.store.dispatch(
-      new CallsActions.UpdateSelectedDispatchRole(id, checked)
-    );
+    this.store.dispatch(new CallsActions.UpdateSelectedDispatchRole(id, checked));
   }
 
   public changeCheckedUnitDispatch(event) {
     var id = event.target.name;
     var checked = event.target.checked;
 
-    this.store.dispatch(
-      new CallsActions.UpdateSelectedDispatchRoleUnit(id, checked)
-    );
+    this.store.dispatch(new CallsActions.UpdateSelectedDispatchRoleUnit(id, checked));
     event.stopPropagation();
   }
 
@@ -297,7 +270,7 @@ export class EditCallPage implements AfterViewInit {
     if (call["latitude"]) {
       let latitude = call["latitude"].value;
 
-      if (latitude && latitude !== 'null') {
+      if (latitude && latitude !== "null") {
         editCall.Latitude = call["latitude"].value;
       }
     }
@@ -305,7 +278,7 @@ export class EditCallPage implements AfterViewInit {
     if (call["longitude"]) {
       let longitude = call["longitude"].value;
 
-      if (longitude && longitude !== 'null') {
+      if (longitude && longitude !== "null") {
         editCall.Longitude = call["longitude"].value;
       }
     }
@@ -319,69 +292,64 @@ export class EditCallPage implements AfterViewInit {
       editCall.DispatchOn = call["dispatchOn"].value;
     }
 
-    this.store.select(selectCallsState).pipe(take(1)).subscribe((state) => {
-      if (state.callToEdit) {
-        editCall.Id = state.callToEdit.CallId;
-      }
+    this.store
+      .select(selectCallsState)
+      .pipe(take(1))
+      .subscribe((state) => {
+        if (state.callToEdit) {
+          editCall.Id = state.callToEdit.CallId;
+        }
 
-      if (state && state.personnelForGrid) {
-        state.personnelForGrid.forEach((person) => {
-          if (person && person.Selected) {
-            if (editCall.DispatchList.length > 0) {
-              editCall.DispatchList = editCall.DispatchList.concat(
-                `|P:${person.UserId}`
-              );
-            } else {
-              editCall.DispatchList = `P:${person.UserId}`;
+        if (state && state.personnelForGrid) {
+          state.personnelForGrid.forEach((person) => {
+            if (person && person.Selected) {
+              if (editCall.DispatchList.length > 0) {
+                editCall.DispatchList = editCall.DispatchList.concat(`|P:${person.UserId}`);
+              } else {
+                editCall.DispatchList = `P:${person.UserId}`;
+              }
             }
-          }
-        });
-      }
+          });
+        }
 
-      if (state && state.groupsForGrid) {
-        state.groupsForGrid.forEach((group) => {
-          if (group && group.Selected) {
-            if (editCall.DispatchList.length > 0) {
-              editCall.DispatchList = editCall.DispatchList.concat(
-                `|G:${group.GroupId}`
-              );
-            } else {
-              editCall.DispatchList = `G:${group.GroupId}`;
+        if (state && state.groupsForGrid) {
+          state.groupsForGrid.forEach((group) => {
+            if (group && group.Selected) {
+              if (editCall.DispatchList.length > 0) {
+                editCall.DispatchList = editCall.DispatchList.concat(`|G:${group.GroupId}`);
+              } else {
+                editCall.DispatchList = `G:${group.GroupId}`;
+              }
             }
-          }
-        });
-      }
+          });
+        }
 
-      if (state && state.rolesForGrid) {
-        state.rolesForGrid.forEach((role) => {
-          if (role && role.Selected) {
-            if (editCall.DispatchList.length > 0) {
-              editCall.DispatchList = editCall.DispatchList.concat(
-                `|R:${role.RoleId}`
-              );
-            } else {
-              editCall.DispatchList = `R:${role.RoleId}`;
+        if (state && state.rolesForGrid) {
+          state.rolesForGrid.forEach((role) => {
+            if (role && role.Selected) {
+              if (editCall.DispatchList.length > 0) {
+                editCall.DispatchList = editCall.DispatchList.concat(`|R:${role.RoleId}`);
+              } else {
+                editCall.DispatchList = `R:${role.RoleId}`;
+              }
             }
-          }
-        });
-      }
+          });
+        }
 
-      if (state && state.unitStatuses) {
-        state.unitStatuses.forEach((unit) => {
-          if (unit && unit.Selected) {
-            if (editCall.DispatchList.length > 0) {
-              editCall.DispatchList = editCall.DispatchList.concat(
-                `|U:${unit.UnitId}`
-              );
-            } else {
-              editCall.DispatchList = `U:${unit.UnitId}`;
+        if (state && state.unitStatuses) {
+          state.unitStatuses.forEach((unit) => {
+            if (unit && unit.Selected) {
+              if (editCall.DispatchList.length > 0) {
+                editCall.DispatchList = editCall.DispatchList.concat(`|U:${unit.UnitId}`);
+              } else {
+                editCall.DispatchList = `U:${unit.UnitId}`;
+              }
             }
-          }
-        });
-      }
+          });
+        }
 
-      this.store.dispatch(new CallsActions.UpdateCall(editCall, this.source));
-    });
+        this.store.dispatch(new CallsActions.UpdateCall(editCall, this.source));
+      });
   }
 
   public getCoordinatesForAddress() {}
@@ -395,14 +363,10 @@ export class EditCallPage implements AfterViewInit {
         scrollWheelZoom: false,
       });
 
-      L.tileLayer(
-        "https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=" +
-          environment.osmMapKey,
-        {
-          attribution:
-            '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>',
-        }
-      ).addTo(this.newCallMap);
+      L.tileLayer("https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=" + environment.osmMapKey, {
+        attribution:
+          '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>',
+      }).addTo(this.newCallMap);
 
       this.newCallMap.scrollWheelZoom.disable();
       this.newCallMap.setView([latitude, longitude], zoom);
@@ -423,9 +387,7 @@ export class EditCallPage implements AfterViewInit {
       this.newCallMarker = null;
     }
     //console.log('You clicked the map at latitude: ' + lat + ' and longitude: ' + lng);
-    this.newCallMarker = new L.Marker([lat, lng], { draggable: true }).addTo(
-      this.newCallMap
-    );
+    this.newCallMarker = new L.Marker([lat, lng], { draggable: true }).addTo(this.newCallMap);
     const that = this;
     this.newCallMarker.on("dragend", function (event) {
       var marker = event.target;
@@ -439,9 +401,7 @@ export class EditCallPage implements AfterViewInit {
       this.form["longitude"].setValue(position.lng);
       this.form["longitude"].patchValue(position.lng);
 
-      this.updatePersonnelDistances(
-        new GpsLocation(position.lat, position.lng)
-      );
+      this.updatePersonnelDistances(new GpsLocation(position.lat, position.lng));
 
       //that.store.dispatch(
       //  new HomeActions.UpdateNewCallLocation(position.lat, position.lng)
@@ -474,11 +434,7 @@ export class EditCallPage implements AfterViewInit {
     this.store.select(selectHomeState).subscribe((state) => {
       if (state && state.personnelForGrid) {
         this.store.dispatch(
-          new CallsActions.GetUpdatedPersonnelandUnitsDistancesToCall(
-            location,
-            state.personnelForGrid,
-            state.unitStatuses
-          )
+          new CallsActions.GetUpdatedPersonnelandUnitsDistancesToCall(location, state.personnelForGrid, state.unitStatuses),
         );
       }
     });

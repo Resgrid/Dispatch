@@ -4,10 +4,7 @@ import { VoiceActionTypes, VoiceActionsUnion } from "../actions/voice.actions";
 import * as _ from "lodash";
 import { DepartmentVoiceChannelResultData } from "@resgrid/ngx-resgridlib";
 
-export function reducer(
-  state: VoiceState = initialState,
-  action: VoiceActionsUnion
-): VoiceState {
+export function reducer(state: VoiceState = initialState, action: VoiceActionsUnion): VoiceState {
   switch (action.type) {
     case VoiceActionTypes.GET_VOIPINFO_SUCCESS:
       let channels: DepartmentVoiceChannelResultData[] = new Array();

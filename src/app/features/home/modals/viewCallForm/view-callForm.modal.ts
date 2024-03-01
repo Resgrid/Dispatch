@@ -2,11 +2,7 @@ import { Component, Input, OnInit } from "@angular/core";
 import { NgbModal, NgbActiveModal } from "@ng-bootstrap/ng-bootstrap";
 import { Store } from "@ngrx/store";
 import { Observable, Subscription } from "rxjs";
-import {
-  selectAuthState,
-  selectHomeState,
-  selectIsSavingUnitState,
-} from "src/app/store";
+import { selectAuthState, selectHomeState, selectIsSavingUnitState } from "src/app/store";
 import { HomeState } from "../../store/home.store";
 import * as HomeActions from "../../actions/home.actions";
 import { take } from "rxjs/operators";
@@ -15,7 +11,7 @@ import * as _ from "lodash";
 import { UntypedFormBuilder, UntypedFormGroup, Validators } from "@angular/forms";
 import { environment } from "../../../../../environments/environment";
 import { AuthState } from "src/app/features/auth/store/auth.store";
-import { CallResultData, FormResult, FormResultData } from '@resgrid/ngx-resgridlib';
+import { CallResultData, FormResult, FormResultData } from "@resgrid/ngx-resgridlib";
 declare var $: any;
 
 @Component({
@@ -43,7 +39,7 @@ export class ViewCallFormModalComponent implements OnInit {
     private store: Store<HomeState>,
     private actions$: Actions,
     public formBuilder: UntypedFormBuilder,
-    private authStore: Store<AuthState>
+    private authStore: Store<AuthState>,
   ) {
     this.homeState$ = this.store.select(selectHomeState);
 
@@ -63,26 +59,25 @@ export class ViewCallFormModalComponent implements OnInit {
       .pipe(take(1))
       .subscribe((state) => {
         if (state && state.viewCallExtraData && state.viewCallExtraData.CallFormData) {
-          this.formRender = $(document.getElementById("fb-reader")).formRender({ dataType: 'json', formData: state.viewCallExtraData.CallFormData,
-          notify: {
-            error: function (message) {
-              
-            },
-            success: function (message) {
-              //$('input, textarea, select', '.rendered-form').attr('readonly', true).attr('disabled', true);
+          this.formRender = $(document.getElementById("fb-reader")).formRender({
+            dataType: "json",
+            formData: state.viewCallExtraData.CallFormData,
+            notify: {
+              error: function (message) {},
+              success: function (message) {
+                //$('input, textarea, select', '.rendered-form').attr('readonly', true).attr('disabled', true);
 
-              var container = document.querySelector('.rendered-form');
-              var inputs = container.querySelectorAll('input, textarea, select');
+                var container = document.querySelector(".rendered-form");
+                var inputs = container.querySelectorAll("input, textarea, select");
 
-              for (var i = 0; i < inputs.length; i++) {
-                let element = inputs[i] as HTMLInputElement;
-                element.disabled = true;
-              }
+                for (var i = 0; i < inputs.length; i++) {
+                  let element = inputs[i] as HTMLInputElement;
+                  element.disabled = true;
+                }
+              },
+              warning: function (message) {},
             },
-            warning: function (message) {
-              
-            }
-            } });
+          });
         }
       });
   }

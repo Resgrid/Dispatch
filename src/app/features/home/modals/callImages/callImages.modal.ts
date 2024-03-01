@@ -2,11 +2,7 @@ import { Component, Input, OnInit } from "@angular/core";
 import { NgbModal, NgbActiveModal } from "@ng-bootstrap/ng-bootstrap";
 import { Store } from "@ngrx/store";
 import { Observable, Subscription } from "rxjs";
-import {
-  selectAuthState,
-  selectHomeState,
-  selectIsSavingUnitState,
-} from "src/app/store";
+import { selectAuthState, selectHomeState, selectIsSavingUnitState } from "src/app/store";
 import { HomeState } from "../../store/home.store";
 import * as HomeActions from "../../actions/home.actions";
 import { finalize, take } from "rxjs/operators";
@@ -17,7 +13,7 @@ import { environment } from "../../../../../environments/environment";
 import { AuthState } from "src/app/features/auth/store/auth.store";
 import { Gallery, GalleryItem, GalleryRef, ImageItem } from "ng-gallery";
 import { encode } from "base64-arraybuffer";
-import { CallResultData } from '@resgrid/ngx-resgridlib';
+import { CallResultData } from "@resgrid/ngx-resgridlib";
 
 @Component({
   selector: "app-resgrid-modal-callImages",
@@ -43,7 +39,7 @@ export class CallImagesModalComponent implements OnInit {
     private actions$: Actions,
     public formBuilder: UntypedFormBuilder,
     private authStore: Store<AuthState>,
-    private gallery: Gallery
+    private gallery: Gallery,
   ) {
     this.images = [];
     this.homeState$ = this.store.select(selectHomeState);
@@ -89,14 +85,7 @@ export class CallImagesModalComponent implements OnInit {
       this.isSaving = true;
 
       this.getBase64EncodedFileData(file).subscribe((base64Encoded) => {
-        this.store.dispatch(
-          new HomeActions.UploadCallImage(
-            this.selectedCall.CallId,
-            this.auth.user.userId,
-            this.fileName,
-            base64Encoded
-          )
-        );
+        this.store.dispatch(new HomeActions.UploadCallImage(this.selectedCall.CallId, this.auth.user.userId, this.fileName, base64Encoded));
       });
     }
   }
@@ -123,12 +112,7 @@ export class CallImagesModalComponent implements OnInit {
   }
 
   public getAvatarUrl(userId) {
-    return (
-      environment.baseApiUrl +
-      environment.resgridApiUrl +
-      "/Avatars/Get?id=" +
-      userId
-    );
+    return environment.baseApiUrl + environment.resgridApiUrl + "/Avatars/Get?id=" + userId;
   }
 
   public dismiss() {

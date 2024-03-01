@@ -39,7 +39,7 @@ export function reducer(state: HomeState = initialState, action: HomeActionsUnio
         dispatchNote: action.payload.DispatchNote,
         callNoteTemplates: action.payload.CallNotes,
         config: action.payload.Config,
-				rights: action.payload.Rights,
+        rights: action.payload.Rights,
       };
 
     case HomeActionTypes.LOADING_FAIL:
