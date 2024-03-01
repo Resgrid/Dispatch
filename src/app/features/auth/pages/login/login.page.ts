@@ -5,7 +5,7 @@ import { selectAuthState, selectIsLoginState, selectLoginState } from "src/app/s
 import * as AuthActions from "../../actions/auth.actions";
 import { LoadingProvider } from "src/app/providers/loading";
 import { AuthState } from "../../store/auth.store";
-import { environment } from '../../../../../environments/environment';
+import { environment } from "../../../../../environments/environment";
 import { Observable } from "rxjs";
 
 @Component({
@@ -23,7 +23,7 @@ export class LoginPage implements OnInit {
 
   constructor(
     private fb: UntypedFormBuilder,
-    private store: Store<AuthState>
+    private store: Store<AuthState>,
   ) {
     this.authState$ = this.store.select(selectAuthState);
   }
@@ -35,8 +35,8 @@ export class LoginPage implements OnInit {
 
   ngOnInit() {
     this.version = environment.version;
-    document.body.removeAttribute('data-layout');
-    document.body.classList.add('auth-body-bg');
+    document.body.removeAttribute("data-layout");
+    document.body.classList.add("auth-body-bg");
 
     this.store.select(selectIsLoginState).subscribe((res) => {
       this.isLogging$ = res;

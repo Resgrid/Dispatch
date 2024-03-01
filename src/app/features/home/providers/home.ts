@@ -60,7 +60,7 @@ export class HomeProvider {
     private noteService: NotesService,
     private templateService: TemplatesService,
     private configService: ConfigService,
-    private securityProvider: SecurityService
+    private securityProvider: SecurityService,
   ) {
     //this.personnelStatusUpdated$ = this.events.subscribe(this.consts.SIGNALR_EVENTS.PERSONNEL_STATUS_UPDATED);
     //this.personnelStaffingUpdated$ = this.events.subscribe(this.consts.SIGNALR_EVENTS.PERSONNEL_STAFFING_UPDATED);
@@ -100,17 +100,11 @@ export class HomeProvider {
       dispatchNote: getDispatchNote,
       callNotes: getQuickNotes,
       config: getConfig,
-      currentUserRights: getCurrentUserRights
+      currentUserRights: getCurrentUserRights,
     }).pipe(
       map((results) => {
         let localCalls: CallLocalResult[] = new Array();
-        if (
-          results &&
-          results.calls &&
-          results.calls.Data &&
-          results.priorities &&
-          results.priorities.Data
-        ) {
+        if (results && results.calls && results.calls.Data && results.priorities && results.priorities.Data) {
           results.calls.Data.forEach((call) => {
             let localCall: CallLocalResult = call as CallLocalResult;
 
@@ -129,8 +123,7 @@ export class HomeProvider {
 
         let dispatchNote: NoteResultData = null;
 
-        if (results.dispatchNote && results.dispatchNote.Data)
-          dispatchNote = results.dispatchNote.Data;
+        if (results.dispatchNote && results.dispatchNote.Data) dispatchNote = results.dispatchNote.Data;
 
         return {
           UnitStatuses: results.units.Data,
@@ -148,7 +141,7 @@ export class HomeProvider {
           Config: results.config.Data,
           Rights: results.currentUserRights,
         };
-      })
+      }),
     );
   }
 
@@ -157,9 +150,7 @@ export class HomeProvider {
       .select(selectAuthState)
       .pipe(take(1))
       .subscribe((auth) => {
-        this.signalRProvider.connectionState$.subscribe(
-          (state: ConnectionState) => {}
-        );
+        this.signalRProvider.connectionState$.subscribe((state: ConnectionState) => {});
 
         this.signalRProvider.start(auth.user.departmentId);
         this.init();
@@ -167,29 +158,17 @@ export class HomeProvider {
   }
 
   public init() {
-    this.events.subscribe(
-      this.consts.SIGNALR_EVENTS.PERSONNEL_STATUS_UPDATED,
-      (data: any) => {
-        this.store.dispatch(new HomeActions.GetLatestPersonnelData());
-      }
-    );
-    this.events.subscribe(
-      this.consts.SIGNALR_EVENTS.PERSONNEL_STAFFING_UPDATED,
-      (data: any) => {
-        this.store.dispatch(new HomeActions.GetLatestPersonnelData());
-      }
-    );
-    this.events.subscribe(
-      this.consts.SIGNALR_EVENTS.UNIT_STATUS_UPDATED,
-      (data: any) => {
-        this.store.dispatch(new HomeActions.GetLatestUnitStates());
-      }
-    );
-    this.events.subscribe(
-      this.consts.SIGNALR_EVENTS.CALLS_UPDATED,
-      (data: any) => {
-        this.store.dispatch(new HomeActions.GetLatestCalls());
-      }
-    );
+    this.events.subscribe(this.consts.SIGNALR_EVENTS.PERSONNEL_STATUS_UPDATED, (data: any) => {
+      this.store.dispatch(new HomeActions.GetLatestPersonnelData());
+    });
+    this.events.subscribe(this.consts.SIGNALR_EVENTS.PERSONNEL_STAFFING_UPDATED, (data: any) => {
+      this.store.dispatch(new HomeActions.GetLatestPersonnelData());
+    });
+    this.events.subscribe(this.consts.SIGNALR_EVENTS.UNIT_STATUS_UPDATED, (data: any) => {
+      this.store.dispatch(new HomeActions.GetLatestUnitStates());
+    });
+    this.events.subscribe(this.consts.SIGNALR_EVENTS.CALLS_UPDATED, (data: any) => {
+      this.store.dispatch(new HomeActions.GetLatestCalls());
+    });
   }
 }

@@ -30,10 +30,10 @@ export class CallsEffects {
           })),
           tap((data) => {}),
           // If request fails, dispatch failed action
-          catchError(() => of({ type: callsAction.CallsActionTypes.GET_SCHEDULED_CALLS_FAIL }))
-        )
-      )
-    )
+          catchError(() => of({ type: callsAction.CallsActionTypes.GET_SCHEDULED_CALLS_FAIL })),
+        ),
+      ),
+    ),
   );
 
   getScheduledCallsFail$ = createEffect(
@@ -45,11 +45,11 @@ export class CallsEffects {
           this.alertProvider.showErrorAlert(
             "Get Scheduled Calls Error",
             "",
-            "There was an issue trying to get scheduled calls, please try again."
+            "There was an issue trying to get scheduled calls, please try again.",
           );
-        })
+        }),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   getScheduledCallsSuccess$ = createEffect(
@@ -58,9 +58,9 @@ export class CallsEffects {
         ofType<callsAction.GetScheduledCallsSuccess>(callsAction.CallsActionTypes.GET_SCHEDULED_CALLS_SUCCESS),
         tap((data) => {
           this.loadingProvider.hide();
-        })
+        }),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   getUpdatedPersonnelandUnitsDistancesToCall$ = createEffect(
@@ -85,7 +85,7 @@ export class CallsEffects {
                 const locationParts = person.Location.split(",");
                 const distance = this.locationProvider.getDistanceBetweenTwoPoints(
                   action.callLocation,
-                  new GpsLocation(Number(locationParts[0]), Number(locationParts[1]))
+                  new GpsLocation(Number(locationParts[0]), Number(locationParts[1])),
                 );
 
                 if (distance && distance > 0) {
@@ -102,7 +102,7 @@ export class CallsEffects {
               if (unit.Latitude && unit.Longitude) {
                 const distance = this.locationProvider.getDistanceBetweenTwoPoints(
                   action.callLocation,
-                  new GpsLocation(Number(unit.Latitude), Number(unit.Longitude))
+                  new GpsLocation(Number(unit.Latitude), Number(unit.Longitude)),
                 );
 
                 if (distance && distance > 0) {
@@ -120,9 +120,9 @@ export class CallsEffects {
             personnel: personnel,
             units: units,
           };
-        })
+        }),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   getCallById$ = createEffect(() =>
@@ -144,10 +144,10 @@ export class CallsEffects {
           })),
           tap((data) => {}),
           // If request fails, dispatch failed action
-          catchError(() => of({ type: callsAction.CallsActionTypes.GET_CALL_BYID_FAIL }))
-        )
-      )
-    )
+          catchError(() => of({ type: callsAction.CallsActionTypes.GET_CALL_BYID_FAIL })),
+        ),
+      ),
+    ),
   );
 
   getCallByIdFail$ = createEffect(
@@ -157,9 +157,9 @@ export class CallsEffects {
         tap(async (action) => {
           this.loadingProvider.hide();
           this.alertProvider.showErrorAlert("Get Call Error", "", "There was an issue trying to get this call, please try again.");
-        })
+        }),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   getCallByIdSuccess$ = createEffect(
@@ -168,9 +168,9 @@ export class CallsEffects {
         ofType<callsAction.GetCallByIdSuccess>(callsAction.CallsActionTypes.GET_CALL_BYID_SUCCESS),
         tap((data) => {
           this.loadingProvider.hide();
-        })
+        }),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   updateCall$ = createEffect(() =>
@@ -197,7 +197,7 @@ export class CallsEffects {
             action.call.DispatchList,
             action.call.DispatchOn,
             action.call.FormData,
-            action.call.Redispatch
+            action.call.Redispatch,
           )
           .pipe(
             // If successful, dispatch success action with result
@@ -205,10 +205,10 @@ export class CallsEffects {
               type: callsAction.CallsActionTypes.UPDATE_CALL_SUCCESS,
             })),
             // If request fails, dispatch failed action
-            catchError(() => of({ type: callsAction.CallsActionTypes.UPDATE_CALL_FAIL }))
-          )
-      )
-    )
+            catchError(() => of({ type: callsAction.CallsActionTypes.UPDATE_CALL_FAIL })),
+          ),
+      ),
+    ),
   );
 
   saveCallFail$ = createEffect(
@@ -218,9 +218,9 @@ export class CallsEffects {
         tap(async (action) => {
           this.closeModal();
           this.alertProvider.showErrorAlert("Update Save Error", "", "There was an issue trying to save the call, please try again.");
-        })
+        }),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   saveCallSuccess$ = createEffect(
@@ -231,37 +231,37 @@ export class CallsEffects {
           this.loadingProvider.hide();
           this.router.navigate(["/home"]);
           this.alertProvider.showAutoCloseSuccessAlert("Call has been updated.");
-        })
+        }),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   showUpdateCallDispatchTimeModal$ = createEffect(
     () =>
       this.actions$.pipe(
         ofType<callsAction.ShowUpdateCallDispatchTimeModal>(callsAction.CallsActionTypes.SHOW_CALLDISPATCHTIMEMODAL),
-        exhaustMap((data) => this.runModal(UpdateDispatchTimeModalComponent, "md"))
+        exhaustMap((data) => this.runModal(UpdateDispatchTimeModalComponent, "md")),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   updateCallDispatchTime$ = createEffect(() =>
     this.actions$.pipe(
       ofType<callsAction.UpdateCallDispatchTime>(callsAction.CallsActionTypes.UPDATE_CALL_DISPATCHTIME),
-    mergeMap((action) =>
-      this.callsProvider.updateCallDisptachTime(action.callId, action.date).pipe(
-        // If successful, dispatch success action with result
-        map((data) => ({
-          type: callsAction.CallsActionTypes.UPDATE_CALL_DISPATCHTIME_SUCCESS,
-        })),
-        tap((data) => {
-          this.closeModal();
-        }),
-        // If request fails, dispatch failed action
-        catchError(() => of({ type: callsAction.CallsActionTypes.UPDATE_CALL_DISPATCHTIME_FAIL }))
-      )
-    )
-    )
+      mergeMap((action) =>
+        this.callsProvider.updateCallDisptachTime(action.callId, action.date).pipe(
+          // If successful, dispatch success action with result
+          map((data) => ({
+            type: callsAction.CallsActionTypes.UPDATE_CALL_DISPATCHTIME_SUCCESS,
+          })),
+          tap((data) => {
+            this.closeModal();
+          }),
+          // If request fails, dispatch failed action
+          catchError(() => of({ type: callsAction.CallsActionTypes.UPDATE_CALL_DISPATCHTIME_FAIL })),
+        ),
+      ),
+    ),
   );
 
   updateCallDispatchTimeFail$ = createEffect(
@@ -271,20 +271,20 @@ export class CallsEffects {
         tap(async (action) => {
           this.closeModal();
           this.alertProvider.showErrorAlert("Update Save Error", "", "There was an issue trying to save the call, please try again.");
-        })
+        }),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   updateCallDispatchTimeSuccess$ = createEffect(
     () =>
       this.actions$.pipe(
         ofType<callsAction.UpdateCallDispatchTimeSuccess>(callsAction.CallsActionTypes.UPDATE_CALL_DISPATCHTIME_SUCCESS),
-    tap((data) => {
-      this.alertProvider.showAutoCloseSuccessAlert("Call has been updated.");
-    })
+        tap((data) => {
+          this.alertProvider.showAutoCloseSuccessAlert("Call has been updated.");
+        }),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   constructor(
@@ -296,7 +296,7 @@ export class CallsEffects {
     private alertProvider: AlertProvider,
     private loadingProvider: LoadingProvider,
     private router: Router,
-    private mapProvider: MappingService
+    private mapProvider: MappingService,
   ) {}
 
   runModal = (component, size) => {
