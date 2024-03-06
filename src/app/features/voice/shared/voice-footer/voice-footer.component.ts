@@ -26,32 +26,10 @@ export class VoiceFooterComponent implements OnInit {
   constructor(private store: Store<VoiceState>, private audioProvider: AudioProvider, 
     public openViduService: OpenViduService, private ref: ChangeDetectorRef) {
     this.voiceState$ = this.store.select(selectVoiceState);
-    this.availableChannels$ = this.store.select(selectAvailableChannelsState);
   }
 
   ngOnInit(): void {
-    this.availableChannelsSubscription = this.availableChannels$.subscribe((channels) => {
-      if (channels) {
-        this.selectedChannel = channels[0];
-      }
-    });
 
-    this.voiceSubscription = this.voiceState$.subscribe((state) => {
-      if (state) {
-        if (state.currentActiveVoipChannel) {
-          this.selectedChannel = state.currentActiveVoipChannel;
-        } else if (state.channels) {
-          this.selectedChannel = state.channels[0];
-        }
-
-        this.isTransmitting = state.isTransmitting;
-
-        if (this.participants !== state.participants) {
-          this.ref.detectChanges();
-          this.participants = state.participants;
-        }
-      }
-    });
   }
 
   ngOnDestroy(): void {
@@ -63,36 +41,6 @@ export class VoiceFooterComponent implements OnInit {
     if (this.availableChannelsSubscription) {
       this.availableChannelsSubscription.unsubscribe();
       this.availableChannelsSubscription = null;
-    }
-  }
-
-  public toggleTransmitting() {
-    if (this.isTransmitting) {
-      this.stopTransmitting();
-    } else {
-      this.startTransmitting();
-    }
-  }
-
-  public startTransmitting(): void {
-    this.audioProvider.playTransmitStart();
-    this.store.dispatch(new VoiceActions.StartTransmitting());
-  }
-
-  public stopTransmitting(): void {
-    this.store.dispatch(new VoiceActions.StopTransmitting());
-    this.audioProvider.playTransmitEnd();
-  }
-
-  public stopTransmittingLeave(): void {
-    this.store.dispatch(new VoiceActions.StopTransmitting());
-  }
-
-  public onChannelChange(channel) {
-    if (channel.Id === '') {
-      this.store.dispatch(new VoiceActions.SetNoChannel());
-    } else {
-      this.store.dispatch(new VoiceActions.SetActiveChannel(channel));
     }
   }
 }
