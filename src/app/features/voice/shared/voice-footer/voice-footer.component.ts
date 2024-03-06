@@ -1,6 +1,6 @@
 import { ChangeDetectorRef, Component, OnInit } from "@angular/core";
 import { Store } from "@ngrx/store";
-import { DepartmentVoiceChannelResultData } from '@resgrid/ngx-resgridlib';
+import { DepartmentVoiceChannelResultData } from "@resgrid/ngx-resgridlib";
 import { Observable, Subscription } from "rxjs";
 import { VoiceState } from "src/app/features/voice/store/voice.store";
 import { AudioProvider } from "src/app/providers/audio";
@@ -23,14 +23,16 @@ export class VoiceFooterComponent implements OnInit {
   private voiceSubscription: Subscription;
   private availableChannelsSubscription: Subscription;
 
-  constructor(private store: Store<VoiceState>, private audioProvider: AudioProvider, 
-    public openViduService: OpenViduService, private ref: ChangeDetectorRef) {
+  constructor(
+    private store: Store<VoiceState>,
+    private audioProvider: AudioProvider,
+    public openViduService: OpenViduService,
+    private ref: ChangeDetectorRef,
+  ) {
     this.voiceState$ = this.store.select(selectVoiceState);
   }
 
-  ngOnInit(): void {
-
-  }
+  ngOnInit(): void {}
 
   ngOnDestroy(): void {
     if (this.voiceSubscription) {
