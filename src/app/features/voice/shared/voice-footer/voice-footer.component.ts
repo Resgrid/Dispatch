@@ -6,16 +6,9 @@ import { Component, OnInit } from "@angular/core";
   styleUrls: ["./voice-footer.component.scss"],
 })
 export class VoiceFooterComponent implements OnInit {
+  constructor() {}
 
-  constructor() {
+  ngOnInit(): void {}
 
-  }
-
-  ngOnInit(): void {
-
-  }
-
-  ngOnDestroy(): void {
-
-  }
+  ngOnDestroy(): void {}
 }
