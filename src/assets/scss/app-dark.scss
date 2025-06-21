@@ -28,7 +28,6 @@
 @import "custom/components/demos";
 @import "custom/components/print";
 
-
 // Plugins
 @import "custom/plugins/custom-scrollbar";
 @import "custom/plugins/calendar";
@@ -54,7 +53,6 @@
 @import "custom/plugins/google-map";
 @import "custom/plugins/vector-maps";
 
-
 // Pages
 @import "custom/pages/authentication";
 @import "custom/pages/ecommerce";
@@ -66,5 +64,5 @@
 @import "custom/pages/extras-pages";
 
 ngb-modal-backdrop {
-    z-index: 1040 !important;
+  z-index: 1040 !important;
 }
