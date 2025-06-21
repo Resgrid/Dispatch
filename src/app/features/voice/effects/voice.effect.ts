@@ -26,10 +26,10 @@ export class VoiceEffects {
           })),
           tap((data) => {}),
           // If request fails, dispatch failed action
-          catchError(() => of({ type: voiceAction.VoiceActionTypes.GET_VOIPINFO_FAIL }))
-        )
-      )
-    )
+          catchError(() => of({ type: voiceAction.VoiceActionTypes.GET_VOIPINFO_FAIL })),
+        ),
+      ),
+    ),
   );
 
   getVoipInfoSuccess$ = createEffect(() =>
@@ -38,8 +38,8 @@ export class VoiceEffects {
       map((data) => ({
         type: voiceAction.VoiceActionTypes.START_VOIP_SERVICES,
         payload: data.payload,
-      }))
-    )
+      })),
+    ),
   );
 
   startVoipServices$ = createEffect(
@@ -48,9 +48,9 @@ export class VoiceEffects {
         ofType<voiceAction.StartVoipServices>(voiceAction.VoiceActionTypes.START_VOIP_SERVICES),
         tap((action) => {
           //this.voiceProvider.startVoipServices(action.payload);
-        })
+        }),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   setNoChannel$ = createEffect(
@@ -60,9 +60,9 @@ export class VoiceEffects {
         tap((data) => {
           //this.voiceProvider.disconnect();
           //this.openViduService.leaveSession();
-        })
+        }),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   setActiveChannel$ = createEffect(() =>
@@ -83,10 +83,10 @@ export class VoiceEffects {
           }),
           map((data) => ({
             type: voiceAction.VoiceActionTypes.DONE,
-          }))
-        )
-      )
-    )
+          })),
+        ),
+      ),
+    ),
   );
 
   voipCallStartTransmitting$ = createEffect(
@@ -96,9 +96,9 @@ export class VoiceEffects {
         tap((data) => {
           //this.voiceProvider.unmute();
           //this.openViduService.unmute();
-        })
+        }),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   voipCallStopTransmitting$ = createEffect(
@@ -108,9 +108,9 @@ export class VoiceEffects {
         tap((data) => {
           //this.voiceProvider.mute();
           //this.openViduService.mute();
-        })
+        }),
       ),
-    { dispatch: false }
+    { dispatch: false },
   );
 
   addOpenViduStream$ = createEffect(() =>
@@ -118,8 +118,8 @@ export class VoiceEffects {
       ofType<voiceAction.AddOpenViduStream>(voiceAction.VoiceActionTypes.ADD_OPENVIDU_STREAM),
       map((data) => ({
         type: voiceAction.VoiceActionTypes.DONE,
-      }))
-    )
+      })),
+    ),
   );
 
   removeOpenViduStream$ = createEffect(() =>
@@ -127,8 +127,8 @@ export class VoiceEffects {
       ofType<voiceAction.RemoveOpenViduStream>(voiceAction.VoiceActionTypes.REMOVE_OPENVIDU_STREAM),
       map((data) => ({
         type: voiceAction.VoiceActionTypes.DONE,
-      }))
-    )
+      })),
+    ),
   );
 
   done$ = createEffect(() => this.actions$.pipe(ofType<voiceAction.Done>(voiceAction.VoiceActionTypes.DONE)), { dispatch: false });
@@ -139,6 +139,6 @@ export class VoiceEffects {
     //private voiceProvider: KazooVoiceService,
     private voiceService: VoiceService,
     private homeStore: Store<HomeState>,
-    private authStore: Store<AuthState>
+    private authStore: Store<AuthState>,
   ) {}
 }
