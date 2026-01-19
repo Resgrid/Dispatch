@@ -159,7 +159,7 @@
     "react-native-base64": "~0.2.1",
     "react-native-ble-manager": "^12.1.5",
     "react-native-callkeep": "github:Irfanwani/react-native-callkeep#957193d0716f1c2dfdc18e627cbff0f8a0800971",
-    "react-native-edge-to-edge": "1.6.0",
+    "react-native-edge-to-edge": "1.7.0",
     "react-native-flash-message": "~0.4.2",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-keyboard-controller": "^1.18.6",
