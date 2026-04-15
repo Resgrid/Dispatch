@@ -183,7 +183,7 @@
     "i18next": "~23.14.0",
     "jwt-decode": "^4.0.0",
     "livekit-client": "^2.15.7",
-    "lodash": "^4.17.21",
+    "lodash": "^4.18.1",
     "lodash.memoize": "~4.1.2",
     "lucide-react-native": "~0.475.0",
     "mapbox-gl": "^3.15.0",
