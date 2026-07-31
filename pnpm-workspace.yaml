@@ -1,0 +1,6 @@
+allowBuilds:
+  '@react-buoy/shared-ui': set this to true or false
+  '@sentry/cli': set this to true or false
+  electron: set this to true or false
+  electron-winstaller: set this to true or false
+  postinstall-postinstall: set this to true or false

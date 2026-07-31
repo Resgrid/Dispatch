@@ -169,6 +169,20 @@ export default function TabLayout() {
           // Don't fail initialization if SignalR connection fails
         }
 
+        // Connect the realtime chat hub (best-effort; chat may be disabled per department)
+        try {
+          await useSignalRStore.getState().connectChatHub();
+          logger.info({
+            message: 'SignalR chat hub connected successfully',
+            context: { platform: Platform.OS },
+          });
+        } catch (error) {
+          logger.error({
+            message: 'Failed to connect SignalR chat hub during initialization',
+            context: { error, platform: Platform.OS },
+          });
+        }
+
         // Initialize weather alerts
         try {
           await useWeatherAlertsStore.getState().fetchSettings();

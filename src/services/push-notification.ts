@@ -1,5 +1,6 @@
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
+import { router } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 
@@ -18,6 +19,24 @@ export interface PushNotificationData {
   title?: string;
   body?: string;
   data?: Record<string, unknown>;
+}
+
+/**
+ * Handles chat push deep-links. Chat notifications carry an eventCode of
+ * "t:{channelId}" (direct message) or "g:{channelId}" (group/channel); both
+ * navigate to the chat conversation route.
+ */
+export function handleChatDeepLink(eventCode: string): boolean {
+  const match = /^([tg]):(.+)$/.exec(eventCode);
+  if (!match) return false;
+  const channelId = match[2];
+  try {
+    router.push(`/chat/${channelId}`);
+    return true;
+  } catch (error) {
+    logger.error({ message: 'Failed to deep-link to chat channel', context: { error, eventCode } });
+    return false;
+  }
 }
 
 // Storage key for the Android "use modern notification sounds" preference.
@@ -216,9 +235,10 @@ class PushNotificationService {
       },
     });
 
-    // Here you can handle navigation or other actions based on notification data
-    // For example, if the notification contains a callId, you could navigate to that call
-    // This would typically involve using a navigation service or dispatching an action
+    // Deep-link chat notifications: eventCode "t:{channelId}" (DM) / "g:{channelId}" (group)
+    if (data?.eventCode && typeof data.eventCode === 'string') {
+      handleChatDeepLink(data.eventCode);
+    }
   };
 
   public async registerForPushNotifications(unitId: string, departmentCode: string): Promise<string | null> {
