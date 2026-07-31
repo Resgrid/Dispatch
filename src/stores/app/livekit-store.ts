@@ -1,8 +1,20 @@
-import notifee, { AndroidImportance } from '@notifee/react-native';
+import type notifeeType from '@notifee/react-native';
+import type { AndroidImportance as AndroidImportanceType } from '@notifee/react-native';
 import { getRecordingPermissionsAsync, requestRecordingPermissionsAsync } from 'expo-audio';
 import { Room, RoomEvent, Track } from 'livekit-client';
 import { Platform } from 'react-native';
 import { create } from 'zustand';
+
+// Notifee is native-only - conditionally require it so web module evaluation doesn't crash
+let notifee: typeof notifeeType | null = null;
+let AndroidImportance: typeof AndroidImportanceType | null = null;
+
+if (Platform.OS === 'android') {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  notifee = require('@notifee/react-native').default;
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  AndroidImportance = require('@notifee/react-native').AndroidImportance;
+}
 
 import { getCanConnectToVoiceSession, getDepartmentVoiceSettings } from '../../api/voice';
 import { logger } from '../../lib/logging';
@@ -430,7 +442,7 @@ export const useLiveKitStore = create<LiveKitState>((set, get) => ({
   },
 
   startAndroidForegroundService: async () => {
-    if (Platform.OS !== 'android') return;
+    if (Platform.OS !== 'android' || !notifee || !AndroidImportance) return;
 
     try {
       logger.debug({
@@ -477,7 +489,7 @@ export const useLiveKitStore = create<LiveKitState>((set, get) => ({
   },
 
   stopAndroidForegroundService: async () => {
-    if (Platform.OS !== 'android') return;
+    if (Platform.OS !== 'android' || !notifee) return;
 
     try {
       logger.debug({

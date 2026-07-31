@@ -52,7 +52,7 @@ export default function Maintenance() {
           {/* Info Cards */}
           <View className="mb-8 gap-4">
             {/* Why is the Site Down */}
-            <View className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
+            <View className="rounded-2xl bg-white p-6 shadow-xs dark:bg-gray-900">
               <View className="mb-4 size-12 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900">
                 <AlertCircle size={24} className="text-primary-600" />
               </View>
@@ -61,7 +61,7 @@ export default function Maintenance() {
             </View>
 
             {/* What is the Downtime */}
-            <View className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
+            <View className="rounded-2xl bg-white p-6 shadow-xs dark:bg-gray-900">
               <View className="mb-4 size-12 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900">
                 <Clock size={24} className="text-primary-600" />
               </View>
@@ -70,7 +70,7 @@ export default function Maintenance() {
             </View>
 
             {/* Need Support */}
-            <View className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
+            <View className="rounded-2xl bg-white p-6 shadow-xs dark:bg-gray-900">
               <View className="mb-4 size-12 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900">
                 <Mail size={24} className="text-primary-600" />
               </View>

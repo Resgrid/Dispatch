@@ -110,6 +110,7 @@ jest.mock('@expo/html-elements', () => {
 });
 
 jest.mock('nativewind', () => ({
+  styled: jest.fn((Component: any) => Component),
   useColorScheme: jest.fn(() => ({ colorScheme: 'light' })),
   cssInterop: jest.fn((component: any) => component),
 }));

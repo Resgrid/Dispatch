@@ -49,6 +49,26 @@ ipcRenderer.on('notification:push', (_event, payload) => {
     }
 });
 
+// ── Expose deep-link bridge ────────────────────────────────────────────
+// Lets the renderer subscribe to deep-link URLs (resgriddispatch://...)
+// forwarded by the main process from second-instance / open-url events.
+contextBridge.exposeInMainWorld('electronDeepLinks', {
+    /**
+     * Register a callback that fires when the main process forwards a
+     * deep-link URL to the renderer.
+     * @param {(url: string) => void} callback
+     */
+    onDeepLink: (callback) => {
+        ipcRenderer.on('deep-link', (_event, deepLinkUrl) => {
+            try {
+                callback(deepLinkUrl);
+            } catch (err) {
+                console.error('Error in deep-link callback:', err);
+            }
+        });
+    },
+});
+
 // ── Version information (original preload logic) ───────────────────────
 window.addEventListener('DOMContentLoaded', () => {
     const replaceText = (selector, text) => {

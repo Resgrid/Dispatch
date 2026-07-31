@@ -142,7 +142,7 @@ const CallNotesModal = ({ isOpen, onClose, callId }: CallNotesModalProps) => {
                 <Loading />
               ) : filteredNotes.length > 0 ? (
                 filteredNotes.map((note) => (
-                  <Box key={note.CallNoteId} className="w-full rounded-lg bg-gray-50 p-4 shadow-sm dark:bg-gray-700">
+                  <Box key={note.CallNoteId} className="w-full rounded-lg bg-gray-50 p-4 shadow-xs dark:bg-gray-700">
                     <Text className="mb-2 text-gray-800 dark:text-gray-200">{note.Note}</Text>
                     <HStack className="w-full justify-between">
                       <Text className="text-xs text-gray-500 dark:text-gray-400">{note.FullName}</Text>

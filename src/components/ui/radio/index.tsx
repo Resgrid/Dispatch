@@ -1,34 +1,25 @@
 'use client';
-import { PrimitiveIcon, UIIcon } from '@gluestack-ui/icon';
-import type { VariantProps } from '@gluestack-ui/nativewind-utils';
-import { tva } from '@gluestack-ui/nativewind-utils/tva';
-import { useStyleContext, withStyleContext } from '@gluestack-ui/nativewind-utils/withStyleContext';
-import { createRadio } from '@gluestack-ui/radio';
-import { cssInterop } from 'nativewind';
+import { UIIcon } from '@gluestack-ui/core/icon/creator';
+import { createRadio } from '@gluestack-ui/core/radio/creator';
+import { tva, useStyleContext, type VariantProps, withStyleContext } from '@gluestack-ui/utils/nativewind-utils';
+import { styled } from 'nativewind';
 import React from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
 
 const SCOPE = 'Radio';
 
+const StyledIcon = styled(UIIcon, {
+  className: {
+    target: 'style',
+  },
+});
+
 const UIRadio = createRadio({
   Root: (Platform.OS === 'web' ? withStyleContext(View, SCOPE) : withStyleContext(Pressable, SCOPE)) as ReturnType<typeof withStyleContext<typeof Pressable>>,
   Group: View,
-  Icon: UIIcon,
+  Icon: StyledIcon,
   Indicator: View,
   Label: Text,
-});
-
-cssInterop(PrimitiveIcon, {
-  className: {
-    target: 'style',
-    nativeStyleToProp: {
-      height: true,
-      width: true,
-      fill: true,
-      color: 'classNameColor',
-      stroke: true,
-    },
-  },
 });
 
 const radioStyle = tva({
@@ -90,7 +81,8 @@ const radioLabelStyle = tva({
 
 type IRadioProps = Omit<React.ComponentProps<typeof UIRadio>, 'context'> & VariantProps<typeof radioStyle>;
 const Radio = React.forwardRef<React.ComponentRef<typeof UIRadio>, IRadioProps>(function Radio({ className, size = 'md', ...props }, ref) {
-  return <UIRadio className={radioStyle({ class: className, size })} {...props} ref={ref} context={{ size }} />;
+  const contextValue = React.useMemo(() => ({ size }), [size]);
+  return <UIRadio className={radioStyle({ class: className, size })} {...props} ref={ref} context={contextValue} />;
 });
 
 type IRadioGroupProps = React.ComponentProps<typeof UIRadio.Group> & VariantProps<typeof radioGroupStyle>;

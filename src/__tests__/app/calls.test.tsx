@@ -184,6 +184,7 @@ jest.mock('expo-navigation-bar', () => ({
 }));
 
 jest.mock('nativewind', () => ({
+  styled: jest.fn((Component: any) => Component),
   useColorScheme: jest.fn(() => ({ colorScheme: 'light' })),
 }));
 

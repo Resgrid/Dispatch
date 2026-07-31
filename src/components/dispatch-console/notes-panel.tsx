@@ -13,6 +13,7 @@ import { VStack } from '@/components/ui/vstack';
 import { formatDateForDisplay, parseDateISOString, stripHtmlTags } from '@/lib/utils';
 import { type CallNoteResultData } from '@/models/v4/callNotes/callNoteResultData';
 import { type NoteResultData } from '@/models/v4/notes/noteResultData';
+import { selectCardCollapsed, useDashboardViewStore } from '@/stores/dispatch/dashboard-view-store';
 
 import { AnimatedRefreshIcon } from './animated-refresh-icon';
 import { PanelHeader } from './panel-header';
@@ -28,6 +29,8 @@ interface NotesPanelProps {
   callNotes?: CallNoteResultData[];
   onAddCallNote?: (note: string) => void;
   isAddingNote?: boolean;
+  /** Flex weight when expanded; collapses to header height so siblings absorb the freed space. */
+  flexWeight?: number;
 }
 
 const NoteItem: React.FC<{
@@ -77,9 +80,10 @@ const CallNoteItem: React.FC<{
   );
 };
 
-export const NotesPanel: React.FC<NotesPanelProps> = ({ notes, isLoading, onRefresh, onSelectNote, onNewNote, isCallFilterActive, callNotes, onAddCallNote, isAddingNote }) => {
+export const NotesPanel: React.FC<NotesPanelProps> = ({ notes, isLoading, onRefresh, onSelectNote, onNewNote, isCallFilterActive, callNotes, onAddCallNote, isAddingNote, flexWeight }) => {
   const { t } = useTranslation();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const isCollapsed = useDashboardViewStore(selectCardCollapsed('notes'));
+  const setCardCollapsed = useDashboardViewStore((s) => s.setCardCollapsed);
   const [newNoteText, setNewNoteText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -118,14 +122,17 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({ notes, isLoading, onRefr
   const notesCount = displayNotes ? filteredCallNotes?.length || 0 : filteredNotes.length;
 
   return (
-    <Box className={`overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 ${isCollapsed ? '' : 'flex-1'}`}>
+    <Box
+      className={`overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 ${isCollapsed ? '' : 'flex-1'}`}
+      style={!isCollapsed && flexWeight !== undefined ? { flex: flexWeight } : undefined}
+    >
       <PanelHeader
         title={isCallFilterActive ? t('dispatch.call_notes') : t('dispatch.notes')}
         icon={FileText}
         iconColor={isCallFilterActive ? '#f59e0b' : '#f59e0b'}
         count={notesCount}
         isCollapsed={isCollapsed}
-        onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
+        onToggleCollapse={() => setCardCollapsed('notes', !isCollapsed)}
         rightContent={
           <HStack space="xs">
             {isCallFilterActive ? (

@@ -19,18 +19,18 @@ interface MapPinsProps {
  */
 const BOTTOM_CENTER_ANCHOR = { x: 0.5, y: 1.0 };
 
-const MapPins: React.FC<MapPinsProps> = ({ pins, onPinPress }) => {
+const MapPins = React.memo<MapPinsProps>(({ pins, onPinPress }) => {
   return (
     <>
       {pins
         .filter((pin) => hasValidMapCoordinates(pin))
         .map((pin) => (
           <Mapbox.MarkerView key={`pin-${pin.Id}`} id={`pin-${pin.Id}`} coordinate={[pin.Longitude, pin.Latitude]} anchor={BOTTOM_CENTER_ANCHOR} allowOverlap={true}>
-            <PinMarker pin={pin} size={32} onPress={() => onPinPress?.(pin)} />
+            <PinMarker pin={pin} size={32} onPress={onPinPress} />
           </Mapbox.MarkerView>
         ))}
     </>
   );
-};
+});
 
 export default MapPins;

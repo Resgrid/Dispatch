@@ -1,21 +1,14 @@
 'use client';
-import { createLink } from '@gluestack-ui/link';
-import type { VariantProps } from '@gluestack-ui/nativewind-utils';
-import { tva } from '@gluestack-ui/nativewind-utils/tva';
-import { withStates } from '@gluestack-ui/nativewind-utils/withStates';
-import { withStyleContext } from '@gluestack-ui/nativewind-utils/withStyleContext';
-import { withStyleContextAndStates } from '@gluestack-ui/nativewind-utils/withStyleContextAndStates';
-import { cssInterop } from 'nativewind';
+import { createLink } from '@gluestack-ui/core/link/creator';
+import type { VariantProps } from '@gluestack-ui/utils/nativewind-utils';
+import { tva, withStyleContext } from '@gluestack-ui/utils/nativewind-utils';
 import React from 'react';
-import { Platform, Pressable } from 'react-native';
+import { Pressable } from 'react-native';
 import { Text } from 'react-native';
 export const UILink = createLink({
-  Root: Platform.OS === 'web' ? withStyleContext(Pressable) : withStyleContextAndStates(Pressable),
-  Text: Platform.OS === 'web' ? Text : withStates(Text),
+  Root: withStyleContext(Pressable),
+  Text: Text,
 });
-
-cssInterop(UILink, { className: 'style' });
-cssInterop(UILink.Text, { className: 'style' });
 
 const linkStyle = tva({
   base: 'group/link web:outline-0 data-[disabled=true]:web:cursor-not-allowed data-[focus-visible=true]:web:ring-2 data-[focus-visible=true]:web:ring-indicator-primary data-[focus-visible=true]:web:outline-0 data-[disabled=true]:opacity-4 ',

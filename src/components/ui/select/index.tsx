@@ -1,11 +1,11 @@
 'use client';
 
-import { PrimitiveIcon, UIIcon } from '@gluestack-ui/icon';
-import type { VariantProps } from '@gluestack-ui/nativewind-utils';
-import { tva } from '@gluestack-ui/nativewind-utils/tva';
-import { useStyleContext, withStyleContext } from '@gluestack-ui/nativewind-utils/withStyleContext';
-import { createSelect } from '@gluestack-ui/select';
-import { cssInterop } from 'nativewind';
+import { UIIcon } from '@gluestack-ui/core/icon/creator';
+import { createSelect } from '@gluestack-ui/core/select/creator';
+import type { VariantProps } from '@gluestack-ui/utils/nativewind-utils';
+import { tva } from '@gluestack-ui/utils/nativewind-utils';
+import { useStyleContext, withStyleContext } from '@gluestack-ui/utils/nativewind-utils';
+import { styled } from 'nativewind';
 import React from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 
@@ -83,12 +83,18 @@ const selectInputStyle = tva({
   },
 });
 
+const StyledIcon = styled(UIIcon, {
+  className: {
+    target: 'style',
+  },
+});
+
 const UISelect = createSelect(
   {
     Root: View,
     Trigger: withStyleContext(SelectTriggerWrapper),
     Input: TextInput,
-    Icon: UIIcon,
+    Icon: StyledIcon,
   },
   {
     Portal: Actionsheet,
@@ -105,25 +111,6 @@ const UISelect = createSelect(
     SectionHeaderText: ActionsheetSectionHeaderText,
   }
 );
-
-cssInterop(UISelect, { className: 'style' });
-cssInterop(UISelect.Input, {
-  className: { target: 'style', nativeStyleToProp: { textAlign: true } },
-});
-cssInterop(SelectTriggerWrapper, { className: 'style' });
-
-cssInterop(PrimitiveIcon, {
-  className: {
-    target: 'style',
-    nativeStyleToProp: {
-      height: true,
-      width: true,
-      fill: true,
-      color: 'classNameColor',
-      stroke: true,
-    },
-  },
-});
 
 type ISelectProps = VariantProps<typeof selectStyle> & React.ComponentProps<typeof UISelect> & { className?: string };
 
@@ -142,6 +129,7 @@ const Select = React.forwardRef<React.ComponentRef<typeof UISelect>, ISelectProp
 type ISelectTriggerProps = VariantProps<typeof selectTriggerStyle> & React.ComponentProps<typeof UISelect.Trigger> & { className?: string };
 
 const SelectTrigger = React.forwardRef<React.ComponentRef<typeof UISelect.Trigger>, ISelectTriggerProps>(function SelectTrigger({ className, size = 'md', variant = 'outline', ...props }, ref) {
+  const contextValue = React.useMemo(() => ({ size, variant }), [size, variant]);
   return (
     <UISelect.Trigger
       className={selectTriggerStyle({
@@ -150,7 +138,7 @@ const SelectTrigger = React.forwardRef<React.ComponentRef<typeof UISelect.Trigge
         variant,
       })}
       ref={ref}
-      context={{ size, variant }}
+      context={contextValue}
       {...props}
     />
   );

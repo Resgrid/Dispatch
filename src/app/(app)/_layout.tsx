@@ -3,13 +3,14 @@
 import { NovuProvider } from '@novu/react-native';
 import Mapbox from '@rnmapbox/maps';
 import { isRunningInExpoGo } from 'expo';
-import { Redirect, Slot } from 'expo-router';
+import { Redirect, Slot, usePathname } from 'expo-router';
 import { Menu } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Platform, StyleSheet, Text as RNText, TouchableOpacity, View as RNView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { DashboardViewToggles } from '@/components/dispatch-console';
 import { NotificationButton } from '@/components/notifications/NotificationButton';
 import { NotificationInbox } from '@/components/notifications/NotificationInbox';
 import SideMenu from '@/components/sidebar/side-menu';
@@ -37,12 +38,14 @@ import { useWeatherAlertsStore } from '@/stores/weatherAlerts/store';
 
 export default function TabLayout() {
   const { t } = useTranslation();
-  const { status } = useAuthStore();
-  const { isLocked } = useLockscreenStore();
+  const status = useAuthStore((state) => state.status);
+  const isLocked = useLockscreenStore((state) => state.isLocked);
   const [isFirstTime, _setIsFirstTime] = useIsFirstTime();
   const [isOpen, setIsOpen] = React.useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = React.useState(false);
   const [webColorScheme, setWebColorScheme] = React.useState<'light' | 'dark'>('light');
+  const pathname = usePathname();
+  const isDispatchScreen = pathname === '/home' || pathname === '/' || pathname === '/index';
 
   // Get store states first (hooks must be at top level)
   const config = useCoreStore((state) => state.config);
@@ -74,6 +77,7 @@ export default function TabLayout() {
   // Refs to track initialization state
   const hasInitialized = useRef(false);
   const isInitializing = useRef(false);
+  const initTimedOut = useRef(false);
   const hasHiddenSplash = useRef(false);
   const lastSignedInStatus = useRef<string | null>(null);
   const parentRef = useRef(null);
@@ -110,6 +114,7 @@ export default function TabLayout() {
     }
 
     isInitializing.current = true;
+    initTimedOut.current = false;
     logger.info({
       message: 'Starting app initialization',
       context: {
@@ -120,7 +125,12 @@ export default function TabLayout() {
 
     try {
       // Set a timeout for initialization to prevent infinite hanging
-      const initTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Initialization timeout after 30 seconds')), 30000));
+      const initTimeout = new Promise((_, reject) =>
+        setTimeout(() => {
+          initTimedOut.current = true;
+          reject(new Error('Initialization timeout after 30 seconds'));
+        }, 30000)
+      );
 
       const initPromise = (async () => {
         await useCoreStore.getState().init();
@@ -185,6 +195,21 @@ export default function TabLayout() {
         });
       })();
 
+      // Swallow post-timeout rejections so they don't surface as unhandled, and
+      // keep isInitializing true until the init promise fully settles
+      initPromise
+        .catch((error) => {
+          if (initTimedOut.current) {
+            logger.error({
+              message: 'App initialization failed after initialization timeout',
+              context: { error, platform: Platform.OS },
+            });
+          }
+        })
+        .finally(() => {
+          isInitializing.current = false;
+        });
+
       await Promise.race([initPromise, initTimeout]);
     } catch (error) {
       logger.error({
@@ -193,8 +218,6 @@ export default function TabLayout() {
       });
       // Reset initialization state on error so it can be retried
       hasInitialized.current = false;
-    } finally {
-      isInitializing.current = false;
     }
   }, [status]);
 
@@ -406,6 +429,7 @@ export default function TabLayout() {
           <RNView style={layoutStyles.navBarTitle}>
             <RNText style={[layoutStyles.navBarTitleText, webTheme.navBarText]}>{t('app.title', 'Resgrid Responder')}</RNText>
           </RNView>
+          {isDispatchScreen ? <DashboardViewToggles inHeader /> : null}
         </RNView>
 
         <RNView style={{ flex: 1, flexDirection: 'row' }} ref={parentRef}>
@@ -435,6 +459,7 @@ export default function TabLayout() {
           <View className="flex-1 items-center">
             <Text className="text-lg font-semibold text-white">{t('app.title', 'Resgrid Responder')}</Text>
           </View>
+          {isDispatchScreen ? <DashboardViewToggles inHeader onColoredBg /> : null}
         </View>
 
         <View className="flex-1" ref={parentRef}>

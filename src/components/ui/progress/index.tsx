@@ -1,19 +1,14 @@
 'use client';
-import type { VariantProps } from '@gluestack-ui/nativewind-utils';
-import { tva } from '@gluestack-ui/nativewind-utils/tva';
-import { useStyleContext, withStyleContext } from '@gluestack-ui/nativewind-utils/withStyleContext';
-import { createProgress } from '@gluestack-ui/progress';
-import { cssInterop } from 'nativewind';
+import { createProgress } from '@gluestack-ui/core/progress/creator';
+import { tva, useStyleContext, type VariantProps, withStyleContext } from '@gluestack-ui/utils/nativewind-utils';
 import React from 'react';
 import { View } from 'react-native';
+
 const SCOPE = 'PROGRESS';
 export const UIProgress = createProgress({
   Root: withStyleContext(View, SCOPE),
   FilledTrack: View,
 });
-
-cssInterop(UIProgress, { className: 'style' });
-cssInterop(UIProgress.FilledTrack, { className: 'style' });
 
 const progressStyle = tva({
   base: 'bg-background-300 rounded-full w-full',
@@ -46,7 +41,8 @@ type IProgressProps = VariantProps<typeof progressStyle> & React.ComponentProps<
 type IProgressFilledTrackProps = VariantProps<typeof progressFilledTrackStyle> & React.ComponentProps<typeof UIProgress.FilledTrack>;
 
 export const Progress = React.forwardRef<React.ElementRef<typeof UIProgress>, IProgressProps>(({ className, size = 'md', ...props }, ref) => {
-  return <UIProgress ref={ref} {...props} className={progressStyle({ size, class: className })} context={{ size }} />;
+  const contextValue = React.useMemo(() => ({ size }), [size]);
+  return <UIProgress ref={ref} {...props} className={progressStyle({ size, class: className })} context={contextValue} />;
 });
 
 export const ProgressFilledTrack = React.forwardRef<React.ElementRef<typeof UIProgress.FilledTrack>, IProgressFilledTrackProps>(({ className, ...props }, ref) => {

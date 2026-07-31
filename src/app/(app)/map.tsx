@@ -46,12 +46,11 @@ export default function Map() {
   const [isPinDetailModalOpen, setIsPinDetailModalOpen] = useState(false);
   const [isLayersPanelOpen, setIsLayersPanelOpen] = useState(false);
   const { isActive } = useAppLifecycle();
-  const location = useLocationStore((state) => ({
-    latitude: state.latitude,
-    longitude: state.longitude,
-    heading: state.heading,
-    isMapLocked: state.isMapLocked,
-  }));
+  const latitude = useLocationStore((state) => state.latitude);
+  const longitude = useLocationStore((state) => state.longitude);
+  const heading = useLocationStore((state) => state.heading);
+  const isMapLocked = useLocationStore((state) => state.isMapLocked);
+  const location = useMemo(() => ({ latitude, longitude, heading, isMapLocked }), [latitude, longitude, heading, isMapLocked]);
 
   // Map layers hook
   const { layers, visibleLayers, isLoading: isLayersLoading, fetchLayers, toggleLayer, showAllLayers, hideAllLayers, getVisibleLayerData } = useMapLayers({ initialLayerType: MapLayerType.ALL, autoFetch: true });
@@ -165,19 +164,19 @@ export default function Map() {
 
   useEffect(() => {
     if (isMapReady && location.latitude && location.longitude) {
-      logger.info({
-        message: 'Location updated and map is ready',
-        context: {
-          latitude: location.latitude,
-          longitude: location.longitude,
-          heading: location.heading,
-          isMapLocked: location.isMapLocked,
-        },
-      });
-
       // When map is locked, always follow the location
       // When map is unlocked, only follow if user hasn't moved the map
       if (location.isMapLocked || !hasUserMovedMap) {
+        logger.info({
+          message: 'Location updated and map is ready',
+          context: {
+            latitude: location.latitude,
+            longitude: location.longitude,
+            heading: location.heading,
+            isMapLocked: location.isMapLocked,
+          },
+        });
+
         const cameraConfig: any = {
           centerCoordinate: [location.longitude, location.latitude],
           zoomLevel: location.isMapLocked ? 16 : 12,
@@ -312,10 +311,10 @@ export default function Map() {
     }
   };
 
-  const handlePinPress = (pin: MapMakerInfoData) => {
+  const handlePinPress = useCallback((pin: MapMakerInfoData) => {
     setSelectedPin(pin);
     setIsPinDetailModalOpen(true);
-  };
+  }, []);
 
   const handleSetAsCurrentCall = async (pin: MapMakerInfoData) => {
     try {

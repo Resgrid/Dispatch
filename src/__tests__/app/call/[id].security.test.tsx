@@ -166,6 +166,7 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock('nativewind', () => ({
+  styled: jest.fn((Component: any) => Component),
   cssInterop: jest.fn((Component: any) => Component),
   useColorScheme: () => ({ colorScheme: 'light' }),
 }));
@@ -223,12 +224,25 @@ jest.mock('../../../components/calls/call-notes-modal', () => ({
   default: () => <div data-testid="call-notes-modal">Notes Modal</div>,
 }));
 
+jest.mock('../../../components/calls/call-audio-modal', () => ({
+  __esModule: true,
+  default: () => <div data-testid="call-audio-modal">Audio Modal</div>,
+}));
+
 jest.mock('../../../components/calls/close-call-bottom-sheet', () => ({
   CloseCallBottomSheet: () => <div data-testid="close-call-bottom-sheet">Close Call Sheet</div>,
 }));
 
+jest.mock('../../../components/calls/reschedule-call-sheet', () => ({
+  RescheduleCallSheet: () => <div data-testid="reschedule-call-sheet">Reschedule Sheet</div>,
+}));
+
 jest.mock('../../../components/status/status-bottom-sheet', () => ({
   StatusBottomSheet: () => <div data-testid="status-bottom-sheet">Status Sheet</div>,
+}));
+
+jest.mock('@/components/incident-command/incident-command-tab', () => ({
+  IncidentCommandTab: () => <div data-testid="incident-command-tab">Incident Command Tab</div>,
 }));
 
 // Mock UI components
@@ -292,8 +306,10 @@ jest.mock('react-native-webview', () => ({
   default: () => <div data-testid="webview">WebView</div>,
 }));
 
-// Mock date-fns
+// Mock date-fns (keep the real implementations available for components that
+// need parse/isValid, only stub format for stable output)
 jest.mock('date-fns', () => ({
+  ...jest.requireActual('date-fns'),
   format: (date: any, formatStr: string) => `formatted-${formatStr}`,
 }));
 
@@ -304,10 +320,17 @@ jest.mock('lucide-react-native', () => ({
   ImageIcon: ({ size, ...props }: any) => <div {...props} data-testid="image-icon" style={{ width: size, height: size }}>Image</div>,
   InfoIcon: ({ size, ...props }: any) => <div {...props} data-testid="info-icon" style={{ width: size, height: size }}>Info</div>,
   LoaderIcon: ({ size, ...props }: any) => <div {...props} data-testid="loader-icon" style={{ width: size, height: size }}>Loader</div>,
+  MapPinIcon: ({ size, ...props }: any) => <div {...props} data-testid="map-pin-icon" style={{ width: size, height: size }}>MapPin</div>,
+  NavigationIcon: ({ size, ...props }: any) => <div {...props} data-testid="navigation-icon" style={{ width: size, height: size }}>Navigation</div>,
+  NetworkIcon: ({ size, ...props }: any) => <div {...props} data-testid="network-icon" style={{ width: size, height: size }}>Network</div>,
   PaperclipIcon: ({ size, ...props }: any) => <div {...props} data-testid="paperclip-icon" style={{ width: size, height: size }}>Paperclip</div>,
   RouteIcon: ({ size, ...props }: any) => <div {...props} data-testid="route-icon" style={{ width: size, height: size }}>Route</div>,
+  ShieldCheckIcon: ({ size, ...props }: any) => <div {...props} data-testid="shield-check-icon" style={{ width: size, height: size }}>ShieldCheck</div>,
   UserIcon: ({ size, ...props }: any) => <div {...props} data-testid="user-icon" style={{ width: size, height: size }}>User</div>,
+  UserPlusIcon: ({ size, ...props }: any) => <div {...props} data-testid="user-plus-icon" style={{ width: size, height: size }}>UserPlus</div>,
   UsersIcon: ({ size, ...props }: any) => <div {...props} data-testid="users-icon" style={{ width: size, height: size }}>Users</div>,
+  VideoIcon: ({ size, ...props }: any) => <div {...props} data-testid="video-icon" style={{ width: size, height: size }}>Video</div>,
+  Volume2Icon: ({ size, ...props }: any) => <div {...props} data-testid="volume2-icon" style={{ width: size, height: size }}>Volume2</div>,
 }));
 
 // Mock react-native-svg

@@ -1,5 +1,5 @@
-import type { VariantProps } from '@gluestack-ui/nativewind-utils';
-import React, { forwardRef } from 'react';
+import type { VariantProps } from '@gluestack-ui/utils/nativewind-utils';
+import React, { forwardRef, useEffect, useRef } from 'react';
 import { Animated, Easing, Platform, View } from 'react-native';
 
 import { skeletonStyle, skeletonTextStyle } from './styles';
@@ -18,34 +18,66 @@ type ISkeletonTextProps = React.ComponentProps<typeof View> &
   };
 
 const Skeleton = forwardRef<React.ElementRef<typeof View>, ISkeletonProps>(({ className, variant, children, startColor = 'bg-background-200', isLoaded = false, speed = 2, ...props }, ref) => {
-  const pulseAnim = new Animated.Value(1);
+  const isWeb = Platform.OS === 'web';
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const animRef = useRef<Animated.CompositeAnimation | null>(null);
   const customTimingFunction = Easing.bezier(0.4, 0, 0.6, 1);
   const fadeDuration = 0.6;
-  const animationDuration = (fadeDuration * 10000) / speed; // Convert seconds to milliseconds
+  const animationDuration = (fadeDuration * 10000) / speed;
 
-  const pulse = Animated.sequence([
-    Animated.timing(pulseAnim, {
-      toValue: 1, // Start with opacity 1
-      duration: animationDuration / 2, // Third of the animation duration
-      easing: customTimingFunction,
-      useNativeDriver: Platform.OS !== 'web',
-    }),
-    Animated.timing(pulseAnim, {
-      toValue: 0.75,
-      duration: animationDuration / 2, // Third of the animation duration
-      easing: customTimingFunction,
-      useNativeDriver: Platform.OS !== 'web',
-    }),
-    Animated.timing(pulseAnim, {
-      toValue: 1,
-      duration: animationDuration / 2, // Third of the animation duration
-      easing: customTimingFunction,
-      useNativeDriver: Platform.OS !== 'web',
-    }),
-  ]);
+  useEffect(() => {
+    // On web, use CSS animation instead to avoid Animated.loop JS driver overhead
+    if (isWeb) return;
+
+    if (!isLoaded) {
+      const pulse = Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: animationDuration / 2,
+          easing: customTimingFunction,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0.75,
+          duration: animationDuration / 2,
+          easing: customTimingFunction,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: animationDuration / 2,
+          easing: customTimingFunction,
+          useNativeDriver: true,
+        }),
+      ]);
+      animRef.current = Animated.loop(pulse);
+      animRef.current.start();
+    } else {
+      animRef.current?.stop();
+      animRef.current = null;
+    }
+
+    return () => {
+      animRef.current?.stop();
+      animRef.current = null;
+    };
+  }, [isLoaded, isWeb, animationDuration, pulseAnim, customTimingFunction]);
 
   if (!isLoaded) {
-    Animated.loop(pulse).start();
+    // On web, use a CSS keyframe animation to avoid JS-driven Animated.loop
+    if (isWeb) {
+      return (
+        <View
+          style={{ animation: `skeleton-pulse ${animationDuration * 1.5}ms ease-in-out infinite` } as any}
+          className={`${startColor} ${skeletonStyle({
+            variant,
+            class: className,
+          })}`}
+          {...props}
+          ref={ref}
+        />
+      );
+    }
     return (
       <Animated.View
         style={{ opacity: pulseAnim }}
@@ -58,8 +90,6 @@ const Skeleton = forwardRef<React.ElementRef<typeof View>, ISkeletonProps>(({ cl
       />
     );
   } else {
-    Animated.loop(pulse).stop();
-
     return children;
   }
 });

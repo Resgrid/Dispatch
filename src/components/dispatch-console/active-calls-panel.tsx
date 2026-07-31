@@ -2,7 +2,7 @@ import { type Href, router } from 'expo-router';
 import { AlertTriangle, Clock, ExternalLink, MapPin, Navigation, Plus, Radio, Search, UserPlus, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Animated, Easing, Modal, Platform, Pressable, ScrollView, StyleSheet, Text as RNText, TextInput, View } from 'react-native';
+import { Animated, Easing, FlatList, Modal, Platform, Pressable, ScrollView, StyleSheet, Text as RNText, TextInput, View } from 'react-native';
 
 import { getCallExtraData, updateCall } from '@/api/calls/calls';
 import { DispatchSelectionModal } from '@/components/calls/dispatch-selection-modal';
@@ -21,6 +21,7 @@ import { type DispatchedEventResultData } from '@/models/v4/calls/dispatchedEven
 import { CheckInTimerStatus } from '@/models/v4/checkIn/checkInEnums';
 import { useCallsStore } from '@/stores/calls/store';
 import { useCheckInStore } from '@/stores/checkIn/store';
+import { selectCardCollapsed, useDashboardViewStore } from '@/stores/dispatch/dashboard-view-store';
 import { useDispatchConsoleStore } from '@/stores/dispatch/dispatch-console-store';
 import { type DispatchSelection } from '@/stores/dispatch/store';
 import { useSecurityStore } from '@/stores/security/store';
@@ -255,6 +256,8 @@ interface ActiveCallsPanelProps {
   selectedCallId?: string;
   onSelectCall?: (callId: string) => void;
   isFilterActive?: boolean;
+  /** Flex weight when expanded; collapses to header height so siblings absorb the freed space. */
+  flexWeight?: number;
 }
 
 // Call item wrapper for selection and interaction
@@ -266,10 +269,10 @@ const CallItemWrapper: React.FC<{
   dispatches?: DispatchedEventResultData[];
   isLoadingDispatches?: boolean;
   overdueEntityIds?: Set<string>;
-  onPress: () => void;
-  onOpenDetails: () => void;
-  onDispatchMore?: () => void;
-}> = ({ call, priority, isSelected, isFilterActive, dispatches, isLoadingDispatches, overdueEntityIds, onPress, onOpenDetails, onDispatchMore }) => {
+  onSelect: (callId: string) => void;
+  onOpenDetails: (callId: string) => void;
+  onDispatchMore?: (call: CallResultData) => void;
+}> = React.memo(({ call, priority, isSelected, isFilterActive, dispatches, isLoadingDispatches, overdueEntityIds, onSelect, onOpenDetails, onDispatchMore }) => {
   void isFilterActive; // kept in props for selection badge only
   const { t } = useTranslation();
   const bgColor = priority?.Color || '#6b7280';
@@ -279,7 +282,7 @@ const CallItemWrapper: React.FC<{
   const wrapperStyle = isSelected && isFilterActive ? StyleSheet.flatten([styles.callItemWrapper, styles.selectedCall]) : styles.callItemWrapper;
 
   return (
-    <Pressable onPress={onPress}>
+    <Pressable onPress={() => onSelect(call.CallId)}>
       <Box style={wrapperStyle}>
         {/* Selection indicator */}
         {isSelected && isFilterActive ? (
@@ -296,7 +299,7 @@ const CallItemWrapper: React.FC<{
           <Pressable
             onPress={(e) => {
               e.stopPropagation();
-              onOpenDetails();
+              onOpenDetails(call.CallId);
             }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             style={StyleSheet.flatten([styles.detailsButton, { backgroundColor: `${bgColor}dd` }])}
@@ -307,7 +310,7 @@ const CallItemWrapper: React.FC<{
             <Pressable
               onPress={(e) => {
                 e.stopPropagation();
-                onDispatchMore();
+                onDispatchMore(call);
               }}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               style={StyleSheet.flatten([styles.dispatchMoreButton, { backgroundColor: `${bgColor}dd` }])}
@@ -320,9 +323,11 @@ const CallItemWrapper: React.FC<{
       </Box>
     </Pressable>
   );
-};
+});
 
-export const ActiveCallsPanel: React.FC<ActiveCallsPanelProps> = ({ selectedCallId, onSelectCall, isFilterActive = false }) => {
+CallItemWrapper.displayName = 'CallItemWrapper';
+
+export const ActiveCallsPanel: React.FC<ActiveCallsPanelProps> = ({ selectedCallId, onSelectCall, isFilterActive = false, flexWeight }) => {
   const { t } = useTranslation();
   const { canUserCreateCalls } = useSecurityStore();
   const showToast = useToastStore((state) => state.showToast);
@@ -339,7 +344,8 @@ export const ActiveCallsPanel: React.FC<ActiveCallsPanelProps> = ({ selectedCall
     });
     return ids;
   }, [allTimerStatuses]);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const isCollapsed = useDashboardViewStore(selectCardCollapsed('active-calls'));
+  const setCardCollapsed = useDashboardViewStore((s) => s.setCardCollapsed);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Per-call dispatches cache (fetched eagerly for all active calls)
@@ -400,27 +406,33 @@ export const ActiveCallsPanel: React.FC<ActiveCallsPanelProps> = ({ selectedCall
       batchEpochs.set(id, epochCounterRef.current);
     });
 
-    Promise.all(
-      toFetch.map((callId) =>
-        getCallExtraData(callId)
-          .then((res) => ({ callId, dispatches: res?.Data?.Dispatches ?? ([] as DispatchedEventResultData[]) }))
-          .catch(() => ({ callId, dispatches: null as DispatchedEventResultData[] | null }))
-      )
-    ).then((results) => {
-      setCallDispatchesMap((prev) => {
-        const next = { ...prev };
-        results.forEach(({ callId, dispatches }) => {
-          // Skip update if a newer request superseded this one for this callId.
-          if (callFetchEpochsRef.current.get(callId) !== batchEpochs.get(callId)) return;
-          if (dispatches !== null) {
-            next[callId] = dispatches;
-          } else {
-            // Fetch failed – remove from the fetched set so the next refresh can retry
-            fetchedCallIdsRef.current.delete(callId);
-          }
+    const runBatches = async () => {
+      // Bound the fan-out so console load does not fire N parallel requests
+      const CONCURRENCY = 4;
+      for (let i = 0; i < toFetch.length; i += CONCURRENCY) {
+        const chunk = toFetch.slice(i, i + CONCURRENCY);
+        const results = await Promise.all(
+          chunk.map((callId) =>
+            getCallExtraData(callId)
+              .then((res) => ({ callId, dispatches: res?.Data?.Dispatches ?? ([] as DispatchedEventResultData[]) }))
+              .catch(() => ({ callId, dispatches: null as DispatchedEventResultData[] | null }))
+          )
+        );
+        setCallDispatchesMap((prev) => {
+          const next = { ...prev };
+          results.forEach(({ callId, dispatches }) => {
+            // Skip update if a newer request superseded this one for this callId.
+            if (callFetchEpochsRef.current.get(callId) !== batchEpochs.get(callId)) return;
+            if (dispatches !== null) {
+              next[callId] = dispatches;
+            } else {
+              // Fetch failed – remove from the fetched set so the next refresh can retry
+              fetchedCallIdsRef.current.delete(callId);
+            }
+          });
+          return next;
         });
-        return next;
-      });
+      }
       // Always clear loading state so spinners are never permanently stuck,
       // even if a concurrent batch started after this one.
       setLoadingCallIds((prev) => {
@@ -430,7 +442,8 @@ export const ActiveCallsPanel: React.FC<ActiveCallsPanelProps> = ({ selectedCall
         });
         return next;
       });
-    });
+    };
+    void runBatches();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [calls]);
 
@@ -468,6 +481,17 @@ export const ActiveCallsPanel: React.FC<ActiveCallsPanelProps> = ({ selectedCall
 
   const handleOpenCallDetails = useCallback((callId: string) => {
     router.push(`/call/${callId}` as Href);
+  }, []);
+
+  const handleSelectCall = useCallback(
+    (callId: string) => {
+      onSelectCall?.(callId);
+    },
+    [onSelectCall]
+  );
+
+  const handleDispatchMore = useCallback((call: CallResultData) => {
+    setDispatchTargetCall(call);
   }, []);
 
   // Dispatch additional resources to the targeted call. Picked resources are unioned with the call's
@@ -516,15 +540,38 @@ export const ActiveCallsPanel: React.FC<ActiveCallsPanelProps> = ({ selectedCall
     fetchCallPriorities();
   }, [fetchCalls, fetchCallPriorities]);
 
+  const renderCallItem = useCallback(
+    ({ item }: { item: CallResultData }) => (
+      <CallItemWrapper
+        call={item}
+        priority={getPriority(item.Priority)}
+        isSelected={selectedCallId === item.CallId}
+        isFilterActive={isFilterActive}
+        dispatches={callDispatchesMap[item.CallId]}
+        isLoadingDispatches={loadingCallIds.has(item.CallId)}
+        overdueEntityIds={overdueEntityIds}
+        onSelect={handleSelectCall}
+        onOpenDetails={handleOpenCallDetails}
+        onDispatchMore={canUserCreateCalls ? handleDispatchMore : undefined}
+      />
+    ),
+    [getPriority, selectedCallId, isFilterActive, callDispatchesMap, loadingCallIds, overdueEntityIds, handleSelectCall, handleOpenCallDetails, canUserCreateCalls, handleDispatchMore]
+  );
+
+  const keyExtractor = useCallback((item: CallResultData) => item.CallId, []);
+
   return (
-    <Box className={`overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 ${isCollapsed ? '' : 'flex-1'}`}>
+    <Box
+      className={`overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 ${isCollapsed ? '' : 'flex-1'}`}
+      style={!isCollapsed && flexWeight !== undefined ? { flex: flexWeight } : undefined}
+    >
       <PanelHeader
         title={t('dispatch.active_calls')}
         icon={AlertTriangle}
         iconColor="#ef4444"
         count={activeCalls.length}
         isCollapsed={isCollapsed}
-        onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
+        onToggleCollapse={() => setCardCollapsed('active-calls', !isCollapsed)}
         rightContent={
           <HStack space="xs">
             <Pressable onPress={handleRefresh} style={styles.iconButton}>
@@ -560,8 +607,8 @@ export const ActiveCallsPanel: React.FC<ActiveCallsPanelProps> = ({ selectedCall
               </Pressable>
             ) : null}
           </HStack>
-          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-            {error ? (
+          {error ? (
+            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
               <View style={styles.emptyState}>
                 <Icon as={AlertTriangle} size="lg" className="text-red-400" />
                 <Text className="mt-2 text-center text-sm text-red-500">{error}</Text>
@@ -569,31 +616,27 @@ export const ActiveCallsPanel: React.FC<ActiveCallsPanelProps> = ({ selectedCall
                   <Text className="text-sm text-indigo-500">{t('common.retry')}</Text>
                 </Pressable>
               </View>
-            ) : activeCalls.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Icon as={AlertTriangle} size="lg" className="text-gray-300 dark:text-gray-600" />
-                <Text className="mt-2 text-center text-sm text-gray-500 dark:text-gray-400">{t('dispatch.no_active_calls')}</Text>
-              </View>
-            ) : (
-              activeCalls.map((call) => (
-                <CallItemWrapper
-                  key={call.CallId}
-                  call={call}
-                  priority={getPriority(call.Priority)}
-                  isSelected={selectedCallId === call.CallId}
-                  isFilterActive={isFilterActive}
-                  dispatches={callDispatchesMap[call.CallId]}
-                  isLoadingDispatches={loadingCallIds.has(call.CallId)}
-                  overdueEntityIds={overdueEntityIds}
-                  onPress={() => {
-                    onSelectCall?.(call.CallId);
-                  }}
-                  onOpenDetails={() => handleOpenCallDetails(call.CallId)}
-                  onDispatchMore={canUserCreateCalls ? () => setDispatchTargetCall(call) : undefined}
-                />
-              ))
-            )}
-          </ScrollView>
+            </ScrollView>
+          ) : (
+            <FlatList<CallResultData>
+              style={styles.content}
+              contentContainerStyle={styles.contentContainer}
+              showsVerticalScrollIndicator={false}
+              data={activeCalls}
+              renderItem={renderCallItem}
+              keyExtractor={keyExtractor}
+              initialNumToRender={10}
+              maxToRenderPerBatch={10}
+              windowSize={7}
+              removeClippedSubviews={Platform.OS !== 'web'}
+              ListEmptyComponent={
+                <View style={styles.emptyState}>
+                  <Icon as={AlertTriangle} size="lg" className="text-gray-300 dark:text-gray-600" />
+                  <Text className="mt-2 text-center text-sm text-gray-500 dark:text-gray-400">{t('dispatch.no_active_calls')}</Text>
+                </View>
+              }
+            />
+          )}
         </View>
       ) : null}
 
@@ -616,8 +659,10 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 8,
     maxHeight: 300,
+  },
+  contentContainer: {
+    padding: 8,
   },
   callItemWrapper: {
     marginBottom: 8,

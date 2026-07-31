@@ -21,6 +21,7 @@ jest.mock('react-i18next', () => ({
 
 // Mock nativewind
 jest.mock('nativewind', () => ({
+  styled: jest.fn((Component: any) => Component),
   useColorScheme: () => ({ colorScheme: 'light' }),
   cssInterop: jest.fn(),
 }));
@@ -149,7 +150,7 @@ const mockCallPin = {
   Latitude: 40.7128,
   Longitude: -74.0060,
   ImagePath: 'call',
-  Type: 1,
+  Type: 0,
   InfoWindowContent: 'Medical emergency at Main St',
   Color: '#ff0000',
   zIndex: 1,
@@ -452,7 +453,7 @@ describe('Pin Actions Integration Tests', () => {
       const callPinByType = {
         ...mockCallPin,
         ImagePath: 'other',
-        Type: 1,
+        Type: 0,
       };
 
       render(

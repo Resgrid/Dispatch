@@ -5,7 +5,7 @@ import * as Sharing from 'expo-sharing';
 import { Download, File, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Pressable } from 'react-native';
+import { Alert, Platform, Pressable } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 
 import { getCallAttachmentFile } from '@/api/calls/callFiles';
@@ -106,6 +106,25 @@ export const CallFilesModal: React.FC<CallFilesModalProps> = ({ isOpen, onClose,
 
       // Create a temporary file
       const fileName = file.FileName || file.Name || `file_${file.Id}`;
+
+      if (Platform.OS === 'web') {
+        const objectUrl = URL.createObjectURL(fileData);
+        const link = document.createElement('a');
+        link.href = objectUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(objectUrl);
+
+        setDownloadingFiles((prev) => {
+          const newState = { ...prev };
+          delete newState[file.Id];
+          return newState;
+        });
+        return;
+      }
+
       const fileUri = `${FileSystem.documentDirectory}${fileName}`;
 
       // Convert blob to base64

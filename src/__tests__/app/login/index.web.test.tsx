@@ -82,6 +82,7 @@ jest.mock('@/stores/app/server-url-store', () => ({
 }));
 
 jest.mock('nativewind', () => ({
+  styled: jest.fn((Component: any) => Component),
   useColorScheme: () => ({
     colorScheme: 'light',
   }),

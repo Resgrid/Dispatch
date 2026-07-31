@@ -51,6 +51,21 @@ const BluetoothAudioModal: React.FC<BluetoothAudioModalProps> = ({ isOpen, onClo
     }
   }, [isOpen, bluetoothState, isScanning, connectedDevice, handleStartScan]);
 
+  useEffect(() => {
+    // Stop scanning when the modal closes
+    if (!isOpen && isScanning) {
+      bluetoothAudioService.stopScanning();
+    }
+  }, [isOpen, isScanning]);
+
+  useEffect(() => {
+    return () => {
+      if (useBluetoothAudioStore.getState().isScanning) {
+        bluetoothAudioService.stopScanning();
+      }
+    };
+  }, []);
+
   const handleStopScan = React.useCallback(() => {
     bluetoothAudioService.stopScanning();
   }, []);

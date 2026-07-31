@@ -106,7 +106,7 @@ describe('SignalRService', () => {
         })
       );
       expect(mockBuilderInstance.withAutomaticReconnect).toHaveBeenCalledWith([0, 2000, 5000, 10000, 30000]);
-      expect(mockBuilderInstance.configureLogging).toHaveBeenCalledWith(LogLevel.Information);
+      expect(mockBuilderInstance.configureLogging).toHaveBeenCalledWith(LogLevel.Warning);
       expect(mockConnection.start).toHaveBeenCalled();
     });
 

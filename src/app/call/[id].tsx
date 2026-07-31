@@ -351,7 +351,7 @@ export default function CallDetail() {
         title: t('call_detail.tabs.info'),
         icon: <InfoIcon size={16} />,
         content: (
-          <Box className={`p-4 shadow-sm ${colorScheme === 'dark' ? 'bg-neutral-900' : 'bg-neutral-100'}`}>
+          <Box className={`p-4 shadow-xs ${colorScheme === 'dark' ? 'bg-neutral-900' : 'bg-neutral-100'}`}>
             <VStack className="space-y-3">
               <Box className="border-b border-outline-100 pb-2">
                 <Text className="text-sm text-gray-500">{t('call_detail.priority')}</Text>
@@ -634,7 +634,7 @@ export default function CallDetail() {
       />
       <ScrollView className={`size-full w-full flex-1 ${colorScheme === 'dark' ? 'bg-neutral-950' : 'bg-neutral-50'}`}>
         {/* Header */}
-        <Box className={`p-4 shadow-sm ${colorScheme === 'dark' ? 'bg-neutral-900' : 'bg-neutral-100'}`}>
+        <Box className={`p-4 shadow-xs ${colorScheme === 'dark' ? 'bg-neutral-900' : 'bg-neutral-100'}`}>
           <HStack className="mb-2 items-center justify-between">
             <Heading size="md">
               {call.Name} ({call.Number})
@@ -702,7 +702,7 @@ export default function CallDetail() {
         </Box>
 
         {/* Action Buttons */}
-        <HStack className={`justify-around p-4 shadow-sm ${colorScheme === 'dark' ? 'bg-neutral-900' : 'bg-neutral-100'}`}>
+        <HStack className={`justify-around p-4 shadow-xs ${colorScheme === 'dark' ? 'bg-neutral-900' : 'bg-neutral-100'}`}>
           <Box className="relative mx-1 flex-1">
             <Button onPress={() => openNotesModal()} variant="outline" className="w-full" size={isLandscape ? 'md' : 'sm'}>
               <ButtonIcon as={FileTextIcon} />

@@ -55,16 +55,13 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
   const { colorScheme } = useColorScheme();
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
-  const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const markersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
+  const markerMetaRef = useRef<Map<string, { signature: string; latitude: number; longitude: number }>>(new Map());
+  const onPinPressRef = useRef(onPinPress);
   const layerIdsRef = useRef<string[]>([]);
   const sourceIdsRef = useRef<string[]>([]);
   const [isMapReady, setIsMapReady] = useState(false);
   const [internalPins, setInternalPins] = useState<MapMakerInfoData[]>([]);
-
-  const location = useLocationStore((state) => ({
-    latitude: state.latitude,
-    longitude: state.longitude,
-  }));
 
   // Use external pins if provided, otherwise use internal pins
   const mapPins = externalPins ?? internalPins;
@@ -92,13 +89,14 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
 
     mapboxgl.accessToken = Env.MAPBOX_PUBKEY;
 
-    const initialCenter: [number, number] = location.longitude && location.latitude ? [location.longitude, location.latitude] : [-98.5795, 39.8283];
+    const { latitude, longitude } = useLocationStore.getState();
+    const initialCenter: [number, number] = longitude && latitude ? [longitude, latitude] : [-98.5795, 39.8283];
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: getMapStyle(),
       center: initialCenter,
-      zoom: location.latitude && location.longitude ? 12 : 3,
+      zoom: latitude && longitude ? 12 : 3,
       interactive,
     });
 
@@ -108,7 +106,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
       map.current.addControl(
         new mapboxgl.GeolocateControl({
           positionOptions: {
-            enableHighAccuracy: true,
+            enableHighAccuracy: false,
           },
           trackUserLocation: true,
           showUserHeading: true,
@@ -121,13 +119,17 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
       onMapReady?.();
     });
 
+    const markers = markersRef.current;
+    const markerMeta = markerMetaRef.current;
+
     return () => {
-      markersRef.current.forEach((marker) => marker.remove());
-      markersRef.current = [];
+      markers.forEach((marker) => marker.remove());
+      markers.clear();
+      markerMeta.clear();
       map.current?.remove();
       map.current = null;
     };
-  }, [getMapStyle, location.latitude, location.longitude, interactive, showUserLocation, onMapReady]);
+  }, [getMapStyle, interactive, showUserLocation, onMapReady]);
 
   // Update map style when theme changes
   useEffect(() => {
@@ -209,39 +211,78 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     };
   }, [autoFetchPins]);
 
+  // Keep a ref to the latest onPinPress so marker click handlers always call the
+  // current callback without forcing a marker rebuild when its identity changes.
+  useEffect(() => {
+    onPinPressRef.current = onPinPress;
+  }, [onPinPress]);
+
   // Update markers when mapPins change
   useEffect(() => {
     if (!map.current || !isMapReady) return;
 
-    // Remove existing markers
-    markersRef.current.forEach((marker) => marker.remove());
-    markersRef.current = [];
+    const theme = colorScheme === 'dark' ? 'dark' : 'light';
+    const seenPinIds = new Set<string>();
 
-    // Add new markers
+    const buildPopupHtml = (pin: MapMakerInfoData) =>
+      `<div style="padding: 8px;">
+        <h3 style="margin: 0 0 8px 0; font-weight: 600;">${pin.Title}</h3>
+        ${getMapPinSummary(pin) ? `<p style="margin: 0 0 8px 0; font-size: 12px;">${getMapPinSummary(pin)}</p>` : ''}
+        <p style="margin: 0; font-size: 11px; color: #666;">
+          ${pin.Latitude.toFixed(6)}, ${pin.Longitude.toFixed(6)}
+        </p>
+      </div>`;
+
     mapPins.forEach((pin) => {
       if (!hasValidMapCoordinates(pin)) return;
+      seenPinIds.add(pin.Id);
+
+      const signature = `${theme}:${pin.Title}:${pin.Type}:${pin.PoiTypeId}:${pin.LayerId}:${pin.ImagePath}:${pin.PoiImage}:${pin.Marker}:${pin.Color}:${pin.Address}:${pin.Note}:${pin.PoiTypeName}:${pin.InfoWindowContent}`;
+      const existing = markersRef.current.get(pin.Id);
+
+      if (existing) {
+        const meta = markerMetaRef.current.get(pin.Id);
+        const moved = !meta || meta.latitude !== pin.Latitude || meta.longitude !== pin.Longitude;
+
+        if (moved) {
+          existing.setLngLat([pin.Longitude, pin.Latitude]);
+        }
+
+        if (meta && meta.signature === signature) {
+          if (moved) {
+            existing.getPopup()?.setHTML(buildPopupHtml(pin));
+            markerMetaRef.current.set(pin.Id, { signature, latitude: pin.Latitude, longitude: pin.Longitude });
+          }
+          return;
+        }
+
+        existing.remove();
+        markersRef.current.delete(pin.Id);
+      }
 
       // Create custom marker element using shared utility
-      const el = createMapMarkerElement(pin, colorScheme, () => {
-        onPinPress?.(pin);
+      const el = createMapMarkerElement(pin, theme, () => {
+        onPinPressRef.current?.(pin);
       });
 
       // Create popup
-      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(
-        `<div style="padding: 8px;">
-          <h3 style="margin: 0 0 8px 0; font-weight: 600;">${pin.Title}</h3>
-          ${getMapPinSummary(pin) ? `<p style="margin: 0 0 8px 0; font-size: 12px;">${getMapPinSummary(pin)}</p>` : ''}
-          <p style="margin: 0; font-size: 11px; color: #666;">
-            ${pin.Latitude.toFixed(6)}, ${pin.Longitude.toFixed(6)}
-          </p>
-        </div>`
-      );
+      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(buildPopupHtml(pin));
 
       const marker = new mapboxgl.Marker({ element: el }).setLngLat([pin.Longitude, pin.Latitude]).setPopup(popup).addTo(map.current!);
 
-      markersRef.current.push(marker);
+      markersRef.current.set(pin.Id, marker);
+      markerMetaRef.current.set(pin.Id, { signature, latitude: pin.Latitude, longitude: pin.Longitude });
     });
-  }, [mapPins, isMapReady, colorScheme, onPinPress]);
+
+    // Remove stale markers
+    markersRef.current.forEach((marker, pinId) => {
+      if (!seenPinIds.has(pinId)) {
+        marker.remove();
+        markersRef.current.delete(pinId);
+        markerMetaRef.current.delete(pinId);
+      }
+    });
+  }, [mapPins, isMapReady, colorScheme]);
 
   // Update layers when visibility changes
   useEffect(() => {

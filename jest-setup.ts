@@ -185,6 +185,8 @@ jest.mock('react-native-permissions', () => ({
 
 // Mock nativewind to avoid react-native-css-interop issues
 jest.mock('nativewind', () => ({
+  styled: jest.fn((Component: any) => Component),
+  vars: jest.fn((v: any) => v),
   cssInterop: jest.fn((Component: any) => Component),
   useColorScheme: jest.fn(() => ({
     colorScheme: 'light',

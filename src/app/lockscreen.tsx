@@ -19,6 +19,7 @@ import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
 import colors from '@/constants/colors';
 import { useAuth } from '@/lib/auth';
+import { verifyPassword } from '@/lib/auth/api';
 import { logger } from '@/lib/logging';
 import useLockscreenStore from '@/stores/lockscreen/store';
 
@@ -60,16 +61,22 @@ export default function Lockscreen() {
         message: 'Attempting to unlock screen',
       });
 
-      // In a real implementation, you would verify the password against stored credentials
-      // For now, we'll just check if it matches the user's current session
-      // You could also implement a PIN system here
+      const verification = await verifyPassword(data.password);
 
-      // Simulate password verification
-      // This is a simplified version - in production, you'd verify against encrypted stored password
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      if (verification === null) {
+        // No cached password hash (e.g. SSO/OIDC login) - a fresh login is required
+        logger.warn({
+          message: 'Unlock failed: no password verification hash stored',
+        });
+        setError(t('lockscreen.relogin_required'));
+        return;
+      }
 
-      // For now, we'll just unlock without verification
-      // In production, you should verify the password matches
+      if (!verification) {
+        setError(t('lockscreen.unlock_failed'));
+        return;
+      }
+
       unlock();
       router.replace('/(app)' as Href);
     } catch (err) {

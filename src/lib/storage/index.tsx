@@ -16,8 +16,13 @@ if (Platform.OS === 'web') {
 const IS_FIRST_TIME = 'IS_FIRST_TIME';
 
 export function getItem<T>(key: string): T | null {
-  const value = storage.getString(key);
-  return value ? JSON.parse(value) : null;
+  try {
+    const value = storage.getString(key);
+    return value ? JSON.parse(value) : null;
+  } catch (error) {
+    console.error('Error reading from storage', { key, error });
+    return null;
+  }
 }
 
 export async function setItem<T>(key: string, value: T) {

@@ -1,11 +1,9 @@
 'use client';
-import { createAvatar } from '@gluestack-ui/avatar';
-import type { VariantProps } from '@gluestack-ui/nativewind-utils';
-import { tva } from '@gluestack-ui/nativewind-utils/tva';
-import { useStyleContext, withStyleContext } from '@gluestack-ui/nativewind-utils/withStyleContext';
-import { cssInterop } from 'nativewind';
+import { createAvatar } from '@gluestack-ui/core/avatar/creator';
+import { tva, useStyleContext, type VariantProps, withStyleContext } from '@gluestack-ui/utils/nativewind-utils';
 import React from 'react';
 import { Image, Platform, Text, View } from 'react-native';
+
 const SCOPE = 'AVATAR';
 
 const UIAvatar = createAvatar({
@@ -15,12 +13,6 @@ const UIAvatar = createAvatar({
   Image: Image,
   FallbackText: Text,
 });
-
-cssInterop(UIAvatar, { className: 'style' });
-cssInterop(UIAvatar.Badge, { className: 'style' });
-cssInterop(UIAvatar.Group, { className: 'style' });
-cssInterop(UIAvatar.Image, { className: 'style' });
-cssInterop(UIAvatar.FallbackText, { className: 'style' });
 
 const avatarStyle = tva({
   base: 'rounded-full justify-center items-center relative bg-primary-600 group-[.avatar-group]/avatar-group:-ml-2.5',
@@ -76,7 +68,8 @@ const avatarImageStyle = tva({
 type IAvatarProps = Omit<React.ComponentPropsWithoutRef<typeof UIAvatar>, 'context'> & VariantProps<typeof avatarStyle>;
 
 export const Avatar = React.forwardRef<React.ElementRef<typeof UIAvatar>, IAvatarProps>(({ className, size = 'md', ...props }, ref) => {
-  return <UIAvatar ref={ref} {...props} className={avatarStyle({ size, class: className })} context={{ size }} />;
+  const contextValue = React.useMemo(() => ({ size }), [size]);
+  return <UIAvatar ref={ref} {...props} className={avatarStyle({ size, class: className })} context={contextValue} />;
 });
 
 type IAvatarBadgeProps = React.ComponentPropsWithoutRef<typeof UIAvatar.Badge> & VariantProps<typeof avatarBadgeStyle>;

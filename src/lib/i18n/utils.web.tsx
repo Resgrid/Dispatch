@@ -44,15 +44,23 @@ export const useSelectedLanguage = () => {
   const [language, setLangState] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    const storedLang = localStorage.getItem(LOCAL);
-    if (storedLang) {
-      setLangState(storedLang);
+    try {
+      const storedLang = localStorage.getItem(LOCAL);
+      if (storedLang) {
+        setLangState(storedLang);
+      }
+    } catch (e) {
+      console.warn('localStorage.getItem failed', e);
     }
   }, []);
 
   const setLanguage = useCallback((lang: Language) => {
     setLangState(lang);
-    localStorage.setItem(LOCAL, lang);
+    try {
+      localStorage.setItem(LOCAL, lang);
+    } catch (e) {
+      console.warn('localStorage.setItem failed', e);
+    }
     if (lang !== undefined) changeLanguage(lang as Language);
   }, []);
 

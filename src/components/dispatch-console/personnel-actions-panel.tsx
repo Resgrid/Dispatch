@@ -640,21 +640,21 @@ export const PersonnelActionsPanel: React.FC<PersonnelActionsPanelProps> = ({ pe
               <>
                 <HStack className="rounded-lg bg-gray-100 p-1 dark:bg-gray-800" space="xs">
                   {destinationConfig.showCalls ? (
-                    <Pressable onPress={() => setDestinationTab('calls')} className={`flex-1 rounded-md px-3 py-2 ${destinationTab === 'calls' ? 'bg-white shadow-sm dark:bg-gray-700' : ''}`}>
+                    <Pressable onPress={() => setDestinationTab('calls')} className={`flex-1 rounded-md px-3 py-2 ${destinationTab === 'calls' ? 'bg-white shadow-xs dark:bg-gray-700' : ''}`}>
                       <Text className={`text-center text-sm font-medium ${destinationTab === 'calls' ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400'}`}>
                         {t('dispatch.calls')} ({activeCalls.length})
                       </Text>
                     </Pressable>
                   ) : null}
                   {destinationConfig.showStations ? (
-                    <Pressable onPress={() => setDestinationTab('stations')} className={`flex-1 rounded-md px-3 py-2 ${destinationTab === 'stations' ? 'bg-white shadow-sm dark:bg-gray-700' : ''}`}>
+                    <Pressable onPress={() => setDestinationTab('stations')} className={`flex-1 rounded-md px-3 py-2 ${destinationTab === 'stations' ? 'bg-white shadow-xs dark:bg-gray-700' : ''}`}>
                       <Text className={`text-center text-sm font-medium ${destinationTab === 'stations' ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400'}`}>
                         {t('dispatch.stations')} ({availableStations.length})
                       </Text>
                     </Pressable>
                   ) : null}
                   {destinationConfig.showPois ? (
-                    <Pressable onPress={() => setDestinationTab('pois')} className={`flex-1 rounded-md px-3 py-2 ${destinationTab === 'pois' ? 'bg-white shadow-sm dark:bg-gray-700' : ''}`}>
+                    <Pressable onPress={() => setDestinationTab('pois')} className={`flex-1 rounded-md px-3 py-2 ${destinationTab === 'pois' ? 'bg-white shadow-xs dark:bg-gray-700' : ''}`}>
                       <Text className={`text-center text-sm font-medium ${destinationTab === 'pois' ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400'}`}>
                         {t('menu.pois')} ({availablePois.length})
                       </Text>

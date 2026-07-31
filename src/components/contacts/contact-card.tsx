@@ -32,7 +32,7 @@ export const ContactCard: React.FC<ContactCardProps> = ({ contact, onPress }) =>
   const displayName = getDisplayName(contact);
 
   return (
-    <Pressable className="mb-3 overflow-hidden rounded-lg bg-white shadow-sm dark:bg-gray-800" onPress={() => onPress(contact.ContactId)}>
+    <Pressable className="mb-3 overflow-hidden rounded-lg bg-white shadow-xs dark:bg-gray-800" onPress={() => onPress(contact.ContactId)}>
       <View className="flex-row items-center p-4">
         <Avatar size="md" className="mr-4 bg-gray-100 dark:bg-gray-700">
           {contact.ImageUrl ? (

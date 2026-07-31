@@ -3,7 +3,7 @@ import { Circle, ExternalLink, Filter, MapPin, Plus, Search, User, Users, X } fr
 import { useColorScheme } from 'nativewind';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { FlatList, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { Badge } from '@/components/ui/badge';
 import { Box } from '@/components/ui/box';
@@ -15,7 +15,7 @@ import { isPersonnelDispatch } from '@/lib/dispatch-types';
 import { isPersonnelAvailable } from '@/lib/resource-availability';
 import { type DispatchedEventResultData } from '@/models/v4/calls/dispatchedEventResultData';
 import { type PersonnelInfoResultData } from '@/models/v4/personnel/personnelInfoResultData';
-import { useDashboardViewStore } from '@/stores/dispatch/dashboard-view-store';
+import { selectCardCollapsed, useDashboardViewStore } from '@/stores/dispatch/dashboard-view-store';
 
 import { AnimatedRefreshIcon } from './animated-refresh-icon';
 import { PanelHeader } from './panel-header';
@@ -37,16 +37,16 @@ const PersonnelItem: React.FC<{
   person: PersonnelInfoResultData;
   isSelected: boolean;
   isOnCall?: boolean;
-  onPress: () => void;
-  onSetStatus?: () => void;
-}> = ({ person, isSelected, isOnCall, onPress, onSetStatus }) => {
+  onSelect: (personnelId: string) => void;
+  onSetStatusForPersonnel?: (personnelId: string, personnelName: string) => void;
+}> = React.memo(({ person, isSelected, isOnCall, onSelect, onSetStatusForPersonnel }) => {
   const { t } = useTranslation();
   const statusColor = person.StatusColor || '#6b7280';
   const staffingColor = person.StaffingColor || '#6b7280';
   const hasDestination = person.StatusDestinationName && person.StatusDestinationName.trim() !== '';
 
   return (
-    <Pressable onPress={onPress}>
+    <Pressable onPress={() => onSelect(person.UserId)}>
       <Box className={`mb-2 rounded-lg border bg-white p-2 dark:bg-gray-800 ${isSelected ? 'border-indigo-500' : 'border-gray-200 dark:border-gray-700'}`}>
         <HStack className="items-center justify-between">
           <HStack className="flex-1 items-center" space="sm">
@@ -103,11 +103,11 @@ const PersonnelItem: React.FC<{
               <Circle size={6} fill={staffingColor} color={staffingColor} />
               <Text className="text-xs text-gray-500 dark:text-gray-400">{person.Staffing || t('dispatch.unknown')}</Text>
             </HStack>
-            {onSetStatus ? (
+            {onSetStatusForPersonnel ? (
               <Pressable
                 onPress={(e) => {
                   e.stopPropagation();
-                  onSetStatus();
+                  onSetStatusForPersonnel(person.UserId, `${person.FirstName} ${person.LastName}`);
                 }}
                 style={styles.statusButton}
               >
@@ -119,7 +119,9 @@ const PersonnelItem: React.FC<{
       </Box>
     </Pressable>
   );
-};
+});
+
+PersonnelItem.displayName = 'PersonnelItem';
 
 export const PersonnelPanel: React.FC<PersonnelPanelProps> = ({
   personnel,
@@ -133,7 +135,8 @@ export const PersonnelPanel: React.FC<PersonnelPanelProps> = ({
   onSetPersonnelStatusForCall,
 }) => {
   const { t } = useTranslation();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const isCollapsed = useDashboardViewStore(selectCardCollapsed('personnel'));
+  const setCardCollapsed = useDashboardViewStore((s) => s.setCardCollapsed);
   const [searchQuery, setSearchQuery] = useState('');
   const availableOnly = useDashboardViewStore((s) => s.availableOnly);
   const singleList = useDashboardViewStore((s) => s.singleList);
@@ -231,6 +234,24 @@ export const PersonnelPanel: React.FC<PersonnelPanelProps> = ({
   // Count on-duty personnel
   const onDutyCount = displayedPersonnel.filter((p) => p.Staffing && p.Staffing.toLowerCase() !== 'off duty').length;
 
+  const renderPersonnelItem = useCallback(
+    ({ item }: { item: PersonnelInfoResultData }) => {
+      const fullName = `${item.FirstName} ${item.LastName}`.toLowerCase();
+      return (
+        <PersonnelItem
+          person={item}
+          isSelected={selectedPersonnelId === item.UserId}
+          isOnCall={dispatchedPersonnelIds.has(item.UserId) || dispatchedPersonnelNames.has(fullName) || Boolean(selectedCallId && item.StatusDestinationId === selectedCallId)}
+          onSelect={handleSelectPersonnel}
+          onSetStatusForPersonnel={isCallFilterActive ? onSetPersonnelStatusForCall : undefined}
+        />
+      );
+    },
+    [selectedPersonnelId, dispatchedPersonnelIds, dispatchedPersonnelNames, selectedCallId, handleSelectPersonnel, isCallFilterActive, onSetPersonnelStatusForCall]
+  );
+
+  const keyExtractor = useCallback((item: PersonnelInfoResultData) => item.UserId, []);
+
   // When "single list" is on, the combined ResourcesPanel (rendered from the units slot) already
   // includes personnel, so this panel hides itself to avoid duplication.
   if (singleList) {
@@ -245,7 +266,7 @@ export const PersonnelPanel: React.FC<PersonnelPanelProps> = ({
         iconColor="#8b5cf6"
         count={displayedPersonnel.length}
         isCollapsed={isCollapsed}
-        onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
+        onToggleCollapse={() => setCardCollapsed('personnel', !isCollapsed)}
         rightContent={
           <HStack space="xs">
             <HStack className="items-center rounded bg-purple-100 px-1.5 py-0.5 dark:bg-purple-900" space="xs">
@@ -292,28 +313,24 @@ export const PersonnelPanel: React.FC<PersonnelPanelProps> = ({
               </Pressable>
             ) : null}
           </HStack>
-          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-            {displayedPersonnel.length === 0 ? (
+          <FlatList<PersonnelInfoResultData>
+            style={styles.content}
+            contentContainerStyle={styles.contentContainer}
+            showsVerticalScrollIndicator={false}
+            data={displayedPersonnel}
+            renderItem={renderPersonnelItem}
+            keyExtractor={keyExtractor}
+            initialNumToRender={10}
+            maxToRenderPerBatch={10}
+            windowSize={7}
+            removeClippedSubviews={Platform.OS !== 'web'}
+            ListEmptyComponent={
               <View style={styles.emptyState}>
                 <Icon as={Users} size="lg" className="text-gray-300 dark:text-gray-600" />
                 <Text className="mt-2 text-center text-sm text-gray-500 dark:text-gray-400">{isCallFilterActive ? t('dispatch.no_personnel_on_call') : t('dispatch.no_personnel')}</Text>
               </View>
-            ) : (
-              displayedPersonnel.map((person) => {
-                const fullName = `${person.FirstName} ${person.LastName}`.toLowerCase();
-                return (
-                  <PersonnelItem
-                    key={person.UserId}
-                    person={person}
-                    isSelected={selectedPersonnelId === person.UserId}
-                    isOnCall={dispatchedPersonnelIds.has(person.UserId) || dispatchedPersonnelNames.has(fullName) || Boolean(selectedCallId && person.StatusDestinationId === selectedCallId)}
-                    onPress={() => handleSelectPersonnel(person.UserId)}
-                    onSetStatus={isCallFilterActive && onSetPersonnelStatusForCall ? () => onSetPersonnelStatusForCall(person.UserId, `${person.FirstName} ${person.LastName}`) : undefined}
-                  />
-                );
-              })
-            )}
-          </ScrollView>
+            }
+          />
         </View>
       ) : null}
     </Box>
@@ -328,8 +345,10 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 8,
     maxHeight: 300,
+  },
+  contentContainer: {
+    padding: 8,
   },
   avatar: {
     width: 32,

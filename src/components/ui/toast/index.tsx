@@ -1,22 +1,13 @@
 'use client';
-import type { VariantProps } from '@gluestack-ui/nativewind-utils';
-import { tva } from '@gluestack-ui/nativewind-utils/tva';
-import { useStyleContext, withStyleContext } from '@gluestack-ui/nativewind-utils/withStyleContext';
-import { createToastHook } from '@gluestack-ui/toast';
-import { AnimatePresence, Motion, type MotionComponentProps } from '@legendapp/motion';
-import { cssInterop } from 'nativewind';
+import { createToastHook } from '@gluestack-ui/core/toast/creator';
+import type { VariantProps } from '@gluestack-ui/utils/nativewind-utils';
+import { tva, useStyleContext, withStyleContext } from '@gluestack-ui/utils/nativewind-utils';
 import React from 'react';
-import { AccessibilityInfo, Text, View, type ViewStyle } from 'react-native';
-
-type IMotionViewProps = React.ComponentProps<typeof View> & MotionComponentProps<typeof View, ViewStyle, unknown, unknown, unknown>;
-
-const MotionView = Motion.View as React.ComponentType<IMotionViewProps>;
-
-const useToast = createToastHook(MotionView, AnimatePresence);
+import { AccessibilityInfo, Text, View } from 'react-native';
+import Animated, { SlideInUp } from 'react-native-reanimated';
+const useToast = createToastHook(View);
 const SCOPE = 'TOAST';
-
-cssInterop(MotionView, { className: 'style' });
-
+const AnimatedView = Animated.createAnimatedComponent(View);
 const toastStyle = tva({
   base: 'p-4 m-1 rounded-md gap-1 web:pointer-events-auto shadow-hard-5 border-outline-100',
   variants: {
@@ -143,13 +134,14 @@ const toastDescriptionStyle = tva({
   },
 });
 
-const Root = withStyleContext(View, SCOPE);
+const Root = withStyleContext(AnimatedView, SCOPE);
 type IToastProps = React.ComponentProps<typeof Root> & {
   className?: string;
 } & VariantProps<typeof toastStyle>;
 
 const Toast = React.forwardRef<React.ComponentRef<typeof Root>, IToastProps>(function Toast({ className, variant = 'solid', action = 'muted', ...props }, ref) {
-  return <Root ref={ref} className={toastStyle({ variant, action, class: className })} context={{ variant, action }} {...props} />;
+  const contextValue = React.useMemo(() => ({ variant, action }), [variant, action]);
+  return <Root ref={ref} entering={SlideInUp} className={toastStyle({ variant, action, class: className })} context={contextValue} {...props} />;
 });
 
 type IToastTitleProps = React.ComponentProps<typeof Text> & {

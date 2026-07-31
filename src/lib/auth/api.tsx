@@ -1,12 +1,80 @@
 import { Env } from '@env';
-import axios from 'axios';
-import { randomUUID } from 'expo-crypto';
+import axios, { AxiosError } from 'axios';
+import { CryptoDigestAlgorithm, digestStringAsync, randomUUID } from 'expo-crypto';
 import queryString from 'query-string';
 
 import { logger } from '@/lib/logging';
 
+import { getItem, removeItem, setItem } from '../storage';
 import { getBaseApiUrl } from '../storage/app';
 import type { AuthResponse, LoginCredentials, LoginResponse } from './types';
+
+// Strip any query string from a URL so tokens/credentials in params are never logged.
+const sanitizeUrl = (url?: string): string | undefined => url?.split('?')[0];
+
+// Extract only non-sensitive fields from an axios error. Never log error.config,
+// config.data or response bodies for the token endpoints - they contain credentials.
+const sanitizeAuthError = (error: unknown): Record<string, unknown> => {
+  if (error instanceof AxiosError) {
+    return {
+      message: error.message,
+      status: error.response?.status,
+      url: sanitizeUrl(error.config?.url),
+    };
+  }
+  return { message: error instanceof Error ? error.message : String(error) };
+};
+
+const PASSWORD_VERIFICATION_HASH_KEY = 'PASSWORD_VERIFICATION_HASH';
+const PASSWORD_VERIFICATION_SALT_KEY = 'PASSWORD_VERIFICATION_SALT';
+
+// Store a salted SHA-256 hash of the password after a successful password-grant
+// login so the lockscreen can verify the password offline. This is a verification
+// cache only - the password itself is never stored.
+export const storePasswordVerificationHash = async (password: string): Promise<void> => {
+  try {
+    let salt = getItem<string>(PASSWORD_VERIFICATION_SALT_KEY);
+    if (!salt) {
+      salt = randomUUID();
+      await setItem(PASSWORD_VERIFICATION_SALT_KEY, salt);
+    }
+
+    const hash = await digestStringAsync(CryptoDigestAlgorithm.SHA256, `${salt}:${password}`);
+    await setItem(PASSWORD_VERIFICATION_HASH_KEY, hash);
+  } catch (error) {
+    logger.error({
+      message: 'Failed to store password verification hash',
+      context: { message: error instanceof Error ? error.message : String(error) },
+    });
+  }
+};
+
+// Verify a password against the stored salted hash. Returns null when no hash is
+// stored (e.g. SSO/OIDC login), true on match and false on mismatch.
+export const verifyPassword = async (password: string): Promise<boolean | null> => {
+  try {
+    const salt = getItem<string>(PASSWORD_VERIFICATION_SALT_KEY);
+    const storedHash = getItem<string>(PASSWORD_VERIFICATION_HASH_KEY);
+
+    if (!salt || !storedHash) {
+      return null;
+    }
+
+    const hash = await digestStringAsync(CryptoDigestAlgorithm.SHA256, `${salt}:${password}`);
+    return hash === storedHash;
+  } catch (error) {
+    logger.error({
+      message: 'Failed to verify password',
+      context: { message: error instanceof Error ? error.message : String(error) },
+    });
+    return null;
+  }
+};
+
+export const clearPasswordVerificationHash = async (): Promise<void> => {
+  await removeItem(PASSWORD_VERIFICATION_HASH_KEY);
+  await removeItem(PASSWORD_VERIFICATION_SALT_KEY);
+};
 
 const authApi = axios.create({
   headers: {
@@ -19,7 +87,7 @@ authApi.interceptors.request.use((config) => {
   config.baseURL = getBaseApiUrl();
   logger.info({
     message: 'Auth API request interceptor',
-    context: { baseURL: config.baseURL, url: config.url },
+    context: { baseURL: config.baseURL, url: sanitizeUrl(config.url) },
   });
   return config;
 });
@@ -59,7 +127,7 @@ export const loginRequest = async (credentials: LoginCredentials): Promise<Login
     } else {
       logger.error({
         message: 'Login failed',
-        context: { response, username: credentials.username },
+        context: { status: response.status, username: credentials.username },
       });
 
       return {
@@ -71,7 +139,7 @@ export const loginRequest = async (credentials: LoginCredentials): Promise<Login
   } catch (error) {
     logger.error({
       message: 'Login API call failed with exception',
-      context: { error, username: credentials.username },
+      context: { ...sanitizeAuthError(error), username: credentials.username },
     });
 
     // Return a failed response instead of throwing
@@ -111,7 +179,7 @@ export const externalTokenRequest = async (provider: 'oidc' | 'saml2', externalT
 
     return { successful: false, message: 'SSO login failed', authResponse: null };
   } catch (error) {
-    logger.error({ message: 'SSO: External token request failed', context: { error, requestId } });
+    logger.error({ message: 'SSO: External token request failed', context: { ...sanitizeAuthError(error), requestId } });
     return {
       successful: false,
       message: error instanceof Error ? error.message : 'SSO login failed',
@@ -138,7 +206,7 @@ export const refreshTokenRequest = async (refreshToken: string): Promise<AuthRes
   } catch (error) {
     logger.error({
       message: 'Token refresh failed',
-      context: { error },
+      context: sanitizeAuthError(error),
     });
     throw error;
   }

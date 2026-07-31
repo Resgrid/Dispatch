@@ -6,7 +6,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { logger } from '@/lib/logging';
 
-import { loginRequest, refreshTokenRequest } from '../../lib/auth/api';
+import { clearPasswordVerificationHash, loginRequest, refreshTokenRequest, storePasswordVerificationHash } from '../../lib/auth/api';
 import type { AuthResponse, AuthState, LoginCredentials } from '../../lib/auth/types';
 import { type ProfileModel } from '../../lib/auth/types';
 
@@ -60,7 +60,12 @@ const useAuthStore = create<AuthState>()(
             if (!response.authResponse || !response.authResponse.id_token) {
               logger.error({
                 message: 'Login: Missing auth response or id_token',
-                context: { authResponse: response.authResponse },
+                context: {
+                  hasAuthResponse: !!response.authResponse,
+                  hasIdToken: !!response.authResponse?.id_token,
+                  hasAccessToken: !!response.authResponse?.access_token,
+                  hasRefreshToken: !!response.authResponse?.refresh_token,
+                },
               });
               throw new Error('Invalid authentication response: missing token data');
             }
@@ -94,6 +99,9 @@ const useAuthStore = create<AuthState>()(
               profile: profileData,
               userId: profileData.sub,
             });
+
+            // Cache a salted hash of the password for lockscreen verification
+            await storePasswordVerificationHash(credentials.password);
 
             logger.info({
               message: 'Login: State updated to signedIn',
@@ -139,6 +147,8 @@ const useAuthStore = create<AuthState>()(
         logger.info({
           message: 'Logout: Clearing auth state',
         });
+
+        await clearPasswordVerificationHash();
 
         set({
           accessToken: null,
@@ -194,6 +204,9 @@ const useAuthStore = create<AuthState>()(
       loginWithSso: async (authResponse: AuthResponse) => {
         try {
           set({ status: 'loading', error: null });
+
+          // SSO logins have no password - drop any cached password verification hash
+          await clearPasswordVerificationHash();
 
           const tokenToDecode = authResponse.id_token || authResponse.access_token;
           let profileData: ProfileModel;

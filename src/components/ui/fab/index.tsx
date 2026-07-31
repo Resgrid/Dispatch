@@ -1,34 +1,21 @@
 'use client';
-import { createFab } from '@gluestack-ui/fab';
-import { PrimitiveIcon, UIIcon } from '@gluestack-ui/icon';
-import type { VariantProps } from '@gluestack-ui/nativewind-utils';
-import { tva } from '@gluestack-ui/nativewind-utils/tva';
-import { useStyleContext, withStyleContext } from '@gluestack-ui/nativewind-utils/withStyleContext';
-import { withStyleContextAndStates } from '@gluestack-ui/nativewind-utils/withStyleContextAndStates';
-import { cssInterop } from 'nativewind';
+import { createFab } from '@gluestack-ui/core/fab/creator';
+import { UIIcon } from '@gluestack-ui/core/icon/creator';
+import { tva, useStyleContext, type VariantProps, withStyleContext } from '@gluestack-ui/utils/nativewind-utils';
+import { styled } from 'nativewind';
 import React from 'react';
-import { Platform, Pressable, Text } from 'react-native';
+import { Pressable, Text } from 'react-native';
 
 const SCOPE = 'FAB';
-const UIFab = createFab({
-  Root: Platform.OS === 'web' ? withStyleContext(Pressable, SCOPE) : withStyleContextAndStates(Pressable, SCOPE),
-  Label: Text,
-  Icon: UIIcon,
-});
 
-cssInterop(UIFab, { className: 'style' });
-cssInterop(UIFab.Label, { className: 'style' });
-cssInterop(PrimitiveIcon, {
-  className: {
-    target: 'style',
-    nativeStyleToProp: {
-      height: true,
-      width: true,
-      fill: true,
-      color: 'classNameColor',
-      stroke: true,
-    },
-  },
+const Root = withStyleContext(Pressable, SCOPE);
+
+const StyledUIIcon = styled(UIIcon, { className: 'style' });
+
+const UIFab = createFab({
+  Root: Root,
+  Label: Text,
+  Icon: StyledUIIcon,
 });
 
 const fabStyle = tva({
@@ -114,7 +101,8 @@ const fabIconStyle = tva({
 type IFabProps = Omit<React.ComponentPropsWithoutRef<typeof UIFab>, 'context'> & VariantProps<typeof fabStyle>;
 
 const Fab = React.forwardRef<React.ElementRef<typeof UIFab>, IFabProps>(({ size = 'md', placement = 'bottom right', className, ...props }, ref) => {
-  return <UIFab ref={ref} {...props} className={fabStyle({ size, placement, class: className })} context={{ size }} />;
+  const contextValue = React.useMemo(() => ({ size }), [size]);
+  return <UIFab ref={ref} {...props} className={fabStyle({ size, placement, class: className })} context={contextValue} />;
 });
 
 type IFabLabelProps = React.ComponentPropsWithoutRef<typeof UIFab.Label> & VariantProps<typeof fabLabelStyle>;

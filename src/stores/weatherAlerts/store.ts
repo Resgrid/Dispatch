@@ -25,7 +25,9 @@ import { type WeatherAlertZoneResultData } from '@/models/v4/weatherAlerts/weath
 
 function sortAlerts(a: WeatherAlertResultData, b: WeatherAlertResultData): number {
   if (a.Severity !== b.Severity) return a.Severity - b.Severity;
-  return new Date(b.EffectiveUtc).getTime() - new Date(a.EffectiveUtc).getTime();
+  const timeA = new Date(a.EffectiveUtc).getTime();
+  const timeB = new Date(b.EffectiveUtc).getTime();
+  return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
 }
 
 interface WeatherAlertsState {

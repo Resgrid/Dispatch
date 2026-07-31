@@ -1,14 +1,11 @@
 'use client';
 import { H3 } from '@expo/html-elements';
-import { createAccordion } from '@gluestack-ui/accordion';
-import type { VariantProps } from '@gluestack-ui/nativewind-utils';
-import { tva } from '@gluestack-ui/nativewind-utils/tva';
-import { useStyleContext, withStyleContext } from '@gluestack-ui/nativewind-utils/withStyleContext';
-import { withStyleContextAndStates } from '@gluestack-ui/nativewind-utils/withStyleContextAndStates';
-import { cssInterop } from 'nativewind';
-import React, { useMemo } from 'react';
+import { createAccordion } from '@gluestack-ui/core/accordion/creator';
+import { UIIcon } from '@gluestack-ui/core/icon/creator';
+import { tva, useStyleContext, type VariantProps, withStyleContext } from '@gluestack-ui/utils/nativewind-utils';
+import { styled } from 'nativewind';
+import React from 'react';
 import { Platform, Pressable, Text, type TextProps, View } from 'react-native';
-import { Svg } from 'react-native-svg';
 
 const SCOPE = 'ACCORDION';
 /** Styles */
@@ -78,39 +75,11 @@ const accordionTriggerStyle = tva({
   base: 'w-full py-5 px-5 flex-row justify-between items-center web:outline-none focus:outline-none data-[disabled=true]:opacity-40 data-[disabled=true]:cursor-not-allowed data-[focus-visible=true]:bg-background-50',
 });
 
-type IPrimitiveIcon = {
-  height?: number | string;
-  width?: number | string;
-  fill?: string;
-  color?: string;
-  size?: number | string;
-  stroke?: string;
-  as?: React.ElementType;
-  className?: string;
-};
-
-const PrimitiveIcon = React.forwardRef<React.ElementRef<typeof Svg>, IPrimitiveIcon & React.ComponentPropsWithoutRef<typeof Svg>>(
-  ({ height, width, fill, color, size, stroke = 'currentColor', as: AsComp, ...props }, ref) => {
-    const sizeProps = useMemo(() => {
-      if (size) return { size };
-      if (height && width) return { height, width };
-      if (height) return { height };
-      if (width) return { width };
-      return {};
-    }, [size, height, width]);
-
-    const colorProps = stroke === 'currentColor' && color !== undefined ? color : stroke;
-
-    if (AsComp) {
-      return <AsComp ref={ref} fill={fill} {...props} {...sizeProps} stroke={colorProps} />;
-    }
-    return <Svg ref={ref} height={height} width={width} fill={fill} stroke={colorProps} {...props} />;
-  }
-);
-
-const Root = Platform.OS === 'web' ? withStyleContext(View, SCOPE) : withStyleContextAndStates(View, SCOPE);
+const Root = withStyleContext(View, SCOPE);
 
 const Header = (Platform.OS === 'web' ? H3 : View) as React.ComponentType<TextProps>;
+
+const StyledUIIcon = styled(UIIcon, { className: 'style' });
 
 /** Creator */
 const UIAccordion = createAccordion({
@@ -118,33 +87,10 @@ const UIAccordion = createAccordion({
   Item: View,
   Header: Header,
   Trigger: Pressable,
-  Icon: PrimitiveIcon,
+  Icon: StyledUIIcon,
   TitleText: Text,
   ContentText: Text,
   Content: View,
-});
-
-cssInterop(UIAccordion, { className: 'style' });
-cssInterop(UIAccordion.Item, { className: 'style' });
-cssInterop(UIAccordion.Header, { className: 'style' });
-cssInterop(UIAccordion.Trigger, { className: 'style' });
-cssInterop(UIAccordion.Icon, { className: 'style' });
-cssInterop(UIAccordion.TitleText, { className: 'style' });
-cssInterop(UIAccordion.Content, { className: 'style' });
-cssInterop(UIAccordion.ContentText, { className: 'style' });
-// @ts-ignore
-cssInterop(UIAccordion.Icon, {
-  className: {
-    target: 'style',
-    nativeStyleToProp: {
-      height: true,
-      width: true,
-      // @ts-ignore
-      fill: true,
-      color: true,
-      stroke: true,
-    },
-  },
 });
 
 type IAccordionProps = React.ComponentPropsWithoutRef<typeof UIAccordion> & VariantProps<typeof accordionStyle>;
@@ -158,6 +104,8 @@ type IAccordionContentTextProps = React.ComponentPropsWithoutRef<typeof UIAccord
 type IAccordionIconProps = VariantProps<typeof accordionIconStyle> &
   React.ComponentPropsWithoutRef<typeof UIAccordion.Icon> & {
     as?: React.ElementType;
+    height?: number;
+    width?: number;
   };
 
 type IAccordionHeaderProps = React.ComponentPropsWithoutRef<typeof UIAccordion.Header> & VariantProps<typeof accordionHeaderStyle>;
@@ -169,7 +117,8 @@ type IAccordionTitleTextProps = React.ComponentPropsWithoutRef<typeof UIAccordio
 /** Components */
 
 const Accordion = React.forwardRef<React.ElementRef<typeof UIAccordion>, IAccordionProps>(({ className, variant = 'filled', size = 'md', ...props }, ref) => {
-  return <UIAccordion ref={ref} {...props} className={accordionStyle({ variant, class: className })} context={{ variant, size }} />;
+  const contextValue = React.useMemo(() => ({ variant, size }), [variant, size]);
+  return <UIAccordion ref={ref} {...props} className={accordionStyle({ variant, class: className })} context={contextValue} />;
 });
 
 const AccordionItem = React.forwardRef<React.ElementRef<typeof UIAccordion.Item>, IAccordionItemProps>(({ className, ...props }, ref) => {
