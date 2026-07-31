@@ -11,6 +11,7 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { MapLayerType, useMapLayers } from '@/hooks/use-map-layers';
 import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersData';
+import { selectCardCollapsed, useDashboardViewStore } from '@/stores/dispatch/dashboard-view-store';
 
 import { PanelHeader } from './panel-header';
 
@@ -34,7 +35,8 @@ interface MapWidgetProps {
 export const MapWidget: React.FC<MapWidgetProps> = ({ pins, onExpandMap, onRefresh, onCenterOnLocation, onPinPress, autoFetchPins = true, children }) => {
   const { t } = useTranslation();
   const { colorScheme } = useColorScheme();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const isCollapsed = useDashboardViewStore(selectCardCollapsed('map'));
+  const setCardCollapsed = useDashboardViewStore((s) => s.setCardCollapsed);
   const [isLayersPanelOpen, setIsLayersPanelOpen] = useState(false);
 
   // Map layers hook
@@ -100,7 +102,7 @@ export const MapWidget: React.FC<MapWidgetProps> = ({ pins, onExpandMap, onRefre
           icon={MapIcon}
           iconColor="#14b8a6"
           isCollapsed={isCollapsed}
-          onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
+          onToggleCollapse={() => setCardCollapsed('map', !isCollapsed)}
           rightContent={
             <HStack space="xs">
               {onRefresh ? (

@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 
 import { Env } from '@/lib/env';
 import { logger } from '@/lib/logging';
+import { isElectron } from '@/lib/platform';
 import useAuthStore from '@/stores/auth/store';
 
 export interface SignalRHubConfig {
@@ -98,6 +99,12 @@ class SignalRService {
 
     // Check if document is available (browser environment)
     if (typeof document === 'undefined') {
+      return;
+    }
+
+    // In Electron, minimizing the window sets visibilityState to 'hidden',
+    // which would stall reconnects; skip visibility-based handling there
+    if (isElectron()) {
       return;
     }
 
@@ -380,7 +387,7 @@ class SignalRService {
               }
         )
         .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
-        .configureLogging(LogLevel.Information);
+        .configureLogging(LogLevel.Warning);
 
       const connection = connectionBuilder.build();
 
@@ -563,7 +570,7 @@ class SignalRService {
           accessTokenFactory: () => token,
         })
         .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
-        .configureLogging(LogLevel.Information)
+        .configureLogging(LogLevel.Warning)
         .build();
 
       // Set up event handlers
@@ -682,8 +689,8 @@ class SignalRService {
           // Remove the timeout from tracking
           this.reconnectTimeouts.delete(hubName);
 
-          // On web, check if page is visible before reconnecting
-          if (Platform.OS === 'web' && !this.isPageVisible) {
+          // On web (except Electron, where minimize hides the window), check if page is visible before reconnecting
+          if (Platform.OS === 'web' && !isElectron() && !this.isPageVisible) {
             logger.debug({
               message: `Skipping reconnection for hub ${hubName} - page is not visible`,
             });
@@ -969,7 +976,16 @@ class SignalRService {
   }
 
   private emit(event: string, data: unknown): void {
-    this.eventListeners.get(event)?.forEach((callback) => callback(data));
+    this.eventListeners.get(event)?.forEach((callback) => {
+      try {
+        callback(data);
+      } catch (error) {
+        logger.error({
+          message: `Error in event listener for event: ${event}`,
+          context: { error },
+        });
+      }
+    });
   }
 
   /**

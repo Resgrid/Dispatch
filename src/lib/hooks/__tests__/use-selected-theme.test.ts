@@ -1,7 +1,7 @@
-import { colorScheme } from 'nativewind';
+import { Appearance } from 'react-native';
 
 import { storage } from '../../storage';
-import { loadSelectedTheme, useSelectedTheme } from '../use-selected-theme';
+import { loadSelectedTheme } from '../use-selected-theme';
 
 // Mock the storage module
 jest.mock('../../storage', () => ({
@@ -11,30 +11,24 @@ jest.mock('../../storage', () => ({
   },
 }));
 
-// Mock nativewind
-jest.mock('nativewind', () => ({
-  colorScheme: {
-    set: jest.fn(),
-  },
-  useColorScheme: () => ({
-    colorScheme: 'system',
-    setColorScheme: jest.fn(),
-  }),
-}));
-
 // Mock react-native-mmkv
 jest.mock('react-native-mmkv', () => ({
   useMMKVString: jest.fn(() => ['system', jest.fn()]),
 }));
 
 const mockedStorage = storage as jest.Mocked<typeof storage>;
-const mockedColorScheme = colorScheme as jest.Mocked<typeof colorScheme>;
 
 describe('loadSelectedTheme', () => {
+  let setColorSchemeSpy: jest.SpyInstance;
+
   beforeEach(() => {
     jest.clearAllMocks();
-    console.log = jest.fn();
+    setColorSchemeSpy = jest.spyOn(Appearance, 'setColorScheme').mockImplementation(() => {});
     console.error = jest.fn();
+  });
+
+  afterEach(() => {
+    setColorSchemeSpy.mockRestore();
   });
 
   it('should load and apply saved theme from storage', () => {
@@ -43,8 +37,7 @@ describe('loadSelectedTheme', () => {
     loadSelectedTheme();
 
     expect(mockedStorage.getString).toHaveBeenCalledWith('SELECTED_THEME');
-    expect(mockedColorScheme.set).toHaveBeenCalledWith('dark');
-    expect(console.log).toHaveBeenCalledWith('Loading selected theme:', 'dark');
+    expect(setColorSchemeSpy).toHaveBeenCalledWith('dark');
   });
 
   it('should handle no saved theme gracefully', () => {
@@ -53,8 +46,7 @@ describe('loadSelectedTheme', () => {
     loadSelectedTheme();
 
     expect(mockedStorage.getString).toHaveBeenCalledWith('SELECTED_THEME');
-    expect(mockedColorScheme.set).toHaveBeenCalledWith('dark');
-    expect(console.log).toHaveBeenCalledWith('No custom theme found, defaulting to dark mode');
+    expect(setColorSchemeSpy).not.toHaveBeenCalled();
   });
 
   it('should handle storage errors gracefully', () => {
@@ -66,7 +58,7 @@ describe('loadSelectedTheme', () => {
     loadSelectedTheme();
 
     expect(console.error).toHaveBeenCalledWith('Failed to load selected theme:', error);
-    expect(mockedColorScheme.set).not.toHaveBeenCalled();
+    expect(setColorSchemeSpy).not.toHaveBeenCalled();
   });
 
   it('should apply light theme correctly', () => {
@@ -74,16 +66,14 @@ describe('loadSelectedTheme', () => {
 
     loadSelectedTheme();
 
-    expect(mockedColorScheme.set).toHaveBeenCalledWith('light');
-    expect(console.log).toHaveBeenCalledWith('Loading selected theme:', 'light');
+    expect(setColorSchemeSpy).toHaveBeenCalledWith('light');
   });
 
-  it('should apply system theme correctly', () => {
+  it('should clear the override for system theme', () => {
     mockedStorage.getString.mockReturnValue('system');
 
     loadSelectedTheme();
 
-    expect(mockedColorScheme.set).toHaveBeenCalledWith('system');
-    expect(console.log).toHaveBeenCalledWith('Loading selected theme:', 'system');
+    expect(setColorSchemeSpy).toHaveBeenCalledWith(null);
   });
 });

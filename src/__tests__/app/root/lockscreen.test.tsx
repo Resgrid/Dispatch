@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 
 import Lockscreen from '../../../app/lockscreen';
 import { useAuth } from '@/lib/auth';
+import { verifyPassword } from '@/lib/auth/api';
 import useLockscreenStore from '@/stores/lockscreen/store';
 
 // Mock dependencies
@@ -21,12 +22,17 @@ jest.mock('react-i18next', () => ({
 jest.mock('@/lib/logging', () => ({
   logger: {
     info: jest.fn(),
+    warn: jest.fn(),
     error: jest.fn(),
   },
 }));
 
 jest.mock('@/lib/auth', () => ({
   useAuth: jest.fn(),
+}));
+
+jest.mock('@/lib/auth/api', () => ({
+  verifyPassword: jest.fn(),
 }));
 
 jest.mock('@/stores/lockscreen/store');
@@ -55,6 +61,9 @@ describe('Lockscreen', () => {
     (useLockscreenStore as unknown as jest.Mock).mockReturnValue({
       unlock: mockUnlock,
     });
+
+    // Default: entered password matches the stored verification hash
+    (verifyPassword as jest.Mock).mockResolvedValue(true);
   });
 
   it('should render lockscreen correctly', () => {
@@ -205,6 +214,52 @@ describe('Lockscreen', () => {
       expect(mockUnlock).not.toHaveBeenCalled();
       expect(mockReplace).not.toHaveBeenCalled();
     });
+
+    it('should show error and not unlock when password does not match', async () => {
+      (verifyPassword as jest.Mock).mockResolvedValue(false);
+
+      render(
+        <TestWrapper>
+          <Lockscreen />
+        </TestWrapper>
+      );
+
+      const passwordInput = screen.getByPlaceholderText('lockscreen.password_placeholder');
+      const unlockButton = screen.getByText('lockscreen.unlock_button');
+
+      fireEvent.changeText(passwordInput, 'wrongPassword');
+      fireEvent.press(unlockButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('lockscreen.unlock_failed')).toBeTruthy();
+      });
+
+      expect(mockUnlock).not.toHaveBeenCalled();
+      expect(mockReplace).not.toHaveBeenCalledWith('/(app)');
+    });
+
+    it('should require re-login when no verification hash is stored', async () => {
+      (verifyPassword as jest.Mock).mockResolvedValue(null);
+
+      render(
+        <TestWrapper>
+          <Lockscreen />
+        </TestWrapper>
+      );
+
+      const passwordInput = screen.getByPlaceholderText('lockscreen.password_placeholder');
+      const unlockButton = screen.getByText('lockscreen.unlock_button');
+
+      fireEvent.changeText(passwordInput, 'anyPassword');
+      fireEvent.press(unlockButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('lockscreen.relogin_required')).toBeTruthy();
+      });
+
+      expect(mockUnlock).not.toHaveBeenCalled();
+      expect(mockReplace).not.toHaveBeenCalledWith('/(app)');
+    });
   });
 
   describe('Error handling', () => {
@@ -233,6 +288,11 @@ describe('Lockscreen', () => {
   });
 
   describe('Loading state', () => {
+    beforeEach(() => {
+      // Resolve verification after a short delay so the loading state is observable
+      (verifyPassword as jest.Mock).mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve(true), 100)));
+    });
+
     it('should show loading indicator while unlocking', async () => {
       render(
         <TestWrapper>

@@ -15,7 +15,7 @@ import { useWeatherAlertsStore } from '@/stores/weatherAlerts/store';
 const formatTimestamp = (value?: string | null): string => {
   if (!value) return '—';
   try {
-  return formatDateForDisplay(parseDateISOString(value), 'MMM dd, yyyy hh:mm t');
+    return formatDateForDisplay(parseDateISOString(value), 'MMM dd, yyyy hh:mm t');
   } catch {
     return value;
   }

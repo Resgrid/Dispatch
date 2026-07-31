@@ -1264,7 +1264,8 @@
       "source_type_national_weather_service": "Nationella vädertjänsten",
       "source_type_environment_canada": "Kanadas miljömyndighet",
       "source_type_meteoalarm": "MeteoAlarm"
-    }
+    },
+    "stats_label": "Vädervarningar"
   },
   "videoFeeds": {
     "title": "Videoflöden",

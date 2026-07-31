@@ -1,8 +1,7 @@
 'use client';
-import { createImage } from '@gluestack-ui/image';
-import type { VariantProps } from '@gluestack-ui/nativewind-utils';
-import { tva } from '@gluestack-ui/nativewind-utils/tva';
-import { cssInterop } from 'nativewind';
+import { createImage } from '@gluestack-ui/core/image/creator';
+import type { VariantProps } from '@gluestack-ui/utils/nativewind-utils';
+import { tva } from '@gluestack-ui/utils/nativewind-utils';
 import React from 'react';
 import { Image as RNImage, Platform } from 'react-native';
 
@@ -23,7 +22,6 @@ const imageStyle = tva({
 });
 
 const UIImage = createImage({ Root: RNImage });
-cssInterop(UIImage, { className: 'style' });
 
 type ImageProps = VariantProps<typeof imageStyle> & React.ComponentProps<typeof UIImage>;
 const Image = React.forwardRef<React.ElementRef<typeof UIImage>, ImageProps & { className?: string }>(({ size = 'md', className, ...props }, ref) => {

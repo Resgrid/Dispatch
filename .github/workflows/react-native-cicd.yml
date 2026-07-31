@@ -564,6 +564,8 @@ jobs:
               | grep -v "<!-- This is an auto-generated comment: release notes by coderabbit.ai -->" \
               | grep -v "<!-- end of auto-generated comment: release notes by coderabbit.ai -->" \
               || true)"
+            # Replace occurrences of "PR" with "Release"
+            NOTES="$(printf '%s\n' "$NOTES" | sed -E 's/\bPR\b/Release/g')"
           else
             NOTES="$(git log -n 5 --pretty=format:'- %s')"
           fi

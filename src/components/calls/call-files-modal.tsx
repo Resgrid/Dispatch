@@ -5,7 +5,7 @@ import * as Sharing from 'expo-sharing';
 import { Download, File, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Pressable } from 'react-native';
+import { Alert, Platform, Pressable } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 
 import { getCallAttachmentFile } from '@/api/calls/callFiles';
@@ -93,6 +93,14 @@ export const CallFilesModal: React.FC<CallFilesModalProps> = ({ isOpen, onClose,
   const handleDownloadFile = async (file: CallFileResultData) => {
     if (!file.Url || downloadingFiles[file.Id]) return;
 
+    const clearDownloadingState = () => {
+      setDownloadingFiles((prev) => {
+        const newState = { ...prev };
+        delete newState[file.Id];
+        return newState;
+      });
+    };
+
     try {
       setDownloadingFiles((prev) => ({ ...prev, [file.Id]: 0 }));
 
@@ -106,6 +114,28 @@ export const CallFilesModal: React.FC<CallFilesModalProps> = ({ isOpen, onClose,
 
       // Create a temporary file
       const fileName = file.FileName || file.Name || `file_${file.Id}`;
+
+      if (Platform.OS === 'web') {
+        // DOM APIs (createObjectURL/appendChild/click) can throw - guard them and
+        // always revoke the object URL so we don't leak it on failure
+        let objectUrl: string | null = null;
+        let link: HTMLAnchorElement | null = null;
+        try {
+          objectUrl = URL.createObjectURL(fileData);
+          link = document.createElement('a');
+          link.href = objectUrl;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+        } finally {
+          link?.remove();
+          if (objectUrl) {
+            URL.revokeObjectURL(objectUrl);
+          }
+        }
+        return;
+      }
+
       const fileUri = `${FileSystem.documentDirectory}${fileName}`;
 
       // Convert blob to base64
@@ -135,20 +165,11 @@ export const CallFilesModal: React.FC<CallFilesModalProps> = ({ isOpen, onClose,
       } else {
         Alert.alert(t('calls.files.share_error'), 'Sharing is not available on this device');
       }
-
-      setDownloadingFiles((prev) => {
-        const newState = { ...prev };
-        delete newState[file.Id];
-        return newState;
-      });
     } catch (error) {
       console.error('Error downloading file:', error);
       Alert.alert(t('calls.files.open_error'), error instanceof Error ? error.message : 'Unknown error occurred');
-      setDownloadingFiles((prev) => {
-        const newState = { ...prev };
-        delete newState[file.Id];
-        return newState;
-      });
+    } finally {
+      clearDownloadingState();
     }
   };
 

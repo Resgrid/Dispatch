@@ -1,16 +1,15 @@
 'use client';
 
 import { H4 } from '@expo/html-elements';
-import { createActionsheet } from '@gluestack-ui/actionsheet';
-import { PrimitiveIcon, UIIcon } from '@gluestack-ui/icon';
-import type { VariantProps } from '@gluestack-ui/nativewind-utils';
-import { tva } from '@gluestack-ui/nativewind-utils/tva';
-import { withStyleContext } from '@gluestack-ui/nativewind-utils/withStyleContext';
+import { createActionsheet } from '@gluestack-ui/core/actionsheet/creator';
+import { UIIcon } from '@gluestack-ui/core/icon/creator';
+import type { VariantProps } from '@gluestack-ui/utils/nativewind-utils';
+import { tva } from '@gluestack-ui/utils/nativewind-utils';
+import { withStyleContext } from '@gluestack-ui/utils/nativewind-utils';
 import { AnimatePresence, createMotionAnimatedComponent, Motion, type MotionComponentProps } from '@legendapp/motion';
-import { FlashList } from '@shopify/flash-list';
-import { cssInterop } from 'nativewind';
+import { styled } from 'nativewind';
 import React from 'react';
-import { Pressable, ScrollView, SectionList, Text, View, type ViewStyle, VirtualizedList } from 'react-native';
+import { FlatList, Pressable, ScrollView, SectionList, Text, View, type ViewStyle, VirtualizedList } from 'react-native';
 
 type IAnimatedPressableProps = React.ComponentProps<typeof Pressable> & MotionComponentProps<typeof Pressable, ViewStyle, unknown, unknown, unknown>;
 
@@ -20,63 +19,57 @@ type IMotionViewProps = React.ComponentProps<typeof View> & MotionComponentProps
 
 const MotionView = Motion.View as React.ComponentType<IMotionViewProps>;
 
+const StyledMotionView = styled(MotionView, { className: 'style' });
+// Cast to a minimal prop surface: `styled`'s mapping constraint computes
+// dot-notation paths over every prop, which exceeds TS's union limit for
+// ScrollView's full props (TS2590). The returned component is untyped by
+// `styled` anyway, so this cast is lossless.
+const StyledScrollView = styled(ScrollView as unknown as React.ComponentType<Record<'style' | 'contentContainerStyle' | 'indicatorStyle', unknown>>, {
+  className: 'style',
+  contentContainerClassName: 'contentContainerStyle',
+  indicatorClassName: 'indicatorStyle',
+});
+const StyledVirtualizedList = styled(VirtualizedList as unknown as React.ComponentType<Record<'style' | 'ListFooterComponentStyle' | 'ListHeaderComponentStyle' | 'contentContainerStyle' | 'indicatorStyle', unknown>>, {
+  className: 'style',
+  ListFooterComponentClassName: 'ListFooterComponentStyle',
+  ListHeaderComponentClassName: 'ListHeaderComponentStyle',
+  contentContainerClassName: 'contentContainerStyle',
+  indicatorClassName: 'indicatorStyle',
+});
+const StyledFlatList = styled(
+  FlatList as unknown as React.ComponentType<Record<'style' | 'ListFooterComponentStyle' | 'ListHeaderComponentStyle' | 'columnWrapperStyle' | 'contentContainerStyle' | 'indicatorStyle', unknown>>,
+  {
+    className: 'style',
+    ListFooterComponentClassName: 'ListFooterComponentStyle',
+    ListHeaderComponentClassName: 'ListHeaderComponentStyle',
+    columnWrapperClassName: 'columnWrapperStyle',
+    contentContainerClassName: 'contentContainerStyle',
+    indicatorClassName: 'indicatorStyle',
+  }
+);
+const StyledIcon = styled(UIIcon, {
+  className: {
+    target: 'style',
+  },
+});
+const StyledSectionList = styled(SectionList as unknown as React.ComponentType<Record<'style', unknown>>, { className: 'style' });
+const StyledSectionHeaderText = styled(H4, { className: 'style' });
+
 export const UIActionsheet = createActionsheet({
   Root: View,
-  Content: Motion.View,
-  Item: AnimatedPressable,
+  Content: withStyleContext(StyledMotionView),
+  Item: withStyleContext(Pressable),
   ItemText: Text,
   DragIndicator: View,
   IndicatorWrapper: View,
   Backdrop: AnimatedPressable,
-  ScrollView: ScrollView,
-  VirtualizedList: VirtualizedList,
-  FlatList: FlashList,
-  SectionList: SectionList,
-  SectionHeaderText: H4,
-  Icon: UIIcon,
+  ScrollView: StyledScrollView,
+  VirtualizedList: StyledVirtualizedList,
+  FlatList: StyledFlatList,
+  SectionList: StyledSectionList,
+  SectionHeaderText: StyledSectionHeaderText,
+  Icon: StyledIcon,
   AnimatePresence: AnimatePresence,
-});
-
-cssInterop(UIActionsheet, { className: 'style' });
-cssInterop(UIActionsheet.Content, { className: 'style' });
-cssInterop(UIActionsheet.Item, { className: 'style' });
-cssInterop(UIActionsheet.ItemText, { className: 'style' });
-cssInterop(UIActionsheet.DragIndicator, { className: 'style' });
-cssInterop(UIActionsheet.DragIndicatorWrapper, { className: 'style' });
-cssInterop(UIActionsheet.Backdrop, { className: 'style' });
-cssInterop(UIActionsheet.ScrollView, {
-  className: 'style',
-  contentContainerClassName: 'contentContainerStyle',
-  indicatorClassName: 'indicatorStyle',
-});
-cssInterop(UIActionsheet.VirtualizedList, {
-  className: 'style',
-  ListFooterComponentClassName: 'ListFooterComponentStyle',
-  ListHeaderComponentClassName: 'ListHeaderComponentStyle',
-  contentContainerClassName: 'contentContainerStyle',
-  indicatorClassName: 'indicatorStyle',
-});
-cssInterop(UIActionsheet.FlatList, {
-  className: 'style',
-  ListFooterComponentClassName: 'ListFooterComponentStyle',
-  ListHeaderComponentClassName: 'ListHeaderComponentStyle',
-  columnWrapperClassName: 'columnWrapperStyle',
-  contentContainerClassName: 'contentContainerStyle',
-  indicatorClassName: 'indicatorStyle',
-});
-cssInterop(UIActionsheet.SectionList, { className: 'style' });
-cssInterop(UIActionsheet.SectionHeaderText, { className: 'style' });
-cssInterop(PrimitiveIcon, {
-  className: {
-    target: 'style',
-    nativeStyleToProp: {
-      height: true,
-      width: true,
-      fill: true,
-      color: 'classNameColor',
-      stroke: true,
-    },
-  },
 });
 
 const actionsheetStyle = tva({ base: 'w-full h-full web:pointer-events-none' });
@@ -305,10 +298,10 @@ const ActionsheetItemText = React.forwardRef<React.ComponentRef<typeof UIActions
     <UIActionsheet.ItemText
       className={actionsheetItemTextStyle({
         class: className,
-        isTruncated,
-        bold,
-        underline,
-        strikeThrough,
+        isTruncated: isTruncated as boolean,
+        bold: bold as boolean,
+        underline: underline as boolean,
+        strikeThrough: strikeThrough as boolean,
         size,
       })}
       ref={ref}
@@ -421,14 +414,14 @@ const ActionsheetSectionHeaderText = React.forwardRef<React.ComponentRef<typeof 
     <UIActionsheet.SectionHeaderText
       className={actionsheetSectionHeaderTextStyle({
         class: className,
-        isTruncated,
-        bold,
-        underline,
-        strikeThrough,
+        isTruncated: isTruncated as boolean,
+        bold: bold as boolean,
+        underline: underline as boolean,
+        strikeThrough: strikeThrough as boolean,
         size,
-        sub,
-        italic,
-        highlight,
+        sub: sub as boolean,
+        italic: italic as boolean,
+        highlight: highlight as boolean,
       })}
       ref={ref}
       {...props}

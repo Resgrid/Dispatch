@@ -10,6 +10,7 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock('nativewind', () => ({
+  styled: jest.fn((Component: any) => Component),
   cssInterop: jest.fn((Component: any) => Component),
   useColorScheme: () => ({ colorScheme: 'light' }),
 }));
@@ -17,12 +18,14 @@ jest.mock('nativewind', () => ({
 const mockStore = {
   timerStatuses: [],
   checkInHistory: [],
+  callPersonnelStatuses: [],
   isLoadingStatuses: false,
   isLoadingHistory: false,
   statusError: null,
   fetchTimerStatuses: jest.fn(),
   fetchResolvedTimers: jest.fn(),
   fetchCheckInHistory: jest.fn(),
+  fetchCallPersonnelStatuses: jest.fn(),
   toggleTimers: jest.fn(),
   startPolling: jest.fn(),
   stopPolling: jest.fn(),

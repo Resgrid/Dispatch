@@ -40,5 +40,5 @@
     "ios",
     "storybookDocsComponents"
   ],
-  "include": ["src/**/*.ts", "src/**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts", "nativewind-env.d.ts", "__mocks__/**/*.ts", "app.config.ts", "jest-setup.ts", "jest-platform-setup.ts", "__tests__/**/*.ts", "__tests__/**/*.tsx", "types/**/*.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts", "nativewind-env.d.ts", "react-native-css-env.d.ts", "__mocks__/**/*.ts", "app.config.ts", "jest-setup.ts", "jest-platform-setup.ts", "__tests__/**/*.ts", "__tests__/**/*.tsx", "types/**/*.ts"]
 }

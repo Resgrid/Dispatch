@@ -223,7 +223,15 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
         ],
       });
 
-      await signalRService.invoke(Env.CHANNEL_HUB_NAME, 'connect', parseInt(securityStore.getState().rights?.DepartmentId ?? '0'));
+      const departmentId = Number(securityStore.getState().rights?.DepartmentId ?? '0');
+      if (Number.isFinite(departmentId)) {
+        await signalRService.invoke(Env.CHANNEL_HUB_NAME, 'connect', departmentId);
+      } else {
+        logger.error({
+          message: 'Invalid DepartmentId, skipping update hub connect invoke',
+          context: { departmentId: securityStore.getState().rights?.DepartmentId },
+        });
+      }
 
       // Create and register handlers with stored references for cleanup
       updateHubHandlers.personnelStatusUpdated = (message: unknown) => {
@@ -231,7 +239,7 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
           message: 'personnelStatusUpdated',
           context: { message },
         });
-        set({ lastUpdateMessage: JSON.stringify(message), lastUpdateTimestamp: Date.now(), lastEventType: 'personnelStatusUpdated', lastPersonnelUpdateTimestamp: Date.now() });
+        set({ lastUpdateMessage: null, lastUpdateTimestamp: Date.now(), lastEventType: 'personnelStatusUpdated', lastPersonnelUpdateTimestamp: Date.now() });
       };
       signalRService.on('personnelStatusUpdated', updateHubHandlers.personnelStatusUpdated);
 
@@ -240,7 +248,7 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
           message: 'personnelStaffingUpdated',
           context: { message },
         });
-        set({ lastUpdateMessage: JSON.stringify(message), lastUpdateTimestamp: Date.now(), lastEventType: 'personnelStaffingUpdated', lastPersonnelUpdateTimestamp: Date.now() });
+        set({ lastUpdateMessage: null, lastUpdateTimestamp: Date.now(), lastEventType: 'personnelStaffingUpdated', lastPersonnelUpdateTimestamp: Date.now() });
       };
       signalRService.on('personnelStaffingUpdated', updateHubHandlers.personnelStaffingUpdated);
 
@@ -259,7 +267,7 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
           message: 'callsUpdated',
           context: { message, now },
         });
-        set({ lastUpdateMessage: JSON.stringify(message), lastUpdateTimestamp: now, lastEventType: 'callsUpdated', lastCallsUpdateTimestamp: now });
+        set({ lastUpdateMessage: null, lastUpdateTimestamp: now, lastEventType: 'callsUpdated', lastCallsUpdateTimestamp: now });
       };
       signalRService.on('callsUpdated', updateHubHandlers.callsUpdated);
 
@@ -268,7 +276,7 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
           message: 'callAdded',
           context: { message },
         });
-        set({ lastUpdateMessage: JSON.stringify(message), lastUpdateTimestamp: Date.now(), lastEventType: 'callAdded', lastCallsUpdateTimestamp: Date.now() });
+        set({ lastUpdateMessage: null, lastUpdateTimestamp: Date.now(), lastEventType: 'callAdded', lastCallsUpdateTimestamp: Date.now() });
       };
       signalRService.on('callAdded', updateHubHandlers.callAdded);
 
@@ -277,7 +285,7 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
           message: 'callClosed',
           context: { message },
         });
-        set({ lastUpdateMessage: JSON.stringify(message), lastUpdateTimestamp: Date.now(), lastEventType: 'callClosed', lastCallsUpdateTimestamp: Date.now() });
+        set({ lastUpdateMessage: null, lastUpdateTimestamp: Date.now(), lastEventType: 'callClosed', lastCallsUpdateTimestamp: Date.now() });
       };
       signalRService.on('callClosed', updateHubHandlers.callClosed);
 
@@ -286,7 +294,7 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
           message: 'checkInUpdated',
           context: { message },
         });
-        set({ lastUpdateMessage: JSON.stringify(message), lastUpdateTimestamp: Date.now(), lastEventType: 'checkInUpdated', lastCheckInUpdateTimestamp: Date.now() });
+        set({ lastUpdateMessage: null, lastUpdateTimestamp: Date.now(), lastEventType: 'checkInUpdated', lastCheckInUpdateTimestamp: Date.now() });
       };
       signalRService.on('checkInUpdated', updateHubHandlers.checkInUpdated);
 
@@ -317,7 +325,7 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
         // Lazy import to avoid circular dependency
         const { useWeatherAlertsStore } = require('../weatherAlerts/store');
         useWeatherAlertsStore.getState().handleAlertReceived(alertId);
-        set({ lastUpdateMessage: JSON.stringify(message), lastUpdateTimestamp: Date.now(), lastEventType: 'weatherAlertReceived', lastWeatherAlertTimestamp: Date.now() });
+        set({ lastUpdateMessage: null, lastUpdateTimestamp: Date.now(), lastEventType: 'weatherAlertReceived', lastWeatherAlertTimestamp: Date.now() });
       };
       signalRService.on('weatherAlertReceived', updateHubHandlers.weatherAlertReceived);
 
@@ -333,7 +341,7 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
         }
         const { useWeatherAlertsStore } = require('../weatherAlerts/store');
         useWeatherAlertsStore.getState().handleAlertUpdated(alertId);
-        set({ lastUpdateMessage: JSON.stringify(message), lastUpdateTimestamp: Date.now(), lastEventType: 'weatherAlertUpdated', lastWeatherAlertTimestamp: Date.now() });
+        set({ lastUpdateMessage: null, lastUpdateTimestamp: Date.now(), lastEventType: 'weatherAlertUpdated', lastWeatherAlertTimestamp: Date.now() });
       };
       signalRService.on('weatherAlertUpdated', updateHubHandlers.weatherAlertUpdated);
 
@@ -349,7 +357,7 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
         }
         const { useWeatherAlertsStore } = require('../weatherAlerts/store');
         useWeatherAlertsStore.getState().handleAlertExpired(alertId);
-        set({ lastUpdateMessage: JSON.stringify(message), lastUpdateTimestamp: Date.now(), lastEventType: 'weatherAlertExpired', lastWeatherAlertTimestamp: Date.now() });
+        set({ lastUpdateMessage: null, lastUpdateTimestamp: Date.now(), lastEventType: 'weatherAlertExpired', lastWeatherAlertTimestamp: Date.now() });
       };
       signalRService.on('weatherAlertExpired', updateHubHandlers.weatherAlertExpired);
 
@@ -362,7 +370,7 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
         // call" notification — the client refetches the affected command board.
         const callId = extractAlertId(message);
         const now = Date.now();
-        set({ lastUpdateMessage: JSON.stringify(message), lastUpdateTimestamp: now, lastEventType: 'incidentCommandUpdated', lastIncidentCommandUpdateTimestamp: now });
+        set({ lastUpdateMessage: null, lastUpdateTimestamp: now, lastEventType: 'incidentCommandUpdated', lastIncidentCommandUpdateTimestamp: now });
         if (callId) {
           // Lazy import to avoid circular dependency
           const { useIncidentCommandStore } = require('../incident-command/store');

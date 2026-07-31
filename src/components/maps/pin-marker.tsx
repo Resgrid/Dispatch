@@ -1,6 +1,6 @@
 import type Mapbox from '@rnmapbox/maps';
 import { useColorScheme } from 'nativewind';
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
@@ -15,7 +15,7 @@ interface PinMarkerProps {
   pin: MapMakerInfoData;
   size?: number;
   markerRef?: Mapbox.PointAnnotation | null;
-  onPress?: () => void;
+  onPress?: (pin: MapMakerInfoData) => void;
 }
 
 /**
@@ -30,8 +30,12 @@ const POI_MARKER_HEIGHT = 48;
 const POI_ICON_TOP_OFFSET = 10;
 const POI_ICON_FONT_SIZE = 14;
 
-const PinMarker: React.FC<PinMarkerProps> = ({ pin, size = 32, onPress }) => {
+const PinMarker = React.memo<PinMarkerProps>(({ pin, size = 32, onPress }) => {
   const { colorScheme } = useColorScheme();
+
+  const handlePress = useCallback(() => {
+    onPress?.(pin);
+  }, [onPress, pin]);
 
   const isPoiMapPin = isPoiMarker({
     type: pin.Type,
@@ -85,7 +89,7 @@ const PinMarker: React.FC<PinMarkerProps> = ({ pin, size = 32, onPress }) => {
 
   if (isPoiMapPin) {
     return (
-      <TouchableOpacity style={styles.poiContainer} onPress={onPress} activeOpacity={0.7}>
+      <TouchableOpacity style={styles.poiContainer} onPress={handlePress} activeOpacity={0.7}>
         <View style={[styles.poiShapeWrapper, { width: svgWidth, height: svgHeight }, shadowStyle]}>
           {/* SVG background shape */}
           <Svg viewBox="-24 -48 48 48" width={svgWidth} height={svgHeight}>
@@ -107,14 +111,14 @@ const PinMarker: React.FC<PinMarkerProps> = ({ pin, size = 32, onPress }) => {
 
   // Non-POI legacy marker rendering
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity style={styles.container} onPress={handlePress} activeOpacity={0.7}>
       <Image fadeDuration={0} source={icon.uri} style={StyleSheet.flatten([styles.image, { width: size, height: size }])} />
       <Text style={StyleSheet.flatten([styles.title, { color: colorScheme === 'dark' ? '#FFFFFF' : '#000000' }])} numberOfLines={2}>
         {pin.Title}
       </Text>
     </TouchableOpacity>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

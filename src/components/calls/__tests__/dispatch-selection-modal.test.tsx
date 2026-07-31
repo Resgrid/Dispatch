@@ -45,6 +45,7 @@ jest.mock('@/stores/dispatch/store', () => ({
 
 // Mock the color scheme and cssInterop
 jest.mock('nativewind', () => ({
+  styled: jest.fn((Component: any) => Component),
   useColorScheme: () => ({ colorScheme: 'light' }),
   cssInterop: jest.fn(),
 }));

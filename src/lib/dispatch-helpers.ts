@@ -60,7 +60,13 @@ export function mergeDispatchSelections(existing: DispatchSelection, added: Disp
  * Shared by the call-detail screens and the dispatch console so every "add resources" entry point
  * submits an identical, field-preserving payload.
  */
-export function buildAddResourcesUpdateRequest(call: CallResultData, existingDispatches: DispatchedEventResultData[] | undefined | null, added: DispatchSelection, callFormData?: string, plusCode?: string): UpdateCallRequest {
+export function buildAddResourcesUpdateRequest(
+  call: CallResultData,
+  existingDispatches: DispatchedEventResultData[] | undefined | null,
+  added: DispatchSelection,
+  callFormData?: string,
+  plusCode?: string
+): UpdateCallRequest {
   const merged = mergeDispatchSelections(dispatchesToSelection(existingDispatches), added);
 
   let latitude: number | undefined;

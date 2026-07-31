@@ -265,7 +265,7 @@ const CallImagesModal: React.FC<CallImagesModalProps> = ({ isOpen, onClose, call
 
   const handleViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
-      setActiveIndex(viewableItems[0].index || 0);
+      setActiveIndex(viewableItems[0].index ?? 0);
     }
   }).current;
 
@@ -387,7 +387,7 @@ const CallImagesModal: React.FC<CallImagesModalProps> = ({ isOpen, onClose, call
             ref={flatListRef}
             data={validImages}
             renderItem={renderImageItem}
-            keyExtractor={(item) => item?.Id || `image-${Math.random()}`}
+            keyExtractor={(item, index) => item?.Id || item?.Url || `image-${index}`}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}

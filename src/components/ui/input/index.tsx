@@ -1,33 +1,20 @@
 'use client';
-import { PrimitiveIcon, UIIcon } from '@gluestack-ui/icon';
-import { createInput } from '@gluestack-ui/input';
-import type { VariantProps } from '@gluestack-ui/nativewind-utils';
-import { tva } from '@gluestack-ui/nativewind-utils/tva';
-import { useStyleContext, withStyleContext } from '@gluestack-ui/nativewind-utils/withStyleContext';
-import { cssInterop } from 'nativewind';
+import { UIIcon } from '@gluestack-ui/core/icon/creator';
+import { createInput } from '@gluestack-ui/core/input/creator';
+import { tva, useStyleContext, type VariantProps, withStyleContext } from '@gluestack-ui/utils/nativewind-utils';
+import { styled } from 'nativewind';
 import React from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 
 const SCOPE = 'INPUT';
 
+const StyledUIIcon = styled(UIIcon, { className: 'style' });
+
 const UIInput = createInput({
   Root: withStyleContext(View, SCOPE),
-  Icon: UIIcon,
+  Icon: StyledUIIcon,
   Slot: Pressable,
   Input: TextInput,
-});
-
-cssInterop(PrimitiveIcon, {
-  className: {
-    target: 'style',
-    nativeStyleToProp: {
-      height: true,
-      width: true,
-      fill: true,
-      color: 'classNameColor',
-      stroke: true,
-    },
-  },
 });
 
 const inputStyle = tva({
@@ -100,7 +87,8 @@ const inputFieldStyle = tva({
 
 type IInputProps = React.ComponentProps<typeof UIInput> & VariantProps<typeof inputStyle> & { className?: string };
 const Input = React.forwardRef<React.ComponentRef<typeof UIInput>, IInputProps>(function Input({ className, variant = 'outline', size = 'md', ...props }, ref) {
-  return <UIInput ref={ref} {...props} className={inputStyle({ variant, size, class: className })} context={{ variant, size }} />;
+  const contextValue = React.useMemo(() => ({ variant, size }), [variant, size]);
+  return <UIInput ref={ref} {...props} className={inputStyle({ variant, size, class: className })} context={contextValue} />;
 });
 
 type IInputIconProps = React.ComponentProps<typeof UIInput.Icon> &

@@ -1,10 +1,14 @@
 'use client';
-import { Overlay } from '@gluestack-ui/overlay';
-import { cssInterop } from 'nativewind';
+import { Overlay } from '@gluestack-ui/core/overlay/creator';
+import { styled } from 'nativewind';
 import React from 'react';
 
-cssInterop(Overlay, { className: 'style' });
+const StyledOverlay = styled(Overlay, { className: 'style' });
 
-export const Portal = React.forwardRef<React.ElementRef<typeof Overlay>, React.ComponentProps<typeof Overlay>>(({ ...props }: React.ComponentProps<typeof Overlay>, ref) => {
-  return <Overlay {...props} ref={ref} />;
+const Portal = React.forwardRef<React.ComponentRef<typeof Overlay>, React.ComponentProps<typeof Overlay>>(function Portal({ ...props }, ref) {
+  return <StyledOverlay {...props} ref={ref} />;
 });
+
+Portal.displayName = 'Portal';
+
+export { Portal };

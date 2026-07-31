@@ -183,10 +183,18 @@ jest.mock('lucide-react-native', () => ({
   FileTextIcon: 'FileTextIcon',
   ImageIcon: 'ImageIcon',
   InfoIcon: 'InfoIcon',
+  LoaderIcon: 'LoaderIcon',
+  MapPinIcon: 'MapPinIcon',
+  NavigationIcon: 'NavigationIcon',
+  NetworkIcon: 'NetworkIcon',
   PaperclipIcon: 'PaperclipIcon',
   RouteIcon: 'RouteIcon',
+  ShieldCheckIcon: 'ShieldCheckIcon',
   UserIcon: 'UserIcon',
+  UserPlusIcon: 'UserPlusIcon',
   UsersIcon: 'UsersIcon',
+  VideoIcon: 'VideoIcon',
+  Volume2Icon: 'Volume2Icon',
 }));
 
 // Mock react-native-svg
@@ -201,8 +209,10 @@ jest.mock('react-native-svg', () => ({
   __esModule: true,
 }));
 
-// Mock date-fns
+// Mock date-fns (keep the real implementations available for components that
+// need parse/isValid, only stub format for stable output)
 jest.mock('date-fns', () => ({
+  ...jest.requireActual('date-fns'),
   format: jest.fn(() => '2024-01-01 12:00'),
 }));
 
@@ -261,12 +271,22 @@ jest.mock('../../../components/calls/call-notes-modal', () => {
   };
 });
 
+jest.mock('../../../components/calls/call-audio-modal', () => {
+  return function CallAudioModal() {
+    return null;
+  };
+});
+
 jest.mock('../../../components/calls/close-call-bottom-sheet', () => ({
   CloseCallBottomSheet: () => null,
 }));
 
 jest.mock('../../../components/status/status-bottom-sheet', () => ({
   StatusBottomSheet: () => null,
+}));
+
+jest.mock('@/components/incident-command/incident-command-tab', () => ({
+  IncidentCommandTab: () => null,
 }));
 
 jest.mock('@/components/maps/static-map', () => {

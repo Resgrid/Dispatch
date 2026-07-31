@@ -36,7 +36,8 @@ export function useSamlLogin(idpSsoUrl: string, username: string, departmentId?:
       const samlResponse = parsed.queryParams?.saml_response as string | undefined;
 
       if (!samlResponse) {
-        logger.error({ message: 'SSO SAML: No saml_response in deep link', context: { url } });
+        // Never log the raw deep link - its query params can carry the saml_response token
+        logger.error({ message: 'SSO SAML: No saml_response in deep link', context: { path: parsed.path } });
         return null;
       }
 
@@ -49,7 +50,7 @@ export function useSamlLogin(idpSsoUrl: string, username: string, departmentId?:
 
       return result.authResponse;
     } catch (error) {
-      logger.error({ message: 'SSO SAML: Deep link handling threw exception', context: { error } });
+      logger.error({ message: 'SSO SAML: Deep link handling threw exception', context: { message: error instanceof Error ? error.message : String(error) } });
       return null;
     }
   }

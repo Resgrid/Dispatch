@@ -116,6 +116,9 @@ export function getAvatarUrl(userId: string) {
 }
 
 export function invertColor(hex: string, bw: boolean): string {
+  if (!hex) {
+    return '#000000';
+  }
   if (hex.indexOf('#') === 0) {
     hex = hex.slice(1);
   }
@@ -128,8 +131,12 @@ export function invertColor(hex: string, bw: boolean): string {
       hex = h0 + h0 + h1 + h1 + h2 + h2;
     }
   }
-  if (hex.length !== 6) {
-    throw new Error('Invalid HEX color.');
+  // strip alpha channel from 8-digit hex.
+  if (hex.length === 8) {
+    hex = hex.slice(0, 6);
+  }
+  if (!/^[0-9a-fA-F]{6}$/.test(hex)) {
+    return '#000000';
   }
   let r = parseInt(hex.slice(0, 2), 16),
     g = parseInt(hex.slice(2, 4), 16),
@@ -239,9 +246,13 @@ export function parseDateISOString(s: string | undefined | null): Date | null {
   // Ensure we have all required parts
   const [year, month, day, hour = '0', minute = '0', second = '0'] = b;
   if (!year || !month || !day) {
-    throw new Error('Invalid date string format');
+    return null;
   }
-  return new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10), parseInt(hour, 10), parseInt(minute, 10), parseInt(second, 10));
+  const date = new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10), parseInt(hour, 10), parseInt(minute, 10), parseInt(second, 10));
+  if (isNaN(date.getTime())) {
+    return null;
+  }
+  return date;
 }
 
 export function getDate(date: string): string {
@@ -473,6 +484,10 @@ export function getTimeAgo(time: any, floor: number = 0): string {
       time = +new Date();
   }
 
+  if (typeof time !== 'number' || isNaN(time)) {
+    return 'Unknown';
+  }
+
   const timeFormats = [
     [60, 'seconds', 1], // 60
     [120, '1 minute ago', '1 minute from now'], // 60*2
@@ -522,7 +537,7 @@ export function getTimeAgo(time: any, floor: number = 0): string {
       }
     }
   }
-  return time;
+  return time.toString();
 }
 
 export function getTimeAgoUtc(time: any): string {
@@ -543,6 +558,10 @@ export function getTimeAgoUtc(time: any): string {
       break;
     default:
       time = +new Date();
+  }
+
+  if (typeof time !== 'number' || isNaN(time)) {
+    return 'Unknown';
   }
 
   const currentDate = new Date();
@@ -593,5 +612,5 @@ export function getTimeAgoUtc(time: any): string {
       }
     }
   }
-  return time;
+  return time.toString();
 }

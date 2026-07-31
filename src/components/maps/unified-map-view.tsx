@@ -1,7 +1,7 @@
 import Mapbox, { type CircleLayerStyle, type FillLayerStyle, type LineLayerStyle } from '@rnmapbox/maps';
 import { type Feature, type FeatureCollection, type GeoJsonProperties, type Geometry } from 'geojson';
 import { useColorScheme } from 'nativewind';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { getMapDataAndMarkers } from '@/api/mapping/mapping';
@@ -58,10 +58,9 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
   const signalRDebounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const signalRAbortController = useRef<AbortController | null>(null);
 
-  const location = useLocationStore((state) => ({
-    latitude: state.latitude,
-    longitude: state.longitude,
-  }));
+  const latitude = useLocationStore((state) => state.latitude);
+  const longitude = useLocationStore((state) => state.longitude);
+  const location = useMemo(() => ({ latitude, longitude }), [latitude, longitude]);
 
   // Use external pins if provided, otherwise use internal pins
   const mapPins = externalPins ?? internalPins;

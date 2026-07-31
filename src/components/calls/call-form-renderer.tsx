@@ -1,5 +1,5 @@
 import { useColorScheme } from 'nativewind';
-import React, { useRef } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import WebView, { type WebViewMessageEvent } from 'react-native-webview';
 
@@ -87,7 +87,19 @@ export const CallFormRenderer: React.FC<CallFormRendererProps> = ({ formSchemaJs
   const isDark = colorScheme === 'dark';
   const webviewRef = useRef<WebView>(null);
 
-  const html = buildHtml(formSchemaJson, isDark);
+  // Validate the schema is non-empty parseable JSON and neutralize `<` so a
+  // schema containing `</script>` can't break out of the inline script tag
+  const safeSchemaJson = useMemo(() => {
+    if (!formSchemaJson || !formSchemaJson.trim()) return null;
+    try {
+      JSON.parse(formSchemaJson);
+      return formSchemaJson.replace(/</g, '\\u003c');
+    } catch {
+      return null;
+    }
+  }, [formSchemaJson]);
+
+  const html = useMemo(() => (safeSchemaJson ? buildHtml(safeSchemaJson, isDark) : null), [safeSchemaJson, isDark]);
 
   const handleMessage = (event: WebViewMessageEvent) => {
     try {
@@ -100,23 +112,25 @@ export const CallFormRenderer: React.FC<CallFormRendererProps> = ({ formSchemaJs
 
   return (
     <View style={StyleSheet.flatten([styles.container, { height }, isDark ? styles.containerDark : styles.containerLight])}>
-      <WebView
-        ref={webviewRef}
-        originWhitelist={['*']}
-        source={{ html }}
-        style={styles.webview}
-        onMessage={handleMessage}
-        scrollEnabled={false}
-        javaScriptEnabled
-        domStorageEnabled
-        cacheEnabled={false}
-        renderLoading={() => (
-          <View style={styles.loading}>
-            <ActivityIndicator color="#2563eb" />
-          </View>
-        )}
-        startInLoadingState
-      />
+      {html ? (
+        <WebView
+          ref={webviewRef}
+          originWhitelist={['*']}
+          source={{ html }}
+          style={styles.webview}
+          onMessage={handleMessage}
+          scrollEnabled={false}
+          javaScriptEnabled
+          domStorageEnabled
+          cacheEnabled={false}
+          renderLoading={() => (
+            <View style={styles.loading}>
+              <ActivityIndicator color="#2563eb" />
+            </View>
+          )}
+          startInLoadingState
+        />
+      ) : null}
     </View>
   );
 };

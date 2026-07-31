@@ -114,7 +114,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({ width = '100%', height = 20,
 
   const radiusMap = {
     none: 'rounded-none',
-    sm: 'rounded-sm',
+    sm: 'rounded-xs',
     md: 'rounded-md',
     lg: 'rounded-lg',
     full: 'rounded-full',

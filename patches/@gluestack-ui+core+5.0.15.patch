@@ -1,0 +1,32 @@
+diff --git a/node_modules/@gluestack-ui/core/lib/esm/actionsheet/creator/ActionsheetContent.jsx b/node_modules/@gluestack-ui/core/lib/esm/actionsheet/creator/ActionsheetContent.jsx
+index 30962f7..d024fbf 100644
+--- a/node_modules/@gluestack-ui/core/lib/esm/actionsheet/creator/ActionsheetContent.jsx
++++ b/node_modules/@gluestack-ui/core/lib/esm/actionsheet/creator/ActionsheetContent.jsx
+@@ -11,7 +11,7 @@ var __rest = (this && this.__rest) || function (s, e) {
+ };
+ /* eslint-disable react-native/no-inline-styles */
+ import React, { forwardRef } from 'react';
+-import { Animated, Dimensions, AccessibilityInfo, Platform, Keyboard, } from 'react-native';
++import { Animated, Dimensions, AccessibilityInfo, Platform, Keyboard, useWindowDimensions, } from 'react-native';
+ import { ActionsheetContext } from './context';
+ import { ActionsheetContentProvider } from './ActionsheetContentContext';
+ import { OverlayAnimatePresence } from './OverlayAnimatePresence';
+@@ -19,16 +19,12 @@ import { FocusScope } from '@gluestack-ui/utils/aria';
+ import { mergeRefs, findNodeHandle } from '@gluestack-ui/utils/common';
+ import { useDialog } from '@gluestack-ui/utils/aria';
+ import { usePreventScroll } from '../../overlay/aria';
+-//dimentions not giving proper window height on web
+-const windowHeight = Platform.OS === 'web'
+-    ? typeof window !== 'undefined'
+-        ? window.innerHeight
+-        : Dimensions.get('screen').height
+-    : Dimensions.get('screen').height;
++// Patched: use useWindowDimensions for reactive height (fixes landscape)
+ function ActionsheetContent(StyledActionsheetContent, AnimatePresence) {
+     return forwardRef((_a, ref) => {
+         var { children, _experimentalContent = false, focusScope = true } = _a, props = __rest(_a, ["children", "_experimentalContent", "focusScope"]);
+         const { visible, handleClose, trapFocus, initialFocusRef, handleCloseBackdrop, finalFocusRef, snapPoints, preventScroll, } = React.useContext(ActionsheetContext);
++        const { height: windowHeight } = useWindowDimensions();
+         usePreventScroll({ isDisabled: preventScroll });
+         const pan = React.useRef(new Animated.ValueXY()).current;
+         const contentSheetHeight = React.useRef(0);

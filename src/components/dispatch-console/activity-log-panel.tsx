@@ -3,7 +3,7 @@ import { AlertTriangle, ArrowRight, ChevronRight, Clock, CloudLightning, Filter,
 import { useColorScheme } from 'nativewind';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { FlatList, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Badge } from '@/components/ui/badge';
 import { Box } from '@/components/ui/box';
@@ -18,6 +18,7 @@ import { type UnitInfoResultData } from '@/models/v4/units/unitInfoResultData';
 import { SEVERITY_COLORS, WeatherAlertSeverity } from '@/models/v4/weatherAlerts/weatherAlertEnums';
 import { useCallsStore } from '@/stores/calls/store';
 import { useCheckInStore } from '@/stores/checkIn/store';
+import { selectCardCollapsed, useDashboardViewStore } from '@/stores/dispatch/dashboard-view-store';
 import { type RadioLogEntry } from '@/stores/dispatch/dispatch-console-store';
 import { usePersonnelActionsStore } from '@/stores/dispatch/personnel-actions-store';
 import { useUnitActionsStore } from '@/stores/dispatch/unit-actions-store';
@@ -125,7 +126,7 @@ const formatDuration = (seconds: number | null) => {
   return `${mins}m ${secs}s`;
 };
 
-const ActivityLogItem: React.FC<{ entry: ActivityLogEntry }> = ({ entry }) => {
+const ActivityLogItem: React.FC<{ entry: ActivityLogEntry }> = React.memo(({ entry }) => {
   const IconComponent = getIconForType(entry.type);
   const color = getColorForType(entry.type);
 
@@ -148,9 +149,11 @@ const ActivityLogItem: React.FC<{ entry: ActivityLogEntry }> = ({ entry }) => {
       </VStack>
     </HStack>
   );
-};
+});
 
-const CallActivityItem: React.FC<{ activity: DispatchedEventResultData }> = ({ activity }) => {
+ActivityLogItem.displayName = 'ActivityLogItem';
+
+const CallActivityItem: React.FC<{ activity: DispatchedEventResultData }> = React.memo(({ activity }) => {
   const getActivityIcon = () => {
     if (activity.Type === 'Unit' || activity.Type === 'u') return Truck;
     if (activity.Type === 'Personnel' || activity.Type === 'p') return User;
@@ -194,9 +197,11 @@ const CallActivityItem: React.FC<{ activity: DispatchedEventResultData }> = ({ a
       </VStack>
     </HStack>
   );
-};
+});
 
-const RadioLogItem: React.FC<{ entry: RadioLogEntry }> = ({ entry }) => {
+CallActivityItem.displayName = 'CallActivityItem';
+
+const RadioLogItem: React.FC<{ entry: RadioLogEntry }> = React.memo(({ entry }) => {
   const { t } = useTranslation();
   const color = entry.isActive ? '#22c55e' : '#6b7280';
 
@@ -226,7 +231,9 @@ const RadioLogItem: React.FC<{ entry: RadioLogEntry }> = ({ entry }) => {
       </VStack>
     </HStack>
   );
-};
+});
+
+RadioLogItem.displayName = 'RadioLogItem';
 
 interface ActionButtonProps {
   icon: React.ElementType;
@@ -301,7 +308,8 @@ export const ActivityLogPanel: React.FC<ActivityLogPanelProps> = ({
   onAddCallNote,
 }) => {
   const { t } = useTranslation();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const isCollapsed = useDashboardViewStore(selectCardCollapsed('activity-log'));
+  const setCardCollapsed = useDashboardViewStore((s) => s.setCardCollapsed);
   const [activeTab, setActiveTab] = useState<TabType>('activity');
 
   // Personnel actions store
@@ -399,10 +407,11 @@ export const ActivityLogPanel: React.FC<ActivityLogPanelProps> = ({
 
   // Get all active call IDs to fetch timer statuses for
   const activeCallIds = useMemo(() => calls.map((c) => parseInt(c.CallId)).filter((id) => !isNaN(id) && id > 0), [calls]);
+  // Stable key derived from the ID set (order-independent) so the polling
+  // interval only resets when the actual set of active calls changes, not on
+  // every SignalR-driven `calls` array identity change.
+  const activeCallIdsKey = useMemo(() => [...activeCallIds].sort((a, b) => a - b).join(','), [activeCallIds]);
 
-  // Fetch check-in timer statuses and restart polling whenever the calls list updates.
-  // Using the `calls` reference as a dependency ensures re-fetch after navigation back
-  // (when calls are refetched on focus) even if the call IDs themselves haven't changed.
   useEffect(() => {
     if (activeCallIds.length > 0) {
       fetchTimerStatusesForCalls(activeCallIds);
@@ -411,7 +420,8 @@ export const ActivityLogPanel: React.FC<ActivityLogPanelProps> = ({
     return () => {
       stopCheckInPolling();
     };
-  }, [calls, activeCallIds, fetchTimerStatusesForCalls, startCheckInPolling, stopCheckInPolling]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCallIdsKey, fetchTimerStatusesForCalls, startCheckInPolling, stopCheckInPolling]);
 
   // When call filter is active, show only timers for the selected call
   const filteredTimerStatuses = useMemo(() => {
@@ -470,35 +480,75 @@ export const ActivityLogPanel: React.FC<ActivityLogPanelProps> = ({
     }
   }, [activeTab, radioLog.length, activityCount, filteredTimerStatuses.length, urgentCheckInCount, weatherAlertCount]);
 
+  const renderActivityItem = useCallback(({ item }: { item: ActivityLogEntry }) => <ActivityLogItem entry={item} />, []);
+  const activityKeyExtractor = useCallback((item: ActivityLogEntry) => item.id, []);
+  const renderRadioItem = useCallback(({ item }: { item: RadioLogEntry }) => <RadioLogItem entry={item} />, []);
+  const radioKeyExtractor = useCallback((item: RadioLogEntry) => item.id, []);
+  const renderCallActivityItem = useCallback(({ item }: { item: DispatchedEventResultData }) => <CallActivityItem activity={item} />, []);
+  const callActivityKeyExtractor = useCallback((item: DispatchedEventResultData, index: number) => `${item.Id || index}-${item.Timestamp}`, []);
+
   const renderActivityContent = () => {
     if (useCallActivity) {
       // Show call-specific activity from API
-      return callActivity!.map((activity, index) => <CallActivityItem key={`${activity.Id || index}-${activity.Timestamp}`} activity={activity} />);
-    }
-
-    if (filteredEntries.length === 0) {
       return (
-        <View style={styles.emptyState}>
-          <Icon as={Info} size="lg" className="text-gray-300 dark:text-gray-600" />
-          <Text className="mt-2 text-center text-sm text-gray-500 dark:text-gray-400">{isCallFilterActive ? t('dispatch.no_call_activity') : t('dispatch.no_activity')}</Text>
-        </View>
+        <FlatList<DispatchedEventResultData>
+          style={styles.content}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+          data={callActivity!}
+          renderItem={renderCallActivityItem}
+          keyExtractor={callActivityKeyExtractor}
+          initialNumToRender={15}
+          maxToRenderPerBatch={15}
+          windowSize={7}
+          removeClippedSubviews={Platform.OS !== 'web'}
+        />
       );
     }
 
-    return filteredEntries.map((entry) => <ActivityLogItem key={entry.id} entry={entry} />);
+    return (
+      <FlatList<ActivityLogEntry>
+        style={styles.content}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+        data={filteredEntries}
+        renderItem={renderActivityItem}
+        keyExtractor={activityKeyExtractor}
+        initialNumToRender={15}
+        maxToRenderPerBatch={15}
+        windowSize={7}
+        removeClippedSubviews={Platform.OS !== 'web'}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Icon as={Info} size="lg" className="text-gray-300 dark:text-gray-600" />
+            <Text className="mt-2 text-center text-sm text-gray-500 dark:text-gray-400">{isCallFilterActive ? t('dispatch.no_call_activity') : t('dispatch.no_activity')}</Text>
+          </View>
+        }
+      />
+    );
   };
 
   const renderRadioContent = () => {
-    if (radioLog.length === 0) {
-      return (
-        <View style={styles.emptyState}>
-          <Icon as={Radio} size="lg" className="text-gray-300 dark:text-gray-600" />
-          <Text className="mt-2 text-center text-sm text-gray-500 dark:text-gray-400">{t('dispatch.no_radio_activity')}</Text>
-        </View>
-      );
-    }
-
-    return radioLog.map((entry) => <RadioLogItem key={entry.id} entry={entry} />);
+    return (
+      <FlatList<RadioLogEntry>
+        style={styles.content}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+        data={radioLog}
+        renderItem={renderRadioItem}
+        keyExtractor={radioKeyExtractor}
+        initialNumToRender={15}
+        maxToRenderPerBatch={15}
+        windowSize={7}
+        removeClippedSubviews={Platform.OS !== 'web'}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Icon as={Radio} size="lg" className="text-gray-300 dark:text-gray-600" />
+            <Text className="mt-2 text-center text-sm text-gray-500 dark:text-gray-400">{t('dispatch.no_radio_activity')}</Text>
+          </View>
+        }
+      />
+    );
   };
 
   const renderActionsContent = () => {
@@ -658,6 +708,8 @@ export const ActivityLogPanel: React.FC<ActivityLogPanelProps> = ({
     }
   };
 
+  const isVirtualizedTab = activeTab === 'activity' || activeTab === 'radio';
+
   return (
     <Box className={`overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 ${isCollapsed ? '' : 'flex-1'}`}>
       <PanelHeader
@@ -666,7 +718,7 @@ export const ActivityLogPanel: React.FC<ActivityLogPanelProps> = ({
         iconColor={activeTab === 'radio' ? '#22c55e' : activeTab === 'actions' ? '#f59e0b' : activeTab === 'checkins' ? '#ef4444' : activeTab === 'weather' ? '#F57C00' : '#6b7280'}
         count={getHeaderCount()}
         isCollapsed={isCollapsed}
-        onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
+        onToggleCollapse={() => setCardCollapsed('activity-log', !isCollapsed)}
         rightContent={
           isCallFilterActive && activeTab === 'activity' ? (
             <HStack space="xs">
@@ -713,9 +765,13 @@ export const ActivityLogPanel: React.FC<ActivityLogPanelProps> = ({
           </HStack>
 
           {/* Tab Content */}
-          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-            {renderTabContent()}
-          </ScrollView>
+          {isVirtualizedTab ? (
+            renderTabContent()
+          ) : (
+            <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
+              {renderTabContent()}
+            </ScrollView>
+          )}
         </VStack>
       ) : null}
 
@@ -737,8 +793,10 @@ export const ActivityLogPanel: React.FC<ActivityLogPanelProps> = ({
 const styles = StyleSheet.create({
   content: {
     flex: 1,
-    padding: 8,
     maxHeight: 350,
+  },
+  contentContainer: {
+    padding: 8,
   },
   iconContainer: {
     width: 24,

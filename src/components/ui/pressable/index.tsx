@@ -1,25 +1,21 @@
 'use client';
-import type { VariantProps } from '@gluestack-ui/nativewind-utils';
-import { tva } from '@gluestack-ui/nativewind-utils/tva';
-import { withStyleContext } from '@gluestack-ui/nativewind-utils/withStyleContext';
-import { withStyleContextAndStates } from '@gluestack-ui/nativewind-utils/withStyleContextAndStates';
-import { createPressable } from '@gluestack-ui/pressable';
-import { cssInterop } from 'nativewind';
+import { createPressable } from '@gluestack-ui/core/pressable/creator';
+import type { VariantProps } from '@gluestack-ui/utils/nativewind-utils';
+import { tva } from '@gluestack-ui/utils/nativewind-utils';
+import { withStyleContext } from '@gluestack-ui/utils/nativewind-utils';
 import React from 'react';
-import { Platform, Pressable as RNPressable } from 'react-native';
+import { Pressable as RNPressable } from 'react-native';
 
 const UIPressable = createPressable({
-  Root: Platform.OS === 'web' ? withStyleContext(RNPressable) : withStyleContextAndStates(RNPressable),
+  Root: withStyleContext(RNPressable),
 });
 
 const pressableStyle = tva({
   base: 'data-[focus-visible=true]:outline-none data-[focus-visible=true]:ring-indicator-info data-[focus-visible=true]:ring-2 data-[disabled=true]:opacity-40',
 });
 
-cssInterop(UIPressable, { className: 'style' });
-
 type IPressableProps = Omit<React.ComponentProps<typeof UIPressable>, 'context'> & VariantProps<typeof pressableStyle>;
-const Pressable = React.forwardRef<React.ElementRef<typeof UIPressable>, IPressableProps>(({ className, ...props }, ref) => {
+const Pressable = React.forwardRef<React.ComponentRef<typeof UIPressable>, IPressableProps>(function Pressable({ className, ...props }, ref) {
   return (
     <UIPressable
       {...props}

@@ -207,12 +207,12 @@ export const ContactDetailsSheet: React.FC = () => {
 
           {/* Tab Navigation */}
           <HStack className="mb-4 rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
-            <Pressable onPress={() => setActiveTab('details')} className={`flex-1 rounded-md ${isLandscape ? 'px-4 py-2' : 'px-3 py-1.5'} ${activeTab === 'details' ? 'bg-white shadow-sm dark:bg-gray-700' : ''}`}>
+            <Pressable onPress={() => setActiveTab('details')} className={`flex-1 rounded-md ${isLandscape ? 'px-4 py-2' : 'px-3 py-1.5'} ${activeTab === 'details' ? 'bg-white shadow-xs dark:bg-gray-700' : ''}`}>
               <Text className={`text-center font-medium ${isLandscape ? 'text-sm' : 'text-xs'} ${activeTab === 'details' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-400'}`}>
                 {t('contacts.tabs.details')}
               </Text>
             </Pressable>
-            <Pressable onPress={() => setActiveTab('notes')} className={`flex-1 rounded-md ${isLandscape ? 'px-4 py-2' : 'px-3 py-1.5'} ${activeTab === 'notes' ? 'bg-white shadow-sm dark:bg-gray-700' : ''}`}>
+            <Pressable onPress={() => setActiveTab('notes')} className={`flex-1 rounded-md ${isLandscape ? 'px-4 py-2' : 'px-3 py-1.5'} ${activeTab === 'notes' ? 'bg-white shadow-xs dark:bg-gray-700' : ''}`}>
               <Text className={`text-center font-medium ${isLandscape ? 'text-sm' : 'text-xs'} ${activeTab === 'notes' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-400'}`}>
                 {t('contacts.tabs.notes')}
               </Text>

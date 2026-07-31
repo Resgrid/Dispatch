@@ -1,29 +1,24 @@
-import { OverlayProvider } from '@gluestack-ui/overlay';
-import { ToastProvider } from '@gluestack-ui/toast';
-import { colorScheme as colorSchemeNW } from 'nativewind';
-import React from 'react';
-import { type ColorSchemeName, useColorScheme, View, type ViewProps } from 'react-native';
+'use client';
+import { OverlayProvider } from '@gluestack-ui/core/overlay/creator';
+import { ToastProvider } from '@gluestack-ui/core/toast/creator';
+import React, { useEffect } from 'react';
+import { Appearance, useColorScheme, View, type ViewProps } from 'react-native';
 
-import { config } from './config';
+export type ModeType = 'light' | 'dark' | 'system';
 
-type ModeType = 'light' | 'dark' | 'system';
+export function GluestackUIProvider({ mode = 'light', ...props }: { mode?: ModeType; children?: React.ReactNode; style?: ViewProps['style'] }) {
+  // Tokens (--color-*) flip through the prefers-color-scheme media query,
+  // which react-native-css drives from Appearance. The className wrapper
+  // drives the class-based `dark:` variant (see @custom-variant in global.css).
+  const osScheme = useColorScheme();
+  const resolvedScheme: 'light' | 'dark' = mode === 'system' ? (osScheme === 'dark' ? 'dark' : 'light') : mode;
 
-const getColorSchemeName = (colorScheme: ColorSchemeName, mode: ModeType): 'light' | 'dark' => {
-  if (mode === 'system') {
-    return colorScheme ?? 'light';
-  }
-  return mode;
-};
-
-export function GluestackUIProvider({ mode = 'light', ...props }: { mode?: 'light' | 'dark' | 'system'; children?: React.ReactNode; style?: ViewProps['style'] }) {
-  const colorScheme = useColorScheme();
-
-  const colorSchemeName = getColorSchemeName(colorScheme, mode);
-
-  colorSchemeNW.set(mode);
+  useEffect(() => {
+    Appearance.setColorScheme(mode === 'system' ? null : mode);
+  }, [mode]);
 
   return (
-    <View style={[config[colorSchemeName], { flex: 1, height: '100%', width: '100%' }, props.style]}>
+    <View className={resolvedScheme} style={[{ flex: 1, height: '100%', width: '100%' }, props.style]}>
       <OverlayProvider>
         <ToastProvider>{props.children}</ToastProvider>
       </OverlayProvider>

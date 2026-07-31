@@ -127,7 +127,7 @@ export default function MapWeb() {
     map.current.addControl(
       new mapboxgl.GeolocateControl({
         positionOptions: {
-          enableHighAccuracy: true,
+          enableHighAccuracy: false,
         },
         trackUserLocation: true,
         showUserHeading: true,
@@ -242,7 +242,7 @@ export default function MapWeb() {
       if (!hasValidMapCoordinates(pin)) return;
 
       // Create custom marker element using shared utility
-      const el = createMapMarkerElement(pin, colorScheme);
+      const el = createMapMarkerElement(pin, colorScheme === 'dark' ? 'dark' : 'light');
 
       // Create popup
       const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(

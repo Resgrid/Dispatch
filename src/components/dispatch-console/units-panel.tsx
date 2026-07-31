@@ -1,8 +1,8 @@
 import { type Href, router } from 'expo-router';
 import { Circle, ExternalLink, Filter, MapPin, Plus, Search, Truck, X } from 'lucide-react-native';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { FlatList, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { Badge } from '@/components/ui/badge';
 import { Box } from '@/components/ui/box';
@@ -15,7 +15,7 @@ import { isUnitAvailable } from '@/lib/resource-availability';
 import { type DispatchedEventResultData } from '@/models/v4/calls/dispatchedEventResultData';
 import { type PersonnelInfoResultData } from '@/models/v4/personnel/personnelInfoResultData';
 import { type UnitInfoResultData } from '@/models/v4/units/unitInfoResultData';
-import { useDashboardViewStore } from '@/stores/dispatch/dashboard-view-store';
+import { selectCardCollapsed, useDashboardViewStore } from '@/stores/dispatch/dashboard-view-store';
 
 import { AnimatedRefreshIcon } from './animated-refresh-icon';
 import { PanelHeader } from './panel-header';
@@ -58,15 +58,15 @@ const UnitItem: React.FC<{
   unit: UnitInfoResultData;
   isSelected: boolean;
   isOnCall?: boolean;
-  onPress: () => void;
-  onSetStatus?: () => void;
-}> = ({ unit, isSelected, isOnCall, onPress, onSetStatus }) => {
+  onSelect?: (unitId: string) => void;
+  onSetStatusForUnit?: (unitId: string, unitName: string) => void;
+}> = React.memo(({ unit, isSelected, isOnCall, onSelect, onSetStatusForUnit }) => {
   const { t } = useTranslation();
   const statusColor = getStatusColor(unit.CurrentStatusColor, unit.CurrentStatusId);
   const hasDestination = unit.CurrentDestinationName && unit.CurrentDestinationName.trim() !== '';
 
   return (
-    <Pressable onPress={onPress}>
+    <Pressable onPress={() => onSelect?.(unit.UnitId)}>
       <Box className={`mb-2 rounded-lg border bg-white p-2 dark:bg-gray-800 ${isSelected ? 'border-indigo-500' : 'border-gray-200 dark:border-gray-700'}`}>
         <HStack className="items-center justify-between">
           <HStack className="flex-1 items-center" space="sm">
@@ -120,11 +120,11 @@ const UnitItem: React.FC<{
                 <Text className="text-xs text-gray-400">GPS</Text>
               </HStack>
             ) : null}
-            {onSetStatus ? (
+            {onSetStatusForUnit ? (
               <Pressable
                 onPress={(e) => {
                   e.stopPropagation();
-                  onSetStatus();
+                  onSetStatusForUnit(unit.UnitId, unit.Name);
                 }}
                 style={styles.statusButton}
               >
@@ -136,7 +136,9 @@ const UnitItem: React.FC<{
       </Box>
     </Pressable>
   );
-};
+});
+
+UnitItem.displayName = 'UnitItem';
 
 export const UnitsPanel: React.FC<UnitsPanelProps> = ({
   units,
@@ -153,7 +155,8 @@ export const UnitsPanel: React.FC<UnitsPanelProps> = ({
   onSetPersonnelStatusForCall,
 }) => {
   const { t } = useTranslation();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const isCollapsed = useDashboardViewStore(selectCardCollapsed('units'));
+  const setCardCollapsed = useDashboardViewStore((s) => s.setCardCollapsed);
   const [searchQuery, setSearchQuery] = useState('');
   const availableOnly = useDashboardViewStore((s) => s.availableOnly);
   const singleList = useDashboardViewStore((s) => s.singleList);
@@ -200,6 +203,28 @@ export const UnitsPanel: React.FC<UnitsPanelProps> = ({
   // Count available units
   const availableUnits = displayedUnits.filter((u) => !u.CurrentStatusId || u.CurrentStatusId === 'available').length;
 
+  const handleSelectUnit = useCallback(
+    (unitId: string) => {
+      onSelectUnit?.(unitId);
+    },
+    [onSelectUnit]
+  );
+
+  const renderUnitItem = useCallback(
+    ({ item }: { item: UnitInfoResultData }) => (
+      <UnitItem
+        unit={item}
+        isSelected={selectedUnitId === item.UnitId}
+        isOnCall={dispatchedUnitNames.has(item.Name.toLowerCase()) || Boolean(selectedCallId && item.CurrentDestinationId === selectedCallId)}
+        onSelect={handleSelectUnit}
+        onSetStatusForUnit={isCallFilterActive ? onSetUnitStatusForCall : undefined}
+      />
+    ),
+    [selectedUnitId, dispatchedUnitNames, selectedCallId, handleSelectUnit, isCallFilterActive, onSetUnitStatusForCall]
+  );
+
+  const keyExtractor = useCallback((item: UnitInfoResultData) => item.UnitId, []);
+
   // When "single list" is on, units + personnel are shown together in the combined ResourcesPanel
   // (rendered from the units slot); the Personnel panel hides itself.
   if (singleList) {
@@ -226,7 +251,7 @@ export const UnitsPanel: React.FC<UnitsPanelProps> = ({
         iconColor="#3b82f6"
         count={displayedUnits.length}
         isCollapsed={isCollapsed}
-        onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
+        onToggleCollapse={() => setCardCollapsed('units', !isCollapsed)}
         rightContent={
           <HStack space="xs">
             <HStack className="items-center rounded bg-green-100 px-1.5 py-0.5 dark:bg-green-900" space="xs">
@@ -269,25 +294,24 @@ export const UnitsPanel: React.FC<UnitsPanelProps> = ({
               </Pressable>
             ) : null}
           </HStack>
-          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-            {displayedUnits.length === 0 ? (
+          <FlatList<UnitInfoResultData>
+            style={styles.content}
+            contentContainerStyle={styles.contentContainer}
+            showsVerticalScrollIndicator={false}
+            data={displayedUnits}
+            renderItem={renderUnitItem}
+            keyExtractor={keyExtractor}
+            initialNumToRender={10}
+            maxToRenderPerBatch={10}
+            windowSize={7}
+            removeClippedSubviews={Platform.OS !== 'web'}
+            ListEmptyComponent={
               <View style={styles.emptyState}>
                 <Icon as={Truck} size="lg" className="text-gray-300 dark:text-gray-600" />
                 <Text className="mt-2 text-center text-sm text-gray-500 dark:text-gray-400">{isCallFilterActive ? t('dispatch.no_units_on_call') : t('dispatch.no_units')}</Text>
               </View>
-            ) : (
-              displayedUnits.map((unit) => (
-                <UnitItem
-                  key={unit.UnitId}
-                  unit={unit}
-                  isSelected={selectedUnitId === unit.UnitId}
-                  isOnCall={dispatchedUnitNames.has(unit.Name.toLowerCase()) || Boolean(selectedCallId && unit.CurrentDestinationId === selectedCallId)}
-                  onPress={() => onSelectUnit?.(unit.UnitId)}
-                  onSetStatus={isCallFilterActive && onSetUnitStatusForCall ? () => onSetUnitStatusForCall(unit.UnitId, unit.Name) : undefined}
-                />
-              ))
-            )}
-          </ScrollView>
+            }
+          />
         </View>
       ) : null}
     </Box>
@@ -305,8 +329,10 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 8,
     maxHeight: 300,
+  },
+  contentContainer: {
+    padding: 8,
   },
   statusIndicator: {
     width: 28,

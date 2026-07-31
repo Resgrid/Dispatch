@@ -6,6 +6,7 @@ import { CustomBottomSheet } from '../bottom-sheet';
 
 // Mock nativewind
 jest.mock('nativewind', () => ({
+  styled: jest.fn((Component: any) => Component),
   useColorScheme: jest.fn(() => ({ colorScheme: 'light' })),
   cssInterop: jest.fn(),
 }));

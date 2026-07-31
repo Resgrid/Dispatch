@@ -34,8 +34,8 @@ class AudioService {
     }
 
     try {
-      // Create Web Audio API context
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      // Create Web Audio API context lazily on first use
+      this.ensureAudioContext();
 
       // Pre-load audio assets
       await this.preloadAudioAssets();
@@ -51,6 +51,26 @@ class AudioService {
         context: { error },
       });
     }
+  }
+
+  private ensureAudioContext(): AudioContext | null {
+    if (this.audioContext || typeof window === 'undefined') {
+      return this.audioContext;
+    }
+
+    this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+    // Autoplay policy: contexts created before a user gesture start suspended -
+    // resume once the user interacts with the page
+    const resumeOnGesture = () => {
+      if (this.audioContext && this.audioContext.state === 'suspended') {
+        this.audioContext.resume().catch(() => {});
+      }
+    };
+    window.addEventListener('pointerdown', resumeOnGesture, { once: true });
+    window.addEventListener('keydown', resumeOnGesture, { once: true });
+
+    return this.audioContext;
   }
 
   public async preloadAudioAssets(): Promise<void> {
@@ -99,7 +119,9 @@ class AudioService {
   }
 
   private async playAudioBuffer(bufferName: string): Promise<void> {
-    if (!this.audioContext || !this.audioBuffers.has(bufferName)) {
+    const audioContext = this.ensureAudioContext();
+
+    if (!audioContext || !this.audioBuffers.has(bufferName)) {
       logger.warn({
         message: `Audio buffer not found: ${bufferName}`,
       });
@@ -110,9 +132,13 @@ class AudioService {
       const buffer = this.audioBuffers.get(bufferName);
       if (!buffer) return;
 
-      const source = this.audioContext.createBufferSource();
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
+
+      const source = audioContext.createBufferSource();
       source.buffer = buffer;
-      source.connect(this.audioContext.destination);
+      source.connect(audioContext.destination);
       source.start(0);
     } catch (error) {
       logger.error({

@@ -10,8 +10,10 @@ import { Env } from '@/lib/env';
 // Sentinel value used for the "Custom" option in the hosted-site dropdown.
 export const CUSTOM_SERVER_VALUE = '__custom__';
 
-// Matches a URL that starts with http:// or https://.
-export const URL_PATTERN = /^https?:\/\/.+/;
+// Matches https:// URLs. Plain http:// is only allowed for local development
+// hosts (localhost / 127.0.0.1) - anything else would send the password grant
+// and bearer tokens in cleartext.
+export const URL_PATTERN = /^(https:\/\/.+|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?([/?#].*)?)$/i;
 
 // The API path suffix (e.g. /api/v4) appended to every base URL.
 const API_PATH_SUFFIX = `/api/${Env.API_VERSION}`;

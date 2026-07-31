@@ -5,6 +5,16 @@ import { getDepartmentAudioStreams } from '@/api/voice';
 import { logger } from '@/lib/logging';
 import { type DepartmentAudioResultStreamData } from '@/models/v4/voice/departmentAudioResultStreamData';
 
+// Tracks the pending stream-restart timeout so it can be cancelled when playback stops
+let replayTimeout: ReturnType<typeof setTimeout> | null = null;
+
+const clearReplayTimeout = () => {
+  if (replayTimeout) {
+    clearTimeout(replayTimeout);
+    replayTimeout = null;
+  }
+};
+
 interface AudioStreamState {
   // Available streams
   availableStreams: DepartmentAudioResultStreamData[];
@@ -132,7 +142,9 @@ export const useAudioStreamStore = create<AudioStreamState>((set, get) => ({
               // For live streams, try to reconnect
               const { currentStream } = get();
               if (currentStream?.Id === stream.Id) {
-                setTimeout(async () => {
+                clearReplayTimeout();
+                replayTimeout = setTimeout(async () => {
+                  replayTimeout = null;
                   try {
                     await sound.replayAsync();
                   } catch (replayError) {
@@ -194,6 +206,8 @@ export const useAudioStreamStore = create<AudioStreamState>((set, get) => ({
 
   stopStream: async () => {
     try {
+      clearReplayTimeout();
+
       const { soundObject, currentStream } = get();
 
       if (soundObject) {

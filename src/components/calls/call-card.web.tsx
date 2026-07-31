@@ -37,7 +37,7 @@ export const CallCard: React.FC<CallCardProps> = ({ call, priority }) => {
       style={{
         backgroundColor: bgColor,
       }}
-      className={`mb-2 rounded-xl p-2 shadow-sm`}
+      className={`mb-2 rounded-xl p-2 shadow-xs`}
     >
       {/* Header with Call Number and Priority */}
       <HStack className="mb-4 items-center justify-between">

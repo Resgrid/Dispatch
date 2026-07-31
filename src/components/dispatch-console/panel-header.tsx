@@ -39,7 +39,7 @@ export const PanelHeader: React.FC<PanelHeaderProps> = ({ title, icon, iconColor
               <Icon as={isExpanded ? Minimize2 : Maximize2} size="xs" className="text-gray-500 dark:text-gray-400" />
             </Pressable>
           ) : null}
-          {onToggleCollapse ? <Icon as={isCollapsed ? ChevronDown : ChevronUp} size="sm" className="text-gray-500 dark:text-gray-400" /> : null}
+          {onToggleCollapse ? <Icon as={isCollapsed ? ChevronUp : ChevronDown} size="sm" className="text-gray-500 dark:text-gray-400" /> : null}
         </HStack>
       </HStack>
     </Pressable>

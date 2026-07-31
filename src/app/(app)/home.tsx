@@ -1,7 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { type Href, router } from 'expo-router';
 import { useColorScheme } from 'nativewind';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
@@ -15,7 +15,6 @@ import {
   ActiveCallsPanel,
   ActivityLogPanel,
   AddNoteBottomSheet,
-  DashboardViewToggles,
   MapWidget,
   NotesPanel,
   PersonnelPanel,
@@ -28,12 +27,12 @@ import { Box } from '@/components/ui/box';
 import { FocusAwareStatusBar } from '@/components/ui/focus-aware-status-bar';
 import { HStack } from '@/components/ui/hstack';
 import { VStack } from '@/components/ui/vstack';
-import { WeatherAlertBanner } from '@/components/weatherAlerts/weather-alert-banner';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { logger } from '@/lib/logging';
 import { isCallActive, isCallPending, isCallScheduled } from '@/lib/utils';
 import { type PersonnelInfoResultData } from '@/models/v4/personnel/personnelInfoResultData';
 import { type UnitInfoResultData } from '@/models/v4/units/unitInfoResultData';
+import { WeatherAlertSeverity } from '@/models/v4/weatherAlerts/weatherAlertEnums';
 import useAuthStore from '@/stores/auth/store';
 import { useCallsStore } from '@/stores/calls/store';
 import { useDashboardViewStore } from '@/stores/dispatch/dashboard-view-store';
@@ -42,8 +41,11 @@ import { useHomeStore } from '@/stores/home/home-store';
 import { useNotesStore } from '@/stores/notes/store';
 import { usePersonnelStore } from '@/stores/personnel/store';
 import { useSignalRStore } from '@/stores/signalr/signalr-store';
+import { useToastStore } from '@/stores/toast/store';
 import { useUnitsStore } from '@/stores/units/store';
 import { useWeatherAlertsStore } from '@/stores/weatherAlerts/store';
+
+const SIGNALR_REFETCH_DEBOUNCE_MS = 2000;
 
 export default function DispatchConsole() {
   const { t } = useTranslation();
@@ -54,62 +56,95 @@ export default function DispatchConsole() {
   const isTablet = Math.min(width, height) >= 600;
 
   // Store hooks
-  const { refreshAll } = useHomeStore();
-  const { calls, callPriorities, isLoading: callsLoading, fetchCalls, fetchCallPriorities } = useCallsStore();
-  const { units, isLoading: unitsLoading, fetchUnits } = useUnitsStore();
-  const { personnel, isLoading: personnelLoading, fetchPersonnel } = usePersonnelStore();
+  const refreshAll = useHomeStore((s) => s.refreshAll);
+  const calls = useCallsStore((s) => s.calls);
+  const callPriorities = useCallsStore((s) => s.callPriorities);
+  const callsLoading = useCallsStore((s) => s.isLoading);
+  const fetchCalls = useCallsStore((s) => s.fetchCalls);
+  const fetchCallPriorities = useCallsStore((s) => s.fetchCallPriorities);
+  const units = useUnitsStore((s) => s.units);
+  const unitsLoading = useUnitsStore((s) => s.isLoading);
+  const fetchUnits = useUnitsStore((s) => s.fetchUnits);
+  const personnel = usePersonnelStore((s) => s.personnel);
+  const personnelLoading = usePersonnelStore((s) => s.isLoading);
+  const fetchPersonnel = usePersonnelStore((s) => s.fetchPersonnel);
   const singleList = useDashboardViewStore((s) => s.singleList);
-  const { notes, isLoading: notesLoading, fetchNotes } = useNotesStore();
-  const { lastPersonnelUpdateTimestamp, lastUnitsUpdateTimestamp, lastCallsUpdateTimestamp, lastEventType } = useSignalRStore();
-  const { userId } = useAuthStore();
+  const notes = useNotesStore((s) => s.notes);
+  const notesLoading = useNotesStore((s) => s.isLoading);
+  const fetchNotes = useNotesStore((s) => s.fetchNotes);
+  const lastPersonnelUpdateTimestamp = useSignalRStore((s) => s.lastPersonnelUpdateTimestamp);
+  const lastUnitsUpdateTimestamp = useSignalRStore((s) => s.lastUnitsUpdateTimestamp);
+  const lastCallsUpdateTimestamp = useSignalRStore((s) => s.lastCallsUpdateTimestamp);
+  const userId = useAuthStore((s) => s.userId);
 
   // Weather alerts
-  const { alerts: weatherAlerts, settings: weatherSettings, fetchActiveAlerts: fetchWeatherAlerts } = useWeatherAlertsStore();
+  const weatherAlerts = useWeatherAlertsStore((s) => s.alerts);
+  const weatherSettings = useWeatherAlertsStore((s) => s.settings);
+  const fetchWeatherAlerts = useWeatherAlertsStore((s) => s.fetchActiveAlerts);
+  const showToast = useToastStore((s) => s.showToast);
+
+  // Extreme/Severe counts for the stats bar
+  const extremeAlertCount = useMemo(() => weatherAlerts.filter((a) => a.Severity === WeatherAlertSeverity.Extreme).length, [weatherAlerts]);
+  const severeAlertCount = useMemo(() => weatherAlerts.filter((a) => a.Severity === WeatherAlertSeverity.Severe).length, [weatherAlerts]);
+
+  // Show active weather alerts as an auto-dismissing toast (tap to open the alerts list).
+  // Deduped by a signature of the top alert + count so re-renders don't spam toasts.
+  const weatherAlertToastSignature = useRef('');
+  useEffect(() => {
+    if (weatherSettings?.WeatherAlertsEnabled === false) return;
+    if (weatherAlerts.length === 0) {
+      weatherAlertToastSignature.current = '';
+      return;
+    }
+    const signature = `${weatherAlerts[0].WeatherAlertId}-${weatherAlerts.length}`;
+    if (signature === weatherAlertToastSignature.current) return;
+    weatherAlertToastSignature.current = signature;
+    const topAlert = weatherAlerts[0];
+    const more = weatherAlerts.length > 1 ? ` ${t('weatherAlerts.moreAlerts', { count: weatherAlerts.length - 1 })}` : '';
+    showToast('warning', `${topAlert.Event}${more}`, 'weatherAlerts.title', {
+      duration: 6000,
+      onPress: () => router.push('/(app)/weather-alerts' as Href),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weatherAlerts, weatherSettings]);
 
   // Dispatch console store
-  const {
-    selectedCallId,
-    selectedUnitId,
-    selectedPersonnelId,
-    activityLog,
-    radioLog,
-    isTransmitting,
-    currentChannel,
-    isCallFilterActive,
-    selectedCallExtraData,
-    selectedCallNotes,
-    isLoadingCallData,
-    mapCenterLatitude,
-    mapCenterLongitude,
-    setSelectedCallId,
-    setSelectedUnitId,
-    setSelectedPersonnelId,
-    toggleCallFilter,
-    clearCallFilter,
-    setCallExtraData,
-    setCallNotes,
-    setIsLoadingCallData,
-    setMapCenter,
-    addActivityLogEntry,
-    setIsTransmitting,
-  } = useDispatchConsoleStore();
+  const selectedCallId = useDispatchConsoleStore((s) => s.selectedCallId);
+  const selectedUnitId = useDispatchConsoleStore((s) => s.selectedUnitId);
+  const selectedPersonnelId = useDispatchConsoleStore((s) => s.selectedPersonnelId);
+  const activityLog = useDispatchConsoleStore((s) => s.activityLog);
+  const radioLog = useDispatchConsoleStore((s) => s.radioLog);
+  const isTransmitting = useDispatchConsoleStore((s) => s.isTransmitting);
+  const currentChannel = useDispatchConsoleStore((s) => s.currentChannel);
+  const isCallFilterActive = useDispatchConsoleStore((s) => s.isCallFilterActive);
+  const selectedCallExtraData = useDispatchConsoleStore((s) => s.selectedCallExtraData);
+  const selectedCallNotes = useDispatchConsoleStore((s) => s.selectedCallNotes);
+  const isLoadingCallData = useDispatchConsoleStore((s) => s.isLoadingCallData);
+  const mapCenterLatitude = useDispatchConsoleStore((s) => s.mapCenterLatitude);
+  const mapCenterLongitude = useDispatchConsoleStore((s) => s.mapCenterLongitude);
+  const setSelectedCallId = useDispatchConsoleStore((s) => s.setSelectedCallId);
+  const setSelectedUnitId = useDispatchConsoleStore((s) => s.setSelectedUnitId);
+  const setSelectedPersonnelId = useDispatchConsoleStore((s) => s.setSelectedPersonnelId);
+  const toggleCallFilter = useDispatchConsoleStore((s) => s.toggleCallFilter);
+  const clearCallFilter = useDispatchConsoleStore((s) => s.clearCallFilter);
+  const setCallExtraData = useDispatchConsoleStore((s) => s.setCallExtraData);
+  const setCallNotes = useDispatchConsoleStore((s) => s.setCallNotes);
+  const setIsLoadingCallData = useDispatchConsoleStore((s) => s.setIsLoadingCallData);
+  const setMapCenter = useDispatchConsoleStore((s) => s.setMapCenter);
+  const addActivityLogEntry = useDispatchConsoleStore((s) => s.addActivityLogEntry);
+  const setIsTransmitting = useDispatchConsoleStore((s) => s.setIsTransmitting);
 
   // Local state
-  const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString('en-US', { hour12: false }));
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [isAddNoteSheetOpen, setIsAddNoteSheetOpen] = useState(false);
   const [selectedPersonnelData, setSelectedPersonnelData] = useState<PersonnelInfoResultData | null>(null);
   const [selectedUnitData, setSelectedUnitData] = useState<UnitInfoResultData | null>(null);
   const [isCloseCallSheetOpen, setIsCloseCallSheetOpen] = useState(false);
 
-  // Update time every second
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date().toLocaleTimeString('en-US', { hour12: false }));
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
+  // Debounce timers for SignalR-triggered refetches
+  const personnelFetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const unitsFetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const callsFetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Initialize data when component mounts
   useEffect(() => {
@@ -161,44 +196,87 @@ export default function DispatchConsole() {
   // Listen for SignalR personnel updates
   useEffect(() => {
     if (lastPersonnelUpdateTimestamp > 0) {
-      fetchPersonnel();
       addActivityLogEntry({
         type: 'system',
         action: t('dispatch.system_update'),
         description: t('dispatch.data_refreshed'),
       });
+
+      if (personnelFetchTimer.current) {
+        clearTimeout(personnelFetchTimer.current);
+      }
+      personnelFetchTimer.current = setTimeout(() => {
+        personnelFetchTimer.current = null;
+        fetchPersonnel();
+      }, SIGNALR_REFETCH_DEBOUNCE_MS);
     }
+
+    return () => {
+      if (personnelFetchTimer.current) {
+        clearTimeout(personnelFetchTimer.current);
+        personnelFetchTimer.current = null;
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastPersonnelUpdateTimestamp]);
 
   // Listen for SignalR unit updates
   useEffect(() => {
     if (lastUnitsUpdateTimestamp > 0) {
-      fetchUnits();
       addActivityLogEntry({
         type: 'system',
         action: t('dispatch.system_update'),
         description: t('dispatch.data_refreshed'),
       });
+
+      if (unitsFetchTimer.current) {
+        clearTimeout(unitsFetchTimer.current);
+      }
+      unitsFetchTimer.current = setTimeout(() => {
+        unitsFetchTimer.current = null;
+        fetchUnits();
+      }, SIGNALR_REFETCH_DEBOUNCE_MS);
     }
+
+    return () => {
+      if (unitsFetchTimer.current) {
+        clearTimeout(unitsFetchTimer.current);
+        unitsFetchTimer.current = null;
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastUnitsUpdateTimestamp]);
 
   // Listen for SignalR call updates
   useEffect(() => {
     if (lastCallsUpdateTimestamp > 0) {
-      fetchCalls();
       addActivityLogEntry({
         type: 'system',
         action: t('dispatch.system_update'),
         description: t('dispatch.data_refreshed'),
       });
 
-      // Refresh call data if filter is active
-      if (isCallFilterActive && selectedCallId) {
-        fetchCallData(selectedCallId);
+      if (callsFetchTimer.current) {
+        clearTimeout(callsFetchTimer.current);
       }
+      callsFetchTimer.current = setTimeout(() => {
+        callsFetchTimer.current = null;
+        fetchCalls();
+
+        // Refresh call data if filter is active
+        const { isCallFilterActive: filterActive, selectedCallId: callId } = useDispatchConsoleStore.getState();
+        if (filterActive && callId) {
+          fetchCallData(callId);
+        }
+      }, SIGNALR_REFETCH_DEBOUNCE_MS);
     }
+
+    return () => {
+      if (callsFetchTimer.current) {
+        clearTimeout(callsFetchTimer.current);
+        callsFetchTimer.current = null;
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastCallsUpdateTimestamp]);
 
@@ -362,6 +440,18 @@ export default function DispatchConsole() {
     }
   }, [selectedCallId]);
 
+  const handleWeatherAlertsPress = useCallback(() => {
+    router.push('/(app)/weather-alerts' as Href);
+  }, []);
+
+  const handleCloseAddNoteSheet = useCallback(() => {
+    setIsAddNoteSheetOpen(false);
+  }, []);
+
+  const handleCloseCloseCallSheet = useCallback(() => {
+    setIsCloseCallSheetOpen(false);
+  }, []);
+
   // Handle note added from bottom sheet
   const handleNoteAdded = () => {
     fetchNotes();
@@ -468,6 +558,70 @@ export default function DispatchConsole() {
 
   // Determine layout based on screen size and orientation
   const renderLayout = () => {
+    // Tablet landscape + single list - 3-column layout with combined resources
+    if (isTablet && isLandscape && singleList) {
+      return (
+        <HStack className="flex-1" space="sm">
+          {/* Left Column - Calls & Notes */}
+          <VStack className="flex-1" space="sm" style={styles.column}>
+            <ActiveCallsPanel selectedCallId={selectedCallId ?? undefined} onSelectCall={handleSelectCall} isFilterActive={isCallFilterActive} flexWeight={2} />
+            <NotesPanel
+              notes={notes}
+              isLoading={notesLoading || isLoadingCallData}
+              onRefresh={fetchNotes}
+              isCallFilterActive={isCallFilterActive}
+              callNotes={selectedCallNotes}
+              onAddCallNote={handleAddCallNote}
+              isAddingNote={isAddingNote}
+              onNewNote={handleOpenAddNoteSheet}
+              flexWeight={1}
+            />
+          </VStack>
+
+          {/* Center Column - Map */}
+          <VStack className="flex-[1.5]" space="sm" style={styles.column}>
+            <MapWidget onExpandMap={handleExpandMap} autoFetchPins={true} />
+            <ActivityLogPanel
+              debugId="tablet-landscape-single"
+              entries={activityLog}
+              isLoading={false}
+              isCallFilterActive={isCallFilterActive}
+              selectedCallId={selectedCallId ?? undefined}
+              callActivity={selectedCallExtraData?.Activity}
+              radioLog={radioLog}
+              selectedUnitId={selectedUnitId ?? undefined}
+              selectedPersonnelId={selectedPersonnelId ?? undefined}
+              selectedPersonnel={selectedPersonnelData}
+              selectedUnit={selectedUnitData}
+              onStatusUpdated={handleStatusUpdated}
+              onStaffingUpdated={handleStaffingUpdated}
+              onUnitStatusUpdated={handleUnitStatusUpdated}
+              onCreateCall={handleCreateCall}
+              onViewCallDetails={handleViewCallDetails}
+              onCloseCall={handleCloseCallAction}
+              onAddCallNote={handleAddCallNoteAction}
+            />
+          </VStack>
+
+          {/* Right Column - Resources & PTT */}
+          <VStack className="flex-1" space="sm" style={styles.column}>
+            <ResourcesPanel
+              selectedUnitId={selectedUnitId ?? undefined}
+              selectedPersonnelId={selectedPersonnelId ?? undefined}
+              onSelectUnit={handleSelectUnit}
+              onSelectPersonnel={handleSelectPersonnel}
+              isCallFilterActive={isCallFilterActive}
+              selectedCallId={selectedCallId ?? undefined}
+              callDispatches={selectedCallExtraData?.Dispatches}
+              onSetUnitStatusForCall={handleSetUnitStatusForCall}
+              onSetPersonnelStatusForCall={handleSetPersonnelStatusForCall}
+            />
+            <PTTInterface onPTTPress={handlePTTPress} onPTTRelease={handlePTTRelease} isTransmitting={isTransmitting} currentChannel={currentChannel} />
+          </VStack>
+        </HStack>
+      );
+    }
+
     // Tablet landscape - 3-column layout
     if (isTablet && isLandscape) {
       return (
@@ -540,6 +694,66 @@ export default function DispatchConsole() {
               onNewNote={handleOpenAddNoteSheet}
             />
             <PTTInterface onPTTPress={handlePTTPress} onPTTRelease={handlePTTRelease} isTransmitting={isTransmitting} currentChannel={currentChannel} />
+          </VStack>
+        </HStack>
+      );
+    }
+
+    // Tablet portrait + single list - 2-column layout with combined resources
+    if (isTablet && singleList) {
+      return (
+        <HStack className="flex-1" space="sm">
+          {/* Left Column - Calls & Notes */}
+          <VStack className="flex-1" space="sm" style={styles.column}>
+            <ActiveCallsPanel selectedCallId={selectedCallId ?? undefined} onSelectCall={handleSelectCall} isFilterActive={isCallFilterActive} flexWeight={2} />
+            <NotesPanel
+              notes={notes}
+              isLoading={notesLoading || isLoadingCallData}
+              onRefresh={fetchNotes}
+              isCallFilterActive={isCallFilterActive}
+              callNotes={selectedCallNotes}
+              onAddCallNote={handleAddCallNote}
+              isAddingNote={isAddingNote}
+              onNewNote={handleOpenAddNoteSheet}
+              flexWeight={1}
+            />
+          </VStack>
+
+          {/* Right Column */}
+          <VStack className="flex-1" space="sm" style={styles.column}>
+            <MapWidget onExpandMap={handleExpandMap} autoFetchPins={true} />
+            <ResourcesPanel
+              selectedUnitId={selectedUnitId ?? undefined}
+              selectedPersonnelId={selectedPersonnelId ?? undefined}
+              onSelectUnit={handleSelectUnit}
+              onSelectPersonnel={handleSelectPersonnel}
+              isCallFilterActive={isCallFilterActive}
+              selectedCallId={selectedCallId ?? undefined}
+              callDispatches={selectedCallExtraData?.Dispatches}
+              onSetUnitStatusForCall={handleSetUnitStatusForCall}
+              onSetPersonnelStatusForCall={handleSetPersonnelStatusForCall}
+            />
+            <PTTInterface onPTTPress={handlePTTPress} onPTTRelease={handlePTTRelease} isTransmitting={isTransmitting} currentChannel={currentChannel} />
+            <ActivityLogPanel
+              debugId="tablet-portrait-single"
+              entries={activityLog}
+              isLoading={false}
+              isCallFilterActive={isCallFilterActive}
+              selectedCallId={selectedCallId ?? undefined}
+              callActivity={selectedCallExtraData?.Activity}
+              radioLog={radioLog}
+              selectedUnitId={selectedUnitId ?? undefined}
+              selectedPersonnelId={selectedPersonnelId ?? undefined}
+              selectedPersonnel={selectedPersonnelData}
+              selectedUnit={selectedUnitData}
+              onStatusUpdated={handleStatusUpdated}
+              onStaffingUpdated={handleStaffingUpdated}
+              onUnitStatusUpdated={handleUnitStatusUpdated}
+              onCreateCall={handleCreateCall}
+              onViewCallDetails={handleViewCallDetails}
+              onCloseCall={handleCloseCallAction}
+              onAddCallNote={handleAddCallNoteAction}
+            />
           </VStack>
         </HStack>
       );
@@ -624,10 +838,35 @@ export default function DispatchConsole() {
         <VStack space="sm">
           <ActiveCallsPanel selectedCallId={selectedCallId ?? undefined} onSelectCall={handleSelectCall} isFilterActive={isCallFilterActive} />
 
+          {singleList ? (
+            <NotesPanel
+              notes={notes}
+              isLoading={notesLoading || isLoadingCallData}
+              onRefresh={fetchNotes}
+              isCallFilterActive={isCallFilterActive}
+              callNotes={selectedCallNotes}
+              onAddCallNote={handleAddCallNote}
+              isAddingNote={isAddingNote}
+              onNewNote={handleOpenAddNoteSheet}
+            />
+          ) : null}
+
           <MapWidget onExpandMap={handleExpandMap} autoFetchPins={true} />
 
           {singleList ? (
-            <ResourcesPanel />
+            <Box style={styles.resourcesPanelBounded}>
+              <ResourcesPanel
+                selectedUnitId={selectedUnitId ?? undefined}
+                selectedPersonnelId={selectedPersonnelId ?? undefined}
+                onSelectUnit={handleSelectUnit}
+                onSelectPersonnel={handleSelectPersonnel}
+                isCallFilterActive={isCallFilterActive}
+                selectedCallId={selectedCallId ?? undefined}
+                callDispatches={selectedCallExtraData?.Dispatches}
+                onSetUnitStatusForCall={handleSetUnitStatusForCall}
+                onSetPersonnelStatusForCall={handleSetPersonnelStatusForCall}
+              />
+            </Box>
           ) : (
             <HStack space="sm">
               <Box className="flex-1">
@@ -664,16 +903,18 @@ export default function DispatchConsole() {
 
           <PTTInterface onPTTPress={handlePTTPress} onPTTRelease={handlePTTRelease} isTransmitting={isTransmitting} currentChannel={currentChannel} />
 
-          <NotesPanel
-            notes={notes}
-            isLoading={notesLoading || isLoadingCallData}
-            onRefresh={fetchNotes}
-            isCallFilterActive={isCallFilterActive}
-            callNotes={selectedCallNotes}
-            onAddCallNote={handleAddCallNote}
-            isAddingNote={isAddingNote}
-            onNewNote={handleOpenAddNoteSheet}
-          />
+          {!singleList ? (
+            <NotesPanel
+              notes={notes}
+              isLoading={notesLoading || isLoadingCallData}
+              onRefresh={fetchNotes}
+              isCallFilterActive={isCallFilterActive}
+              callNotes={selectedCallNotes}
+              onAddCallNote={handleAddCallNote}
+              isAddingNote={isAddingNote}
+              onNewNote={handleOpenAddNoteSheet}
+            />
+          ) : null}
 
           <ActivityLogPanel
             debugId="phone"
@@ -714,31 +955,27 @@ export default function DispatchConsole() {
         unitsAvailable={stats.unitsAvailable}
         personnelAvailable={stats.personnelAvailable}
         personnelOnDuty={stats.personnelOnDuty}
-        currentTime={currentTime}
         weatherLatitude={mapCenterLatitude}
         weatherLongitude={mapCenterLongitude}
+        extremeAlerts={extremeAlertCount}
+        severeAlerts={severeAlertCount}
+        onWeatherAlertsPress={handleWeatherAlertsPress}
       />
-
-      {/* Weather Alert Banner */}
-      {weatherSettings?.WeatherAlertsEnabled !== false && weatherAlerts.length > 0 && <WeatherAlertBanner alerts={weatherAlerts} onPress={() => router.push('/(app)/weather-alerts' as Href)} />}
 
       {/* Active Call Filter Banner */}
       {isCallFilterActive && selectedCall && <ActiveCallFilterBanner call={selectedCall} priority={selectedCallPriority} onClearFilter={handleClearCallFilter} />}
 
       {/* Main Content */}
-      <Box className="flex-1 bg-gray-100 p-2 dark:bg-gray-950">
-        <DashboardViewToggles />
-        {renderLayout()}
-      </Box>
+      <Box className="flex-1 bg-gray-100 p-2 dark:bg-gray-950">{renderLayout()}</Box>
 
       {/* Audio Stream Bottom Sheet */}
       <AudioStreamBottomSheet />
 
       {/* Add Note Bottom Sheet */}
-      <AddNoteBottomSheet isOpen={isAddNoteSheetOpen} onClose={() => setIsAddNoteSheetOpen(false)} onNoteAdded={handleNoteAdded} />
+      <AddNoteBottomSheet isOpen={isAddNoteSheetOpen} onClose={handleCloseAddNoteSheet} onNoteAdded={handleNoteAdded} />
 
       {/* Close Call Bottom Sheet */}
-      {selectedCallId && <CloseCallBottomSheet isOpen={isCloseCallSheetOpen} onClose={() => setIsCloseCallSheetOpen(false)} callId={selectedCallId} />}
+      {selectedCallId && <CloseCallBottomSheet isOpen={isCloseCallSheetOpen} onClose={handleCloseCloseCallSheet} callId={selectedCallId} />}
     </View>
   );
 }
@@ -762,5 +999,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 20,
+  },
+  resourcesPanelBounded: {
+    maxHeight: 400,
   },
 });

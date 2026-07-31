@@ -16,10 +16,33 @@ export const storage: any = {
       return null;
     }
   },
-  set: (key: string, value: string) => {
+  getNumber: (key: string): number | undefined => {
+    if (!isLocalStorageAvailable) return undefined;
+    try {
+      const value = localStorage.getItem(key);
+      if (value === null) return undefined;
+      const num = Number(value);
+      return isNaN(num) ? undefined : num;
+    } catch (e) {
+      console.warn('localStorage.getNumber failed', e);
+      return undefined;
+    }
+  },
+  getBoolean: (key: string): boolean | undefined => {
+    if (!isLocalStorageAvailable) return undefined;
+    try {
+      const value = localStorage.getItem(key);
+      if (value === null) return undefined;
+      return value === 'true';
+    } catch (e) {
+      console.warn('localStorage.getBoolean failed', e);
+      return undefined;
+    }
+  },
+  set: (key: string, value: string | number | boolean) => {
     if (!isLocalStorageAvailable) return;
     try {
-      localStorage.setItem(key, value);
+      localStorage.setItem(key, String(value));
     } catch (e) {
       console.warn('localStorage.setItem failed', e);
     }
@@ -30,6 +53,14 @@ export const storage: any = {
       localStorage.removeItem(key);
     } catch (e) {
       console.warn('localStorage.removeItem failed', e);
+    }
+  },
+  clearAll: () => {
+    if (!isLocalStorageAvailable) return;
+    try {
+      localStorage.clear();
+    } catch (e) {
+      console.warn('localStorage.clearAll failed', e);
     }
   },
   getAllKeys: (): string[] => {

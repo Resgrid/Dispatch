@@ -1,10 +1,8 @@
 'use client';
-import { createButton } from '@gluestack-ui/button';
-import { PrimitiveIcon, UIIcon } from '@gluestack-ui/icon';
-import type { VariantProps } from '@gluestack-ui/nativewind-utils';
-import { tva } from '@gluestack-ui/nativewind-utils/tva';
-import { useStyleContext, withStyleContext } from '@gluestack-ui/nativewind-utils/withStyleContext';
-import { cssInterop } from 'nativewind';
+import { createButton } from '@gluestack-ui/core/button/creator';
+import { UIIcon } from '@gluestack-ui/core/icon/creator';
+import { tva, useStyleContext, type VariantProps, withStyleContext } from '@gluestack-ui/utils/nativewind-utils';
+import { styled } from 'nativewind';
 import React from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
@@ -12,25 +10,16 @@ const SCOPE = 'BUTTON';
 
 const Root = withStyleContext(Pressable, SCOPE);
 
+const StyledUIIcon = styled(UIIcon, {
+  className: 'style',
+});
+
 const UIButton = createButton({
   Root: Root,
   Text,
   Group: View,
   Spinner: ActivityIndicator,
-  Icon: UIIcon,
-});
-
-cssInterop(PrimitiveIcon, {
-  className: {
-    target: 'style',
-    nativeStyleToProp: {
-      height: true,
-      width: true,
-      fill: true,
-      color: 'classNameColor',
-      stroke: true,
-    },
-  },
+  Icon: StyledUIIcon,
 });
 
 const buttonStyle = tva({
@@ -246,7 +235,8 @@ const buttonGroupStyle = tva({
 type IButtonProps = Omit<React.ComponentPropsWithoutRef<typeof UIButton>, 'context'> & VariantProps<typeof buttonStyle> & { className?: string };
 
 const Button = React.forwardRef<React.ComponentRef<typeof UIButton>, IButtonProps>(function Button({ className, variant = 'solid', size = 'md', action = 'primary', ...props }, ref) {
-  return <UIButton ref={ref} {...props} className={buttonStyle({ variant, size, action, class: className })} context={{ variant, size, action }} />;
+  const contextValue = React.useMemo(() => ({ variant, size, action }), [variant, size, action]);
+  return <UIButton ref={ref} {...props} className={buttonStyle({ variant, size, action, class: className })} context={contextValue} />;
 });
 
 type IButtonTextProps = React.ComponentPropsWithoutRef<typeof UIButton.Text> & VariantProps<typeof buttonTextStyle> & { className?: string };

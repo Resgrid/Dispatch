@@ -14,7 +14,7 @@ import { Text } from '@/components/ui/text';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { useAuth } from '@/lib/auth';
 import { logger } from '@/lib/logging';
-import { buildApiUrl, CUSTOM_SERVER_VALUE, toBaseUrl } from '@/lib/server-url';
+import { buildApiUrl, CUSTOM_SERVER_VALUE, toBaseUrl, URL_PATTERN } from '@/lib/server-url';
 import { type ResgridSystemLocation } from '@/models/v4/configs/getSystemConfigResultData';
 import { useServerUrlStore } from '@/stores/app/server-url-store';
 
@@ -25,7 +25,7 @@ const loginFormSchema = z.object({
 });
 
 const serverUrlSchema = z.object({
-  url: z.string().url('Please enter a valid URL'),
+  url: z.string().regex(URL_PATTERN, 'form.invalid_url'),
 });
 
 type LoginFormType = z.infer<typeof loginFormSchema>;
@@ -578,7 +578,7 @@ export default function LoginWeb() {
                     onChange={(e) => onChange(e.target.value)}
                     readOnly={selectedServer !== CUSTOM_SERVER_VALUE}
                   />
-                  {serverUrlErrors.url ? <Text style={styles.errorText}>{serverUrlErrors.url.message}</Text> : null}
+                  {serverUrlErrors.url ? <Text style={styles.errorText}>{t(serverUrlErrors.url.message ?? 'form.invalid_url')}</Text> : null}
                 </View>
               )}
             />

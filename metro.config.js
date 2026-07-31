@@ -3,7 +3,7 @@
 const _ = require('lodash');
 const path = require('path');
 const { getSentryExpoConfig } = require('@sentry/react-native/metro');
-const { withNativeWind } = require('nativewind/metro');
+const { withNativewind } = require('nativewind/metro');
 
 const config = getSentryExpoConfig(__dirname, {
   isCSSEnabled: true,
@@ -36,6 +36,14 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     if (moduleName === '@livekit/react-native-webrtc' || moduleName === '@livekit/react-native') {
       return {
         type: 'empty',
+      };
+    }
+
+    // Notifee is native-only - mock for web
+    if (moduleName === '@notifee/react-native') {
+      return {
+        type: 'sourceFile',
+        filePath: path.resolve(__dirname, '__mocks__/@notifee/react-native.web.js'),
       };
     }
 
@@ -77,4 +85,4 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
 
 config.resolver.unstable_conditionNames = _.uniq(config.resolver.unstable_conditionNames.concat('browser', 'require', 'react-native')); // <-- and here we can override what we want
 
-module.exports = withNativeWind(config, { input: './global.css', inlineRem: 16 });
+module.exports = withNativewind(config, { inlineRem: 16 });

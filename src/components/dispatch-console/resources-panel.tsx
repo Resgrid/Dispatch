@@ -15,7 +15,7 @@ import { isPersonnelAvailable, isUnitAvailable } from '@/lib/resource-availabili
 import { type DispatchedEventResultData } from '@/models/v4/calls/dispatchedEventResultData';
 import { type PersonnelInfoResultData } from '@/models/v4/personnel/personnelInfoResultData';
 import { type UnitInfoResultData } from '@/models/v4/units/unitInfoResultData';
-import { useDashboardViewStore } from '@/stores/dispatch/dashboard-view-store';
+import { selectCardCollapsed, useDashboardViewStore } from '@/stores/dispatch/dashboard-view-store';
 import { usePersonnelStore } from '@/stores/personnel/store';
 import { useUnitsStore } from '@/stores/units/store';
 
@@ -77,7 +77,8 @@ export const ResourcesPanel: React.FC<ResourcesPanelProps> = ({
   const personnelLoading = usePersonnelStore((s) => s.isLoading);
   const fetchPersonnel = usePersonnelStore((s) => s.fetchPersonnel);
   const availableOnly = useDashboardViewStore((s) => s.availableOnly);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const isCollapsed = useDashboardViewStore(selectCardCollapsed('resources'));
+  const setCardCollapsed = useDashboardViewStore((s) => s.setCardCollapsed);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Unit names dispatched to the call — used for on-call highlighting (mirrors UnitsPanel).
@@ -251,7 +252,7 @@ export const ResourcesPanel: React.FC<ResourcesPanelProps> = ({
         iconColor="#6366f1"
         count={rows.length}
         isCollapsed={isCollapsed}
-        onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
+        onToggleCollapse={() => setCardCollapsed('resources', !isCollapsed)}
         rightContent={
           <HStack space="xs">
             <HStack className="items-center rounded bg-green-100 px-1.5 py-0.5 dark:bg-green-900" space="xs">
@@ -363,7 +364,6 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 8,
-    maxHeight: 300,
   },
   icon: {
     width: 28,
