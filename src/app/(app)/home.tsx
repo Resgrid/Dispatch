@@ -440,6 +440,18 @@ export default function DispatchConsole() {
     }
   }, [selectedCallId]);
 
+  const handleWeatherAlertsPress = useCallback(() => {
+    router.push('/(app)/weather-alerts' as Href);
+  }, []);
+
+  const handleCloseAddNoteSheet = useCallback(() => {
+    setIsAddNoteSheetOpen(false);
+  }, []);
+
+  const handleCloseCloseCallSheet = useCallback(() => {
+    setIsCloseCallSheetOpen(false);
+  }, []);
+
   // Handle note added from bottom sheet
   const handleNoteAdded = () => {
     fetchNotes();
@@ -947,7 +959,7 @@ export default function DispatchConsole() {
         weatherLongitude={mapCenterLongitude}
         extremeAlerts={extremeAlertCount}
         severeAlerts={severeAlertCount}
-        onWeatherAlertsPress={() => router.push('/(app)/weather-alerts' as Href)}
+        onWeatherAlertsPress={handleWeatherAlertsPress}
       />
 
       {/* Active Call Filter Banner */}
@@ -960,10 +972,10 @@ export default function DispatchConsole() {
       <AudioStreamBottomSheet />
 
       {/* Add Note Bottom Sheet */}
-      <AddNoteBottomSheet isOpen={isAddNoteSheetOpen} onClose={() => setIsAddNoteSheetOpen(false)} onNoteAdded={handleNoteAdded} />
+      <AddNoteBottomSheet isOpen={isAddNoteSheetOpen} onClose={handleCloseAddNoteSheet} onNoteAdded={handleNoteAdded} />
 
       {/* Close Call Bottom Sheet */}
-      {selectedCallId && <CloseCallBottomSheet isOpen={isCloseCallSheetOpen} onClose={() => setIsCloseCallSheetOpen(false)} callId={selectedCallId} />}
+      {selectedCallId && <CloseCallBottomSheet isOpen={isCloseCallSheetOpen} onClose={handleCloseCloseCallSheet} callId={selectedCallId} />}
     </View>
   );
 }

@@ -44,25 +44,41 @@ function getPlayerHtml(feed: CallVideoFeedResultData, isDark: boolean): string |
   switch (feed.FeedFormat) {
     case CallVideoFeedFormat.HLS:
     case CallVideoFeedFormat.DASH:
+      // hls.js is pinned to an exact version and loaded with an SRI integrity hash so a
+      // compromised CDN cannot inject a different script. Player init runs from the
+      // script's onLoad callback (and onerror fallback) instead of assuming the global exists.
       return `
         <!DOCTYPE html>
         <html><head>
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+          <script>
+            function initHlsPlayer() {
+              var video = document.getElementById('video');
+              if (!video) {
+                // Script loaded before the body was parsed - retry once the DOM is ready
+                document.addEventListener('DOMContentLoaded', initHlsPlayer);
+                return;
+              }
+              if (window.__hlsInitDone) return;
+              window.__hlsInitDone = true;
+              var url = ${JSON.stringify(feed.Url)};
+              if (url.includes('.m3u8') && window.Hls && Hls.isSupported()) {
+                var hls = new Hls();
+                hls.loadSource(url);
+                hls.attachMedia(video);
+              } else {
+                video.src = url;
+              }
+            }
+          </script>
+          <script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js"
+            integrity="sha384-5E8B0pTlZZJMabWpC0fyYf6OUpe15jJij34BqBAh4NXoHAlLNOjCPRrwtOXOQFAn"
+            crossorigin="anonymous"
+            onload="initHlsPlayer()"
+            onerror="initHlsPlayer()"></script>
           <style>body{margin:0;padding:0;background:${bgColor};display:flex;align-items:center;justify-content:center;height:100vh}video{width:100%;max-height:100vh}</style>
         </head><body>
           <video id="video" controls autoplay playsinline></video>
-          <script>
-            var video = document.getElementById('video');
-            var url = ${JSON.stringify(feed.Url)};
-            if (url.includes('.m3u8') && Hls.isSupported()) {
-              var hls = new Hls();
-              hls.loadSource(url);
-              hls.attachMedia(video);
-            } else {
-              video.src = url;
-            }
-          </script>
         </body></html>
       `;
 

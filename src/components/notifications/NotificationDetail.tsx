@@ -192,6 +192,10 @@ const getTypeTagStyle = (type: string): any => {
   }
 };
 
+// Styles are computed once at module load, so resolve the color scheme a single
+// time here instead of calling Appearance.getColorScheme() in every style rule.
+const isDark = Appearance.getColorScheme() === 'dark';
+
 const styles = StyleSheet.create({
   backdrop: {
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -207,8 +211,8 @@ const styles = StyleSheet.create({
     right: 0,
     width: SIDEBAR_WIDTH,
     height: '100%',
-    backgroundColor: Appearance.getColorScheme() === 'dark' ? '#171717' : '#fff',
-    shadowColor: Appearance.getColorScheme() === 'dark' ? '#262626' : '#e5e5e5',
+    backgroundColor: isDark ? '#171717' : '#fff',
+    shadowColor: isDark ? '#262626' : '#e5e5e5',
     shadowOffset: {
       width: -2,
       height: 0,
@@ -228,14 +232,14 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingTop: Platform.OS === 'android' ? STATUS_BAR_HEIGHT + 16 : 16,
     borderBottomWidth: 1,
-    borderBottomColor: Appearance.getColorScheme() === 'dark' ? '#333333' : '#e5e5e5',
+    borderBottomColor: isDark ? '#333333' : '#e5e5e5',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     flex: 1,
     textAlign: 'center',
-    color: Appearance.getColorScheme() === 'dark' ? '#f3f4f6' : '#111827',
+    color: isDark ? '#f3f4f6' : '#111827',
   },
   backButton: {
     padding: 8,
@@ -258,12 +262,12 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 14,
-    color: Appearance.getColorScheme() === 'dark' ? '#9ca3af' : '#6b7280',
+    color: isDark ? '#9ca3af' : '#6b7280',
     marginLeft: 6,
   },
   timeText: {
     fontSize: 14,
-    color: Appearance.getColorScheme() === 'dark' ? '#9ca3af' : '#6b7280',
+    color: isDark ? '#9ca3af' : '#6b7280',
   },
   typeTag: {
     alignSelf: 'flex-start',
@@ -278,28 +282,28 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   typeTagDefault: {
-    backgroundColor: Appearance.getColorScheme() === 'dark' ? '#374151' : '#e5e7eb',
+    backgroundColor: isDark ? '#374151' : '#e5e7eb',
   },
   typeTagInfo: {
-    backgroundColor: Appearance.getColorScheme() === 'dark' ? '#1e40af' : '#dbeafe',
+    backgroundColor: isDark ? '#1e40af' : '#dbeafe',
   },
   typeTagSuccess: {
-    backgroundColor: Appearance.getColorScheme() === 'dark' ? '#065f46' : '#d1fae5',
+    backgroundColor: isDark ? '#065f46' : '#d1fae5',
   },
   typeTagWarning: {
-    backgroundColor: Appearance.getColorScheme() === 'dark' ? '#92400e' : '#fef3c7',
+    backgroundColor: isDark ? '#92400e' : '#fef3c7',
   },
   typeTagAlert: {
-    backgroundColor: Appearance.getColorScheme() === 'dark' ? '#991b1b' : '#fee2e2',
+    backgroundColor: isDark ? '#991b1b' : '#fee2e2',
   },
   title: {
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 12,
-    color: Appearance.getColorScheme() === 'dark' ? '#f3f4f6' : '#111827',
+    color: isDark ? '#f3f4f6' : '#111827',
   },
   bodyContainer: {
-    backgroundColor: Appearance.getColorScheme() === 'dark' ? '#262626' : '#f9fafb',
+    backgroundColor: isDark ? '#262626' : '#f9fafb',
     padding: 16,
     borderRadius: 8,
     marginBottom: 20,
@@ -307,19 +311,19 @@ const styles = StyleSheet.create({
   body: {
     fontSize: 16,
     lineHeight: 24,
-    color: Appearance.getColorScheme() === 'dark' ? '#e5e5e5' : '#374151',
+    color: isDark ? '#e5e5e5' : '#374151',
   },
   metadataDetailsContainer: {
     marginTop: 10,
     padding: 16,
-    backgroundColor: Appearance.getColorScheme() === 'dark' ? '#262626' : '#f9fafb',
+    backgroundColor: isDark ? '#262626' : '#f9fafb',
     borderRadius: 8,
   },
   metadataTitle: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 10,
-    color: Appearance.getColorScheme() === 'dark' ? '#f3f4f6' : '#111827',
+    color: isDark ? '#f3f4f6' : '#111827',
   },
   metadataItem: {
     flexDirection: 'row',
@@ -329,31 +333,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     marginRight: 8,
-    color: Appearance.getColorScheme() === 'dark' ? '#9ca3af' : '#6b7280',
+    color: isDark ? '#9ca3af' : '#6b7280',
   },
   metadataValue: {
     fontSize: 14,
     flex: 1,
-    color: Appearance.getColorScheme() === 'dark' ? '#e5e5e5' : '#111827',
+    color: isDark ? '#e5e5e5' : '#111827',
   },
   buttonText: {
     fontSize: 16,
     fontWeight: '500',
-    color: Appearance.getColorScheme() === 'dark' ? '#3b82f6' : '#2563eb',
+    color: isDark ? '#3b82f6' : '#2563eb',
   },
   referenceButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 24,
-    backgroundColor: Appearance.getColorScheme() === 'dark' ? '#1e3a8a' : '#dbeafe',
+    backgroundColor: isDark ? '#1e3a8a' : '#dbeafe',
     padding: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: Appearance.getColorScheme() === 'dark' ? '#3b82f6' : '#60a5fa',
+    borderColor: isDark ? '#3b82f6' : '#60a5fa',
   },
   referenceButtonIcon: {
     marginRight: 8,
-    color: Appearance.getColorScheme() === 'dark' ? '#3b82f6' : '#2563eb',
+    color: isDark ? '#3b82f6' : '#2563eb',
   },
 });

@@ -411,22 +411,21 @@ export const ActiveCallsPanel: React.FC<ActiveCallsPanelProps> = ({ selectedCall
       const CONCURRENCY = 4;
       for (let i = 0; i < toFetch.length; i += CONCURRENCY) {
         const chunk = toFetch.slice(i, i + CONCURRENCY);
-        const results = await Promise.all(
-          chunk.map((callId) =>
-            getCallExtraData(callId)
-              .then((res) => ({ callId, dispatches: res?.Data?.Dispatches ?? ([] as DispatchedEventResultData[]) }))
-              .catch(() => ({ callId, dispatches: null as DispatchedEventResultData[] | null }))
-          )
-        );
+        const results = await Promise.allSettled(chunk.map((callId) => getCallExtraData(callId)));
         setCallDispatchesMap((prev) => {
           const next = { ...prev };
-          results.forEach(({ callId, dispatches }) => {
+          results.forEach((result, index) => {
+            const callId = chunk[index];
             // Skip update if a newer request superseded this one for this callId.
             if (callFetchEpochsRef.current.get(callId) !== batchEpochs.get(callId)) return;
-            if (dispatches !== null) {
-              next[callId] = dispatches;
+            if (result.status === 'fulfilled') {
+              next[callId] = result.value?.Data?.Dispatches ?? [];
             } else {
               // Fetch failed – remove from the fetched set so the next refresh can retry
+              logger.warn({
+                message: 'Failed to fetch dispatches for call; will retry on next refresh',
+                context: { callId, reason: result.reason instanceof Error ? result.reason.message : String(result.reason) },
+              });
               fetchedCallIdsRef.current.delete(callId);
             }
           });

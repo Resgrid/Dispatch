@@ -153,9 +153,11 @@ export default function Map() {
         logger.info({
           message: 'Map focused, resetting camera to current location',
           context: {
-            latitude: location.latitude,
-            longitude: location.longitude,
+            // GDPR: log bucketed (~11km) coordinates instead of verbatim position
+            latitudeBucket: Math.round(location.latitude * 10) / 10,
+            longitudeBucket: Math.round(location.longitude * 10) / 10,
             isMapLocked: location.isMapLocked,
+            gdpr: { purpose: 'map_tracking', lawful_basis: 'consent' },
           },
         });
       }
@@ -170,10 +172,12 @@ export default function Map() {
         logger.info({
           message: 'Location updated and map is ready',
           context: {
-            latitude: location.latitude,
-            longitude: location.longitude,
+            // GDPR: log bucketed (~11km) coordinates instead of verbatim position
+            latitudeBucket: Math.round(location.latitude * 10) / 10,
+            longitudeBucket: Math.round(location.longitude * 10) / 10,
             heading: location.heading,
             isMapLocked: location.isMapLocked,
+            gdpr: { purpose: 'map_tracking', lawful_basis: 'consent' },
           },
         });
 
@@ -213,8 +217,10 @@ export default function Map() {
         logger.info({
           message: 'Map unlocked, resetting camera to normal view and user interaction state',
           context: {
-            latitude: location.latitude,
-            longitude: location.longitude,
+            // GDPR: log bucketed (~11km) coordinates instead of verbatim position
+            latitudeBucket: Math.round(location.latitude * 10) / 10,
+            longitudeBucket: Math.round(location.longitude * 10) / 10,
+            gdpr: { purpose: 'map_tracking', lawful_basis: 'consent' },
           },
         });
       }

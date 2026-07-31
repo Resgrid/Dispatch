@@ -57,15 +57,18 @@ contextBridge.exposeInMainWorld('electronDeepLinks', {
      * Register a callback that fires when the main process forwards a
      * deep-link URL to the renderer.
      * @param {(url: string) => void} callback
+     * @returns {() => void} unsubscribe function that removes the listener
      */
     onDeepLink: (callback) => {
-        ipcRenderer.on('deep-link', (_event, deepLinkUrl) => {
+        const handler = (_event, deepLinkUrl) => {
             try {
                 callback(deepLinkUrl);
             } catch (err) {
                 console.error('Error in deep-link callback:', err);
             }
-        });
+        };
+        ipcRenderer.on('deep-link', handler);
+        return () => ipcRenderer.removeListener('deep-link', handler);
     },
 });
 

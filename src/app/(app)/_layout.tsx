@@ -218,6 +218,8 @@ export default function TabLayout() {
       });
       // Reset initialization state on error so it can be retried
       hasInitialized.current = false;
+      // If the init promise is still hanging, clear the guard so a retry is possible
+      isInitializing.current = false;
     }
   }, [status]);
 
