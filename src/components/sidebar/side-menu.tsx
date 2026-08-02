@@ -1,5 +1,24 @@
 import { type Href, useRouter } from 'expo-router';
-import { CalendarClock, CloudLightning, Contact, FileText, Home, List, type LucideIcon, Map as MapIcon, MapPinned, MessageCircle, MessagesSquare, Network, Phone, Plus, Settings, Sparkles, Truck, Users } from 'lucide-react-native';
+import {
+  CalendarClock,
+  CloudLightning,
+  Contact,
+  FileText,
+  Home,
+  List,
+  type LucideIcon,
+  Map as MapIcon,
+  MapPinned,
+  MessageCircle,
+  MessagesSquare,
+  Network,
+  Phone,
+  Plus,
+  Settings,
+  Sparkles,
+  Truck,
+  Users,
+} from 'lucide-react-native';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';

@@ -6,7 +6,7 @@ import { Actionsheet, ActionsheetBackdrop, ActionsheetContent, ActionsheetDragIn
 import { HStack } from '@/components/ui/hstack';
 import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
-import { ChatFlagReason, ChatMessageType, type ChatMessageResultData } from '@/models/v4/chat';
+import { ChatFlagReason, type ChatMessageResultData, ChatMessageType } from '@/models/v4/chat';
 
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '🙏', '🔥', '✅'];
 

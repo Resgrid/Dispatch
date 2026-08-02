@@ -11,11 +11,11 @@ import { uuidv4 } from '@/lib/utils';
 import {
   type ChatAckResultData,
   type ChatChannelResultData,
+  type ChatMemberResultData,
+  type ChatMentionInput,
   ChatMessagePriority,
   type ChatMessageResultData,
   ChatMessageType,
-  type ChatMemberResultData,
-  type ChatMentionInput,
   type ChatOutboxItem,
   type ChatReactionResultData,
 } from '@/models/v4/chat';
@@ -172,9 +172,7 @@ function compareMessages(a: ChatMessageResultData, b: ChatMessageResultData): nu
  * by ChatMessageId and ClientMessageId (so optimistic sends reconcile). */
 function upsertMessage(list: ChatMessageResultData[], incoming: ChatMessageResultData): ChatMessageResultData[] {
   const next = list.slice();
-  const idx = next.findIndex(
-    (m) => m.ChatMessageId === incoming.ChatMessageId || (!!incoming.ClientMessageId && !!m.ClientMessageId && m.ClientMessageId === incoming.ClientMessageId)
-  );
+  const idx = next.findIndex((m) => m.ChatMessageId === incoming.ChatMessageId || (!!incoming.ClientMessageId && !!m.ClientMessageId && m.ClientMessageId === incoming.ClientMessageId));
   if (idx >= 0) {
     const existing = next[idx];
     next[idx] = { ...existing, ...incoming };
@@ -666,9 +664,7 @@ export const useChatStore = create<ChatState>()(
         set((s) => {
           const list = upsertMessage(s.messagesByChannel[msg.ChatChannelId] ?? [], { ...msg, _localStatus: 'sent' });
           const channels = s.channels.map((c) =>
-            c.ChatChannelId === msg.ChatChannelId
-              ? { ...c, LastMessageSeq: Math.max(c.LastMessageSeq, msg.MessageSeq), LastMessageOn: msg.SentOn, UnreadCount: isActive || isOwn ? c.UnreadCount : c.UnreadCount + 1 }
-              : c
+            c.ChatChannelId === msg.ChatChannelId ? { ...c, LastMessageSeq: Math.max(c.LastMessageSeq, msg.MessageSeq), LastMessageOn: msg.SentOn, UnreadCount: isActive || isOwn ? c.UnreadCount : c.UnreadCount + 1 } : c
           );
           return { messagesByChannel: { ...s.messagesByChannel, [msg.ChatChannelId]: list }, channels };
         });

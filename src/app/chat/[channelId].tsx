@@ -1,9 +1,9 @@
+import { Image } from 'expo-image';
 import { type Href, Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Circle } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
-import { Image } from 'expo-image';
 
 import { getPresence, uploadAttachment } from '@/api/chat/chat';
 import { AckBanner } from '@/components/chat/ack-banner';
@@ -19,16 +19,16 @@ import { Button, ButtonText } from '@/components/ui/button';
 import { Center } from '@/components/ui/center';
 import { FlatList } from '@/components/ui/flat-list';
 import { HStack } from '@/components/ui/hstack';
+import { KeyboardAvoidingView } from '@/components/ui/keyboard-avoiding-view';
 import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { Textarea, TextareaInput } from '@/components/ui/textarea';
-import { KeyboardAvoidingView } from '@/components/ui/keyboard-avoiding-view';
 import { VStack } from '@/components/ui/vstack';
-import { ChatChannelType, ChatMessagePriority, ChatMessageType, type ChatMessageResultData, type GifResultData } from '@/models/v4/chat';
+import { ChatChannelType, ChatMessagePriority, type ChatMessageResultData, ChatMessageType, type GifResultData } from '@/models/v4/chat';
+import useAuthStore from '@/stores/auth/store';
 import { useChatStore } from '@/stores/chat/store';
 import { securityStore } from '@/stores/security/store';
 import { useToastStore } from '@/stores/toast/store';
-import useAuthStore from '@/stores/auth/store';
 
 export default function ChannelConversationScreen() {
   const { t } = useTranslation();
@@ -268,7 +268,13 @@ export default function ChannelConversationScreen() {
         onClose={() => setActionsMessage(null)}
         isOwn={!!actionsMessage?.SenderUserId && actionsMessage.SenderUserId === currentUserId}
         isModerator={isModerator}
-        onReact={(m, emoji) => handleToggleReaction(m, emoji, m.Reactions.some((r) => r.Emoji === emoji && r.UserId === currentUserId))}
+        onReact={(m, emoji) =>
+          handleToggleReaction(
+            m,
+            emoji,
+            m.Reactions.some((r) => r.Emoji === emoji && r.UserId === currentUserId)
+          )
+        }
         onReply={openThread}
         onCopy={async (m) => {
           const ok = await copyToClipboard(m.Body ?? '');

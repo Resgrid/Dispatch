@@ -12,11 +12,7 @@ export function TypingDots({ color = '#9ca3af' }: { color?: string }) {
   useEffect(() => {
     const animations = dots.map((dot, index) =>
       Animated.loop(
-        Animated.sequence([
-          Animated.delay(index * 150),
-          Animated.timing(dot, { toValue: 1, duration: 400, useNativeDriver: true }),
-          Animated.timing(dot, { toValue: 0.3, duration: 400, useNativeDriver: true }),
-        ])
+        Animated.sequence([Animated.delay(index * 150), Animated.timing(dot, { toValue: 1, duration: 400, useNativeDriver: true }), Animated.timing(dot, { toValue: 0.3, duration: 400, useNativeDriver: true })])
       )
     );
     animations.forEach((animation) => animation.start());

@@ -1,7 +1,7 @@
 import { type TFunction } from 'i18next';
 
 import { getAvatarUrl } from '@/lib/utils';
-import { ChatChannelType, type ChatChannelResultData, type ChatGifMetadata, type ChatImageMetadata, type ChatLocationMetadata } from '@/models/v4/chat';
+import { type ChatChannelResultData, ChatChannelType, type ChatGifMetadata, type ChatImageMetadata, type ChatLocationMetadata } from '@/models/v4/chat';
 
 /** Buckets used to group the channel list into sections. */
 export interface GroupedChannels {

@@ -17,7 +17,7 @@ import { HStack } from '@/components/ui/hstack';
 import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
-import { ChatChannelType, type ChatChannelResultData } from '@/models/v4/chat';
+import { type ChatChannelResultData, ChatChannelType } from '@/models/v4/chat';
 import { useChatStore } from '@/stores/chat/store';
 
 function ChannelRow({ channel, onPress }: { channel: ChatChannelResultData; onPress: () => void }) {
@@ -121,10 +121,7 @@ export default function ChatScreen() {
 
       <AckBanner acks={pendingAcks} onAcknowledge={(messageId) => useChatStore.getState().acknowledgeMessage(messageId)} />
 
-      <ScrollView
-        className="flex-1"
-        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={() => useChatStore.getState().fetchChannels()} />}
-      >
+      <ScrollView className="flex-1" refreshControl={<RefreshControl refreshing={isLoading} onRefresh={() => useChatStore.getState().fetchChannels()} />}>
         {channels.length === 0 && !isLoading ? (
           <VStack className="mt-16 items-center px-8" space="sm">
             <MessageCircle size={48} color="#9ca3af" />

@@ -11,7 +11,7 @@ import { HStack } from '@/components/ui/hstack';
 import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
-import { ChatMessagePriority, ChatMessageType, type ChatMessageResultData } from '@/models/v4/chat';
+import { ChatMessagePriority, type ChatMessageResultData, ChatMessageType } from '@/models/v4/chat';
 
 import { formatShortTime, getPersonAvatarUrl, linkifySegments, parseGifMetadata, parseLocationMetadata } from './chat-utils';
 

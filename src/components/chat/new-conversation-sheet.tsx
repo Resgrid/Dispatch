@@ -168,12 +168,7 @@ export function NewConversationSheet({ isOpen, onClose, mode, onCreated }: NewCo
                 const userId = recipientUserId(recipient);
                 const isSelected = selected.has(userId);
                 return (
-                  <Pressable
-                    key={recipient.Id}
-                    className="py-2"
-                    onPress={() => (mode === 'dm' ? startDirectMessage(recipient) : toggle(userId))}
-                    disabled={submitting}
-                  >
+                  <Pressable key={recipient.Id} className="py-2" onPress={() => (mode === 'dm' ? startDirectMessage(recipient) : toggle(userId))} disabled={submitting}>
                     <HStack className="items-center justify-between">
                       <HStack className="flex-1 items-center" space="sm">
                         <Avatar size="sm">

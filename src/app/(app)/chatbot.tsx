@@ -17,8 +17,8 @@ import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { type ChatMessageResultData } from '@/models/v4/chat';
-import { useChatStore } from '@/stores/chat/store';
 import useAuthStore from '@/stores/auth/store';
+import { useChatStore } from '@/stores/chat/store';
 
 export default function ChatbotScreen() {
   const { t } = useTranslation();
@@ -77,11 +77,7 @@ export default function ChatbotScreen() {
             <Text className="text-xs text-typography-400">{t('chatbot.subtitle')}</Text>
           </VStack>
         </HStack>
-        <Pressable
-          className="flex-row items-center rounded-full bg-purple-100 px-3 py-1 dark:bg-purple-900"
-          onPress={() => useChatStore.getState().newChatbotSession()}
-          accessibilityLabel={t('chatbot.new_session')}
-        >
+        <Pressable className="flex-row items-center rounded-full bg-purple-100 px-3 py-1 dark:bg-purple-900" onPress={() => useChatStore.getState().newChatbotSession()} accessibilityLabel={t('chatbot.new_session')}>
           <RefreshCw size={14} color="#7c3aed" />
           <Text className="ml-1 text-xs font-medium text-purple-700 dark:text-purple-300">{t('chatbot.new_session')}</Text>
         </Pressable>

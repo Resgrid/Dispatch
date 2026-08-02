@@ -119,14 +119,7 @@ export function MessageComposer({ onSendText, onSendImage, onSendLocation, onOpe
 
         <Box className="flex-1">
           <Textarea size="md" className="min-h-[40px] rounded-2xl bg-background-100">
-            <TextareaInput
-              placeholder={placeholder ?? t('chat.type_a_message')}
-              value={text}
-              onChangeText={handleChange}
-              onBlur={stopTyping}
-              multiline
-              editable={!disabled}
-            />
+            <TextareaInput placeholder={placeholder ?? t('chat.type_a_message')} value={text} onChangeText={handleChange} onBlur={stopTyping} multiline editable={!disabled} />
           </Textarea>
         </Box>
 
