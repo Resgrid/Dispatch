@@ -7,7 +7,7 @@ import { Image } from 'expo-image';
 
 import { getPresence, uploadAttachment } from '@/api/chat/chat';
 import { AckBanner } from '@/components/chat/ack-banner';
-import { copyToClipboard, getChannelDisplayName } from '@/components/chat/chat-utils';
+import { copyToClipboard, getChannelDisplayName, getImageMimeType } from '@/components/chat/chat-utils';
 import { GifPickerSheet } from '@/components/chat/gif-picker-sheet';
 import { MessageActionsSheet } from '@/components/chat/message-actions-sheet';
 import { MessageBubble } from '@/components/chat/message-bubble';
@@ -79,9 +79,15 @@ export default function ChannelConversationScreen() {
   useEffect(() => {
     const ids = (members ?? []).map((m) => m.UserId).filter((id): id is string => !!id && id !== currentUserId);
     if (ids.length === 0) return;
-    getPresence(ids)
-      .then((result) => setPresenceIds(new Set(result.OnlineUserIds ?? [])))
+    const controller = new AbortController();
+    getPresence(ids, controller.signal)
+      .then((result) => {
+        if (!controller.signal.aborted) {
+          setPresenceIds(new Set(result.OnlineUserIds ?? []));
+        }
+      })
       .catch(() => undefined);
+    return () => controller.abort();
   }, [members, currentUserId]);
 
   // Mark read whenever the newest message changes while viewing.
@@ -138,28 +144,34 @@ export default function ChannelConversationScreen() {
     [channelId, t]
   );
 
-  // Image send: optimistic bubble, send an Image message, then upload the file.
+  // Image send: optimistic bubble, then upload the file once the queued message
+  // is reconciled and receives its server ChatMessageId (initial send, retry, or outbox drain).
   const handleSendImage = useCallback(
-    async (uri: string, urgent: boolean) => {
+    (uri: string, urgent: boolean, mimeType?: string) => {
       if (!channelId) return;
       const name = uri.split('/').pop() || `photo-${Date.now()}.jpg`;
-      await useChatStore.getState().sendMessage({
+      const type = getImageMimeType(uri, mimeType);
+
+      const unsubscribe = useChatStore.subscribe((state) => {
+        const sent = (state.messagesByChannel[channelId] ?? []).find((m) => m._localAttachmentUri === uri && !m.ChatMessageId.startsWith('local-'));
+        if (!sent) return;
+        unsubscribe();
+        void (async () => {
+          try {
+            await uploadAttachment(channelId, sent.ChatMessageId, { uri, name, type });
+          } catch {
+            useToastStore.getState().showToast('error', t('chat.attachment_failed'));
+          }
+        })();
+      });
+
+      void useChatStore.getState().sendMessage({
         channelId,
         body: '',
         messageType: ChatMessageType.Image,
         priority: urgent ? ChatMessagePriority.Urgent : ChatMessagePriority.Normal,
         localAttachmentUri: uri,
       });
-      // Find the just-sent (now server-confirmed) message by its local uri to attach the file.
-      const list = useChatStore.getState().messagesByChannel[channelId] ?? [];
-      const sent = [...list].reverse().find((m) => m._localAttachmentUri === uri && !m.ChatMessageId.startsWith('local-'));
-      if (sent) {
-        try {
-          await uploadAttachment(channelId, sent.ChatMessageId, { uri, name, type: 'image/jpeg' });
-        } catch {
-          useToastStore.getState().showToast('error', t('chat.attachment_failed'));
-        }
-      }
     },
     [channelId, t]
   );
@@ -197,7 +209,13 @@ export default function ChannelConversationScreen() {
     [currentUserId, showSender, handleToggleReaction, openThread]
   );
 
-  const title = channel ? getChannelDisplayName(channel) : t('chat.title');
+  const keyExtractor = useCallback((item: ChatMessageResultData) => item.ChatMessageId, []);
+
+  const handleEndReached = useCallback(() => {
+    if (channelId) void useChatStore.getState().loadOlderMessages(channelId);
+  }, [channelId]);
+
+  const title = channel ? getChannelDisplayName(channel, t) : t('chat.title');
 
   return (
     <Box className="size-full flex-1 bg-background-0">
@@ -221,10 +239,11 @@ export default function ChannelConversationScreen() {
           <FlatList
             data={inverted}
             inverted
-            keyExtractor={(item: ChatMessageResultData) => item.ChatMessageId}
+            keyExtractor={keyExtractor}
             renderItem={renderItem}
-            onEndReached={() => channelId && useChatStore.getState().loadOlderMessages(channelId)}
+            onEndReached={handleEndReached}
             onEndReachedThreshold={0.3}
+            removeClippedSubviews
             contentContainerStyle={{ paddingVertical: 8 }}
           />
         )}

@@ -21,6 +21,7 @@ import { ChatChannelType, type ChatChannelResultData } from '@/models/v4/chat';
 import { useChatStore } from '@/stores/chat/store';
 
 function ChannelRow({ channel, onPress }: { channel: ChatChannelResultData; onPress: () => void }) {
+  const { t } = useTranslation();
   const unread = channel.UnreadCount > 0;
   const isDm = channel.ChannelType === ChatChannelType.DirectMessage;
 
@@ -28,7 +29,7 @@ function ChannelRow({ channel, onPress }: { channel: ChatChannelResultData; onPr
     if (isDm) {
       return (
         <Avatar size="md">
-          <AvatarFallbackText>{getChannelDisplayName(channel)}</AvatarFallbackText>
+          <AvatarFallbackText>{getChannelDisplayName(channel, t)}</AvatarFallbackText>
         </Avatar>
       );
     }
@@ -47,7 +48,7 @@ function ChannelRow({ channel, onPress }: { channel: ChatChannelResultData; onPr
         <Leading />
         <VStack className="flex-1">
           <Text className={`text-typography-900 ${unread ? 'font-bold' : 'font-medium'}`} numberOfLines={1}>
-            {getChannelDisplayName(channel)}
+            {getChannelDisplayName(channel, t)}
           </Text>
           {channel.Topic ? (
             <Text className="text-xs text-typography-400" numberOfLines={1}>

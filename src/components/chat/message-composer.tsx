@@ -1,7 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { AlertTriangle, ImagePlus, MapPin, Send, Smile, Sparkles } from 'lucide-react-native';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
 
@@ -15,10 +15,11 @@ import { logger } from '@/lib/logging';
 import { useToastStore } from '@/stores/toast/store';
 
 const QUICK_EMOJIS = ['👍', '❤️', '😂', '🎉', '🙏', '🔥', '😮', '😢', '👏', '✅', '🚒', '🚑', '👀', '💯', '🆗', '⚠️'];
+const TYPING_IDLE_MS = 3000;
 
 interface MessageComposerProps {
   onSendText: (body: string, urgent: boolean) => void;
-  onSendImage: (uri: string, urgent: boolean) => void;
+  onSendImage: (uri: string, urgent: boolean, mimeType?: string) => void;
   onSendLocation: (latitude: number, longitude: number, urgent: boolean) => void;
   onOpenGif: () => void;
   onTyping: (isTyping: boolean) => void;
@@ -32,8 +33,13 @@ export function MessageComposer({ onSendText, onSendImage, onSendLocation, onOpe
   const [urgent, setUrgent] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const typingActive = useRef(false);
+  const typingIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const stopTyping = useCallback(() => {
+    if (typingIdleTimer.current) {
+      clearTimeout(typingIdleTimer.current);
+      typingIdleTimer.current = null;
+    }
     if (typingActive.current) {
       typingActive.current = false;
       onTyping(false);
@@ -44,14 +50,24 @@ export function MessageComposer({ onSendText, onSendImage, onSendLocation, onOpe
     (value: string) => {
       setText(value);
       if (value.length > 0) {
-        typingActive.current = true;
-        onTyping(true);
+        if (!typingActive.current) {
+          typingActive.current = true;
+          onTyping(true);
+        }
+        if (typingIdleTimer.current) clearTimeout(typingIdleTimer.current);
+        typingIdleTimer.current = setTimeout(stopTyping, TYPING_IDLE_MS);
       } else {
         stopTyping();
       }
     },
     [onTyping, stopTyping]
   );
+
+  useEffect(() => {
+    return () => {
+      if (typingIdleTimer.current) clearTimeout(typingIdleTimer.current);
+    };
+  }, []);
 
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
@@ -71,7 +87,7 @@ export function MessageComposer({ onSendText, onSendImage, onSendLocation, onOpe
       }
       const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
       if (!result.canceled && result.assets[0]?.uri) {
-        onSendImage(result.assets[0].uri, urgent);
+        onSendImage(result.assets[0].uri, urgent, result.assets[0].mimeType ?? undefined);
         setUrgent(false);
       }
     } catch (error) {
@@ -114,16 +130,16 @@ export function MessageComposer({ onSendText, onSendImage, onSendLocation, onOpe
           </Textarea>
         </Box>
 
-        <Pressable className="p-2" onPress={handlePickImage} accessibilityLabel={t('chat.add_image')}>
+        <Pressable className="p-2" onPress={handlePickImage} disabled={disabled} accessibilityLabel={t('chat.add_image')}>
           <ImagePlus size={22} color="#6b7280" />
         </Pressable>
-        <Pressable className="p-2" onPress={onOpenGif} accessibilityLabel={t('chat.add_gif')}>
+        <Pressable className="p-2" onPress={onOpenGif} disabled={disabled} accessibilityLabel={t('chat.add_gif')}>
           <Sparkles size={22} color="#6b7280" />
         </Pressable>
-        <Pressable className="p-2" onPress={handleShareLocation} accessibilityLabel={t('chat.share_location')}>
+        <Pressable className="p-2" onPress={handleShareLocation} disabled={disabled} accessibilityLabel={t('chat.share_location')}>
           <MapPin size={22} color="#6b7280" />
         </Pressable>
-        <Pressable className="p-2" onPress={() => setUrgent((prev) => !prev)} accessibilityLabel={t('chat.urgent')}>
+        <Pressable className="p-2" onPress={() => setUrgent((prev) => !prev)} disabled={disabled} accessibilityLabel={t('chat.urgent')}>
           <AlertTriangle size={22} color={urgent ? '#dc2626' : '#6b7280'} />
         </Pressable>
 

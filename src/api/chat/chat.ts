@@ -188,7 +188,7 @@ export interface ChatUploadFile {
 export const uploadAttachment = async (channelId: string, messageId: string, file: ChatUploadFile) => {
   const form = new FormData();
   // React Native FormData accepts { uri, name, type } file objects.
-  form.append('file', { uri: file.uri, name: file.name, type: file.type } as unknown as Blob);
+  form.append('file', file as unknown as Blob);
 
   const response = await api.post<ChatAttachmentUploadedResult>(`${CHAT}/UploadAttachment`, form, {
     params: { channelId, messageId },

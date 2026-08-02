@@ -1,6 +1,33 @@
+import { type Href, router } from 'expo-router';
 import { Linking, Platform } from 'react-native';
 
 import { logger } from './logging';
+
+export interface RouterPushRetryOptions {
+  maxAttempts?: number;
+  retryDelayMs?: number;
+}
+
+/**
+ * Pushes an expo-router href, retrying when the router has not mounted yet
+ * (cold-start deep links). Throws the last error once every attempt fails.
+ */
+export const routerPushWithRetry = async (href: Href, options?: RouterPushRetryOptions): Promise<void> => {
+  const maxAttempts = options?.maxAttempts ?? 1;
+  const retryDelayMs = options?.retryDelayMs ?? 250;
+
+  for (let attempt = 1; ; attempt++) {
+    try {
+      router.push(href);
+      return;
+    } catch (error) {
+      if (attempt >= maxAttempts) {
+        throw error;
+      }
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+    }
+  }
+};
 
 /**
  * Opens the device's native maps application with directions using an address.

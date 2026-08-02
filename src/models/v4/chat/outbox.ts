@@ -23,4 +23,8 @@ export interface ChatOutboxItem {
   /** Sender user id for optimistic rendering. */
   SenderUserId?: string;
   CreatedAt: number;
+  /** Number of send attempts made so far (absent on pre-retry-tracking entries). */
+  Attempts?: number;
+  /** Epoch ms of the last send attempt, used to schedule backoff. */
+  LastAttemptAt?: number;
 }

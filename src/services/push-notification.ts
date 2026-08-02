@@ -1,11 +1,11 @@
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
-import { router } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 
 import { registerUnitDevice } from '@/api/devices/push';
 import { logger } from '@/lib/logging';
+import { routerPushWithRetry } from '@/lib/navigation';
 import { isNativePushSupported } from '@/lib/platform';
 import { storage } from '@/lib/storage';
 import { getDeviceUuid } from '@/lib/storage/app';
@@ -30,13 +30,11 @@ export function handleChatDeepLink(eventCode: string): boolean {
   const match = /^([tg]):(.+)$/.exec(eventCode);
   if (!match) return false;
   const channelId = match[2];
-  try {
-    router.push(`/chat/${channelId}`);
-    return true;
-  } catch (error) {
+  if (/[/\\?#]/.test(channelId)) return false;
+  void routerPushWithRetry({ pathname: '/chat/[channelId]', params: { channelId } }, { maxAttempts: 20, retryDelayMs: 250 }).catch((error) => {
     logger.error({ message: 'Failed to deep-link to chat channel', context: { error, eventCode } });
-    return false;
-  }
+  });
+  return true;
 }
 
 // Storage key for the Android "use modern notification sounds" preference.

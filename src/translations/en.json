@@ -434,7 +434,15 @@
     "acknowledge": "Acknowledge",
     "thread": "Thread",
     "original_message": "Original message",
-    "reply_placeholder": "Reply..."
+    "reply_placeholder": "Reply...",
+    "channel": "Channel",
+    "direct_message": "Direct Message",
+    "load_people_failed": "Could not load people",
+    "reaction_failed": "Could not update reaction",
+    "edit_failed": "Could not edit message",
+    "delete_failed": "Could not delete message",
+    "pin_failed": "Could not update pin",
+    "flag_failed": "Could not report message"
   },
   "chatbot": {
     "title": "Assistant",

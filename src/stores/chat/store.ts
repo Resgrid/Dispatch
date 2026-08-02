@@ -4,6 +4,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import * as chatApi from '@/api/chat/chat';
 import * as chatbotApi from '@/api/chat/chatbot';
 import { Env } from '@/lib/env';
+import { translate } from '@/lib/i18n/utils';
 import { logger } from '@/lib/logging';
 import { zustandStorage } from '@/lib/storage';
 import { uuidv4 } from '@/lib/utils';
@@ -20,11 +21,17 @@ import {
 } from '@/models/v4/chat';
 import { signalRService } from '@/services/signalr.service';
 import useAuthStore from '@/stores/auth/store';
+import { useToastStore } from '@/stores/toast/store';
 
 /** Messages at or above this sequence are optimistic (unconfirmed) sends. */
 const PENDING_SEQ_BASE = 9_000_000_000_000;
 const TYPING_EXPIRY_MS = 5000;
 const TYPING_THROTTLE_MS = 3000;
+
+const getTranslatedMessage = (key: Parameters<typeof translate>[0], fallback: string) => {
+  const message = translate(key);
+  return typeof message === 'string' && message.length > 0 && message !== key ? message : fallback;
+};
 
 export interface ChatTypingUser {
   userId: string;
@@ -125,6 +132,14 @@ interface ChatState {
 const typingTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const lastTypingSentAt = new Map<string, number>();
 const lastMarkedSeq = new Map<string, number>();
+const pendingChatbotMessages = new Map<string, { channelId: string; text: string }>();
+const CHATBOT_TYPING_TIMEOUT_MS = 30_000;
+let chatbotTypingTimer: ReturnType<typeof setTimeout> | null = null;
+const MAX_OUTBOX_ATTEMPTS = 5;
+const OUTBOX_RETRY_BASE_DELAY_MS = 2000;
+const OUTBOX_RETRY_MAX_DELAY_MS = 60_000;
+let isDrainingOutbox = false;
+let outboxDrainTimer: ReturnType<typeof setTimeout> | null = null;
 
 function currentUserId(): string | null {
   return useAuthStore.getState().userId;
@@ -283,16 +298,20 @@ export const useChatStore = create<ChatState>()(
       },
 
       loadNewerMessages: async (channelId: string) => {
-        const after = highestRealSeq(get().messagesByChannel[channelId]);
         try {
-          const response = await chatApi.getMessagesAfter(channelId, after, 200);
-          const incoming = response.Data ?? [];
-          if (incoming.length === 0) return;
-          set((s) => {
-            let list = s.messagesByChannel[channelId] ?? [];
-            for (const m of incoming) list = upsertMessage(list, { ...m, _localStatus: 'sent' });
-            return { messagesByChannel: { ...s.messagesByChannel, [channelId]: list } };
-          });
+          let after = highestRealSeq(get().messagesByChannel[channelId]);
+          for (;;) {
+            const response = await chatApi.getMessagesAfter(channelId, after, 200);
+            const incoming = response.Data ?? [];
+            if (incoming.length === 0) return;
+            set((s) => {
+              let list = s.messagesByChannel[channelId] ?? [];
+              for (const m of incoming) list = upsertMessage(list, { ...m, _localStatus: 'sent' });
+              return { messagesByChannel: { ...s.messagesByChannel, [channelId]: list } };
+            });
+            if (incoming.length < 200) return;
+            after = highestRealSeq(get().messagesByChannel[channelId]);
+          }
         } catch (error) {
           logger.error({ message: 'chat: delta sync failed', context: { error, channelId } });
         }
@@ -351,14 +370,48 @@ export const useChatStore = create<ChatState>()(
 
       retryOutboxItem: async (clientMessageId: string) => {
         const item = get().outbox.find((o) => o.ClientMessageId === clientMessageId);
-        if (!item) return;
-        await sendOutboxItem(item, set, get);
+        if (item) {
+          await sendOutboxItem(item, set, get);
+          return;
+        }
+        const pending = pendingChatbotMessages.get(clientMessageId);
+        if (!pending) return;
+        set({ chatbotTyping: true });
+        startChatbotTypingTimeout(set);
+        try {
+          await chatbotApi.sendChatbotMessage(pending.text, clientMessageId);
+          pendingChatbotMessages.delete(clientMessageId);
+          patchMessage(set, pending.channelId, `local-${clientMessageId}`, { _localStatus: 'sent' });
+        } catch (error) {
+          logger.error({ message: 'chat: chatbot resend failed', context: { error } });
+          markOutboxFailed(set, pending.channelId, clientMessageId);
+          clearChatbotTypingTimeout();
+          set({ chatbotTyping: false });
+        }
       },
 
       drainOutbox: async () => {
-        const items = [...get().outbox];
-        for (const item of items) {
-          await sendOutboxItem(item, set, get);
+        if (isDrainingOutbox) return;
+        isDrainingOutbox = true;
+        try {
+          const userId = currentUserId();
+          const now = Date.now();
+          let nextEligibleIn: number | null = null;
+          for (const item of [...get().outbox]) {
+            if (item.SenderUserId && item.SenderUserId !== userId) continue;
+            const attempts = item.Attempts ?? 0;
+            if (attempts >= MAX_OUTBOX_ATTEMPTS) continue;
+            const delay = outboxRetryDelayMs(attempts);
+            const elapsed = now - (item.LastAttemptAt ?? 0);
+            if (attempts > 0 && elapsed < delay) {
+              nextEligibleIn = Math.min(nextEligibleIn ?? Number.MAX_SAFE_INTEGER, delay - elapsed);
+              continue;
+            }
+            await sendOutboxItem(item, set, get);
+          }
+          if (nextEligibleIn !== null) scheduleOutboxDrain(nextEligibleIn);
+        } finally {
+          isDrainingOutbox = false;
         }
       },
 
@@ -370,6 +423,7 @@ export const useChatStore = create<ChatState>()(
           }
         } catch (error) {
           logger.error({ message: 'chat: edit failed', context: { error, messageId } });
+          useToastStore.getState().showToast('error', getTranslatedMessage('chat.edit_failed', 'Could not edit message'));
         }
       },
 
@@ -379,6 +433,7 @@ export const useChatStore = create<ChatState>()(
           patchMessage(set, channelId, messageId, { DeletedOn: new Date().toISOString(), DeletedByUserId: currentUserId() ?? undefined });
         } catch (error) {
           logger.error({ message: 'chat: delete failed', context: { error, messageId } });
+          useToastStore.getState().showToast('error', getTranslatedMessage('chat.delete_failed', 'Could not delete message'));
         }
       },
 
@@ -396,6 +451,7 @@ export const useChatStore = create<ChatState>()(
       // ------------------------------------------------------------------
       addReaction: async (messageId: string, channelId: string, emoji: string) => {
         const userId = currentUserId();
+        const previousReactions = (get().messagesByChannel[channelId] ?? []).find((m) => m.ChatMessageId === messageId)?.Reactions;
         // optimistic
         set((s) => {
           const list = s.messagesByChannel[channelId] ?? [];
@@ -412,11 +468,14 @@ export const useChatStore = create<ChatState>()(
           await chatApi.addReaction(messageId, { Emoji: emoji });
         } catch (error) {
           logger.error({ message: 'chat: add reaction failed', context: { error, messageId } });
+          if (previousReactions) patchMessage(set, channelId, messageId, { Reactions: previousReactions });
+          useToastStore.getState().showToast('error', getTranslatedMessage('chat.reaction_failed', 'Could not update reaction'));
         }
       },
 
       removeReaction: async (messageId: string, channelId: string, emoji: string) => {
         const userId = currentUserId();
+        const previousReactions = (get().messagesByChannel[channelId] ?? []).find((m) => m.ChatMessageId === messageId)?.Reactions;
         set((s) => {
           const list = s.messagesByChannel[channelId] ?? [];
           const idx = list.findIndex((m) => m.ChatMessageId === messageId);
@@ -431,6 +490,8 @@ export const useChatStore = create<ChatState>()(
           await chatApi.removeReaction(messageId, emoji);
         } catch (error) {
           logger.error({ message: 'chat: remove reaction failed', context: { error, messageId } });
+          if (previousReactions) patchMessage(set, channelId, messageId, { Reactions: previousReactions });
+          useToastStore.getState().showToast('error', getTranslatedMessage('chat.reaction_failed', 'Could not update reaction'));
         }
       },
 
@@ -467,6 +528,9 @@ export const useChatStore = create<ChatState>()(
           await chatApi.markRead(channelId, { Seq: seq });
         } catch (error) {
           logger.debug({ message: 'chat: markRead failed', context: { error, channelId } });
+          if (lastMarkedSeq.get(channelId) === seq) {
+            lastMarkedSeq.delete(channelId);
+          }
         }
       },
 
@@ -477,6 +541,7 @@ export const useChatStore = create<ChatState>()(
           patchMessage(set, channelId, messageId, { PinnedOn: pinned ? new Date().toISOString() : null });
         } catch (error) {
           logger.error({ message: 'chat: pin toggle failed', context: { error, messageId } });
+          useToastStore.getState().showToast('error', getTranslatedMessage('chat.pin_failed', 'Could not update pin'));
         }
       },
 
@@ -485,6 +550,7 @@ export const useChatStore = create<ChatState>()(
           await chatApi.flagMessage(messageId, { Reason: reason, Note: note });
         } catch (error) {
           logger.error({ message: 'chat: flag failed', context: { error, messageId } });
+          useToastStore.getState().showToast('error', getTranslatedMessage('chat.flag_failed', 'Could not report message'));
         }
       },
 
@@ -545,13 +611,17 @@ export const useChatStore = create<ChatState>()(
           chatbotTyping: true,
           messagesByChannel: { ...s.messagesByChannel, [channelId]: upsertMessage(s.messagesByChannel[channelId] ?? [], optimistic) },
         }));
+        pendingChatbotMessages.set(clientMessageId, { channelId, text });
+        startChatbotTypingTimeout(set);
 
         try {
           await chatbotApi.sendChatbotMessage(text, clientMessageId);
+          pendingChatbotMessages.delete(clientMessageId);
           patchMessage(set, channelId, optimistic.ChatMessageId, { _localStatus: 'sent' });
         } catch (error) {
           logger.error({ message: 'chat: chatbot send failed', context: { error } });
           markOutboxFailed(set, channelId, clientMessageId);
+          clearChatbotTypingTimeout();
           set({ chatbotTyping: false });
         }
       },
@@ -671,6 +741,7 @@ export const useChatStore = create<ChatState>()(
       handleChatbotMessageReceived: (raw: unknown) => {
         const msg = parseEventData<ChatMessageResultData>(raw);
         if (!msg || !msg.ChatChannelId) return;
+        clearChatbotTypingTimeout();
         set((s) => ({
           chatbotTyping: false,
           messagesByChannel: { ...s.messagesByChannel, [msg.ChatChannelId]: upsertMessage(s.messagesByChannel[msg.ChatChannelId] ?? [], { ...msg, _localStatus: 'sent' }) },
@@ -728,6 +799,12 @@ export const useChatStore = create<ChatState>()(
         typingTimers.clear();
         lastTypingSentAt.clear();
         lastMarkedSeq.clear();
+        pendingChatbotMessages.clear();
+        clearChatbotTypingTimeout();
+        if (outboxDrainTimer) {
+          clearTimeout(outboxDrainTimer);
+          outboxDrainTimer = null;
+        }
         set({
           channels: [],
           messagesByChannel: {},
@@ -740,6 +817,7 @@ export const useChatStore = create<ChatState>()(
           chatbotTyping: false,
           hasMoreByChannel: {},
           loadingMessagesByChannel: {},
+          outbox: [],
         });
       },
     }),
@@ -748,6 +826,15 @@ export const useChatStore = create<ChatState>()(
       storage: createJSONStorage(() => zustandStorage),
       // Only the outbox is persisted; the message cache lives in memory + react-query.
       partialize: (state) => ({ outbox: state.outbox }),
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as { outbox?: ChatOutboxItem[] } | undefined;
+        const outbox = persisted?.outbox ?? [];
+        const messagesByChannel = { ...currentState.messagesByChannel };
+        for (const item of outbox) {
+          messagesByChannel[item.ChannelId] = upsertMessage(messagesByChannel[item.ChannelId] ?? [], buildOutboxOptimisticMessage(item));
+        }
+        return { ...currentState, outbox, messagesByChannel };
+      },
     }
   )
 );
@@ -792,18 +879,91 @@ async function sendOutboxItem(item: ChatOutboxItem, set: SetState, get: GetState
     });
   } catch (error) {
     logger.warn({ message: 'chat: send failed, kept in outbox', context: { error, clientMessageId: item.ClientMessageId } });
-    markOutboxFailed(set, item.ChannelId, item.ClientMessageId);
+    markOutboxFailed(set, item.ChannelId, item.ClientMessageId, error);
   }
 }
 
-function markOutboxFailed(set: SetState, channelId: string, clientMessageId: string): void {
+function startChatbotTypingTimeout(set: SetState): void {
+  clearChatbotTypingTimeout();
+  chatbotTypingTimer = setTimeout(() => {
+    chatbotTypingTimer = null;
+    set({ chatbotTyping: false });
+  }, CHATBOT_TYPING_TIMEOUT_MS);
+}
+
+function clearChatbotTypingTimeout(): void {
+  if (chatbotTypingTimer) {
+    clearTimeout(chatbotTypingTimer);
+    chatbotTypingTimer = null;
+  }
+}
+
+function outboxRetryDelayMs(attempts: number): number {
+  return Math.min(OUTBOX_RETRY_MAX_DELAY_MS, OUTBOX_RETRY_BASE_DELAY_MS * 2 ** Math.max(0, attempts - 1));
+}
+
+function isNonRetryableSendError(error: unknown): boolean {
+  const status = (error as { response?: { status?: unknown } } | null | undefined)?.response?.status;
+  if (typeof status !== 'number') return false;
+  if (status === 408 || status === 429) return false;
+  return status >= 400 && status < 500;
+}
+
+function scheduleOutboxDrain(delayMs: number): void {
+  if (outboxDrainTimer) clearTimeout(outboxDrainTimer);
+  outboxDrainTimer = setTimeout(() => {
+    outboxDrainTimer = null;
+    void useChatStore.getState().drainOutbox();
+  }, delayMs);
+}
+
+function buildOutboxOptimisticMessage(item: ChatOutboxItem): ChatMessageResultData {
+  return {
+    ChatMessageId: `local-${item.ClientMessageId}`,
+    ChatChannelId: item.ChannelId,
+    MessageSeq: PENDING_SEQ_BASE + item.CreatedAt,
+    SenderParticipantType: 0,
+    SenderUserId: item.SenderUserId ?? undefined,
+    SenderDisplayName: item.SenderDisplayName ?? '',
+    Body: item.Body,
+    MessageType: item.MessageType,
+    Priority: item.Priority,
+    ThreadRootMessageId: item.ThreadRootMessageId ?? null,
+    ThreadReplyCount: 0,
+    AlsoSendToChannel: item.AlsoSendToChannel ?? false,
+    MetadataJson: item.MetadataJson ?? null,
+    ClientMessageId: item.ClientMessageId,
+    SentOn: new Date(item.CreatedAt).toISOString(),
+    Reactions: [],
+    Attachments: [],
+    _localStatus: 'pending',
+  };
+}
+
+function markOutboxFailed(set: SetState, channelId: string, clientMessageId: string, error?: unknown): void {
+  const terminal = isNonRetryableSendError(error);
   set((s) => {
     const list = s.messagesByChannel[channelId] ?? [];
     const idx = list.findIndex((m) => m.ClientMessageId === clientMessageId);
-    if (idx < 0) return {};
     const next = list.slice();
-    next[idx] = { ...next[idx], _localStatus: 'failed' };
-    return { messagesByChannel: { ...s.messagesByChannel, [channelId]: next } };
+    if (idx >= 0) next[idx] = { ...next[idx], _localStatus: 'failed' };
+
+    let outbox = s.outbox;
+    const itemIdx = s.outbox.findIndex((o) => o.ClientMessageId === clientMessageId);
+    if (itemIdx >= 0) {
+      const attempts = (s.outbox[itemIdx].Attempts ?? 0) + 1;
+      if (terminal || attempts >= MAX_OUTBOX_ATTEMPTS) {
+        outbox = s.outbox.filter((o) => o.ClientMessageId !== clientMessageId);
+      } else {
+        outbox = s.outbox.slice();
+        outbox[itemIdx] = { ...outbox[itemIdx], Attempts: attempts, LastAttemptAt: Date.now() };
+      }
+    }
+
+    return {
+      ...(idx >= 0 ? { messagesByChannel: { ...s.messagesByChannel, [channelId]: next } } : {}),
+      ...(outbox !== s.outbox ? { outbox } : {}),
+    };
   });
 }
 

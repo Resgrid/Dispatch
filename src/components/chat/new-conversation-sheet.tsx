@@ -42,6 +42,7 @@ export function NewConversationSheet({ isOpen, onClose, mode, onCreated }: NewCo
   const { t } = useTranslation();
   const [recipients, setRecipients] = useState<RecipientsResultData[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [query, setQuery] = useState('');
   const [groupName, setGroupName] = useState('');
@@ -49,14 +50,29 @@ export function NewConversationSheet({ isOpen, onClose, mode, onCreated }: NewCo
 
   useEffect(() => {
     if (!isOpen) return;
+    let cancelled = false;
     setSelected(new Set());
     setGroupName('');
     setQuery('');
+    setLoadError(false);
     setLoading(true);
     getRecipients(true, false)
-      .then((result) => setRecipients((result.Data ?? []).filter(isPersonRecipient)))
-      .catch((error) => logger.error({ message: 'chat: failed to load recipients', context: { error } }))
-      .finally(() => setLoading(false));
+      .then((result) => {
+        if (cancelled) return;
+        setRecipients((result.Data ?? []).filter(isPersonRecipient));
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        logger.error({ message: 'chat: failed to load recipients', context: { error } });
+        setRecipients([]);
+        setLoadError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen]);
 
   const filtered = useMemo(() => {
@@ -137,6 +153,10 @@ export function NewConversationSheet({ isOpen, onClose, mode, onCreated }: NewCo
           {loading ? (
             <Center className="h-40">
               <Spinner />
+            </Center>
+          ) : loadError ? (
+            <Center className="h-40">
+              <Text className="text-typography-400">{t('chat.load_people_failed')}</Text>
             </Center>
           ) : filtered.length === 0 ? (
             <Center className="h-40">

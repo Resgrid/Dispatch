@@ -1,3 +1,5 @@
+import { type TFunction } from 'i18next';
+
 import { getAvatarUrl } from '@/lib/utils';
 import { ChatChannelType, type ChatChannelResultData, type ChatGifMetadata, type ChatImageMetadata, type ChatLocationMetadata } from '@/models/v4/chat';
 
@@ -37,10 +39,10 @@ export function groupChannels(channels: ChatChannelResultData[]): GroupedChannel
   return grouped;
 }
 
-export function getChannelDisplayName(channel: ChatChannelResultData): string {
+export function getChannelDisplayName(channel: ChatChannelResultData, t: TFunction): string {
   if (channel.Name && channel.Name.trim().length > 0) return channel.Name;
-  if (channel.ChannelType === ChatChannelType.DirectMessage) return 'Direct Message';
-  return 'Channel';
+  if (channel.ChannelType === ChatChannelType.DirectMessage) return t('chat.direct_message');
+  return t('chat.channel');
 }
 
 export function isDirectMessage(channel: ChatChannelResultData): boolean {
@@ -73,7 +75,8 @@ export function parseImageMetadata(metadataJson?: string | null): ChatImageMetad
   return parseMetadata<ChatImageMetadata>(metadataJson);
 }
 
-const URL_REGEX = /(https?:\/\/[^\s]+)/g;
+const URL_REGEX = /(https?:\/\/[^\s]+)/;
+const URL_REGEX_GLOBAL = new RegExp(URL_REGEX.source, 'g');
 
 export interface TextSegment {
   text: string;
@@ -85,7 +88,7 @@ export function linkifySegments(body: string): TextSegment[] {
   if (!body) return [];
   const segments: TextSegment[] = [];
   let lastIndex = 0;
-  const matches = body.matchAll(URL_REGEX);
+  const matches = body.matchAll(URL_REGEX_GLOBAL);
   for (const match of matches) {
     const index = match.index ?? 0;
     if (index > lastIndex) segments.push({ text: body.slice(lastIndex, index), isLink: false });
@@ -117,6 +120,23 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     // ignore and fall through
   }
   return false;
+}
+
+const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  heic: 'image/heic',
+  heif: 'image/heif',
+};
+
+/** Best-effort image MIME type: prefer the picker asset metadata, then the file extension. */
+export function getImageMimeType(uri: string, assetMimeType?: string | null): string {
+  if (assetMimeType) return assetMimeType;
+  const extension = uri.split('?')[0].split('.').pop()?.toLowerCase();
+  return (extension ? IMAGE_MIME_BY_EXTENSION[extension] : undefined) ?? 'image/jpeg';
 }
 
 /** Relative-ish short time label for message rows and channel list. */

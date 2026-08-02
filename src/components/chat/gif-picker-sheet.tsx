@@ -28,23 +28,33 @@ export function GifPickerSheet({ isOpen, onClose, onSelect }: GifPickerSheetProp
   const [gifs, setGifs] = useState<GifResultData[]>([]);
   const [loading, setLoading] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const runSearch = useCallback(async (q: string) => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setLoading(true);
     try {
-      const response = await searchGifs(q || undefined, 24, 0);
+      const response = await searchGifs(q || undefined, 24, 0, controller.signal);
+      if (controller.signal.aborted) return;
       setGifs(response.Data ?? []);
     } catch (error) {
+      if (controller.signal.aborted) return;
       logger.debug({ message: 'chat: gif search failed', context: { error } });
       setGifs([]);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     if (!isOpen) return;
     runSearch('');
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      abortRef.current?.abort();
+    };
   }, [isOpen, runSearch]);
 
   const handleChange = (value: string) => {
