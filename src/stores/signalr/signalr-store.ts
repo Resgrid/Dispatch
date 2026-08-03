@@ -6,7 +6,49 @@ import { logger } from '@/lib/logging';
 import { signalRService } from '@/services/signalr.service';
 
 import { useCoreStore } from '../app/core-store';
+import { useChatStore } from '../chat/store';
 import { securityStore, useSecurityStore } from '../security/store';
+
+/** Client-event method names raised by the chat SignalR hub. */
+const CHAT_HUB_METHODS = [
+  'chatMessageReceived',
+  'chatMessageEdited',
+  'chatMessageDeleted',
+  'chatReactionUpdated',
+  'chatReceiptUpdated',
+  'chatChannelUpdated',
+  'chatChannelProvisioned',
+  'chatModerationApplied',
+  'chatMessageAckRequired',
+  'chatThreadUpdated',
+  'chatbotMessageReceived',
+  'chatbotTyping',
+  'chatTyping',
+  'chatPresenceChanged',
+  'onChatConnected',
+];
+
+// Track registered chat handlers for cleanup and the heartbeat timer.
+const chatHubHandlers: Record<string, ((data: unknown) => void) | null> = {};
+let chatHeartbeatTimer: ReturnType<typeof setInterval> | null = null;
+const CHAT_HEARTBEAT_INTERVAL_MS = 45000;
+
+function unregisterChatHubHandlers(): void {
+  Object.keys(chatHubHandlers).forEach((event) => {
+    const handler = chatHubHandlers[event];
+    if (handler) {
+      signalRService.off(event, handler);
+      chatHubHandlers[event] = null;
+    }
+  });
+}
+
+function stopChatHeartbeat(): void {
+  if (chatHeartbeatTimer) {
+    clearInterval(chatHeartbeatTimer);
+    chatHeartbeatTimer = null;
+  }
+}
 
 export type SignalREventType =
   | 'personnelStatusUpdated'
@@ -36,12 +78,15 @@ interface SignalRState {
   isGeolocationHubConnected: boolean;
   lastGeolocationMessage: unknown;
   lastGeolocationTimestamp: number;
+  isChatHubConnected: boolean;
   error: Error | null;
   connectUpdateHub: () => Promise<void>;
   disconnectUpdateHub: () => Promise<void>;
   reconnectUpdateHub: () => Promise<void>;
   connectGeolocationHub: () => Promise<void>;
   disconnectGeolocationHub: () => Promise<void>;
+  connectChatHub: () => Promise<void>;
+  disconnectChatHub: () => Promise<void>;
   checkConnectionState: () => boolean;
 }
 
@@ -126,6 +171,7 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
   isGeolocationHubConnected: false,
   lastGeolocationMessage: null,
   lastGeolocationTimestamp: 0,
+  isChatHubConnected: false,
   error: null,
   connectUpdateHub: async () => {
     try {
@@ -570,6 +616,91 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
         message: 'Failed to disconnect from geolocation hub',
         context: { error: err },
       });
+      set({ error: err });
+    }
+  },
+  connectChatHub: async () => {
+    try {
+      if (get().isChatHubConnected) {
+        return;
+      }
+
+      const eventingUrl = useCoreStore.getState().config?.EventingUrl;
+      if (!eventingUrl) {
+        logger.warn({ message: 'EventingUrl not available for chat hub, skipping connection' });
+        return;
+      }
+
+      // Ensure any previous handlers are cleaned up before registering new ones.
+      unregisterChatHubHandlers();
+
+      await signalRService.connectToHubWithEventingUrl({
+        name: Env.CHAT_HUB_NAME,
+        eventingUrl,
+        hubName: Env.CHAT_HUB_NAME,
+        methods: CHAT_HUB_METHODS,
+      });
+
+      const chat = useChatStore.getState();
+      const handlerMap: Record<string, (raw: unknown) => void> = {
+        chatMessageReceived: chat.handleMessageReceived,
+        chatMessageEdited: chat.handleMessageEdited,
+        chatMessageDeleted: chat.handleMessageDeleted,
+        chatReactionUpdated: chat.handleReactionUpdated,
+        chatReceiptUpdated: chat.handleReceiptUpdated,
+        chatChannelUpdated: chat.handleChannelUpdated,
+        chatChannelProvisioned: chat.handleChannelProvisioned,
+        chatModerationApplied: chat.handleModerationApplied,
+        chatMessageAckRequired: chat.handleAckRequired,
+        chatThreadUpdated: chat.handleThreadUpdated,
+        chatbotMessageReceived: chat.handleChatbotMessageReceived,
+        chatbotTyping: chat.handleChatbotTyping,
+        chatTyping: chat.handleTyping,
+        chatPresenceChanged: chat.handlePresenceChanged,
+      };
+
+      Object.entries(handlerMap).forEach(([event, handler]) => {
+        const wrapped = (data: unknown) => handler(data);
+        chatHubHandlers[event] = wrapped;
+        signalRService.on(event, wrapped);
+      });
+
+      const onChatConnected = () => {
+        logger.info({ message: 'Connected to chat SignalR hub' });
+        set({ isChatHubConnected: true, error: null });
+        useChatStore.getState().handleChatConnected();
+      };
+      chatHubHandlers.onChatConnected = onChatConnected;
+      signalRService.on('onChatConnected', onChatConnected);
+
+      // Announce chat presence to the hub, then begin the periodic heartbeat.
+      await signalRService.invoke(Env.CHAT_HUB_NAME, 'Connect');
+      set({ isChatHubConnected: true });
+
+      stopChatHeartbeat();
+      chatHeartbeatTimer = setInterval(() => {
+        signalRService.invoke(Env.CHAT_HUB_NAME, 'Heartbeat').catch(() => {
+          // Heartbeat is best-effort; ignore transient failures.
+        });
+      }, CHAT_HEARTBEAT_INTERVAL_MS);
+
+      logger.info({ message: 'Chat hub handlers registered successfully' });
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error('Unknown error occurred');
+      logger.error({ message: 'Failed to connect to chat SignalR hub', context: { error: err } });
+      set({ error: err });
+    }
+  },
+  disconnectChatHub: async () => {
+    try {
+      stopChatHeartbeat();
+      unregisterChatHubHandlers();
+      await signalRService.disconnectFromHub(Env.CHAT_HUB_NAME);
+      set({ isChatHubConnected: false });
+      logger.info({ message: 'Chat hub disconnected and handlers cleaned up' });
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error('Unknown error occurred');
+      logger.error({ message: 'Failed to disconnect from chat SignalR hub', context: { error: err } });
       set({ error: err });
     }
   },

@@ -85,6 +85,7 @@ const client = z.object({
   RESGRID_API_URL: z.string(),
   CHANNEL_HUB_NAME: z.string(),
   REALTIME_GEO_HUB_NAME: z.string(),
+  CHAT_HUB_NAME: z.string(),
   LOGGING_KEY: z.string(),
   APP_KEY: z.string(),
   MAPBOX_PUBKEY: z.string(),
@@ -120,6 +121,7 @@ const _clientEnv = {
   RESGRID_API_URL: process.env.DISPATCH_RESGRID_API_URL || '/api/v4',
   CHANNEL_HUB_NAME: process.env.DISPATCH_CHANNEL_HUB_NAME || 'eventingHub',
   REALTIME_GEO_HUB_NAME: process.env.DISPATCH_REALTIME_GEO_HUB_NAME || 'geolocationHub',
+  CHAT_HUB_NAME: process.env.DISPATCH_CHAT_HUB_NAME || 'chatHub',
   LOGGING_KEY: process.env.DISPATCH_LOGGING_KEY || '',
   APP_KEY: process.env.DISPATCH_APP_KEY || '',
   IS_MOBILE_APP: true, // or whatever default you want
