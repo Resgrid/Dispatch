@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { type Href, Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Circle } from 'lucide-react-native';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
 
@@ -53,6 +53,7 @@ export default function ChannelConversationScreen() {
   const [editText, setEditText] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [presenceIds, setPresenceIds] = useState<Set<string>>(new Set());
+  const unsubscribeRef = useRef<(() => void) | null>(null);
 
   const isDm = channel?.ChannelType === ChatChannelType.DirectMessage;
   const showSender = !isDm;
@@ -106,6 +107,14 @@ export default function ChannelConversationScreen() {
 
   const channelAcks = useMemo(() => pendingAcks.filter((a) => a.ChatChannelId === channelId), [pendingAcks, channelId]);
 
+  useEffect(
+    () => () => {
+      unsubscribeRef.current?.();
+      unsubscribeRef.current = null;
+    },
+    [channelId]
+  );
+
   const typingNames = useMemo(() => {
     const now = Date.now();
     return (typing ?? []).filter((u) => u.expiresAt > now).map((u) => u.displayName || t('chat.someone'));
@@ -152,10 +161,17 @@ export default function ChannelConversationScreen() {
       const name = uri.split('/').pop() || `photo-${Date.now()}.jpg`;
       const type = getImageMimeType(uri, mimeType);
 
-      const unsubscribe = useChatStore.subscribe((state) => {
-        const sent = (state.messagesByChannel[channelId] ?? []).find((m) => m._localAttachmentUri === uri && !m.ChatMessageId.startsWith('local-'));
+      unsubscribeRef.current = useChatStore.subscribe((state) => {
+        const sent = (state.messagesByChannel[channelId] ?? []).find((m) => m._localAttachmentUri === uri);
         if (!sent) return;
-        unsubscribe();
+        if (sent._localStatus === 'failed') {
+          unsubscribeRef.current?.();
+          unsubscribeRef.current = null;
+          return;
+        }
+        if (sent.ChatMessageId.startsWith('local-')) return;
+        unsubscribeRef.current?.();
+        unsubscribeRef.current = null;
         void (async () => {
           try {
             await uploadAttachment(channelId, sent.ChatMessageId, { uri, name, type });

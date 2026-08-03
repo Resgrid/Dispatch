@@ -406,8 +406,16 @@ export const useChatStore = create<ChatState>()(
               continue;
             }
             await sendOutboxItem(item, set, get);
+            const failed = get().outbox.find((outboxItem) => outboxItem.ClientMessageId === item.ClientMessageId);
+            if (failed) {
+              const retryDelay = outboxRetryDelayMs(failed.Attempts ?? 1);
+              const elapsed = Date.now() - (failed.LastAttemptAt ?? 0);
+              nextEligibleIn = Math.min(nextEligibleIn ?? Number.MAX_SAFE_INTEGER, Math.max(0, retryDelay - elapsed));
+            }
           }
-          if (nextEligibleIn !== null) scheduleOutboxDrain(nextEligibleIn);
+          if (nextEligibleIn !== null && get().outbox.some((item) => (item.Attempts ?? 0) < MAX_OUTBOX_ATTEMPTS)) {
+            scheduleOutboxDrain(nextEligibleIn);
+          }
         } finally {
           isDrainingOutbox = false;
         }
