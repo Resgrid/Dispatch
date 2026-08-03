@@ -161,17 +161,19 @@ export default function ChannelConversationScreen() {
       const name = uri.split('/').pop() || `photo-${Date.now()}.jpg`;
       const type = getImageMimeType(uri, mimeType);
 
-      unsubscribeRef.current = useChatStore.subscribe((state) => {
+      const unsubscribe = useChatStore.subscribe((state) => {
         const sent = (state.messagesByChannel[channelId] ?? []).find((m) => m._localAttachmentUri === uri);
         if (!sent) return;
         if (sent._localStatus === 'failed') {
-          unsubscribeRef.current?.();
-          unsubscribeRef.current = null;
+          const retryable = state.outbox.some((item) => item.ClientMessageId === sent.ClientMessageId);
+          if (retryable) return;
+          unsubscribe();
+          if (unsubscribeRef.current === unsubscribe) unsubscribeRef.current = null;
           return;
         }
         if (sent.ChatMessageId.startsWith('local-')) return;
-        unsubscribeRef.current?.();
-        unsubscribeRef.current = null;
+        unsubscribe();
+        if (unsubscribeRef.current === unsubscribe) unsubscribeRef.current = null;
         void (async () => {
           try {
             await uploadAttachment(channelId, sent.ChatMessageId, { uri, name, type });
@@ -180,6 +182,7 @@ export default function ChannelConversationScreen() {
           }
         })();
       });
+      unsubscribeRef.current = unsubscribe;
 
       void useChatStore.getState().sendMessage({
         channelId,
