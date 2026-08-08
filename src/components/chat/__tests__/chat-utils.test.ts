@@ -1,8 +1,11 @@
+import * as Clipboard from 'expo-clipboard';
 import { type TFunction } from 'i18next';
 
 import { ChatChannelType, type ChatChannelResultData } from '@/models/v4/chat';
 
-import { getChannelDisplayName, getImageMimeType, hasLink, linkifySegments } from '../chat-utils';
+import { copyToClipboard, getChannelDisplayName, getImageMimeType, hasLink, linkifySegments } from '../chat-utils';
+
+jest.mock('expo-clipboard', () => ({ setStringAsync: jest.fn() }));
 
 const mockT = ((key: string) => key) as TFunction;
 
@@ -71,6 +74,56 @@ describe('chat-utils', () => {
       expect(hasLink(null)).toBe(false);
       expect(hasLink('')).toBe(false);
       expect(hasLink('no links here')).toBe(false);
+    });
+  });
+
+  describe('copyToClipboard', () => {
+    const globalWithNavigator = globalThis as unknown as { navigator?: { clipboard?: { writeText?: (value: string) => Promise<void> } } };
+    let originalNavigator: unknown;
+
+    beforeEach(() => {
+      originalNavigator = globalWithNavigator.navigator;
+      jest.mocked(Clipboard.setStringAsync).mockReset();
+    });
+
+    afterEach(() => {
+      if (originalNavigator === undefined) {
+        delete globalWithNavigator.navigator;
+      } else {
+        globalWithNavigator.navigator = originalNavigator as typeof globalWithNavigator.navigator;
+      }
+    });
+
+    it('uses the web clipboard API when available', async () => {
+      const writeText = jest.fn().mockResolvedValue(undefined);
+      globalWithNavigator.navigator = { clipboard: { writeText } };
+
+      await expect(copyToClipboard('hello')).resolves.toBe(true);
+      expect(writeText).toHaveBeenCalledWith('hello');
+      expect(Clipboard.setStringAsync).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the native module when the web API is unavailable', async () => {
+      delete globalWithNavigator.navigator;
+      jest.mocked(Clipboard.setStringAsync).mockResolvedValue(true);
+
+      await expect(copyToClipboard('hello')).resolves.toBe(true);
+      expect(Clipboard.setStringAsync).toHaveBeenCalledWith('hello');
+    });
+
+    it('falls back to the native module when the web API write fails', async () => {
+      globalWithNavigator.navigator = { clipboard: { writeText: jest.fn().mockRejectedValue(new Error('denied')) } };
+      jest.mocked(Clipboard.setStringAsync).mockResolvedValue(true);
+
+      await expect(copyToClipboard('hello')).resolves.toBe(true);
+      expect(Clipboard.setStringAsync).toHaveBeenCalledWith('hello');
+    });
+
+    it('returns false when the native write fails', async () => {
+      delete globalWithNavigator.navigator;
+      jest.mocked(Clipboard.setStringAsync).mockRejectedValue(new Error('unavailable'));
+
+      await expect(copyToClipboard('hello')).resolves.toBe(false);
     });
   });
 

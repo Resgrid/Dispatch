@@ -1,3 +1,4 @@
+import * as Clipboard from 'expo-clipboard';
 import { type TFunction } from 'i18next';
 
 import { getAvatarUrl } from '@/lib/utils';
@@ -105,9 +106,9 @@ export function hasLink(body?: string | null): boolean {
 }
 
 /**
- * Copies text to the clipboard. Works on web/Electron via the async Clipboard
- * API; native returns false (no clipboard native module is installed) so callers
- * can surface an appropriate message.
+ * Copies text to the clipboard. Uses the async Clipboard API on web/Electron
+ * and expo-clipboard on native; returns false only when both are unavailable
+ * or the write fails, so callers can surface an appropriate message.
  */
 export async function copyToClipboard(text: string): Promise<boolean> {
   try {
@@ -117,9 +118,13 @@ export async function copyToClipboard(text: string): Promise<boolean> {
       return true;
     }
   } catch {
-    // ignore and fall through
+    // ignore and fall through to the native module
   }
-  return false;
+  try {
+    return await Clipboard.setStringAsync(text);
+  } catch {
+    return false;
+  }
 }
 
 const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
