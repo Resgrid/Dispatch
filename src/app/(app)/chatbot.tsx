@@ -14,16 +14,18 @@ import { HStack } from '@/components/ui/hstack';
 import { Input, InputField } from '@/components/ui/input';
 import { KeyboardAvoidingView } from '@/components/ui/keyboard-avoiding-view';
 import { Pressable } from '@/components/ui/pressable';
+import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { type ChatMessageResultData } from '@/models/v4/chat';
 import useAuthStore from '@/stores/auth/store';
 import { useChatStore } from '@/stores/chat/store';
-import { useIsChatEnabled } from '@/stores/feature-flags/store';
+import { useChatSystemStatus } from '@/stores/feature-flags/store';
 
 export default function ChatbotScreen() {
   const { t } = useTranslation();
-  const isChatEnabled = useIsChatEnabled();
+  const chatStatus = useChatSystemStatus();
+  const isChatEnabled = chatStatus === 'enabled';
   const currentUserId = useAuthStore((s) => s.userId);
   const chatbotChannelId = useChatStore((s) => s.chatbotChannelId);
   const chatbotTyping = useChatStore((s) => s.chatbotTyping);
@@ -65,8 +67,19 @@ export default function ChatbotScreen() {
     [currentUserId]
   );
 
-  // Chat.System feature flag off: no chat for this department.
-  if (!isChatEnabled) {
+  // Chat.System flag not yet resolved: wait instead of redirecting away from a valid route.
+  if (chatStatus === 'unknown') {
+    return (
+      <Box className="size-full flex-1 items-center justify-center bg-background-0">
+        <Stack.Screen options={{ headerShown: false }} />
+        <FocusAwareStatusBar />
+        <Spinner />
+      </Box>
+    );
+  }
+
+  // Chat.System feature flag off: the assistant rides on the chat system, hide it too.
+  if (chatStatus === 'disabled') {
     return <Redirect href={'/home' as Href} />;
   }
 

@@ -15,11 +15,12 @@ import { Fab, FabIcon } from '@/components/ui/fab';
 import { FocusAwareStatusBar } from '@/components/ui/focus-aware-status-bar';
 import { HStack } from '@/components/ui/hstack';
 import { Pressable } from '@/components/ui/pressable';
+import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { type ChatChannelResultData, ChatChannelType } from '@/models/v4/chat';
 import { useChatStore } from '@/stores/chat/store';
-import { useIsChatEnabled } from '@/stores/feature-flags/store';
+import { useChatSystemStatus } from '@/stores/feature-flags/store';
 
 function ChannelRow({ channel, onPress }: { channel: ChatChannelResultData; onPress: () => void }) {
   const { t } = useTranslation();
@@ -82,7 +83,8 @@ function Section({ title, channels, onOpen }: { title: string; channels: ChatCha
 export default function ChatScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const isChatEnabled = useIsChatEnabled();
+  const chatStatus = useChatSystemStatus();
+  const isChatEnabled = chatStatus === 'enabled';
   const channels = useChatStore((s) => s.channels);
   const isLoading = useChatStore((s) => s.isLoadingChannels);
   const pendingAcks = useChatStore((s) => s.pendingAcks);
@@ -106,8 +108,19 @@ export default function ChatScreen() {
     [router]
   );
 
+  // Chat.System flag not yet resolved: wait instead of redirecting away from a valid route.
+  if (chatStatus === 'unknown') {
+    return (
+      <Box className="size-full flex-1 items-center justify-center bg-background-0">
+        <Stack.Screen options={{ headerShown: false }} />
+        <FocusAwareStatusBar />
+        <Spinner />
+      </Box>
+    );
+  }
+
   // Chat.System feature flag off: no chat for this department.
-  if (!isChatEnabled) {
+  if (chatStatus === 'disabled') {
     return <Redirect href={'/home' as Href} />;
   }
 

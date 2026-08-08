@@ -10,13 +10,14 @@ import { Box } from '@/components/ui/box';
 import { Divider } from '@/components/ui/divider';
 import { FlatList } from '@/components/ui/flat-list';
 import { KeyboardAvoidingView } from '@/components/ui/keyboard-avoiding-view';
+import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { logger } from '@/lib/logging';
 import { ChatMessagePriority, type ChatMessageResultData, ChatMessageType } from '@/models/v4/chat';
 import useAuthStore from '@/stores/auth/store';
 import { useChatStore } from '@/stores/chat/store';
-import { useIsChatEnabled } from '@/stores/feature-flags/store';
+import { useChatSystemStatus } from '@/stores/feature-flags/store';
 
 export default function ThreadScreen() {
   const { t } = useTranslation();
@@ -24,7 +25,8 @@ export default function ThreadScreen() {
   const messageId = Array.isArray(params.messageId) ? params.messageId[0] : params.messageId;
   const channelId = Array.isArray(params.channelId) ? params.channelId[0] : params.channelId;
 
-  const isChatEnabled = useIsChatEnabled();
+  const chatStatus = useChatSystemStatus();
+  const isChatEnabled = chatStatus === 'enabled';
   const currentUserId = useAuthStore((s) => s.userId);
   const channelMessages = useChatStore((s) => (channelId ? s.messagesByChannel[channelId] : undefined));
   const [fetchedReplies, setFetchedReplies] = useState<ChatMessageResultData[]>([]);
@@ -98,8 +100,18 @@ export default function ThreadScreen() {
     [currentUserId, channelId]
   );
 
-  // Chat.System feature flag off: no chat for this department.
-  if (!isChatEnabled) {
+  // Chat.System flag not yet resolved: wait instead of redirecting away from a valid deep link.
+  if (chatStatus === 'unknown') {
+    return (
+      <Box className="size-full flex-1 items-center justify-center bg-background-0">
+        <Stack.Screen options={{ title: t('chat.thread'), headerShown: true, headerBackTitle: '' }} />
+        <Spinner />
+      </Box>
+    );
+  }
+
+  // Chat.System feature flag off: block deep links into threads.
+  if (chatStatus === 'disabled') {
     return <Redirect href={'/home' as Href} />;
   }
 
