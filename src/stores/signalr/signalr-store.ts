@@ -627,6 +627,8 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
         logger.info({
           message: 'Chat disabled by feature flag; skipping chat hub connection',
         });
+        // Tear down any existing connection so a runtime flag flip-off disconnects the hub.
+        await get().disconnectChatHub();
         return;
       }
 
