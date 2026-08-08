@@ -30,6 +30,7 @@ import { type GetConfigResultData } from '@/models/v4/configs/getConfigResultDat
 import { usePushNotifications } from '@/services/push-notification';
 import { useCoreStore } from '@/stores/app/core-store';
 import { useCallsStore } from '@/stores/calls/store';
+import { FeatureFlagKeys, featureFlagsStore } from '@/stores/feature-flags/store';
 import useLockscreenStore from '@/stores/lockscreen/store';
 import { useRolesStore } from '@/stores/roles/store';
 import { securityStore } from '@/stores/security/store';
@@ -150,7 +151,14 @@ export default function TabLayout() {
         await securityStore.getState().getRights();
 
         logger.info({
-          message: 'Security rights retrieved, connecting SignalR',
+          message: 'Security rights retrieved, fetching feature flags',
+          context: { platform: Platform.OS },
+        });
+
+        await featureFlagsStore.getState().fetchFlags();
+
+        logger.info({
+          message: 'Feature flags fetched, connecting SignalR',
           context: { platform: Platform.OS },
         });
 
@@ -169,17 +177,25 @@ export default function TabLayout() {
           // Don't fail initialization if SignalR connection fails
         }
 
-        // Connect the realtime chat hub (best-effort; chat may be disabled per department)
-        try {
-          await useSignalRStore.getState().connectChatHub();
+        // Connect the realtime chat hub only when the Chat.System feature flag is on for
+        // this department; when it is off every chat surface stays hidden.
+        if (featureFlagsStore.getState().isEnabled(FeatureFlagKeys.ChatSystem)) {
+          try {
+            await useSignalRStore.getState().connectChatHub();
+            logger.info({
+              message: 'SignalR chat hub connected successfully',
+              context: { platform: Platform.OS },
+            });
+          } catch (error) {
+            logger.error({
+              message: 'Failed to connect SignalR chat hub during initialization',
+              context: { error, platform: Platform.OS },
+            });
+          }
+        } else {
           logger.info({
-            message: 'SignalR chat hub connected successfully',
+            message: 'Chat disabled by feature flag; skipping chat hub connection',
             context: { platform: Platform.OS },
-          });
-        } catch (error) {
-          logger.error({
-            message: 'Failed to connect SignalR chat hub during initialization',
-            context: { error, platform: Platform.OS },
           });
         }
 

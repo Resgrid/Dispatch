@@ -1,4 +1,4 @@
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { type Href, Redirect, Stack, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
@@ -16,6 +16,7 @@ import { logger } from '@/lib/logging';
 import { ChatMessagePriority, type ChatMessageResultData, ChatMessageType } from '@/models/v4/chat';
 import useAuthStore from '@/stores/auth/store';
 import { useChatStore } from '@/stores/chat/store';
+import { useIsChatEnabled } from '@/stores/feature-flags/store';
 
 export default function ThreadScreen() {
   const { t } = useTranslation();
@@ -23,6 +24,7 @@ export default function ThreadScreen() {
   const messageId = Array.isArray(params.messageId) ? params.messageId[0] : params.messageId;
   const channelId = Array.isArray(params.channelId) ? params.channelId[0] : params.channelId;
 
+  const isChatEnabled = useIsChatEnabled();
   const currentUserId = useAuthStore((s) => s.userId);
   const channelMessages = useChatStore((s) => (channelId ? s.messagesByChannel[channelId] : undefined));
   const [fetchedReplies, setFetchedReplies] = useState<ChatMessageResultData[]>([]);
@@ -30,11 +32,11 @@ export default function ThreadScreen() {
   const root = useMemo(() => (channelMessages ?? []).find((m) => m.ChatMessageId === messageId), [channelMessages, messageId]);
 
   useEffect(() => {
-    if (!messageId) return;
+    if (!messageId || !isChatEnabled) return;
     getThread(messageId, undefined, 50)
       .then((response) => setFetchedReplies(response.Data ?? []))
       .catch((error) => logger.error({ message: 'chat: failed to load thread', context: { error, messageId } }));
-  }, [messageId]);
+  }, [messageId, isChatEnabled]);
 
   // Merge fetched replies with any realtime/optimistic replies already in the channel cache.
   const replies = useMemo(() => {
@@ -95,6 +97,11 @@ export default function ThreadScreen() {
     ),
     [currentUserId, channelId]
   );
+
+  // Chat.System feature flag off: no chat for this department.
+  if (!isChatEnabled) {
+    return <Redirect href={'/home' as Href} />;
+  }
 
   return (
     <Box className="size-full flex-1 bg-background-0">

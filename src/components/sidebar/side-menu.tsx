@@ -23,6 +23,8 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { useIsChatEnabled } from '@/stores/feature-flags/store';
+
 interface SideMenuProps {
   onNavigate?: () => void;
   colorScheme?: 'light' | 'dark';
@@ -93,7 +95,9 @@ function SideMenu({ onNavigate, colorScheme: propColorScheme }: SideMenuProps): 
   const router = useRouter();
   const { t } = useTranslation();
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
-  const menuItems = getMenuItems(t);
+  const isChatEnabled = useIsChatEnabled();
+  // Chat and the assistant are gated by the Chat.System feature flag.
+  const menuItems = getMenuItems(t).filter((item) => (item.id === 'chat' || item.id === 'assistant' ? isChatEnabled : true));
 
   // Use prop if provided, otherwise default to light on web
   const isDark = propColorScheme === 'dark';
