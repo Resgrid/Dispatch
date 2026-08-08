@@ -103,6 +103,13 @@ export default function ChatScreen() {
 
   const openChannel = useCallback(
     (channelId: string) => {
+      // The assistant conversation always opens in its dedicated restricted screen
+      // (text only, no reactions/threads/deletes) instead of the generic conversation.
+      const channel = useChatStore.getState().channels.find((c) => c.ChatChannelId === channelId);
+      if (channel?.ChannelType === ChatChannelType.Chatbot) {
+        router.push('/chatbot' as Href);
+        return;
+      }
       router.push(`/chat/${channelId}` as Href);
     },
     [router]

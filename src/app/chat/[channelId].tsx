@@ -254,6 +254,12 @@ export default function ChannelConversationScreen() {
     return <Redirect href={'/home' as Href} />;
   }
 
+  // Assistant conversations always use the dedicated restricted screen (text only,
+  // no reactions/threads/deletes) — catch deep links and stale routes here.
+  if (channel?.ChannelType === ChatChannelType.Chatbot) {
+    return <Redirect href={'/chatbot' as Href} />;
+  }
+
   return (
     <Box className="size-full flex-1 bg-background-0">
       <Stack.Screen

@@ -731,8 +731,10 @@ export const useChatStore = create<ChatState>()(
       },
 
       handleAckRequired: (raw: unknown) => {
-        const ack = parseEventData<ChatAckResultData>(raw);
+        const ack = parseEventData<ChatAckResultData & { SenderUserId?: string | null }>(raw);
         if (!ack || !ack.ChatMessageId) return;
+        // The sender never has to acknowledge their own urgent message.
+        if (ack.SenderUserId && ack.SenderUserId === currentUserId()) return;
         set((s) => (s.pendingAcks.some((a) => a.ChatMessageId === ack.ChatMessageId) ? {} : { pendingAcks: [...s.pendingAcks, ack] }));
       },
 

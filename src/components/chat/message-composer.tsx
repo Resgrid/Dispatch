@@ -25,9 +25,11 @@ interface MessageComposerProps {
   onTyping: (isTyping: boolean) => void;
   disabled?: boolean;
   placeholder?: string;
+  /** Urgent priority is channel-level only; thread replies pass false to hide the toggle. */
+  allowUrgent?: boolean;
 }
 
-export function MessageComposer({ onSendText, onSendImage, onSendLocation, onOpenGif, onTyping, disabled, placeholder }: MessageComposerProps) {
+export function MessageComposer({ onSendText, onSendImage, onSendLocation, onOpenGif, onTyping, disabled, placeholder, allowUrgent = true }: MessageComposerProps) {
   const { t } = useTranslation();
   const [text, setText] = useState('');
   const [urgent, setUrgent] = useState(false);
@@ -132,16 +134,18 @@ export function MessageComposer({ onSendText, onSendImage, onSendLocation, onOpe
         <Pressable className="p-2" onPress={handleShareLocation} disabled={disabled} accessibilityLabel={t('chat.share_location')}>
           <MapPin size={22} color="#6b7280" />
         </Pressable>
-        <Pressable className="p-2" onPress={() => setUrgent((prev) => !prev)} disabled={disabled} accessibilityLabel={t('chat.urgent')}>
-          <AlertTriangle size={22} color={urgent ? '#dc2626' : '#6b7280'} />
-        </Pressable>
+        {allowUrgent ? (
+          <Pressable className="p-2" onPress={() => setUrgent((prev) => !prev)} disabled={disabled} accessibilityLabel={t('chat.urgent')}>
+            <AlertTriangle size={22} color={urgent ? '#dc2626' : '#6b7280'} />
+          </Pressable>
+        ) : null}
 
         <Pressable className={`rounded-full p-2 ${text.trim() ? 'bg-primary-600' : 'bg-background-300'}`} onPress={handleSend} disabled={!text.trim() || disabled} accessibilityLabel={t('chat.send')}>
           <Send size={20} color="#ffffff" />
         </Pressable>
       </HStack>
 
-      {urgent ? (
+      {allowUrgent && urgent ? (
         <HStack className="mt-1 items-center px-2" space="xs">
           <AlertTriangle size={12} color="#dc2626" />
           <Text className="text-xs text-error-600">{t('chat.urgent_will_send')}</Text>
