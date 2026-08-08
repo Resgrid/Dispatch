@@ -1,4 +1,4 @@
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { type Href, Redirect, Stack, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
@@ -10,12 +10,14 @@ import { Box } from '@/components/ui/box';
 import { Divider } from '@/components/ui/divider';
 import { FlatList } from '@/components/ui/flat-list';
 import { KeyboardAvoidingView } from '@/components/ui/keyboard-avoiding-view';
+import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { logger } from '@/lib/logging';
 import { ChatMessagePriority, type ChatMessageResultData, ChatMessageType } from '@/models/v4/chat';
 import useAuthStore from '@/stores/auth/store';
 import { useChatStore } from '@/stores/chat/store';
+import { useChatSystemStatus } from '@/stores/feature-flags/store';
 
 export default function ThreadScreen() {
   const { t } = useTranslation();
@@ -23,6 +25,8 @@ export default function ThreadScreen() {
   const messageId = Array.isArray(params.messageId) ? params.messageId[0] : params.messageId;
   const channelId = Array.isArray(params.channelId) ? params.channelId[0] : params.channelId;
 
+  const chatStatus = useChatSystemStatus();
+  const isChatEnabled = chatStatus === 'enabled';
   const currentUserId = useAuthStore((s) => s.userId);
   const channelMessages = useChatStore((s) => (channelId ? s.messagesByChannel[channelId] : undefined));
   const [fetchedReplies, setFetchedReplies] = useState<ChatMessageResultData[]>([]);
@@ -30,11 +34,11 @@ export default function ThreadScreen() {
   const root = useMemo(() => (channelMessages ?? []).find((m) => m.ChatMessageId === messageId), [channelMessages, messageId]);
 
   useEffect(() => {
-    if (!messageId) return;
+    if (!messageId || !isChatEnabled) return;
     getThread(messageId, undefined, 50)
       .then((response) => setFetchedReplies(response.Data ?? []))
       .catch((error) => logger.error({ message: 'chat: failed to load thread', context: { error, messageId } }));
-  }, [messageId]);
+  }, [messageId, isChatEnabled]);
 
   // Merge fetched replies with any realtime/optimistic replies already in the channel cache.
   const replies = useMemo(() => {
@@ -96,6 +100,21 @@ export default function ThreadScreen() {
     [currentUserId, channelId]
   );
 
+  // Chat.System flag not yet resolved: wait instead of redirecting away from a valid deep link.
+  if (chatStatus === 'unknown') {
+    return (
+      <Box className="size-full flex-1 items-center justify-center bg-background-0">
+        <Stack.Screen options={{ title: t('chat.thread'), headerShown: true, headerBackTitle: '' }} />
+        <Spinner />
+      </Box>
+    );
+  }
+
+  // Chat.System feature flag off: block deep links into threads.
+  if (chatStatus === 'disabled') {
+    return <Redirect href={'/home' as Href} />;
+  }
+
   return (
     <Box className="size-full flex-1 bg-background-0">
       <Stack.Screen options={{ title: t('chat.thread'), headerShown: true, headerBackTitle: '' }} />
@@ -112,7 +131,7 @@ export default function ThreadScreen() {
 
         <FlatList data={inverted} inverted keyExtractor={(item: ChatMessageResultData) => item.ChatMessageId} renderItem={renderItem} contentContainerStyle={{ paddingVertical: 8 }} />
 
-        <MessageComposer onSendText={handleSendText} onSendImage={() => undefined} onSendLocation={handleSendLocation} onOpenGif={handleSendGif} onTyping={() => undefined} placeholder={t('chat.reply_placeholder')} />
+        <MessageComposer onSendText={handleSendText} onSendImage={() => undefined} onSendLocation={handleSendLocation} onOpenGif={handleSendGif} onTyping={() => undefined} placeholder={t('chat.reply_placeholder')} allowUrgent={false} />
       </KeyboardAvoidingView>
     </Box>
   );

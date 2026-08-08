@@ -7,7 +7,7 @@ const CHATBOT = '/Chatbot';
 /** Gets (creating if needed) the caller's chatbot conversation channel. */
 export const getChatbotChannel = async (signal?: AbortSignal) => {
   const response = await api.get<ChatbotChannelResponse>(`${CHATBOT}/GetChatChannel`, { signal });
-  return response.data;
+  return response.data?.Data ?? null;
 };
 
 /**
@@ -19,7 +19,7 @@ export const sendChatbotMessage = async (text: string, clientMessageId: string) 
     Text: text,
     ClientMessageId: clientMessageId,
   });
-  return response.data;
+  return response.data?.Data ?? null;
 };
 
 /** Resets the chatbot conversational session (message history is retained). */

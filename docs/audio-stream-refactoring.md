@@ -1,5 +1,19 @@
 # Audio Stream Store Refactoring
 
+## Expo SDK 56 migration requirement
+
+Before upgrading Dispatch to Expo SDK 56, upgrade `expo-audio` to the SDK 56-compatible version and replace all remaining `expo-av` audio usage with `expo-audio`. SDK 56 no longer provides the legacy Expo Modules Core header required by `expo-av` 16, so leaving `expo-av` installed can break the iOS archive build.
+
+Migration checklist:
+
+- Migrate `src/hooks/use-ptt.ts`, `src/components/calls/call-audio-modal.tsx`, `src/stores/app/audio-stream-store.ts`, and `src/services/audio.service.ts` to `createAudioPlayer`, `setAudioModeAsync`, `AudioPlayer`, and `playbackStatusUpdate`.
+- Remove `expo-av` from `package.json`, the lockfile, tests/mocks, and the Expo Doctor exclusion after no imports remain.
+- Keep this as an audio-only migration. Dispatch does not currently use the `expo-av` video component, so `expo-video` is not required for this change.
+- Re-test remote MP3 streams on physical iOS and Android devices. This store originally moved to `expo-av` because remote streams had problems with the earlier `expo-audio` implementation.
+- Also test PTT, call audio, background playback, interruptions, and Bluetooth/headset routing before release.
+
+Do not copy an SDK 56 implementation back into the current SDK 54 app unchanged. Dispatch's current `expo-audio` 1.1 API does not expose SDK 56 options such as `preferredForwardBufferDuration` or playback `status.error`.
+
 ## Overview
 
 The audio stream store has been refactored to use `expo-av` instead of `expo-audio` to resolve issues with playing remote MP3 streams over the internet in the new Expo architecture.

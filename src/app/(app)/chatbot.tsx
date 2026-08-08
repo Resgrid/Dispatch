@@ -1,12 +1,16 @@
-import { Stack, useFocusEffect } from 'expo-router';
+import { type Href, Redirect, Stack, useFocusEffect } from 'expo-router';
 import { RefreshCw, Send, Sparkles } from 'lucide-react-native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
 
+import { copyToClipboard } from '@/components/chat/chat-utils';
+import { MessageActionsSheet } from '@/components/chat/message-actions-sheet';
 import { MessageBubble } from '@/components/chat/message-bubble';
 import { TypingDots } from '@/components/chat/typing-indicator';
+import { Actionsheet, ActionsheetBackdrop, ActionsheetContent, ActionsheetDragIndicator, ActionsheetDragIndicatorWrapper } from '@/components/ui/actionsheet';
 import { Box } from '@/components/ui/box';
+import { Button, ButtonText } from '@/components/ui/button';
 import { Center } from '@/components/ui/center';
 import { FlatList } from '@/components/ui/flat-list';
 import { FocusAwareStatusBar } from '@/components/ui/focus-aware-status-bar';
@@ -14,35 +18,48 @@ import { HStack } from '@/components/ui/hstack';
 import { Input, InputField } from '@/components/ui/input';
 import { KeyboardAvoidingView } from '@/components/ui/keyboard-avoiding-view';
 import { Pressable } from '@/components/ui/pressable';
+import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
+import { Textarea, TextareaInput } from '@/components/ui/textarea';
 import { VStack } from '@/components/ui/vstack';
 import { type ChatMessageResultData } from '@/models/v4/chat';
 import useAuthStore from '@/stores/auth/store';
 import { useChatStore } from '@/stores/chat/store';
+import { useChatSystemStatus } from '@/stores/feature-flags/store';
+import { securityStore } from '@/stores/security/store';
+import { useToastStore } from '@/stores/toast/store';
 
 export default function ChatbotScreen() {
   const { t } = useTranslation();
+  const chatStatus = useChatSystemStatus();
+  const isChatEnabled = chatStatus === 'enabled';
   const currentUserId = useAuthStore((s) => s.userId);
   const chatbotChannelId = useChatStore((s) => s.chatbotChannelId);
   const chatbotTyping = useChatStore((s) => s.chatbotTyping);
   const messages = useChatStore((s) => (chatbotChannelId ? s.messagesByChannel[chatbotChannelId] : undefined));
+  const isModerator = !!securityStore((s) => s.rights)?.IsAdmin;
   const [text, setText] = useState('');
+  const [actionsMessage, setActionsMessage] = useState<ChatMessageResultData | null>(null);
+  const [editMessage, setEditMessage] = useState<ChatMessageResultData | null>(null);
+  const [editText, setEditText] = useState('');
 
   useFocusEffect(
     useCallback(() => {
+      if (!isChatEnabled) return;
       const store = useChatStore.getState();
       void store.initChatbot();
       return () => {
         useChatStore.getState().setActiveChannel(null);
       };
-    }, [])
+    }, [isChatEnabled])
   );
 
   // Keep the assistant channel active while viewing so incoming messages don't inflate unread.
   useFocusEffect(
     useCallback(() => {
+      if (!isChatEnabled) return;
       if (chatbotChannelId) useChatStore.getState().setActiveChannel(chatbotChannelId);
-    }, [chatbotChannelId])
+    }, [chatbotChannelId, isChatEnabled])
   );
 
   const inverted = useMemo(() => (messages ? messages.slice().reverse() : []), [messages]);
@@ -56,10 +73,26 @@ export default function ChatbotScreen() {
 
   const renderItem = useCallback(
     ({ item }: { item: ChatMessageResultData }) => (
-      <MessageBubble message={item} isOwn={!!item.SenderUserId && item.SenderUserId === currentUserId} showSender={false} currentUserId={currentUserId} onLongPress={() => undefined} onToggleReaction={() => undefined} />
+      <MessageBubble message={item} isOwn={!!item.SenderUserId && item.SenderUserId === currentUserId} showSender={false} currentUserId={currentUserId} onLongPress={setActionsMessage} onToggleReaction={() => undefined} />
     ),
     [currentUserId]
   );
+
+  // Chat.System flag not yet resolved: wait instead of redirecting away from a valid route.
+  if (chatStatus === 'unknown') {
+    return (
+      <Box className="size-full flex-1 items-center justify-center bg-background-0">
+        <Stack.Screen options={{ headerShown: false }} />
+        <FocusAwareStatusBar />
+        <Spinner />
+      </Box>
+    );
+  }
+
+  // Chat.System feature flag off: the assistant rides on the chat system, hide it too.
+  if (chatStatus === 'disabled') {
+    return <Redirect href={'/home' as Href} />;
+  }
 
   return (
     <Box className="size-full flex-1 bg-background-0">
@@ -113,6 +146,57 @@ export default function ChatbotScreen() {
           </Pressable>
         </HStack>
       </KeyboardAvoidingView>
+
+      {/* Restricted actions for assistant messages: copy, edit own, pin (moderator), flag. */}
+      <MessageActionsSheet
+        message={actionsMessage}
+        isOpen={actionsMessage !== null}
+        onClose={() => setActionsMessage(null)}
+        isOwn={!!actionsMessage?.SenderUserId && actionsMessage.SenderUserId === currentUserId}
+        isModerator={isModerator}
+        assistant
+        onReact={() => undefined}
+        onReply={() => undefined}
+        onCopy={async (m) => {
+          const ok = await copyToClipboard(m.Body ?? '');
+          useToastStore.getState().showToast(ok ? 'success' : 'info', ok ? t('chat.copied') : t('chat.copy_unavailable'));
+        }}
+        onEdit={(m) => {
+          setEditMessage(m);
+          setEditText(m.Body ?? '');
+        }}
+        onDelete={() => undefined}
+        onFlag={(m, reason) => useChatStore.getState().flagMessage(m.ChatMessageId, reason)}
+        onTogglePin={(m, pinned) => chatbotChannelId && useChatStore.getState().togglePin(m.ChatMessageId, chatbotChannelId, pinned)}
+        onModeratorDelete={() => undefined}
+      />
+
+      {/* Edit own message */}
+      <Actionsheet isOpen={editMessage !== null} onClose={() => setEditMessage(null)}>
+        <ActionsheetBackdrop />
+        <ActionsheetContent>
+          <ActionsheetDragIndicatorWrapper>
+            <ActionsheetDragIndicator />
+          </ActionsheetDragIndicatorWrapper>
+          <VStack className="w-full p-2" space="md">
+            <Text className="text-base font-semibold text-typography-900">{t('chat.edit_message')}</Text>
+            <Textarea>
+              <TextareaInput value={editText} onChangeText={setEditText} multiline />
+            </Textarea>
+            <Button
+              className="bg-primary-600"
+              onPress={() => {
+                if (editMessage && chatbotChannelId && editText.trim()) {
+                  void useChatStore.getState().editMessage(editMessage.ChatMessageId, chatbotChannelId, editText.trim());
+                }
+                setEditMessage(null);
+              }}
+            >
+              <ButtonText>{t('chat.save')}</ButtonText>
+            </Button>
+          </VStack>
+        </ActionsheetContent>
+      </Actionsheet>
     </Box>
   );
 }

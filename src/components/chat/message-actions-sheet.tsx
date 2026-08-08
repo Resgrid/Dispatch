@@ -16,6 +16,8 @@ interface MessageActionsSheetProps {
   onClose: () => void;
   isOwn: boolean;
   isModerator: boolean;
+  /** Assistant conversations: no reactions, threads or deletes — copy, edit own, pin and flag stay. */
+  assistant?: boolean;
   onReact: (message: ChatMessageResultData, emoji: string) => void;
   onReply: (message: ChatMessageResultData) => void;
   onCopy: (message: ChatMessageResultData) => void;
@@ -26,7 +28,7 @@ interface MessageActionsSheetProps {
   onModeratorDelete: (message: ChatMessageResultData) => void;
 }
 
-export function MessageActionsSheet({ message, isOpen, onClose, isOwn, isModerator, onReact, onReply, onCopy, onEdit, onDelete, onFlag, onTogglePin, onModeratorDelete }: MessageActionsSheetProps) {
+export function MessageActionsSheet({ message, isOpen, onClose, isOwn, isModerator, assistant = false, onReact, onReply, onCopy, onEdit, onDelete, onFlag, onTogglePin, onModeratorDelete }: MessageActionsSheetProps) {
   const { t } = useTranslation();
   const [mode, setMode] = useState<'actions' | 'flag'>('actions');
 
@@ -75,7 +77,7 @@ export function MessageActionsSheet({ message, isOpen, onClose, isOwn, isModerat
           </>
         ) : (
           <>
-            {!isDeleted ? (
+            {!isDeleted && !assistant ? (
               <HStack className="w-full justify-around px-2 py-3" space="sm">
                 {QUICK_REACTIONS.map((emoji) => (
                   <Pressable
@@ -92,15 +94,17 @@ export function MessageActionsSheet({ message, isOpen, onClose, isOwn, isModerat
               </HStack>
             ) : null}
 
-            <ActionsheetItem
-              onPress={() => {
-                onReply(message);
-                close();
-              }}
-            >
-              <MessageSquare size={18} color="#6b7280" />
-              <ActionsheetItemText>{t('chat.reply_in_thread')}</ActionsheetItemText>
-            </ActionsheetItem>
+            {!assistant ? (
+              <ActionsheetItem
+                onPress={() => {
+                  onReply(message);
+                  close();
+                }}
+              >
+                <MessageSquare size={18} color="#6b7280" />
+                <ActionsheetItemText>{t('chat.reply_in_thread')}</ActionsheetItemText>
+              </ActionsheetItem>
+            ) : null}
 
             {isText && !isDeleted ? (
               <ActionsheetItem
@@ -126,7 +130,7 @@ export function MessageActionsSheet({ message, isOpen, onClose, isOwn, isModerat
               </ActionsheetItem>
             ) : null}
 
-            {isOwn && !isDeleted ? (
+            {isOwn && !isDeleted && !assistant ? (
               <ActionsheetItem
                 onPress={() => {
                   onDelete(message);
@@ -157,7 +161,7 @@ export function MessageActionsSheet({ message, isOpen, onClose, isOwn, isModerat
               </ActionsheetItem>
             ) : null}
 
-            {isModerator && !isDeleted ? (
+            {isModerator && !isDeleted && !assistant ? (
               <ActionsheetItem
                 onPress={() => {
                   onModeratorDelete(message);

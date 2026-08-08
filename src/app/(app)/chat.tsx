@@ -1,4 +1,4 @@
-import { type Href, Stack, useFocusEffect, useRouter } from 'expo-router';
+import { type Href, Redirect, Stack, useFocusEffect, useRouter } from 'expo-router';
 import { Bot, MessageCircle, MessagesSquare, Network, Plus, Sparkles, Users } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -15,10 +15,12 @@ import { Fab, FabIcon } from '@/components/ui/fab';
 import { FocusAwareStatusBar } from '@/components/ui/focus-aware-status-bar';
 import { HStack } from '@/components/ui/hstack';
 import { Pressable } from '@/components/ui/pressable';
+import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { type ChatChannelResultData, ChatChannelType } from '@/models/v4/chat';
 import { useChatStore } from '@/stores/chat/store';
+import { useChatSystemStatus } from '@/stores/feature-flags/store';
 
 function ChannelRow({ channel, onPress }: { channel: ChatChannelResultData; onPress: () => void }) {
   const { t } = useTranslation();
@@ -81,6 +83,8 @@ function Section({ title, channels, onOpen }: { title: string; channels: ChatCha
 export default function ChatScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const chatStatus = useChatSystemStatus();
+  const isChatEnabled = chatStatus === 'enabled';
   const channels = useChatStore((s) => s.channels);
   const isLoading = useChatStore((s) => s.isLoadingChannels);
   const pendingAcks = useChatStore((s) => s.pendingAcks);
@@ -89,19 +93,43 @@ export default function ChatScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      if (!isChatEnabled) return;
       useChatStore.getState().fetchChannels();
       useChatStore.getState().fetchPendingAcks();
-    }, [])
+    }, [isChatEnabled])
   );
 
   const grouped = groupChannels(channels);
 
   const openChannel = useCallback(
     (channelId: string) => {
+      // The assistant conversation always opens in its dedicated restricted screen
+      // (text only, no reactions/threads/deletes) instead of the generic conversation.
+      const channel = useChatStore.getState().channels.find((c) => c.ChatChannelId === channelId);
+      if (channel?.ChannelType === ChatChannelType.Chatbot) {
+        router.push('/chatbot' as Href);
+        return;
+      }
       router.push(`/chat/${channelId}` as Href);
     },
     [router]
   );
+
+  // Chat.System flag not yet resolved: wait instead of redirecting away from a valid route.
+  if (chatStatus === 'unknown') {
+    return (
+      <Box className="size-full flex-1 items-center justify-center bg-background-0">
+        <Stack.Screen options={{ headerShown: false }} />
+        <FocusAwareStatusBar />
+        <Spinner />
+      </Box>
+    );
+  }
+
+  // Chat.System feature flag off: no chat for this department.
+  if (chatStatus === 'disabled') {
+    return <Redirect href={'/home' as Href} />;
+  }
 
   return (
     <Box className="size-full flex-1 bg-background-0">
