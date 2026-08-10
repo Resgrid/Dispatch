@@ -8,9 +8,7 @@ import { copyToClipboard } from '@/components/chat/chat-utils';
 import { MessageActionsSheet } from '@/components/chat/message-actions-sheet';
 import { MessageBubble } from '@/components/chat/message-bubble';
 import { TypingDots } from '@/components/chat/typing-indicator';
-import { Actionsheet, ActionsheetBackdrop, ActionsheetContent, ActionsheetDragIndicator, ActionsheetDragIndicatorWrapper } from '@/components/ui/actionsheet';
 import { Box } from '@/components/ui/box';
-import { Button, ButtonText } from '@/components/ui/button';
 import { Center } from '@/components/ui/center';
 import { FlatList } from '@/components/ui/flat-list';
 import { FocusAwareStatusBar } from '@/components/ui/focus-aware-status-bar';
@@ -20,7 +18,6 @@ import { KeyboardAvoidingView } from '@/components/ui/keyboard-avoiding-view';
 import { Pressable } from '@/components/ui/pressable';
 import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
-import { Textarea, TextareaInput } from '@/components/ui/textarea';
 import { VStack } from '@/components/ui/vstack';
 import { type ChatMessageResultData } from '@/models/v4/chat';
 import useAuthStore from '@/stores/auth/store';
@@ -40,8 +37,6 @@ export default function ChatbotScreen() {
   const isModerator = !!securityStore((s) => s.rights)?.IsAdmin;
   const [text, setText] = useState('');
   const [actionsMessage, setActionsMessage] = useState<ChatMessageResultData | null>(null);
-  const [editMessage, setEditMessage] = useState<ChatMessageResultData | null>(null);
-  const [editText, setEditText] = useState('');
 
   useFocusEffect(
     useCallback(() => {
@@ -147,7 +142,7 @@ export default function ChatbotScreen() {
         </HStack>
       </KeyboardAvoidingView>
 
-      {/* Restricted actions for assistant messages: copy, edit own, pin (moderator), flag. */}
+      {/* Restricted actions for assistant messages: copy, pin (moderator), flag. */}
       <MessageActionsSheet
         message={actionsMessage}
         isOpen={actionsMessage !== null}
@@ -161,42 +156,12 @@ export default function ChatbotScreen() {
           const ok = await copyToClipboard(m.Body ?? '');
           useToastStore.getState().showToast(ok ? 'success' : 'info', ok ? t('chat.copied') : t('chat.copy_unavailable'));
         }}
-        onEdit={(m) => {
-          setEditMessage(m);
-          setEditText(m.Body ?? '');
-        }}
+        onEdit={() => undefined}
         onDelete={() => undefined}
         onFlag={(m, reason) => useChatStore.getState().flagMessage(m.ChatMessageId, reason)}
         onTogglePin={(m, pinned) => chatbotChannelId && useChatStore.getState().togglePin(m.ChatMessageId, chatbotChannelId, pinned)}
         onModeratorDelete={() => undefined}
       />
-
-      {/* Edit own message */}
-      <Actionsheet isOpen={editMessage !== null} onClose={() => setEditMessage(null)}>
-        <ActionsheetBackdrop />
-        <ActionsheetContent>
-          <ActionsheetDragIndicatorWrapper>
-            <ActionsheetDragIndicator />
-          </ActionsheetDragIndicatorWrapper>
-          <VStack className="w-full p-2" space="md">
-            <Text className="text-base font-semibold text-typography-900">{t('chat.edit_message')}</Text>
-            <Textarea>
-              <TextareaInput value={editText} onChangeText={setEditText} multiline />
-            </Textarea>
-            <Button
-              className="bg-primary-600"
-              onPress={() => {
-                if (editMessage && chatbotChannelId && editText.trim()) {
-                  void useChatStore.getState().editMessage(editMessage.ChatMessageId, chatbotChannelId, editText.trim());
-                }
-                setEditMessage(null);
-              }}
-            >
-              <ButtonText>{t('chat.save')}</ButtonText>
-            </Button>
-          </VStack>
-        </ActionsheetContent>
-      </Actionsheet>
     </Box>
   );
 }
