@@ -64,10 +64,6 @@ export default function ThreadScreen() {
     [channelId, messageId]
   );
 
-  const handleSendGif = useCallback(() => {
-    // GIFs in threads are sent as text-less messages via the composer's gif flow; kept minimal here.
-  }, []);
-
   const handleSendLocation = useCallback(
     (latitude: number, longitude: number, urgent: boolean) => {
       if (!channelId || !messageId) return;
@@ -132,15 +128,9 @@ export default function ThreadScreen() {
 
         <FlatList data={inverted} inverted keyExtractor={(item: ChatMessageResultData) => item.ChatMessageId} renderItem={renderItem} contentContainerStyle={{ paddingVertical: 8 }} />
 
-        <MessageComposer
-          onSendText={handleSendText}
-          onSendImage={() => undefined}
-          onSendLocation={handleSendLocation}
-          onOpenGif={handleSendGif}
-          onTyping={() => undefined}
-          placeholder={t('chat.reply_placeholder')}
-          allowUrgent={false}
-        />
+        {/* Threads carry text and location only; omitting the image/GIF callbacks keeps
+            those actions out of the composer instead of showing dead buttons. */}
+        <MessageComposer onSendText={handleSendText} onSendLocation={handleSendLocation} onTyping={() => undefined} placeholder={t('chat.reply_placeholder')} allowUrgent={false} />
       </KeyboardAvoidingView>
     </Box>
   );

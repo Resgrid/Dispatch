@@ -47,6 +47,14 @@ interface HubMethodHandler {
  * and proper cleanup.
  */
 class SignalRService {
+  /**
+   * Per-hub transport lifecycle signals. Group membership is scoped to a connection id, so
+   * a subscriber that joined server-side groups has to re-announce itself after every
+   * reconnect — these are how it learns that happened.
+   */
+  public static readonly HUB_DISCONNECTED_EVENT = '__hubDisconnected';
+  public static readonly HUB_RECONNECTED_EVENT = '__hubReconnected';
+
   private connections: Map<string, HubConnection> = new Map();
   private reconnectAttempts: Map<string, number> = new Map();
   private hubConfigs: Map<string, SignalRHubConnectConfig> = new Map();
@@ -396,6 +404,7 @@ class SignalRService {
 
       // Set up event handlers
       connection.onclose(() => {
+        this.emitHubLifecycle(SignalRService.HUB_DISCONNECTED_EVENT, config.name);
         this.handleConnectionClose(config.name);
       });
 
@@ -412,6 +421,9 @@ class SignalRService {
           context: { connectionId },
         });
         this.reconnectAttempts.set(config.name, 0);
+        // A reconnect issues a new connection id, so any server-side group this connection
+        // belonged to is gone. Subscribers must re-announce themselves.
+        this.emitHubLifecycle(SignalRService.HUB_RECONNECTED_EVENT, config.name);
       });
 
       // Initialize handlers array for this hub
@@ -578,6 +590,7 @@ class SignalRService {
 
       // Set up event handlers
       connection.onclose(() => {
+        this.emitHubLifecycle(SignalRService.HUB_DISCONNECTED_EVENT, config.name);
         this.handleConnectionClose(config.name);
       });
 
@@ -594,6 +607,9 @@ class SignalRService {
           context: { connectionId },
         });
         this.reconnectAttempts.set(config.name, 0);
+        // A reconnect issues a new connection id, so any server-side group this connection
+        // belonged to is gone. Subscribers must re-announce themselves.
+        this.emitHubLifecycle(SignalRService.HUB_RECONNECTED_EVENT, config.name);
       });
 
       // Initialize handlers array for this hub
@@ -978,6 +994,12 @@ class SignalRService {
    */
   public removeAllListeners(): void {
     this.eventListeners.clear();
+  }
+
+  /** Raises a lifecycle signal both unqualified and scoped to the hub that produced it. */
+  private emitHubLifecycle(event: string, hubName: string): void {
+    this.emit(event, hubName);
+    this.emit(`${event}:${hubName}`, hubName);
   }
 
   private emit(event: string, ...data: unknown[]): void {

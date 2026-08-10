@@ -19,9 +19,12 @@ const TYPING_IDLE_MS = 3000;
 
 interface MessageComposerProps {
   onSendText: (body: string, urgent: boolean) => void;
-  onSendImage: (uri: string, urgent: boolean, mimeType?: string) => void;
+  /** Omit to hide the image action; a surface that cannot send images (thread replies)
+   * would otherwise open the picker and silently discard the chosen photo. */
+  onSendImage?: (uri: string, urgent: boolean, mimeType?: string) => void;
   onSendLocation: (latitude: number, longitude: number, urgent: boolean) => void;
-  onOpenGif: () => void;
+  /** Omit to hide the GIF action on surfaces that cannot send GIFs. */
+  onOpenGif?: () => void;
   onTyping: (isTyping: boolean) => void;
   disabled?: boolean;
   placeholder?: string;
@@ -81,6 +84,7 @@ export function MessageComposer({ onSendText, onSendImage, onSendLocation, onOpe
   }, [text, urgent, onSendText, stopTyping]);
 
   const handlePickImage = useCallback(async () => {
+    if (!onSendImage) return;
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
@@ -125,12 +129,16 @@ export function MessageComposer({ onSendText, onSendImage, onSendLocation, onOpe
           </Textarea>
         </Box>
 
-        <Pressable className="p-2" onPress={handlePickImage} disabled={disabled} accessibilityLabel={t('chat.add_image')}>
-          <ImagePlus size={22} color="#6b7280" />
-        </Pressable>
-        <Pressable className="p-2" onPress={onOpenGif} disabled={disabled} accessibilityLabel={t('chat.add_gif')}>
-          <Sparkles size={22} color="#6b7280" />
-        </Pressable>
+        {onSendImage ? (
+          <Pressable className="p-2" onPress={handlePickImage} disabled={disabled} accessibilityLabel={t('chat.add_image')}>
+            <ImagePlus size={22} color="#6b7280" />
+          </Pressable>
+        ) : null}
+        {onOpenGif ? (
+          <Pressable className="p-2" onPress={onOpenGif} disabled={disabled} accessibilityLabel={t('chat.add_gif')}>
+            <Sparkles size={22} color="#6b7280" />
+          </Pressable>
+        ) : null}
         <Pressable className="p-2" onPress={handleShareLocation} disabled={disabled} accessibilityLabel={t('chat.share_location')}>
           <MapPin size={22} color="#6b7280" />
         </Pressable>
