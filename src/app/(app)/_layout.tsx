@@ -78,6 +78,10 @@ export default function TabLayout() {
   // Refs to track initialization state
   const hasInitialized = useRef(false);
   const isInitializing = useRef(false);
+  // Bumped on every initialization start and on sign-out. An in-flight run compares its
+  // captured value after each await, so a run belonging to a session that ended can no
+  // longer connect hubs or mark the app initialized.
+  const initGeneration = useRef(0);
   const initTimedOut = useRef(false);
   const hasHiddenSplash = useRef(false);
   const lastSignedInStatus = useRef<string | null>(null);
@@ -116,6 +120,8 @@ export default function TabLayout() {
 
     isInitializing.current = true;
     initTimedOut.current = false;
+    const generation = (initGeneration.current += 1);
+    const isCurrentRun = () => initGeneration.current === generation;
     logger.info({
       message: 'Starting app initialization',
       context: {
@@ -162,6 +168,8 @@ export default function TabLayout() {
           context: { platform: Platform.OS },
         });
 
+        if (!isCurrentRun()) return;
+
         // Connect to SignalR after core initialization is complete
         try {
           await useSignalRStore.getState().connectUpdateHub();
@@ -176,6 +184,8 @@ export default function TabLayout() {
           });
           // Don't fail initialization if SignalR connection fails
         }
+
+        if (!isCurrentRun()) return;
 
         // Connect the realtime chat hub only when the Chat.System feature flag is on for
         // this department; when it is off every chat surface stays hidden.
@@ -199,6 +209,8 @@ export default function TabLayout() {
           });
         }
 
+        if (!isCurrentRun()) return;
+
         // Initialize weather alerts
         try {
           await useWeatherAlertsStore.getState().fetchSettings();
@@ -216,6 +228,8 @@ export default function TabLayout() {
             context: { error, platform: Platform.OS },
           });
         }
+
+        if (!isCurrentRun()) return;
 
         hasInitialized.current = true;
 
@@ -237,7 +251,11 @@ export default function TabLayout() {
           }
         })
         .finally(() => {
-          isInitializing.current = false;
+          // Only the current run owns the guard; a superseded run clearing it would let
+          // two initializations overlap.
+          if (isCurrentRun()) {
+            isInitializing.current = false;
+          }
         });
 
       await Promise.race([initPromise, initTimeout]);
@@ -246,6 +264,10 @@ export default function TabLayout() {
         message: 'Failed to initialize app',
         context: { error, platform: Platform.OS },
       });
+      // A run whose session already ended must not clobber state a newer run (or the
+      // sign-out cleanup) has since established.
+      if (!isCurrentRun()) return;
+
       // Reset initialization state on error so it can be retried
       hasInitialized.current = false;
       // If the init promise is still hanging, clear the guard so a retry is possible
@@ -349,6 +371,12 @@ export default function TabLayout() {
       logger.info({
         message: 'User signed out, stopping location tracking',
       });
+
+      // Retire any initialization still in flight so it cannot connect hubs or mark the
+      // app initialized for a session that ended, and free the guard it no longer owns
+      // so the next sign-in is not skipped as "already initializing".
+      initGeneration.current += 1;
+      isInitializing.current = false;
     }
 
     // Update last known status

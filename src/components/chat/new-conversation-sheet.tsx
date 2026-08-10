@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { createAdHocChannel, createDirectMessage } from '@/api/chat/chat';
 import { getRecipients } from '@/api/messaging/messages';
 import { Actionsheet, ActionsheetBackdrop, ActionsheetContent, ActionsheetDragIndicator, ActionsheetDragIndicatorWrapper } from '@/components/ui/actionsheet';
-import { Avatar, AvatarFallbackText, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarImage } from '@/components/ui/avatar';
 import { Box } from '@/components/ui/box';
 import { Button, ButtonText } from '@/components/ui/button';
 import { Center } from '@/components/ui/center';
@@ -172,7 +172,6 @@ export function NewConversationSheet({ isOpen, onClose, mode, onCreated }: NewCo
                     <HStack className="items-center justify-between">
                       <HStack className="flex-1 items-center" space="sm">
                         <Avatar size="sm">
-                          <AvatarFallbackText>{recipient.Name}</AvatarFallbackText>
                           <AvatarImage source={{ uri: getAvatarUrl(userId) }} />
                         </Avatar>
                         <Text className="flex-1 text-typography-900" numberOfLines={1}>

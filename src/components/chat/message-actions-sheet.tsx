@@ -16,7 +16,7 @@ interface MessageActionsSheetProps {
   onClose: () => void;
   isOwn: boolean;
   isModerator: boolean;
-  /** Assistant conversations: no reactions, threads or deletes — copy, edit own, pin and flag stay. */
+  /** Assistant conversations: no reactions, threads, deletes or edits — copy, pin and flag stay. */
   assistant?: boolean;
   onReact: (message: ChatMessageResultData, emoji: string) => void;
   onReply: (message: ChatMessageResultData) => void;
@@ -118,7 +118,7 @@ export function MessageActionsSheet({ message, isOpen, onClose, isOwn, isModerat
               </ActionsheetItem>
             ) : null}
 
-            {isOwn && isText && !isDeleted ? (
+            {isOwn && isText && !isDeleted && !assistant ? (
               <ActionsheetItem
                 onPress={() => {
                   onEdit(message);

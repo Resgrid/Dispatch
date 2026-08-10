@@ -24,6 +24,9 @@ export interface SignalRMessage {
   data: unknown;
 }
 
+/** Hub events can carry multiple positional arguments; listeners receive all of them. */
+export type SignalREventListener = (...data: unknown[]) => void;
+
 export enum HubConnectingState {
   IDLE = 'idle',
   RECONNECTING = 'reconnecting',
@@ -35,7 +38,7 @@ export enum HubConnectingState {
  */
 interface HubMethodHandler {
   method: string;
-  handler: (data: unknown) => void;
+  handler: SignalREventListener;
 }
 
 /**
@@ -44,6 +47,14 @@ interface HubMethodHandler {
  * and proper cleanup.
  */
 class SignalRService {
+  /**
+   * Per-hub transport lifecycle signals. Group membership is scoped to a connection id, so
+   * a subscriber that joined server-side groups has to re-announce itself after every
+   * reconnect — these are how it learns that happened.
+   */
+  public static readonly HUB_DISCONNECTED_EVENT = '__hubDisconnected';
+  public static readonly HUB_RECONNECTED_EVENT = '__hubReconnected';
+
   private connections: Map<string, HubConnection> = new Map();
   private reconnectAttempts: Map<string, number> = new Map();
   private hubConfigs: Map<string, SignalRHubConnectConfig> = new Map();
@@ -58,7 +69,7 @@ class SignalRService {
   private hubMethodHandlers: Map<string, HubMethodHandler[]> = new Map();
 
   // Event emitter with proper cleanup tracking
-  private eventListeners: Map<string, Set<(data: unknown) => void>> = new Map();
+  private eventListeners: Map<string, Set<SignalREventListener>> = new Map();
 
   // Web platform visibility tracking
   private isPageVisible: boolean = true;
@@ -393,6 +404,7 @@ class SignalRService {
 
       // Set up event handlers
       connection.onclose(() => {
+        this.emitHubLifecycle(SignalRService.HUB_DISCONNECTED_EVENT, config.name);
         this.handleConnectionClose(config.name);
       });
 
@@ -409,6 +421,9 @@ class SignalRService {
           context: { connectionId },
         });
         this.reconnectAttempts.set(config.name, 0);
+        // A reconnect issues a new connection id, so any server-side group this connection
+        // belonged to is gone. Subscribers must re-announce themselves.
+        this.emitHubLifecycle(SignalRService.HUB_RECONNECTED_EVENT, config.name);
       });
 
       // Initialize handlers array for this hub
@@ -421,12 +436,12 @@ class SignalRService {
           context: { method },
         });
 
-        const handler = (data: unknown) => {
+        const handler = (...args: unknown[]) => {
           logger.info({
             message: `Received ${method} message from hub: ${config.name}`,
-            context: { method, data },
+            context: { method, args },
           });
-          this.handleMessage(config.name, method, data);
+          this.handleMessage(config.name, method, args);
         };
 
         connection.on(method, handler);
@@ -575,6 +590,7 @@ class SignalRService {
 
       // Set up event handlers
       connection.onclose(() => {
+        this.emitHubLifecycle(SignalRService.HUB_DISCONNECTED_EVENT, config.name);
         this.handleConnectionClose(config.name);
       });
 
@@ -591,6 +607,9 @@ class SignalRService {
           context: { connectionId },
         });
         this.reconnectAttempts.set(config.name, 0);
+        // A reconnect issues a new connection id, so any server-side group this connection
+        // belonged to is gone. Subscribers must re-announce themselves.
+        this.emitHubLifecycle(SignalRService.HUB_RECONNECTED_EVENT, config.name);
       });
 
       // Initialize handlers array for this hub
@@ -603,12 +622,12 @@ class SignalRService {
           context: { method },
         });
 
-        const handler = (data: unknown) => {
+        const handler = (...args: unknown[]) => {
           logger.info({
             message: `Received ${method} message from hub: ${config.name}`,
-            context: { method, data },
+            context: { method, args },
           });
-          this.handleMessage(config.name, method, data);
+          this.handleMessage(config.name, method, args);
         };
 
         connection.on(method, handler);
@@ -803,13 +822,15 @@ class SignalRService {
     }
   }
 
-  private handleMessage(hubName: string, method: string, data: unknown): void {
+  private handleMessage(hubName: string, method: string, args: unknown[]): void {
     logger.debug({
       message: `Received message from hub: ${hubName}`,
-      context: { method, data },
+      context: { method, args },
     });
-    // Emit event for subscribers using the method name as the event name
-    this.emit(method, data);
+    // Emit event for subscribers using the method name as the event name. Hub methods
+    // can send more than one argument (chatPresenceChanged sends `userId, isOnline`),
+    // so forward every argument to the listeners.
+    this.emit(method, ...args);
   }
 
   public async disconnectFromHub(hubName: string): Promise<void> {
@@ -950,14 +971,14 @@ class SignalRService {
   }
 
   // Event emitter methods - note: eventListeners is declared in the class properties above
-  public on(event: string, callback: (data: unknown) => void): void {
+  public on(event: string, callback: SignalREventListener): void {
     if (!this.eventListeners.has(event)) {
       this.eventListeners.set(event, new Set());
     }
     this.eventListeners.get(event)?.add(callback);
   }
 
-  public off(event: string, callback: (data: unknown) => void): void {
+  public off(event: string, callback: SignalREventListener): void {
     this.eventListeners.get(event)?.delete(callback);
   }
 
@@ -975,10 +996,16 @@ class SignalRService {
     this.eventListeners.clear();
   }
 
-  private emit(event: string, data: unknown): void {
+  /** Raises a lifecycle signal both unqualified and scoped to the hub that produced it. */
+  private emitHubLifecycle(event: string, hubName: string): void {
+    this.emit(event, hubName);
+    this.emit(`${event}:${hubName}`, hubName);
+  }
+
+  private emit(event: string, ...data: unknown[]): void {
     this.eventListeners.get(event)?.forEach((callback) => {
       try {
-        callback(data);
+        callback(...data);
       } catch (error) {
         logger.error({
           message: `Error in event listener for event: ${event}`,

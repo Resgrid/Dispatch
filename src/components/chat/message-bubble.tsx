@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Linking } from 'react-native';
 
 import { getChatAttachmentImageSource } from '@/api/chat/chat';
-import { Avatar, AvatarFallbackText, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarImage } from '@/components/ui/avatar';
 import { Box } from '@/components/ui/box';
 import { HStack } from '@/components/ui/hstack';
 import { Pressable } from '@/components/ui/pressable';
@@ -30,9 +30,11 @@ interface MessageBubbleProps {
 export function MessageBubble({ message, isOwn, showSender, currentUserId, onLongPress, onToggleReaction, onOpenThread, onRetry, onPressImage }: MessageBubbleProps) {
   const { t } = useTranslation();
 
+  // Realtime payloads omit empty collections; the store normalizes them, but messages
+  // persisted before that normalization existed can still come back without them.
   const groupedReactions = useMemo(() => {
     const map = new Map<string, { count: number; mine: boolean }>();
-    for (const reaction of message.Reactions) {
+    for (const reaction of message.Reactions ?? []) {
       const current = map.get(reaction.Emoji) ?? { count: 0, mine: false };
       current.count += 1;
       if (reaction.UserId && reaction.UserId === currentUserId) current.mine = true;
@@ -65,7 +67,7 @@ export function MessageBubble({ message, isOwn, showSender, currentUserId, onLon
     }
 
     if (message.MessageType === ChatMessageType.Image) {
-      const attachment = message.Attachments[0];
+      const attachment = (message.Attachments ?? [])[0];
       const uri = message._localAttachmentUri ?? (attachment ? getChatAttachmentImageSource(attachment.ChatAttachmentId).uri : undefined);
       const source = attachment ? getChatAttachmentImageSource(attachment.ChatAttachmentId) : uri ? { uri } : undefined;
       if (!source) return <Text className={textTone}>{message.Body}</Text>;
@@ -121,14 +123,9 @@ export function MessageBubble({ message, isOwn, showSender, currentUserId, onLon
 
   return (
     <HStack className={`my-1 px-3 ${isOwn ? 'justify-end' : 'justify-start'}`} space="sm">
-      {!isOwn && showSender ? (
-        <Avatar size="sm">
-          <AvatarFallbackText>{message.SenderDisplayName ?? '?'}</AvatarFallbackText>
-          {message.SenderUserId ? <AvatarImage source={{ uri: getPersonAvatarUrl(message.SenderUserId) ?? '' }} /> : null}
-        </Avatar>
-      ) : !isOwn ? (
-        <Box className="w-8" />
-      ) : null}
+      {/* No initials fallback: the avatar endpoint always answers with a silhouette
+          placeholder rather than a 404, so initials would never be visible anyway. */}
+      {!isOwn && showSender ? <Avatar size="sm">{message.SenderUserId ? <AvatarImage source={{ uri: getPersonAvatarUrl(message.SenderUserId) ?? '' }} /> : null}</Avatar> : !isOwn ? <Box className="w-8" /> : null}
 
       <VStack className={`max-w-[78%] ${isOwn ? 'items-end' : 'items-start'}`} space="xs">
         {!isOwn && showSender && message.SenderDisplayName ? <Text className="ml-1 text-xs font-medium text-typography-500">{message.SenderDisplayName}</Text> : null}
