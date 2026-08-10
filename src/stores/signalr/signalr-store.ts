@@ -30,7 +30,8 @@ const CHAT_HUB_METHODS = [
 ];
 
 // Track registered chat handlers for cleanup and the heartbeat timer.
-const chatHubHandlers: Record<string, ((data: unknown) => void) | null> = {};
+// Hub methods can send several positional arguments, so handlers are variadic.
+const chatHubHandlers: Record<string, ((...args: unknown[]) => void) | null> = {};
 let chatHeartbeatTimer: ReturnType<typeof setInterval> | null = null;
 const CHAT_HEARTBEAT_INTERVAL_MS = 45000;
 
@@ -653,7 +654,7 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
       });
 
       const chat = useChatStore.getState();
-      const handlerMap: Record<string, (raw: unknown) => void> = {
+      const handlerMap: Record<string, (...args: unknown[]) => void> = {
         chatMessageReceived: chat.handleMessageReceived,
         chatMessageEdited: chat.handleMessageEdited,
         chatMessageDeleted: chat.handleMessageDeleted,
@@ -671,7 +672,7 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
       };
 
       Object.entries(handlerMap).forEach(([event, handler]) => {
-        const wrapped = (data: unknown) => handler(data);
+        const wrapped = (...args: unknown[]) => handler(...args);
         chatHubHandlers[event] = wrapped;
         signalRService.on(event, wrapped);
       });

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
 
 import { getThread } from '@/api/chat/chat';
+import { buildLocationMetadata } from '@/components/chat/chat-utils';
 import { MessageBubble } from '@/components/chat/message-bubble';
 import { MessageComposer } from '@/components/chat/message-composer';
 import { Box } from '@/components/ui/box';
@@ -74,7 +75,7 @@ export default function ThreadScreen() {
         channelId,
         body: t('chat.shared_location'),
         messageType: ChatMessageType.Location,
-        metadataJson: JSON.stringify({ Latitude: latitude, Longitude: longitude }),
+        metadataJson: buildLocationMetadata(latitude, longitude),
         threadRootMessageId: messageId,
         priority: urgent ? ChatMessagePriority.Urgent : ChatMessagePriority.Normal,
       });
@@ -131,7 +132,15 @@ export default function ThreadScreen() {
 
         <FlatList data={inverted} inverted keyExtractor={(item: ChatMessageResultData) => item.ChatMessageId} renderItem={renderItem} contentContainerStyle={{ paddingVertical: 8 }} />
 
-        <MessageComposer onSendText={handleSendText} onSendImage={() => undefined} onSendLocation={handleSendLocation} onOpenGif={handleSendGif} onTyping={() => undefined} placeholder={t('chat.reply_placeholder')} allowUrgent={false} />
+        <MessageComposer
+          onSendText={handleSendText}
+          onSendImage={() => undefined}
+          onSendLocation={handleSendLocation}
+          onOpenGif={handleSendGif}
+          onTyping={() => undefined}
+          placeholder={t('chat.reply_placeholder')}
+          allowUrgent={false}
+        />
       </KeyboardAvoidingView>
     </Box>
   );

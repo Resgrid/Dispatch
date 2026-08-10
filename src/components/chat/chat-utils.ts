@@ -64,12 +64,55 @@ export function parseMetadata<T>(metadataJson?: string | null): T | null {
   }
 }
 
+/**
+ * MetadataJson wire contract, shared with the web client: a nested, camelCase envelope
+ * — `{ location: { latitude, longitude, label } }` and `{ gif: { url, previewUrl, width,
+ * height } }`. Earlier mobile builds wrote a flat PascalCase object that the web client
+ * cannot read (it falls back to rendering the message body), so the builders below emit
+ * only the nested form while the parsers still accept the flat one for history already
+ * stored on the server.
+ */
+function readString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+function readNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+export function buildLocationMetadata(latitude: number, longitude: number, label?: string): string {
+  return JSON.stringify({ location: { latitude, longitude, label } });
+}
+
+export function buildGifMetadata(gif: { GifUrl: string; PreviewUrl?: string; Width?: number; Height?: number }): string {
+  return JSON.stringify({ gif: { url: gif.GifUrl, previewUrl: gif.PreviewUrl, width: gif.Width, height: gif.Height } });
+}
+
 export function parseLocationMetadata(metadataJson?: string | null): ChatLocationMetadata | null {
-  return parseMetadata<ChatLocationMetadata>(metadataJson);
+  const raw = parseMetadata<Record<string, unknown>>(metadataJson);
+  if (!raw) return null;
+  const nested = (raw.location ?? raw.Location) as Record<string, unknown> | undefined;
+  const source = nested ?? raw;
+  const latitude = readNumber(source.latitude ?? source.Latitude);
+  const longitude = readNumber(source.longitude ?? source.Longitude);
+  if (latitude === undefined || longitude === undefined) return null;
+  return { Latitude: latitude, Longitude: longitude, Label: readString(source.label ?? source.Label) };
 }
 
 export function parseGifMetadata(metadataJson?: string | null): ChatGifMetadata | null {
-  return parseMetadata<ChatGifMetadata>(metadataJson);
+  const raw = parseMetadata<Record<string, unknown>>(metadataJson);
+  if (!raw) return null;
+  const nested = (raw.gif ?? raw.Gif) as Record<string, unknown> | undefined;
+  const source = nested ?? raw;
+  const url = readString(source.url ?? source.Url ?? source.gifUrl ?? source.GifUrl);
+  if (!url) return null;
+  return {
+    GifUrl: url,
+    PreviewUrl: readString(source.previewUrl ?? source.PreviewUrl),
+    Width: readNumber(source.width ?? source.Width),
+    Height: readNumber(source.height ?? source.Height),
+    Title: readString(source.title ?? source.Title),
+  };
 }
 
 export function parseImageMetadata(metadataJson?: string | null): ChatImageMetadata | null {
