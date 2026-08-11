@@ -251,6 +251,13 @@ const useAuthStore = create<AuthState>()(
 initTokenRefresh({
   getRefreshToken: () => useAuthStore.getState().refreshToken,
   applyAuthResponse: (response: AuthResponse) => {
+    // A refresh that raced sign-out must not resurrect the session: logout already
+    // cleared the store, so reject instead of applying. Throwing makes
+    // performTokenRefresh treat this as a failed refresh, which also stops it from
+    // rescheduling the refresh timer for the ended session.
+    if (useAuthStore.getState().status === 'signedOut') {
+      throw new Error('Token refresh completed after sign-out; discarding tokens');
+    }
     useAuthStore.setState({
       accessToken: response.access_token,
       refreshToken: response.refresh_token,

@@ -262,7 +262,9 @@ export const useChatStore = create<ChatState>()(
         }
 
         try {
-          const response = await chatApi.getChannels(undefined, true);
+          // callId narrows the list server-side; the local filter stays as a safety net
+          // because older servers ignore the param and return every channel.
+          const response = await chatApi.getChannels(undefined, true, numericCallId);
           const forCall = (response.Data ?? []).filter((channel) => channel.CallId === numericCallId);
           set((state) => ({ incidentChannelsByCallId: { ...state.incidentChannelsByCallId, [callId]: forCall } }));
         } catch (error) {

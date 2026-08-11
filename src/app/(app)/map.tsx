@@ -96,6 +96,9 @@ export default function Map() {
   // frequency and are read imperatively (getState) or via the memoized
   // UserLocationMarker, so location updates don't re-render the whole screen.
   const isMapLocked = useLocationStore((state) => state.isMapLocked);
+  // Presence-only selector: the boolean flips when a fix is gained or lost, not on
+  // every GPS tick. Zero is a valid coordinate, so only null/undefined are "absent".
+  const hasDeviceLocation = useLocationStore((state) => state.latitude != null && state.longitude != null);
 
   // Map layers hook
   const { layers, visibleLayers, isLoading: isLayersLoading, fetchLayers, toggleLayer, showAllLayers, hideAllLayers, getVisibleLayerData } = useMapLayers({ initialLayerType: MapLayerType.ALL, autoFetch: true });
@@ -407,8 +410,9 @@ export default function Map() {
     setSelectedPin(null);
   };
 
-  // Show recenter button only when map is not locked and user has moved the map
-  const showRecenterButton = !isMapLocked && hasUserMovedMap;
+  // Show recenter button only when map is not locked, the user has moved the map,
+  // and there is a location to recenter on (handleRecenterMap no-ops without one)
+  const showRecenterButton = !isMapLocked && hasUserMovedMap && hasDeviceLocation;
 
   // Create dynamic styles based on theme
   const getThemedStyles = useCallback(() => {

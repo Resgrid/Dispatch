@@ -432,6 +432,9 @@ export default function TabLayout() {
       // so the next sign-in is not skipped as "already initializing".
       initGeneration.current += 1;
       isInitializing.current = false;
+      // Clear the initialized flag too, or a sign-in later in this process fails
+      // shouldInitialize and initializeApp never runs for the new session.
+      hasInitialized.current = false;
 
       // Stop hubs, voice, audio and timers that belong to the ended session
       void teardownSignedInSession();

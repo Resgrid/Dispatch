@@ -1,6 +1,5 @@
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
-import { type Href } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 
@@ -32,9 +31,7 @@ export function handleChatDeepLink(eventCode: string): boolean {
   if (!match) return false;
   const channelId = match[2];
   if (/[/\\?#]/.test(channelId)) return false;
-  // The chat route exists (src/app/chat/[channelId].tsx) but is missing from the
-  // stale generated typed-routes union, hence the double cast.
-  void routerPushWithRetry({ pathname: '/chat/[channelId]', params: { channelId } } as unknown as Href, { maxAttempts: 20, retryDelayMs: 250 }).catch((error) => {
+  void routerPushWithRetry({ pathname: '/chat/[channelId]', params: { channelId } }, { maxAttempts: 20, retryDelayMs: 250 }).catch((error) => {
     logger.error({ message: 'Failed to deep-link to chat channel', context: { error, eventCode } });
   });
   return true;

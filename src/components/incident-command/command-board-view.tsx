@@ -150,7 +150,7 @@ export const CommandBoardView: React.FC = () => {
       showToast('info', unavailableMessage);
       return;
     }
-    router.push(`/chat/${channelId}` as Href);
+    router.push({ pathname: '/chat/[channelId]', params: { channelId } });
   };
 
   const activeNodes = (board.Nodes ?? []).filter((node) => !node.DeletedOn);

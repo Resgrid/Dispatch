@@ -37,7 +37,12 @@ export function cancelScheduledTokenRefresh(): void {
 export function scheduleTokenRefresh(expiresInSeconds: number): void {
   cancelScheduledTokenRefresh();
 
-  const delay = Math.max(expiresInSeconds * 1000 - REFRESH_BUFFER_MS, MIN_REFRESH_DELAY_MS);
+  // Refresh REFRESH_BUFFER_MS before expiry, but never earlier than half the token's
+  // lifetime: the server's lifetime is configurable down to one minute, which equals
+  // the buffer and would otherwise clamp every delay to the minimum and refresh in a
+  // perpetual tight loop. MIN_REFRESH_DELAY_MS stays as the absolute lower bound.
+  const lifetimeMs = expiresInSeconds * 1000;
+  const delay = Math.max(lifetimeMs - REFRESH_BUFFER_MS, lifetimeMs / 2, MIN_REFRESH_DELAY_MS);
   refreshTimer = setTimeout(() => {
     refreshTimer = null;
     void performTokenRefresh();

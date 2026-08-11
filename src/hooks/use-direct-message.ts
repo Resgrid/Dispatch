@@ -32,7 +32,7 @@ export const useDirectMessage = () => {
           useToastStore.getState().showToast('error', t('incident_command.dm_failed'));
           return;
         }
-        router.push(`/chat/${channelId}`);
+        router.push({ pathname: '/chat/[channelId]', params: { channelId } });
       } catch (error) {
         logger.error({ message: 'chat: failed to open direct message', context: { error, targetUserId } });
         useToastStore.getState().showToast('error', t('incident_command.dm_failed'));
