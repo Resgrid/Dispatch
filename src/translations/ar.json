@@ -384,6 +384,8 @@
     "open_assistant": "فتح المساعد",
     "create_conversation_failed": "تعذّر بدء المحادثة",
     "group_name": "اسم المجموعة",
+    "group_name_optional": "اسم المجموعة (اختياري)",
+    "unit": "الوحدة",
     "search_people": "البحث عن أشخاص",
     "no_people": "لم يتم العثور على أشخاص",
     "create_group_with": "إنشاء مجموعة ({{count}})",

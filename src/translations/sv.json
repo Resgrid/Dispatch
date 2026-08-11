@@ -384,6 +384,8 @@
     "open_assistant": "Öppna assistent",
     "create_conversation_failed": "Det gick inte att starta konversationen",
     "group_name": "Gruppnamn",
+    "group_name_optional": "Gruppnamn (valfritt)",
+    "unit": "Enhet",
     "search_people": "Sök personer",
     "no_people": "Inga personer hittades",
     "create_group_with": "Skapa grupp ({{count}})",

@@ -384,6 +384,8 @@
     "open_assistant": "Assistent öffnen",
     "create_conversation_failed": "Unterhaltung konnte nicht gestartet werden",
     "group_name": "Gruppenname",
+    "group_name_optional": "Gruppenname (optional)",
+    "unit": "Einheit",
     "search_people": "Personen suchen",
     "no_people": "Keine Personen gefunden",
     "create_group_with": "Gruppe erstellen ({{count}})",
