@@ -80,6 +80,8 @@ export const useSecurityStore = () => {
     canUserCreateNotes: store.rights?.CanAddNote,
     canUserCreateMessages: store.rights?.CanCreateMessage,
     canUserViewPII: store.rights?.CanViewPII,
+    // Undefined (rights not loaded yet) is treated as allowed by callers; only an explicit false blocks.
+    canUserWorkCommand: store.rights?.CanLoginToCommandApp,
     departmentCode: store.rights?.DepartmentCode,
     rights: store.rights,
   };

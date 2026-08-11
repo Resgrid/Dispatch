@@ -4,6 +4,17 @@ import { getDepartmentAudioStreams } from '@/api/voice';
 import { logger } from '@/lib/logging';
 import { type DepartmentAudioResultStreamData } from '@/models/v4/voice/departmentAudioResultStreamData';
 
+// Aborts all listeners on the current audio element; recreated per stream so
+// stopStream can actually detach handlers instead of leaving them for the GC.
+let streamListenersAbort: AbortController | null = null;
+
+const detachStreamListeners = () => {
+  if (streamListenersAbort) {
+    streamListenersAbort.abort();
+    streamListenersAbort = null;
+  }
+};
+
 interface AudioStreamState {
   // Available streams
   availableStreams: DepartmentAudioResultStreamData[];
@@ -94,54 +105,84 @@ export const useAudioStreamStore = create<AudioStreamState>((set, get) => ({
       const audio = new Audio(stream.Url);
       audio.crossOrigin = 'anonymous';
 
+      // Listeners are attached with an AbortSignal so stopStream can detach them;
+      // otherwise each play/stop cycle stacks another set of closures on the element
+      detachStreamListeners();
+      streamListenersAbort = new AbortController();
+      const listenerSignal = streamListenersAbort.signal;
+
       // Set up event listeners
-      audio.addEventListener('loadeddata', () => {
-        set({ isLoading: false, isBuffering: false });
-        logger.debug({
-          message: 'Audio stream loaded',
-          context: { streamName: stream.Name },
-        });
-      });
+      audio.addEventListener(
+        'loadeddata',
+        () => {
+          set({ isLoading: false, isBuffering: false });
+          logger.debug({
+            message: 'Audio stream loaded',
+            context: { streamName: stream.Name },
+          });
+        },
+        { signal: listenerSignal }
+      );
 
-      audio.addEventListener('playing', () => {
-        set({ isPlaying: true, isBuffering: false });
-        logger.debug({
-          message: 'Audio stream playing',
-          context: { streamName: stream.Name },
-        });
-      });
+      audio.addEventListener(
+        'playing',
+        () => {
+          set({ isPlaying: true, isBuffering: false });
+          logger.debug({
+            message: 'Audio stream playing',
+            context: { streamName: stream.Name },
+          });
+        },
+        { signal: listenerSignal }
+      );
 
-      audio.addEventListener('pause', () => {
-        set({ isPlaying: false });
-        logger.debug({
-          message: 'Audio stream paused',
-          context: { streamName: stream.Name },
-        });
-      });
+      audio.addEventListener(
+        'pause',
+        () => {
+          set({ isPlaying: false });
+          logger.debug({
+            message: 'Audio stream paused',
+            context: { streamName: stream.Name },
+          });
+        },
+        { signal: listenerSignal }
+      );
 
-      audio.addEventListener('waiting', () => {
-        set({ isBuffering: true });
-        logger.debug({
-          message: 'Audio stream buffering',
-          context: { streamName: stream.Name },
-        });
-      });
+      audio.addEventListener(
+        'waiting',
+        () => {
+          set({ isBuffering: true });
+          logger.debug({
+            message: 'Audio stream buffering',
+            context: { streamName: stream.Name },
+          });
+        },
+        { signal: listenerSignal }
+      );
 
-      audio.addEventListener('error', (e) => {
-        logger.error({
-          message: 'Audio stream error',
-          context: { error: e, streamName: stream.Name },
-        });
-        set({ isPlaying: false, isLoading: false, isBuffering: false });
-      });
+      audio.addEventListener(
+        'error',
+        (e) => {
+          logger.error({
+            message: 'Audio stream error',
+            context: { error: e, streamName: stream.Name },
+          });
+          set({ isPlaying: false, isLoading: false, isBuffering: false });
+        },
+        { signal: listenerSignal }
+      );
 
-      audio.addEventListener('ended', () => {
-        logger.debug({
-          message: 'Audio stream ended',
-          context: { streamName: stream.Name },
-        });
-        set({ isPlaying: false });
-      });
+      audio.addEventListener(
+        'ended',
+        () => {
+          logger.debug({
+            message: 'Audio stream ended',
+            context: { streamName: stream.Name },
+          });
+          set({ isPlaying: false });
+        },
+        { signal: listenerSignal }
+      );
 
       // Start playing
       await audio.play();
@@ -172,6 +213,7 @@ export const useAudioStreamStore = create<AudioStreamState>((set, get) => ({
       const { audioElement, currentStream } = get();
 
       if (audioElement) {
+        detachStreamListeners();
         audioElement.pause();
         audioElement.src = '';
         audioElement.load();

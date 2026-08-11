@@ -793,8 +793,11 @@ class SignalRService {
               context: { error, attempts: currentAttempts, maxAttempts: this.MAX_RECONNECT_ATTEMPTS },
             });
 
-            // Don't immediately retry; let the next connection close event trigger another attempt
-            // This prevents rapid retry loops that could overwhelm the server
+            // Schedule the next attempt: the connection is already closed, so no further
+            // close event will fire to re-trigger reconnection, and without this the hub
+            // stays dead until an app lifecycle event. Backoff grows via the attempts
+            // counter, so this cannot spin a rapid retry loop.
+            this.handleConnectionClose(hubName);
           }
         }, backoffDelay);
 

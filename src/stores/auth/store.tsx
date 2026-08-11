@@ -6,7 +6,8 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { logger } from '@/lib/logging';
 
-import { clearPasswordVerificationHash, loginRequest, refreshTokenRequest, storePasswordVerificationHash } from '../../lib/auth/api';
+import { clearPasswordVerificationHash, loginRequest, storePasswordVerificationHash } from '../../lib/auth/api';
+import { cancelScheduledTokenRefresh, initTokenRefresh, performTokenRefresh, scheduleTokenRefresh } from '../../lib/auth/token-refresh';
 import type { AuthResponse, AuthState, LoginCredentials } from '../../lib/auth/types';
 import { type ProfileModel } from '../../lib/auth/types';
 
@@ -109,18 +110,7 @@ const useAuthStore = create<AuthState>()(
             });
 
             // Set up automatic token refresh
-            //const decodedToken: { exp: number } = jwtDecode(
-            //);
-            //const now = new Date();
-            //const expiresIn =
-            //  response.authResponse?.expires_in! * 1000 - Date.now() - 60000; // Refresh 1 minute before expiry
-            //const expiresOn = new Date(
-            //  now.getTime() + response.authResponse?.expires_in! * 1000
-            //)
-            //  .getTime()
-            //  .toString();
-
-            //setTimeout(() => get().refreshAccessToken(), expiresIn);
+            scheduleTokenRefresh(response.authResponse.expires_in);
           } else {
             logger.error({
               message: 'Login: API returned unsuccessful response',
@@ -148,6 +138,9 @@ const useAuthStore = create<AuthState>()(
           message: 'Logout: Clearing auth state',
         });
 
+        // Cancel any pending automatic refresh so the timer cannot fire after logout
+        cancelScheduledTokenRefresh();
+
         await clearPasswordVerificationHash();
 
         set({
@@ -163,31 +156,9 @@ const useAuthStore = create<AuthState>()(
       },
 
       refreshAccessToken: async () => {
-        try {
-          const { refreshToken } = get();
-          if (!refreshToken) {
-            throw new Error('No refresh token available');
-          }
-
-          const response = await refreshTokenRequest(refreshToken);
-
-          set({
-            accessToken: response.access_token,
-            refreshToken: response.refresh_token,
-            status: 'signedIn',
-            error: null,
-          });
-
-          // Set up next token refresh
-          //const decodedToken: { exp: number } = jwt_decode(
-          //  response.access_token
-          //);
-          const expiresIn = response.expires_in * 1000 - Date.now() - 60000; // Refresh 1 minute before expiry
-          setTimeout(() => get().refreshAccessToken(), expiresIn);
-        } catch (error) {
-          // If refresh fails, log out the user
-          get().logout();
-        }
+        // Single-flight refresh shared with the axios 401 interceptor. Failure
+        // handling (logout) happens inside performTokenRefresh.
+        await performTokenRefresh();
       },
       isAuthenticated: (): boolean => {
         return get().status === 'signedIn' && get().accessToken !== null;
@@ -242,6 +213,9 @@ const useAuthStore = create<AuthState>()(
             message: 'SSO: State updated to signedIn',
             context: { userId: profileData.sub },
           });
+
+          // Set up automatic token refresh
+          scheduleTokenRefresh(authResponse.expires_in);
         } catch (error) {
           logger.error({
             message: 'SSO: loginWithSso exception',
@@ -271,5 +245,26 @@ const useAuthStore = create<AuthState>()(
     }
   )
 );
+
+// Wire the shared refresh engine to this store. Kept outside the store creator so the
+// axios interceptor and the auth store share one single-flight refresh path.
+initTokenRefresh({
+  getRefreshToken: () => useAuthStore.getState().refreshToken,
+  applyAuthResponse: (response: AuthResponse) => {
+    useAuthStore.setState({
+      accessToken: response.access_token,
+      refreshToken: response.refresh_token,
+      status: 'signedIn',
+      error: null,
+    });
+  },
+  onRefreshFailed: () => {
+    // Avoid a logout re-entry loop if the failure was triggered by a timer that
+    // fired after the user already signed out.
+    if (useAuthStore.getState().status !== 'signedOut') {
+      void useAuthStore.getState().logout();
+    }
+  },
+});
 
 export default useAuthStore;

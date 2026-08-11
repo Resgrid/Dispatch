@@ -222,6 +222,15 @@ jest.mock('react-native-webview', () => ({
   default: 'WebView',
 }));
 
+// Mock react-native-restart - pulled in transitively via the i18n utils used by the
+// chat store; the native module is absent under jest
+jest.mock('react-native-restart', () => ({
+  __esModule: true,
+  default: {
+    Restart: jest.fn(),
+  },
+}));
+
 jest.mock('@/hooks/use-analytics', () => ({
   useAnalytics: jest.fn(),
 }));

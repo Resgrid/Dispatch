@@ -73,6 +73,13 @@ interface ChatState {
 
   // --- Channels ---------------------------------------------------------
   fetchChannels: (activeUnitId?: number) => Promise<void>;
+  /**
+   * Chat channels anchored to one incident, kept out of the main channel list so a dispatcher's list
+   * isn't buried under every incident's channels. Includes archived ones: a closed incident's
+   * conversations stay readable as a point-in-time record.
+   */
+  incidentChannelsByCallId: Record<string, ChatChannelResultData[]>;
+  loadIncidentChannels: (callId: string) => Promise<void>;
   setActiveChannel: (channelId: string | null) => void;
 
   // --- Messages ---------------------------------------------------------
@@ -246,6 +253,23 @@ export const useChatStore = create<ChatState>()(
       // ------------------------------------------------------------------
       // Channels
       // ------------------------------------------------------------------
+      incidentChannelsByCallId: {},
+
+      loadIncidentChannels: async (callId: string) => {
+        const numericCallId = parseInt(callId, 10);
+        if (Number.isNaN(numericCallId)) {
+          return;
+        }
+
+        try {
+          const response = await chatApi.getChannels(undefined, true);
+          const forCall = (response.Data ?? []).filter((channel) => channel.CallId === numericCallId);
+          set((state) => ({ incidentChannelsByCallId: { ...state.incidentChannelsByCallId, [callId]: forCall } }));
+        } catch (error) {
+          logger.error({ message: 'chat: failed to load incident channels', context: { error, callId } });
+        }
+      },
+
       fetchChannels: async (activeUnitId?: number) => {
         set({ isLoadingChannels: true });
         try {
@@ -840,6 +864,7 @@ export const useChatStore = create<ChatState>()(
         }
         set({
           channels: [],
+          incidentChannelsByCallId: {},
           messagesByChannel: {},
           membersByChannel: {},
           typingByChannel: {},

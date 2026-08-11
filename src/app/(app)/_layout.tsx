@@ -27,15 +27,53 @@ import { Env } from '@/lib/env';
 import { logger } from '@/lib/logging';
 import { useIsFirstTime } from '@/lib/storage';
 import { type GetConfigResultData } from '@/models/v4/configs/getConfigResultData';
-import { usePushNotifications } from '@/services/push-notification';
+import { audioService } from '@/services/audio.service';
+import { pushNotificationService, usePushNotifications } from '@/services/push-notification';
+import { useAudioStreamStore } from '@/stores/app/audio-stream-store';
 import { useCoreStore } from '@/stores/app/core-store';
+import { useLiveKitStore } from '@/stores/app/livekit-store';
 import { useCallsStore } from '@/stores/calls/store';
+import { useChatStore } from '@/stores/chat/store';
+import { useCheckInStore } from '@/stores/checkIn/store';
 import { FeatureFlagKeys, featureFlagsStore } from '@/stores/feature-flags/store';
 import useLockscreenStore from '@/stores/lockscreen/store';
 import { useRolesStore } from '@/stores/roles/store';
 import { securityStore } from '@/stores/security/store';
 import { useSignalRStore } from '@/stores/signalr/signalr-store';
+import { useToastStore } from '@/stores/toast/store';
 import { useWeatherAlertsStore } from '@/stores/weatherAlerts/store';
+
+/**
+ * Tear down every per-session resource on sign-out: SignalR hubs and their heartbeats,
+ * the LiveKit voice room, audio streams and cached sounds, check-in polling, chat
+ * timers, and push-notification listeners. Without this, all of them keep running
+ * against a signed-out session until the process dies.
+ */
+async function teardownSignedInSession(): Promise<void> {
+  const signalR = useSignalRStore.getState();
+  const teardowns: [string, () => Promise<unknown> | unknown][] = [
+    ['SignalR update hub', () => signalR.disconnectUpdateHub()],
+    ['SignalR chat hub', () => signalR.disconnectChatHub()],
+    ['SignalR geolocation hub', () => signalR.disconnectGeolocationHub()],
+    ['LiveKit room', () => useLiveKitStore.getState().disconnectFromRoom()],
+    ['audio stream', () => useAudioStreamStore.getState().cleanup()],
+    ['audio service', () => audioService.cleanup()],
+    ['check-in polling', () => useCheckInStore.getState().stopPolling()],
+    ['chat store', () => useChatStore.getState().reset()],
+    ['push notification listeners', () => pushNotificationService.cleanup()],
+  ];
+
+  for (const [label, teardown] of teardowns) {
+    try {
+      await teardown();
+    } catch (error) {
+      logger.error({
+        message: `Failed to tear down ${label} on sign-out`,
+        context: { error: error instanceof Error ? error.message : String(error) },
+      });
+    }
+  }
+}
 
 export default function TabLayout() {
   const { t } = useTranslation();
@@ -156,6 +194,23 @@ export default function TabLayout() {
 
         await securityStore.getState().getRights();
 
+        // Dispatch shows private command, unit and responder traffic, so a member the department has
+        // not authorized must not get past initialization. The server is the real boundary — it simply
+        // never hands an unauthorized user the dispatch channels — but signing them straight back out
+        // is far clearer than a silently empty app.
+        if (!isCurrentRun()) {
+          return;
+        }
+        if (securityStore.getState().rights?.CanLoginToDispatchApp === false) {
+          logger.warn({
+            message: 'User is not authorized to use the Dispatch app; signing out',
+            context: { userId },
+          });
+          useToastStore.getState().showToast('error', t('login.dispatch_not_authorized'));
+          await useAuthStore.getState().logout();
+          return;
+        }
+
         logger.info({
           message: 'Security rights retrieved, fetching feature flags',
           context: { platform: Platform.OS },
@@ -273,7 +328,7 @@ export default function TabLayout() {
       // If the init promise is still hanging, clear the guard so a retry is possible
       isInitializing.current = false;
     }
-  }, [status]);
+  }, [status, t, userId]);
 
   const refreshDataFromBackground = useCallback(async () => {
     if (status !== 'signedIn' || !hasInitialized.current) return;
@@ -377,6 +432,9 @@ export default function TabLayout() {
       // so the next sign-in is not skipped as "already initializing".
       initGeneration.current += 1;
       isInitializing.current = false;
+
+      // Stop hubs, voice, audio and timers that belong to the ended session
+      void teardownSignedInSession();
     }
 
     // Update last known status

@@ -1,5 +1,23 @@
 import { type Href, useRouter } from 'expo-router';
-import { CheckCircleIcon, ChevronDownIcon, ChevronUpIcon, ClipboardListIcon, ClockIcon, MapPinIcon, NetworkIcon, PlusIcon, ShieldAlertIcon, TimerIcon, UserCogIcon, UserPlusIcon, XIcon } from 'lucide-react-native';
+import {
+  CheckCircleIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  ClipboardListIcon,
+  ClockIcon,
+  MapPinIcon,
+  MessageCircleIcon,
+  MessagesSquareIcon,
+  NetworkIcon,
+  PlusIcon,
+  RadioIcon,
+  ShieldAlertIcon,
+  ShieldCheckIcon,
+  TimerIcon,
+  UserCogIcon,
+  UserPlusIcon,
+  XIcon,
+} from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Platform } from 'react-native';
@@ -10,8 +28,11 @@ import { Heading } from '@/components/ui/heading';
 import { HStack } from '@/components/ui/hstack';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
+import { useDirectMessage } from '@/hooks/use-direct-message';
+import { ChatChannelType } from '@/models/v4/chat';
 import { type CommandStructureNode } from '@/models/v4/incidentCommand/commandStructureNode';
 import { hasIncidentCapability, IncidentCapabilities, IncidentCommandStatus, ResourceAssignmentKind } from '@/models/v4/incidentCommand/incidentCommandEnums';
+import { useChatStore } from '@/stores/chat/store';
 import { useIncidentCommandStore } from '@/stores/incident-command/store';
 import { usePersonnelStore } from '@/stores/personnel/store';
 import { useToastStore } from '@/stores/toast/store';
@@ -37,6 +58,31 @@ const Section: React.FC<{ title: string; icon: React.ReactNode; action?: React.R
     </HStack>
     {children}
   </Box>
+);
+
+/** One tappable channel row; shows as unavailable rather than hiding, so absence is explainable. */
+const ChatChannelRow: React.FC<{
+  label: string;
+  hint?: string;
+  icon: React.ReactNode;
+  channelId: string | null;
+  unavailableMessage: string;
+  onOpen: (channelId: string | null, unavailableMessage: string) => void;
+  openLabel: string;
+  testID?: string;
+}> = ({ label, hint, icon, channelId, unavailableMessage, onOpen, openLabel, testID }) => (
+  <HStack className="items-center justify-between border-b border-outline-100 pb-1 pt-1" testID={testID}>
+    <HStack className="min-w-0 flex-1 items-center space-x-2">
+      {icon}
+      <VStack className="min-w-0 flex-1">
+        <Text className={`text-sm ${channelId ? 'font-medium' : 'text-gray-500'}`}>{label}</Text>
+        {hint ? <Text className="text-xs text-gray-500">{hint}</Text> : null}
+      </VStack>
+    </HStack>
+    <Button variant="link" size="xs" onPress={() => onOpen(channelId, unavailableMessage)} isDisabled={!channelId}>
+      <ButtonText className="text-xs">{channelId ? openLabel : '—'}</ButtonText>
+    </Button>
+  </HStack>
 );
 
 type TranslateFn = ReturnType<typeof useTranslation>['t'];
@@ -76,6 +122,9 @@ export const CommandBoardView: React.FC = () => {
   const canManageAnnotations = hasIncidentCapability(capabilities, IncidentCapabilities.ManageAnnotations);
   const canManageChannels = hasIncidentCapability(capabilities, IncidentCapabilities.ManageChannels);
 
+  const { openDirectMessage } = useDirectMessage();
+  const incidentChannels = useChatStore((s) => (board?.Command?.CallId ? s.incidentChannelsByCallId[String(board.Command.CallId)] : undefined));
+
   const personnelMap = useMemo(() => new Map(personnel.map((p) => [p.UserId, `${p.FirstName} ${p.LastName}`.trim()])), [personnel]);
   const unitsMap = useMemo(() => new Map(units.map((u) => [u.UnitId, u.Name])), [units]);
 
@@ -89,6 +138,20 @@ export const CommandBoardView: React.FC = () => {
     return id;
   };
   const userName = (id: string): string => personnelMap.get(id) || id || t('incident_command.unassigned');
+
+  // Channel ids come from the server already filtered to what this user may open — an id we did not
+  // receive is one the API would reject, so the row renders as unavailable rather than a dead link.
+  const findChannel = (channelType: number): string | null => incidentChannels?.find((channel) => channel.ChannelType === channelType)?.ChatChannelId ?? null;
+  const dispatchChannelId = findChannel(ChatChannelType.IncidentDispatch);
+  const incidentChannelId = findChannel(ChatChannelType.Incident);
+
+  const openChannel = (channelId: string | null, unavailableMessage: string) => {
+    if (!channelId) {
+      showToast('info', unavailableMessage);
+      return;
+    }
+    router.push(`/chat/${channelId}` as Href);
+  };
 
   const activeNodes = (board.Nodes ?? []).filter((node) => !node.DeletedOn);
   const activeAssignments = (board.Assignments ?? []).filter((a) => !a.ReleasedOn);
@@ -435,6 +498,66 @@ export const CommandBoardView: React.FC = () => {
               ))}
           </VStack>
         )}
+      </Section>
+
+      {/* Incident chat: the channels this dispatcher can open, and a direct line to the IC. */}
+      <Section title={t('incident_command.chat')} icon={<MessagesSquareIcon size={16} />}>
+        {isClosed ? <Text className="mb-2 text-xs text-gray-500">{t('incident_command.chat_frozen')}</Text> : null}
+        <VStack className="space-y-1">
+          {/* The call's shared conversation — everyone working the incident, dispatch included. */}
+          <ChatChannelRow
+            label={t('incident_command.incident_channel')}
+            hint={t('incident_command.incident_channel_hint')}
+            icon={<MessagesSquareIcon size={16} className="text-blue-500" />}
+            channelId={incidentChannelId}
+            unavailableMessage={t('incident_command.incident_channel_unavailable')}
+            onOpen={openChannel}
+            openLabel={t('incident_command.open_chat')}
+            testID="incident-command-chat-incident"
+          />
+          {/* The desk's own line to the incident. The private command channel is deliberately absent:
+              it stays internal to command staff, and dispatch reaches command through here. */}
+          <ChatChannelRow
+            label={t('incident_command.dispatch_channel')}
+            hint={t('incident_command.dispatch_channel_hint')}
+            icon={<RadioIcon size={16} className="text-blue-500" />}
+            channelId={dispatchChannelId}
+            unavailableMessage={t('incident_command.dispatch_channel_unavailable')}
+            onOpen={openChannel}
+            openLabel={t('incident_command.open_chat')}
+            testID="incident-command-chat-dispatch"
+          />
+
+          {/* Direct line to whoever currently holds command. */}
+          {command.CurrentCommanderUserId ? (
+            <HStack className="items-center justify-between border-b border-outline-100 pb-1 pt-1" testID="incident-command-chat-ic">
+              <VStack className="min-w-0 flex-1">
+                <Text className="text-sm font-medium">{userName(command.CurrentCommanderUserId)}</Text>
+                <Text className="text-xs text-gray-500">{t('incident_command.commander')}</Text>
+              </VStack>
+              <Button variant="link" size="xs" onPress={() => void openDirectMessage(command.CurrentCommanderUserId)} testID="incident-command-chat-ic-message">
+                <ButtonIcon as={MessageCircleIcon} size="xs" className="mr-1 text-blue-500" />
+                <ButtonText className="text-xs">{t('incident_command.send_message')}</ButtonText>
+              </Button>
+            </HStack>
+          ) : null}
+
+          {/* Everyone holding an ICS position, so dispatch can reach the right person directly. */}
+          {(board.Roles ?? [])
+            .filter((role) => !role.RemovedOn)
+            .map((role) => (
+              <HStack key={role.IncidentRoleAssignmentId} className="items-center justify-between border-b border-outline-100 pb-1 pt-1">
+                <VStack className="min-w-0 flex-1">
+                  <Text className="text-sm font-medium">{userName(role.UserId)}</Text>
+                  <Text className="text-xs text-gray-500">{roleTypeLabel(role.RoleType)}</Text>
+                </VStack>
+                <Button variant="link" size="xs" onPress={() => void openDirectMessage(role.UserId)}>
+                  <ButtonIcon as={MessageCircleIcon} size="xs" className="mr-1 text-blue-500" />
+                  <ButtonText className="text-xs">{t('incident_command.send_message')}</ButtonText>
+                </Button>
+              </HStack>
+            ))}
+        </VStack>
       </Section>
 
       {/* Voice channels */}

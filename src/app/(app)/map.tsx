@@ -30,6 +30,52 @@ import { useToastStore } from '@/stores/toast/store';
 
 Mapbox.setAccessToken(Env.MAPBOX_PUBKEY);
 
+interface UserLocationMarkerProps {
+  pulseAnim: Animated.Value;
+  innerContainerStyle: object;
+}
+
+// Memoized user-location marker. Subscribes to the location store itself so GPS ticks
+// only re-render this small subtree instead of the whole map screen (which owns the
+// pins, layers and modal trees).
+const UserLocationMarker = React.memo<UserLocationMarkerProps>(({ pulseAnim, innerContainerStyle }) => {
+  const latitude = useLocationStore((state) => state.latitude);
+  const longitude = useLocationStore((state) => state.longitude);
+  const heading = useLocationStore((state) => state.heading);
+
+  if (!latitude || !longitude) {
+    return null;
+  }
+
+  return (
+    <Mapbox.PointAnnotation id="userLocation" coordinate={[longitude, latitude]} anchor={{ x: 0.5, y: 0.5 }}>
+      <Animated.View
+        style={[
+          styles.markerContainer,
+          {
+            transform: [{ scale: pulseAnim }],
+          },
+        ]}
+      >
+        <View style={styles.markerOuterRing} />
+        <View style={[styles.markerInnerContainer, innerContainerStyle]}>
+          <View style={styles.markerDot} />
+          {heading !== null && heading !== undefined ? (
+            <View
+              style={[
+                styles.directionIndicator,
+                {
+                  transform: [{ rotate: `${heading}deg` }],
+                },
+              ]}
+            />
+          ) : null}
+        </View>
+      </Animated.View>
+    </Mapbox.PointAnnotation>
+  );
+});
+
 export default function Map() {
   const { t } = useTranslation();
   const { trackEvent } = useAnalytics();
@@ -46,11 +92,10 @@ export default function Map() {
   const [isPinDetailModalOpen, setIsPinDetailModalOpen] = useState(false);
   const [isLayersPanelOpen, setIsLayersPanelOpen] = useState(false);
   const { isActive } = useAppLifecycle();
-  const latitude = useLocationStore((state) => state.latitude);
-  const longitude = useLocationStore((state) => state.longitude);
-  const heading = useLocationStore((state) => state.heading);
+  // Only isMapLocked is subscribed here: latitude/longitude/heading change at GPS
+  // frequency and are read imperatively (getState) or via the memoized
+  // UserLocationMarker, so location updates don't re-render the whole screen.
   const isMapLocked = useLocationStore((state) => state.isMapLocked);
-  const location = useMemo(() => ({ latitude, longitude, heading, isMapLocked }), [latitude, longitude, heading, isMapLocked]);
 
   // Map layers hook
   const { layers, visibleLayers, isLoading: isLayersLoading, fetchLayers, toggleLayer, showAllLayers, hideAllLayers, getVisibleLayerData } = useMapLayers({ initialLayerType: MapLayerType.ALL, autoFetch: true });
@@ -133,18 +178,19 @@ export default function Map() {
       fetchLayers();
 
       // Reset camera to current location when navigating back to map
-      if (isMapReady && location.latitude && location.longitude) {
+      const { latitude, longitude, heading, isMapLocked: locked } = useLocationStore.getState();
+      if (isMapReady && latitude && longitude) {
         const cameraConfig: any = {
-          centerCoordinate: [location.longitude, location.latitude],
-          zoomLevel: location.isMapLocked ? 16 : 12,
+          centerCoordinate: [longitude, latitude],
+          zoomLevel: locked ? 16 : 12,
           animationDuration: 1000,
           heading: 0,
           pitch: 0,
         };
 
         // Add heading and pitch for navigation mode when locked
-        if (location.isMapLocked && location.heading !== null && location.heading !== undefined) {
-          cameraConfig.heading = location.heading;
+        if (locked && heading !== null && heading !== undefined) {
+          cameraConfig.heading = heading;
           cameraConfig.pitch = 45;
         }
 
@@ -154,61 +200,68 @@ export default function Map() {
           message: 'Map focused, resetting camera to current location',
           context: {
             // GDPR: log bucketed (~11km) coordinates instead of verbatim position
-            latitudeBucket: Math.round(location.latitude * 10) / 10,
-            longitudeBucket: Math.round(location.longitude * 10) / 10,
-            isMapLocked: location.isMapLocked,
+            latitudeBucket: Math.round(latitude * 10) / 10,
+            longitudeBucket: Math.round(longitude * 10) / 10,
+            isMapLocked: locked,
             gdpr: { purpose: 'map_tracking', lawful_basis: 'consent' },
           },
         });
       }
-    }, [isMapReady, location.latitude, location.longitude, location.isMapLocked, location.heading, fetchLayers])
+    }, [isMapReady, fetchLayers])
   );
 
+  // Imperative camera-follow: subscribing to the store inside an effect keeps GPS
+  // updates out of the React render cycle entirely.
+  const hasUserMovedMapRef = useRef(hasUserMovedMap);
   useEffect(() => {
-    if (isMapReady && location.latitude && location.longitude) {
+    hasUserMovedMapRef.current = hasUserMovedMap;
+  }, [hasUserMovedMap]);
+
+  useEffect(() => {
+    if (!isMapReady) return;
+
+    const unsubscribe = useLocationStore.subscribe((state, prevState) => {
+      if (state.latitude === prevState.latitude && state.longitude === prevState.longitude && state.heading === prevState.heading) {
+        return;
+      }
+
+      const { latitude, longitude, heading, isMapLocked: locked } = state;
+      if (!latitude || !longitude) return;
+
       // When map is locked, always follow the location
       // When map is unlocked, only follow if user hasn't moved the map
-      if (location.isMapLocked || !hasUserMovedMap) {
-        logger.info({
-          message: 'Location updated and map is ready',
-          context: {
-            // GDPR: log bucketed (~11km) coordinates instead of verbatim position
-            latitudeBucket: Math.round(location.latitude * 10) / 10,
-            longitudeBucket: Math.round(location.longitude * 10) / 10,
-            heading: location.heading,
-            isMapLocked: location.isMapLocked,
-            gdpr: { purpose: 'map_tracking', lawful_basis: 'consent' },
-          },
-        });
-
+      if (locked || !hasUserMovedMapRef.current) {
         const cameraConfig: any = {
-          centerCoordinate: [location.longitude, location.latitude],
-          zoomLevel: location.isMapLocked ? 16 : 12,
-          animationDuration: location.isMapLocked ? 500 : 1000,
+          centerCoordinate: [longitude, latitude],
+          zoomLevel: locked ? 16 : 12,
+          animationDuration: locked ? 500 : 1000,
         };
 
         // Add heading and pitch for navigation mode when locked
-        if (location.isMapLocked && location.heading !== null && location.heading !== undefined) {
-          cameraConfig.heading = location.heading;
+        if (locked && heading !== null && heading !== undefined) {
+          cameraConfig.heading = heading;
           cameraConfig.pitch = 45;
         }
 
         cameraRef.current?.setCamera(cameraConfig);
       }
-    }
-  }, [isMapReady, location.latitude, location.longitude, location.heading, location.isMapLocked, hasUserMovedMap]);
+    });
+
+    return unsubscribe;
+  }, [isMapReady]);
 
   // Reset hasUserMovedMap when map gets locked and reset camera when unlocked
   useEffect(() => {
-    if (location.isMapLocked) {
+    if (isMapLocked) {
       setHasUserMovedMap(false);
     } else {
       // When exiting locked mode, reset camera to normal view and reset user interaction state
       setHasUserMovedMap(false);
 
-      if (isMapReady && location.latitude && location.longitude) {
+      const { latitude, longitude } = useLocationStore.getState();
+      if (isMapReady && latitude && longitude) {
         cameraRef.current?.setCamera({
-          centerCoordinate: [location.longitude, location.latitude],
+          centerCoordinate: [longitude, latitude],
           zoomLevel: 12,
           heading: 0,
           pitch: 0,
@@ -218,14 +271,14 @@ export default function Map() {
           message: 'Map unlocked, resetting camera to normal view and user interaction state',
           context: {
             // GDPR: log bucketed (~11km) coordinates instead of verbatim position
-            latitudeBucket: Math.round(location.latitude * 10) / 10,
-            longitudeBucket: Math.round(location.longitude * 10) / 10,
+            latitudeBucket: Math.round(latitude * 10) / 10,
+            longitudeBucket: Math.round(longitude * 10) / 10,
             gdpr: { purpose: 'map_tracking', lawful_basis: 'consent' },
           },
         });
       }
     }
-  }, [isMapReady, location.isMapLocked, location.latitude, location.longitude]);
+  }, [isMapReady, isMapLocked]);
 
   useEffect(() => {
     const abortController = new AbortController();
@@ -284,31 +337,32 @@ export default function Map() {
     trackEvent('map_view_rendered', {
       hasMapPins: mapPins.length > 0,
       mapPinsCount: mapPins.length,
-      isMapLocked: location.isMapLocked,
+      isMapLocked,
       theme: colorScheme || 'light',
       layersCount: combinedLayers.length,
       visibleLayersCount: visibleLayers.size + visiblePoiLayerIds.size,
     });
-  }, [trackEvent, mapPins.length, location.isMapLocked, colorScheme, combinedLayers.length, visibleLayers.size, visiblePoiLayerIds.size]);
+  }, [trackEvent, mapPins.length, isMapLocked, colorScheme, combinedLayers.length, visibleLayers.size, visiblePoiLayerIds.size]);
 
   const onCameraChanged = (event: any) => {
     // Only register user interaction if map is not locked
-    if (event.properties.isUserInteraction && !location.isMapLocked) {
+    if (event.properties.isUserInteraction && !useLocationStore.getState().isMapLocked) {
       setHasUserMovedMap(true);
     }
   };
 
   const handleRecenterMap = () => {
-    if (location.latitude && location.longitude) {
+    const { latitude, longitude, heading, isMapLocked: locked } = useLocationStore.getState();
+    if (latitude && longitude) {
       const cameraConfig: any = {
-        centerCoordinate: [location.longitude, location.latitude],
-        zoomLevel: location.isMapLocked ? 16 : 12,
+        centerCoordinate: [longitude, latitude],
+        zoomLevel: locked ? 16 : 12,
         animationDuration: 1000,
       };
 
       // Add heading and pitch for navigation mode when locked
-      if (location.isMapLocked && location.heading !== null && location.heading !== undefined) {
-        cameraConfig.heading = location.heading;
+      if (locked && heading !== null && heading !== undefined) {
+        cameraConfig.heading = heading;
         cameraConfig.pitch = 45;
       }
 
@@ -354,7 +408,7 @@ export default function Map() {
   };
 
   // Show recenter button only when map is not locked and user has moved the map
-  const showRecenterButton = !location.isMapLocked && hasUserMovedMap && location.latitude && location.longitude;
+  const showRecenterButton = !isMapLocked && hasUserMovedMap;
 
   // Create dynamic styles based on theme
   const getThemedStyles = useCallback(() => {
@@ -572,50 +626,24 @@ export default function Map() {
           onCameraChanged={onCameraChanged}
           onDidFinishLoadingMap={() => setIsMapReady(true)}
           testID="map-view"
-          scrollEnabled={!location.isMapLocked}
-          zoomEnabled={!location.isMapLocked}
-          rotateEnabled={!location.isMapLocked}
-          pitchEnabled={!location.isMapLocked}
+          scrollEnabled={!isMapLocked}
+          zoomEnabled={!isMapLocked}
+          rotateEnabled={!isMapLocked}
+          pitchEnabled={!isMapLocked}
         >
           <Mapbox.Camera
             ref={cameraRef}
-            followZoomLevel={location.isMapLocked ? 16 : 12}
-            followUserLocation={location.isMapLocked}
-            followUserMode={location.isMapLocked ? Mapbox.UserTrackingMode.FollowWithHeading : undefined}
-            followPitch={location.isMapLocked ? 45 : undefined}
+            followZoomLevel={isMapLocked ? 16 : 12}
+            followUserLocation={isMapLocked}
+            followUserMode={isMapLocked ? Mapbox.UserTrackingMode.FollowWithHeading : undefined}
+            followPitch={isMapLocked ? 45 : undefined}
           />
 
           {/* Render custom layers */}
           {renderMapLayers()}
           {renderActiveCustomLayers()}
 
-          {location.latitude && location.longitude ? (
-            <Mapbox.PointAnnotation id="userLocation" coordinate={[location.longitude, location.latitude]} anchor={{ x: 0.5, y: 0.5 }}>
-              <Animated.View
-                style={[
-                  styles.markerContainer,
-                  {
-                    transform: [{ scale: pulseAnim }],
-                  },
-                ]}
-              >
-                <View style={styles.markerOuterRing} />
-                <View style={[styles.markerInnerContainer, themedStyles.markerInnerContainer]}>
-                  <View style={styles.markerDot} />
-                  {location.heading !== null && location.heading !== undefined ? (
-                    <View
-                      style={[
-                        styles.directionIndicator,
-                        {
-                          transform: [{ rotate: `${location.heading}deg` }],
-                        },
-                      ]}
-                    />
-                  ) : null}
-                </View>
-              </Animated.View>
-            </Mapbox.PointAnnotation>
-          ) : null}
+          <UserLocationMarker pulseAnim={pulseAnim} innerContainerStyle={themedStyles.markerInnerContainer} />
           <MapPins pins={visibleMapPins} onPinPress={handlePinPress} />
         </Mapbox.MapView>
 

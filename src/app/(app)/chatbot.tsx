@@ -68,7 +68,14 @@ export default function ChatbotScreen() {
 
   const renderItem = useCallback(
     ({ item }: { item: ChatMessageResultData }) => (
-      <MessageBubble message={item} isOwn={!!item.SenderUserId && item.SenderUserId === currentUserId} showSender={false} currentUserId={currentUserId} onLongPress={setActionsMessage} onToggleReaction={() => undefined} />
+      <MessageBubble
+        message={item}
+        isOwn={!!item.SenderUserId && item.SenderUserId === currentUserId}
+        showSender={false}
+        currentUserId={currentUserId}
+        onLongPress={setActionsMessage}
+        onToggleReaction={() => undefined}
+      />
     ),
     [currentUserId]
   );

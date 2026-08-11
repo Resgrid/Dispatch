@@ -56,16 +56,17 @@ const mockCallsStore = {
 };
 
 const mockSecurityStore = {
-  canUserCreateCalls: true,
+  rights: { CanCreateCalls: true } as { CanCreateCalls: boolean } | undefined,
 };
 
 const mockAnalytics = {
   trackEvent: jest.fn(),
 };
 
-// Mock the stores with proper getState method
+// Mock the stores with proper getState method. The hook mocks apply an optional
+// selector, matching how zustand hooks are called with field selectors.
 jest.mock('@/stores/calls/store', () => {
-  const useCallsStore = jest.fn(() => mockCallsStore);
+  const useCallsStore = jest.fn((selector?: (state: typeof mockCallsStore) => unknown) => (selector ? selector(mockCallsStore) : mockCallsStore));
   (useCallsStore as any).getState = jest.fn(() => mockCallsStore);
 
   return {
@@ -73,9 +74,15 @@ jest.mock('@/stores/calls/store', () => {
   };
 });
 
-jest.mock('@/stores/security/store', () => ({
-  useSecurityStore: jest.fn(() => mockSecurityStore),
-}));
+jest.mock('@/stores/security/store', () => {
+  const securityStore = jest.fn((selector?: (state: typeof mockSecurityStore) => unknown) => (selector ? selector(mockSecurityStore) : mockSecurityStore));
+  (securityStore as any).getState = jest.fn(() => mockSecurityStore);
+
+  return {
+    securityStore,
+    useSecurityStore: jest.fn(() => ({ canUserCreateCalls: mockSecurityStore.rights?.CanCreateCalls })),
+  };
+});
 
 jest.mock('@/hooks/use-analytics', () => ({
   useAnalytics: jest.fn(() => mockAnalytics),
@@ -216,9 +223,9 @@ describe('CallsScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Reset mock returns to defaults
-    useCallsStore.mockReturnValue(mockCallsStore);
-    useSecurityStore.mockReturnValue(mockSecurityStore);
+    // Reset mock behavior to defaults (selector-aware, like the real zustand hooks)
+    useCallsStore.mockImplementation((selector?: (state: typeof mockCallsStore) => unknown) => (selector ? selector(mockCallsStore) : mockCallsStore));
+    useSecurityStore.mockImplementation(() => ({ canUserCreateCalls: mockSecurityStore.rights?.CanCreateCalls }));
     useAnalytics.mockReturnValue(mockAnalytics);
 
     // Reset the mock store state
@@ -227,13 +234,12 @@ describe('CallsScreen', () => {
     mockCallsStore.error = null;
     mockCallsStore.callPriorities = [];
 
-    mockSecurityStore.canUserCreateCalls = true;
+    mockSecurityStore.rights = { CanCreateCalls: true };
   });
 
   describe('when user has create calls permission', () => {
     beforeEach(() => {
-      mockSecurityStore.canUserCreateCalls = true;
-      useSecurityStore.mockReturnValue(mockSecurityStore);
+      mockSecurityStore.rights = { CanCreateCalls: true };
     });
 
     it('renders the new call FAB button', () => {
@@ -244,7 +250,7 @@ describe('CallsScreen', () => {
       expect(htmlContent).toBeTruthy();
 
       // Since we can see the button in debug output, let's just verify the mock is working
-      expect(mockSecurityStore.canUserCreateCalls).toBe(true);
+      expect(mockSecurityStore.rights?.CanCreateCalls).toBe(true);
     });
 
     it('navigates to new call screen when FAB is pressed', () => {
@@ -262,8 +268,7 @@ describe('CallsScreen', () => {
 
   describe('when user does not have create calls permission', () => {
     beforeEach(() => {
-      mockSecurityStore.canUserCreateCalls = false;
-      useSecurityStore.mockReturnValue(mockSecurityStore);
+      mockSecurityStore.rights = { CanCreateCalls: false };
     });
 
     it('does not render the new call FAB button', () => {
@@ -291,7 +296,7 @@ describe('CallsScreen', () => {
 
     beforeEach(() => {
       mockCallsStore.calls = mockCalls;
-      useCallsStore.mockReturnValue(mockCallsStore);
+      useCallsStore.mockImplementation((selector?: (state: typeof mockCallsStore) => unknown) => (selector ? selector(mockCallsStore) : mockCallsStore));
     });
 
     it('renders call cards for each call', () => {
@@ -333,7 +338,7 @@ describe('CallsScreen', () => {
   describe('loading and error states', () => {
     it('shows loading state when isLoading is true', () => {
       mockCallsStore.isLoading = true;
-      useCallsStore.mockReturnValue(mockCallsStore);
+      useCallsStore.mockImplementation((selector?: (state: typeof mockCallsStore) => unknown) => (selector ? selector(mockCallsStore) : mockCallsStore));
 
       render(<CallsScreen />);
 
@@ -346,7 +351,7 @@ describe('CallsScreen', () => {
 
     it('shows error state when there is an error', () => {
       mockCallsStore.error = 'Network error';
-      useCallsStore.mockReturnValue(mockCallsStore);
+      useCallsStore.mockImplementation((selector?: (state: typeof mockCallsStore) => unknown) => (selector ? selector(mockCallsStore) : mockCallsStore));
 
       render(<CallsScreen />);
 
@@ -359,7 +364,7 @@ describe('CallsScreen', () => {
 
     it('shows zero state when there are no calls', () => {
       mockCallsStore.calls = [];
-      useCallsStore.mockReturnValue(mockCallsStore);
+      useCallsStore.mockImplementation((selector?: (state: typeof mockCallsStore) => unknown) => (selector ? selector(mockCallsStore) : mockCallsStore));
 
       render(<CallsScreen />);
 
@@ -383,7 +388,7 @@ describe('CallsScreen', () => {
     it('tracks view rendered event with correct parameters', () => {
       const mockCalls = [{ CallId: 'call-1', Nature: 'Test' }];
       mockCallsStore.calls = mockCalls;
-      useCallsStore.mockReturnValue(mockCallsStore);
+      useCallsStore.mockImplementation((selector?: (state: typeof mockCallsStore) => unknown) => (selector ? selector(mockCallsStore) : mockCallsStore));
 
       render(<CallsScreen />);
 

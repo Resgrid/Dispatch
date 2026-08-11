@@ -213,12 +213,22 @@ export const useLiveKitStore = create<LiveKitState>((set, get) => ({
   },
 
   connectToRoom: async (roomInfo, token) => {
+    let room: Room | null = null;
     try {
       const { currentRoom, voipServerWebsocketSslAddress, requestPermissions } = get();
 
-      // Disconnect from current room if connected
+      // Disconnect from current room if connected - await it and strip listeners so
+      // events from the old room cannot fire into the new session's state.
       if (currentRoom) {
-        currentRoom.disconnect();
+        try {
+          currentRoom.removeAllListeners();
+          await currentRoom.disconnect();
+        } catch (disconnectError) {
+          logger.warn({
+            message: 'Failed to cleanly disconnect previous room before reconnect',
+            context: { error: disconnectError },
+          });
+        }
       }
 
       set({ isConnecting: true });
@@ -227,7 +237,7 @@ export const useLiveKitStore = create<LiveKitState>((set, get) => ({
       await requestPermissions();
 
       // Create a new room
-      const room = new Room();
+      room = new Room();
 
       // Setup room event listeners
       room.on(RoomEvent.ParticipantConnected, (participant) => {
@@ -236,7 +246,7 @@ export const useLiveKitStore = create<LiveKitState>((set, get) => ({
           context: { participantIdentity: participant.identity },
         });
         // Play connection sound when others join
-        if (participant.identity !== room.localParticipant.identity) {
+        if (participant.identity !== room?.localParticipant.identity) {
           //audioService.playConnectToAudioRoomSound();
         }
       });
@@ -251,6 +261,7 @@ export const useLiveKitStore = create<LiveKitState>((set, get) => ({
       });
 
       room.on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
+        if (!room) return;
         // Check if local participant is speaking
         const localParticipant = room.localParticipant;
         const isTalking = speakers.some((speaker) => speaker.sid === localParticipant.sid);
@@ -348,7 +359,24 @@ export const useLiveKitStore = create<LiveKitState>((set, get) => ({
         message: 'Failed to connect to room',
         context: { error },
       });
-      set({ isConnecting: false });
+
+      // Dispose of the partially-connected room so its socket and listeners don't leak
+      if (room) {
+        try {
+          room.removeAllListeners();
+          await room.disconnect();
+        } catch (cleanupError) {
+          logger.warn({
+            message: 'Failed to clean up room after connect failure',
+            context: { error: cleanupError },
+          });
+        }
+      }
+
+      set({ isConnecting: false, isConnected: false, currentRoom: null, currentRoomInfo: null });
+
+      // Rethrow so callers (e.g. usePTT) don't proceed as if the channel is live
+      throw error;
     }
   },
 
@@ -371,6 +399,7 @@ export const useLiveKitStore = create<LiveKitState>((set, get) => ({
         webAudioElements.clear();
       }
 
+      currentRoom.removeAllListeners();
       await currentRoom.disconnect();
       await audioService.playDisconnectedFromAudioRoomSound();
 
@@ -378,13 +407,17 @@ export const useLiveKitStore = create<LiveKitState>((set, get) => ({
       if (Platform.OS === 'android') {
         await get().stopAndroidForegroundService();
       }
-
-      set({
-        currentRoom: null,
-        currentRoomInfo: null,
-        isConnected: false,
-      });
     }
+
+    // Always reset state - a desynced store (connected flag true, room null) must
+    // still return to a clean disconnected state.
+    set({
+      currentRoom: null,
+      currentRoomInfo: null,
+      isConnected: false,
+      isConnecting: false,
+      isTalking: false,
+    });
   },
 
   fetchVoiceSettings: async () => {

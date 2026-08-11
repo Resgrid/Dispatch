@@ -9,6 +9,7 @@ import { Button, ButtonIcon, ButtonText } from '@/components/ui/button';
 import { HStack } from '@/components/ui/hstack';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
+import { useChatStore } from '@/stores/chat/store';
 import { useIncidentCommandStore } from '@/stores/incident-command/store';
 import { usePersonnelStore } from '@/stores/personnel/store';
 import { useSecurityStore } from '@/stores/security/store';
@@ -29,19 +30,37 @@ export const IncidentCommandTab: React.FC<IncidentCommandTabProps> = ({ callId, 
   const isLoading = useIncidentCommandStore((s) => s.isLoading);
   const board = useIncidentCommandStore((s) => s.board);
   const error = useIncidentCommandStore((s) => s.error);
-  const { canUserCreateCalls } = useSecurityStore();
+  // Working a command board is its own department permission, separate from Dispatch access. Without
+  // it every board endpoint returns 403, so say so plainly instead of loading into a failure.
+  const { canUserCreateCalls, canUserWorkCommand } = useSecurityStore();
+  const canWorkCommand = canUserWorkCommand !== false;
   const [isEstablishOpen, setIsEstablishOpen] = useState(false);
 
   useEffect(() => {
-    if (callId) {
+    if (callId && canWorkCommand) {
       useIncidentCommandStore.getState().loadForCall(callId);
       // Preload personnel + units so the board can resolve assignment / role names.
       usePersonnelStore.getState().fetchPersonnel();
       useUnitsStore.getState().fetchUnits();
+      // Chat channels for the incident. Archived ones are included so a closed incident's
+      // conversations stay readable as a point-in-time record.
+      void useChatStore.getState().loadIncidentChannels(callId);
     }
-  }, [callId]);
+  }, [callId, canWorkCommand]);
 
   const hasCommand = !!board && !!board.Command?.IncidentCommandId;
+
+  if (!canWorkCommand) {
+    return (
+      <Box className="p-6" testID="incident-command-not-authorized">
+        <VStack className="items-center space-y-3">
+          <NetworkIcon size={40} className="text-gray-400" />
+          <Text className="text-center text-base font-medium">{t('incident_command.not_authorized')}</Text>
+          <Text className="text-center text-sm text-gray-500">{t('incident_command.not_authorized_description')}</Text>
+        </VStack>
+      </Box>
+    );
+  }
 
   if (isLoading && !hasCommand) {
     return (

@@ -12,7 +12,14 @@ interface UseSignalRLifecycleOptions {
 
 export function useSignalRLifecycle({ isSignedIn, hasInitialized }: UseSignalRLifecycleOptions) {
   const { isActive, appState } = useAppLifecycle();
-  const signalRStore = useSignalRStore();
+  // Select only the actions needed - subscribing to the whole store re-creates the
+  // callbacks below (and re-runs the lifecycle effects) on every hub message
+  const connectUpdateHub = useSignalRStore((s) => s.connectUpdateHub);
+  const disconnectUpdateHub = useSignalRStore((s) => s.disconnectUpdateHub);
+  const connectGeolocationHub = useSignalRStore((s) => s.connectGeolocationHub);
+  const disconnectGeolocationHub = useSignalRStore((s) => s.disconnectGeolocationHub);
+  const connectChatHub = useSignalRStore((s) => s.connectChatHub);
+  const disconnectChatHub = useSignalRStore((s) => s.disconnectChatHub);
 
   // Track current values with refs for timer callbacks
   const currentIsActive = useRef(isActive);
@@ -64,7 +71,7 @@ export function useSignalRLifecycle({ isSignedIn, hasInitialized }: UseSignalRLi
     try {
       // Use Promise.allSettled to prevent one failure from blocking the other
       const hubNames = ['UpdateHub', 'GeolocationHub', 'ChatHub'];
-      const results = await Promise.allSettled([signalRStore.disconnectUpdateHub(), signalRStore.disconnectGeolocationHub(), signalRStore.disconnectChatHub()]);
+      const results = await Promise.allSettled([disconnectUpdateHub(), disconnectGeolocationHub(), disconnectChatHub()]);
 
       // Log any failures without throwing
       results.forEach((result, index) => {
@@ -86,7 +93,7 @@ export function useSignalRLifecycle({ isSignedIn, hasInitialized }: UseSignalRLi
         pendingOperations.current = null;
       }
     }
-  }, [signalRStore]);
+  }, [disconnectUpdateHub, disconnectGeolocationHub, disconnectChatHub]);
 
   const handleAppResume = useCallback(async () => {
     logger.debug({
@@ -118,7 +125,7 @@ export function useSignalRLifecycle({ isSignedIn, hasInitialized }: UseSignalRLi
     try {
       // Use Promise.allSettled to prevent one failure from blocking the other
       const hubNames = ['UpdateHub', 'GeolocationHub', 'ChatHub'];
-      const results = await Promise.allSettled([signalRStore.connectUpdateHub(), signalRStore.connectGeolocationHub(), signalRStore.connectChatHub()]);
+      const results = await Promise.allSettled([connectUpdateHub(), connectGeolocationHub(), connectChatHub()]);
 
       // Log any failures without throwing
       results.forEach((result, index) => {
@@ -140,7 +147,7 @@ export function useSignalRLifecycle({ isSignedIn, hasInitialized }: UseSignalRLi
         pendingOperations.current = null;
       }
     }
-  }, [signalRStore]);
+  }, [connectUpdateHub, connectGeolocationHub, connectChatHub]);
 
   // Clear timers helper
   const clearTimers = useCallback(() => {

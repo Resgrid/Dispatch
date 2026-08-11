@@ -74,6 +74,8 @@ describe('useSecurityStore', () => {
     CanCreateCalls: true,
     CanAddNote: true,
     CanCreateMessage: true,
+        CanLoginToDispatchApp: true,
+        CanLoginToCommandApp: true,
     Groups: [
       {
         GroupId: 1,
