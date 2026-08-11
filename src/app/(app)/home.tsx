@@ -869,7 +869,9 @@ export default function DispatchConsole() {
             </Box>
           ) : (
             <HStack space="sm">
-              <Box className="flex-1">
+              {/* Bounded height lets the panels' inner FlatLists virtualize; inside an
+                  unbounded ScrollView they would render every row at once */}
+              <Box className="flex-1" style={styles.nestedPanelBounded}>
                 <UnitsPanel
                   units={units}
                   isLoading={unitsLoading}
@@ -885,7 +887,7 @@ export default function DispatchConsole() {
                   onSetPersonnelStatusForCall={handleSetPersonnelStatusForCall}
                 />
               </Box>
-              <Box className="flex-1">
+              <Box className="flex-1" style={styles.nestedPanelBounded}>
                 <PersonnelPanel
                   personnel={personnel}
                   isLoading={personnelLoading}
@@ -916,26 +918,28 @@ export default function DispatchConsole() {
             />
           ) : null}
 
-          <ActivityLogPanel
-            debugId="phone"
-            entries={activityLog}
-            isLoading={false}
-            isCallFilterActive={isCallFilterActive}
-            selectedCallId={selectedCallId ?? undefined}
-            callActivity={selectedCallExtraData?.Activity}
-            radioLog={radioLog}
-            selectedUnitId={selectedUnitId ?? undefined}
-            selectedPersonnelId={selectedPersonnelId ?? undefined}
-            selectedPersonnel={selectedPersonnelData}
-            selectedUnit={selectedUnitData}
-            onStatusUpdated={handleStatusUpdated}
-            onStaffingUpdated={handleStaffingUpdated}
-            onUnitStatusUpdated={handleUnitStatusUpdated}
-            onCreateCall={handleCreateCall}
-            onViewCallDetails={handleViewCallDetails}
-            onCloseCall={handleCloseCallAction}
-            onAddCallNote={handleAddCallNoteAction}
-          />
+          <Box style={styles.nestedPanelBounded}>
+            <ActivityLogPanel
+              debugId="phone"
+              entries={activityLog}
+              isLoading={false}
+              isCallFilterActive={isCallFilterActive}
+              selectedCallId={selectedCallId ?? undefined}
+              callActivity={selectedCallExtraData?.Activity}
+              radioLog={radioLog}
+              selectedUnitId={selectedUnitId ?? undefined}
+              selectedPersonnelId={selectedPersonnelId ?? undefined}
+              selectedPersonnel={selectedPersonnelData}
+              selectedUnit={selectedUnitData}
+              onStatusUpdated={handleStatusUpdated}
+              onStaffingUpdated={handleStaffingUpdated}
+              onUnitStatusUpdated={handleUnitStatusUpdated}
+              onCreateCall={handleCreateCall}
+              onViewCallDetails={handleViewCallDetails}
+              onCloseCall={handleCloseCallAction}
+              onAddCallNote={handleAddCallNoteAction}
+            />
+          </Box>
         </VStack>
       </ScrollView>
     );
@@ -1002,5 +1006,9 @@ const styles = StyleSheet.create({
   },
   resourcesPanelBounded: {
     maxHeight: 400,
+  },
+  nestedPanelBounded: {
+    maxHeight: 400,
+    minHeight: 200,
   },
 });

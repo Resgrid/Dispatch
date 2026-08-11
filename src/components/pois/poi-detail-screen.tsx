@@ -24,11 +24,13 @@ export const PoiDetailScreen: React.FC = () => {
   const router = useRouter();
   const { t } = useTranslation();
   const showToast = useToastStore((state) => state.showToast);
-  const { selectedPoi, isLoadingDetail, detailError, fetchPoi, resetSelectedPoi } = usePoisStore();
-  const userLocation = useLocationStore((state) => ({
-    latitude: state.latitude,
-    longitude: state.longitude,
-  }));
+  // Field selectors - whole-store and object location selectors re-render this screen
+  // on every store/GPS update
+  const selectedPoi = usePoisStore((s) => s.selectedPoi);
+  const isLoadingDetail = usePoisStore((s) => s.isLoadingDetail);
+  const detailError = usePoisStore((s) => s.detailError);
+  const fetchPoi = usePoisStore((s) => s.fetchPoi);
+  const resetSelectedPoi = usePoisStore((s) => s.resetSelectedPoi);
 
   const poiId = useMemo(() => {
     const rawId = Array.isArray(id) ? id[0] : id;
@@ -52,7 +54,10 @@ export const PoiDetailScreen: React.FC = () => {
       return;
     }
 
-    const success = await openMapsWithDirections(selectedPoi.Latitude, selectedPoi.Longitude, getPoiPrimaryDisplayText(selectedPoi), userLocation.latitude || undefined, userLocation.longitude || undefined);
+    // Read the location imperatively - subscribing here would re-render on every GPS tick
+    const { latitude, longitude } = useLocationStore.getState();
+
+    const success = await openMapsWithDirections(selectedPoi.Latitude, selectedPoi.Longitude, getPoiPrimaryDisplayText(selectedPoi), latitude || undefined, longitude || undefined);
 
     if (!success) {
       showToast('error', t('pois.route_error'));

@@ -31,9 +31,25 @@ const MODERATION = '/ChatModeration';
 // Channels
 // ---------------------------------------------------------------------------
 
-export const getChannels = async (activeUnitId?: number, signal?: AbortSignal) => {
+/**
+ * The caller's channels. `includeArchived` pulls in the point-in-time record of closed incidents and
+ * calls — off by default so the everyday list stays current. `callId` narrows the result server-side
+ * to channels attached to that call (older servers ignore it and return the full list).
+ */
+export const getChannels = async (activeUnitId?: number, includeArchived = false, callId?: number, signal?: AbortSignal) => {
+  const params: Record<string, unknown> = {};
+  if (activeUnitId != null) {
+    params.activeUnitId = activeUnitId;
+  }
+  if (includeArchived) {
+    params.includeArchived = true;
+  }
+  if (callId != null) {
+    params.callId = callId;
+  }
+
   const response = await api.get<ChatV4Response<ChatChannelResultData[]>>(`${CHAT}/GetChannels`, {
-    params: activeUnitId != null ? { activeUnitId } : undefined,
+    params: Object.keys(params).length > 0 ? params : undefined,
     signal,
   });
   return response.data;

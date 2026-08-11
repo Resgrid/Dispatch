@@ -71,14 +71,12 @@ export const CheckInBottomSheet: React.FC<CheckInBottomSheetProps> = ({ isOpen, 
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
   const showToast = useToastStore((state) => state.showToast);
-  const { performCheckIn, isCheckingIn } = useCheckInStore();
+  // Field selectors - the whole-store form and the object location selector both
+  // re-render this sheet on every store/GPS update
+  const performCheckIn = useCheckInStore((s) => s.performCheckIn);
+  const isCheckingIn = useCheckInStore((s) => s.isCheckingIn);
   const units = useUnitsStore((s) => s.units);
   const personnel = usePersonnelStore((s) => s.personnel);
-  const userLocation = useLocationStore((state) => ({
-    latitude: state.latitude,
-    longitude: state.longitude,
-  }));
-
   const typeLabel = (timer: CheckInTimerStatusResultData) => {
     // Use TargetTypeName from API, fall back to translation key lookup
     if (timer.TargetTypeName) return timer.TargetTypeName;
@@ -132,12 +130,16 @@ export const CheckInBottomSheet: React.FC<CheckInBottomSheetProps> = ({ isOpen, 
     }
 
     try {
+      // Read the location imperatively - subscribing here would re-render the sheet
+      // on every GPS tick while it is open
+      const { latitude, longitude } = useLocationStore.getState();
+
       const success = await performCheckIn({
         CallId: effectiveCallId,
         CheckInType: selected.TargetType,
         UnitId: resolvedUnitId || undefined,
-        Latitude: userLocation.latitude?.toString() || undefined,
-        Longitude: userLocation.longitude?.toString() || undefined,
+        Latitude: latitude?.toString() || undefined,
+        Longitude: longitude?.toString() || undefined,
         Note: note || undefined,
       });
 

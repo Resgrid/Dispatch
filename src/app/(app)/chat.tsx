@@ -110,7 +110,7 @@ export default function ChatScreen() {
         router.push('/chatbot' as Href);
         return;
       }
-      router.push(`/chat/${channelId}` as Href);
+      router.push({ pathname: '/chat/[channelId]', params: { channelId } });
     },
     [router]
   );

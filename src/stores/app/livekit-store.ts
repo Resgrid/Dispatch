@@ -71,6 +71,26 @@ const setupAudioRouting = async (room: Room): Promise<void> => {
 
 // Map to store web audio elements for cleanup (keyed by track SID)
 const webAudioElements = new Map<string, HTMLAudioElement>();
+
+// Remove every attached web audio element from the document and clear the map.
+// Must run before removeAllListeners()/disconnect() on a room being torn down:
+// once listeners are stripped, TrackUnsubscribed can no longer fire and the old
+// room's elements would otherwise stay in the DOM forever.
+const cleanupWebAudioElements = (): void => {
+  if (Platform.OS !== 'web') return;
+  webAudioElements.forEach((audioElement, trackSid) => {
+    try {
+      audioElement.pause();
+      audioElement.remove();
+    } catch (err) {
+      logger.warn({
+        message: 'Failed to clean up audio element',
+        context: { error: err, trackSid },
+      });
+    }
+  });
+  webAudioElements.clear();
+};
 interface LiveKitState {
   // Connection state
   isConnected: boolean;
@@ -213,12 +233,23 @@ export const useLiveKitStore = create<LiveKitState>((set, get) => ({
   },
 
   connectToRoom: async (roomInfo, token) => {
+    let room: Room | null = null;
     try {
       const { currentRoom, voipServerWebsocketSslAddress, requestPermissions } = get();
 
-      // Disconnect from current room if connected
+      // Disconnect from current room if connected - await it and strip listeners so
+      // events from the old room cannot fire into the new session's state.
       if (currentRoom) {
-        currentRoom.disconnect();
+        try {
+          cleanupWebAudioElements();
+          currentRoom.removeAllListeners();
+          await currentRoom.disconnect();
+        } catch (disconnectError) {
+          logger.warn({
+            message: 'Failed to cleanly disconnect previous room before reconnect',
+            context: { error: disconnectError },
+          });
+        }
       }
 
       set({ isConnecting: true });
@@ -227,7 +258,7 @@ export const useLiveKitStore = create<LiveKitState>((set, get) => ({
       await requestPermissions();
 
       // Create a new room
-      const room = new Room();
+      room = new Room();
 
       // Setup room event listeners
       room.on(RoomEvent.ParticipantConnected, (participant) => {
@@ -236,7 +267,7 @@ export const useLiveKitStore = create<LiveKitState>((set, get) => ({
           context: { participantIdentity: participant.identity },
         });
         // Play connection sound when others join
-        if (participant.identity !== room.localParticipant.identity) {
+        if (participant.identity !== room?.localParticipant.identity) {
           //audioService.playConnectToAudioRoomSound();
         }
       });
@@ -251,6 +282,7 @@ export const useLiveKitStore = create<LiveKitState>((set, get) => ({
       });
 
       room.on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
+        if (!room) return;
         // Check if local participant is speaking
         const localParticipant = room.localParticipant;
         const isTalking = speakers.some((speaker) => speaker.sid === localParticipant.sid);
@@ -348,41 +380,53 @@ export const useLiveKitStore = create<LiveKitState>((set, get) => ({
         message: 'Failed to connect to room',
         context: { error },
       });
-      set({ isConnecting: false });
+
+      // Dispose of the partially-connected room so its socket and listeners don't leak
+      if (room) {
+        try {
+          room.removeAllListeners();
+          await room.disconnect();
+        } catch (cleanupError) {
+          logger.warn({
+            message: 'Failed to clean up room after connect failure',
+            context: { error: cleanupError },
+          });
+        }
+      }
+
+      set({ isConnecting: false, isConnected: false, currentRoom: null, currentRoomInfo: null, isTalking: false });
+
+      // Rethrow so callers (e.g. usePTT) don't proceed as if the channel is live
+      throw error;
     }
   },
 
   disconnectFromRoom: async () => {
     const { currentRoom } = get();
-    if (currentRoom) {
-      // Clean up web audio elements before disconnecting
-      if (Platform.OS === 'web') {
-        webAudioElements.forEach((audioElement, trackSid) => {
-          try {
-            audioElement.pause();
-            audioElement.remove();
-          } catch (err) {
-            logger.warn({
-              message: 'Failed to clean up audio element',
-              context: { error: err, trackSid },
-            });
-          }
-        });
-        webAudioElements.clear();
+    try {
+      if (currentRoom) {
+        // Clean up web audio elements before disconnecting
+        cleanupWebAudioElements();
+
+        currentRoom.removeAllListeners();
+        await currentRoom.disconnect();
+        await audioService.playDisconnectedFromAudioRoomSound();
+
+        // Stop foreground service only on Android
+        if (Platform.OS === 'android') {
+          await get().stopAndroidForegroundService();
+        }
       }
-
-      await currentRoom.disconnect();
-      await audioService.playDisconnectedFromAudioRoomSound();
-
-      // Stop foreground service only on Android
-      if (Platform.OS === 'android') {
-        await get().stopAndroidForegroundService();
-      }
-
+    } finally {
+      // Always reset state - when teardown partially fails (disconnect or audio
+      // playback rejecting) and when the store is desynced (connected flag true,
+      // room null), the store must still end in a clean disconnected state.
       set({
         currentRoom: null,
         currentRoomInfo: null,
         isConnected: false,
+        isConnecting: false,
+        isTalking: false,
       });
     }
   },

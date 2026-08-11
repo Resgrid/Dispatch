@@ -1,6 +1,6 @@
 import axios, { type AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
 
-import { refreshTokenRequest } from '@/lib/auth/api';
+import { performTokenRefresh } from '@/lib/auth/token-refresh';
 import { logger } from '@/lib/logging';
 import { getBaseApiUrl } from '@/lib/storage/app';
 import useAuthStore from '@/stores/auth/store';
@@ -78,35 +78,31 @@ axiosInstance.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = useAuthStore.getState().refreshToken;
-        if (!refreshToken) {
-          throw new Error('No refresh token available');
+        // Single-flight refresh shared with the auth store's refresh timer, so a
+        // timer refresh and a 401-triggered refresh can never rotate the refresh
+        // token twice in parallel. Failure handling (logout) happens inside
+        // performTokenRefresh.
+        const refreshed = await performTokenRefresh();
+        if (!refreshed) {
+          throw new Error('Token refresh failed');
         }
 
-        const response = await refreshTokenRequest(refreshToken);
-        const { access_token, refresh_token: newRefreshToken } = response;
-
-        // Update tokens in store
-        useAuthStore.setState({
-          accessToken: access_token,
-          refreshToken: newRefreshToken,
-          status: 'signedIn',
-          error: null,
-        });
+        const accessToken = useAuthStore.getState().accessToken;
+        if (!accessToken) {
+          throw new Error('No access token available after refresh');
+        }
 
         // Update Authorization header
-        axiosInstance.defaults.headers.common.Authorization = `Bearer ${access_token}`;
-        originalRequest.headers.Authorization = `Bearer ${access_token}`;
+        axiosInstance.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
 
         processQueue(null);
         return axiosInstance(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError as Error);
-        // Handle refresh token failure
-        useAuthStore.getState().logout();
         logger.error({
           message: 'Token refresh failed',
-          context: { error: refreshError },
+          context: { error: refreshError instanceof Error ? refreshError.message : String(refreshError) },
         });
         return Promise.reject(refreshError);
       } finally {

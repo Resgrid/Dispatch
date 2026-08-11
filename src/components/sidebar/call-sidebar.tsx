@@ -20,11 +20,11 @@ import { HStack } from '../ui/hstack';
 
 export const SidebarCallCard = () => {
   const { colorScheme } = useColorScheme();
-  const { activeCall, activePriorityId, setActiveCall } = useCoreStore((state) => ({
-    activeCall: state.activeCall,
-    activePriorityId: state.activePriority,
-    setActiveCall: state.setActiveCall,
-  }));
+  // Individual selectors - an object selector without shallow comparison returns a new
+  // reference every call and re-renders on every store update
+  const activeCall = useCoreStore((state) => state.activeCall);
+  const activePriorityId = useCoreStore((state) => state.activePriority);
+  const setActiveCall = useCoreStore((state) => state.setActiveCall);
 
   // Get the actual priority object from the calls store
   const activePriority = useCallsStore((state) => (activePriorityId ? state.getPriorityById(activePriorityId) : undefined));

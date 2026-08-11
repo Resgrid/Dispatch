@@ -9,6 +9,18 @@ export class DepartmentRightsResultData {
   public CanCreateCalls: boolean = false; // Can Create Calls
   public CanAddNote: boolean = false; // Can Add a Note
   public CanCreateMessage: boolean = false; // Can Add a Message
+  /**
+   * Whether this user may use the Dispatch app at all. Dispatch surfaces private command, unit and
+   * responder traffic, so departments can restrict it; defaults to true for everyone when the
+   * permission has never been configured.
+   */
+  public CanLoginToDispatchApp: boolean = true;
+  /**
+   * Whether this user may work incident command: read command boards and act on them. A dispatcher
+   * assisting an incident needs this in addition to Dispatch access. Defaults to true for everyone
+   * when the department has never configured the permission.
+   */
+  public CanLoginToCommandApp: boolean = true;
   public Groups: GroupRightResultData[] = []; // Group Rights
 }
 

@@ -17,6 +17,8 @@ describe('useSignalRLifecycle', () => {
   const mockDisconnectUpdateHub = jest.fn();
   const mockConnectGeolocationHub = jest.fn();
   const mockDisconnectGeolocationHub = jest.fn();
+  const mockConnectChatHub = jest.fn();
+  const mockDisconnectChatHub = jest.fn();
 
   // Create shared state for app lifecycle that can be updated
   let appLifecycleState = {
@@ -42,15 +44,19 @@ describe('useSignalRLifecycle', () => {
       isActive: true,
     };
 
-    // Mock SignalR store
-    mockUseSignalRStore.mockReturnValue({
+    // Mock SignalR store (selector-aware, like the real zustand hook)
+    const signalRStoreState: any = {
       connectUpdateHub: mockConnectUpdateHub,
       disconnectUpdateHub: mockDisconnectUpdateHub,
       connectGeolocationHub: mockConnectGeolocationHub,
       disconnectGeolocationHub: mockDisconnectGeolocationHub,
+      connectChatHub: mockConnectChatHub,
+      disconnectChatHub: mockDisconnectChatHub,
       isUpdateHubConnected: false,
       isGeolocationHubConnected: false,
-    } as any);
+      isChatHubConnected: false,
+    };
+    mockUseSignalRStore.mockImplementation((selector?: (state: any) => unknown) => (selector ? selector(signalRStoreState) : signalRStoreState) as any);
 
     // Mock useAppLifecycle to return shared state
     mockUseAppLifecycle.mockImplementation(() => appLifecycleState);

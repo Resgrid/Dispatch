@@ -13,6 +13,14 @@ jest.mock('react-native', () => ({
   },
 }));
 
+// Mock expo-router - pulling in the real module drags @react-navigation into the
+// module graph, which needs far more of the RN API surface than the mock above has
+jest.mock('expo-router', () => ({
+  router: {
+    push: jest.fn(),
+  },
+}));
+
 // Mock the logger
 jest.mock('../logging', () => ({
   logger: {
