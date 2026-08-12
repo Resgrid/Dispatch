@@ -120,6 +120,55 @@ describe('chat hub invocations', () => {
   });
 });
 
+describe('active-channel marker resynchronization', () => {
+  // syncActiveChannelMarker settles on the microtask queue; two ticks drain it.
+  const flush = async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  };
+
+  beforeEach(async () => {
+    mockInvoke.mockClear();
+    mockInvoke.mockResolvedValue(undefined);
+    useChatStore.getState().reset();
+    await flush();
+    mockInvoke.mockClear();
+  });
+
+  it('re-asserts a non-null marker on reconnect', async () => {
+    useChatStore.getState().setActiveChannel('channel-1');
+    await flush();
+    mockInvoke.mockClear();
+
+    useChatStore.getState().handleChatConnected();
+
+    expect(mockInvoke).toHaveBeenCalledWith('chatHub', 'SetActiveChannel', 'channel-1', null);
+  });
+
+  it('retries a null marker that failed to send once reconnected', async () => {
+    mockInvoke.mockRejectedValue(new Error('disconnected'));
+    useChatStore.getState().setActiveChannel(null);
+    await flush();
+    mockInvoke.mockClear();
+    mockInvoke.mockResolvedValue(undefined);
+
+    useChatStore.getState().handleChatConnected();
+
+    expect(mockInvoke).toHaveBeenCalledWith('chatHub', 'SetActiveChannel', null, null);
+  });
+
+  it('does not resend a null marker the hub already confirmed', async () => {
+    useChatStore.getState().setActiveChannel(null);
+    await flush();
+    mockInvoke.mockClear();
+
+    useChatStore.getState().handleChatConnected();
+    await flush();
+
+    expect(mockInvoke).not.toHaveBeenCalledWith('chatHub', 'SetActiveChannel', expect.anything(), expect.anything());
+  });
+});
+
 describe('incoming message normalization', () => {
   beforeEach(() => {
     useChatStore.setState({ messagesByChannel: {}, channels: [] });
