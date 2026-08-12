@@ -8,6 +8,7 @@
  *   JoinChannel(string channelId, int? asUnitId)
  *   Typing(string channelId, string displayName, bool isTyping, int? asUnitId)
  *   MarkRead(string channelId, long seq, int? asUnitId)
+ *   SetActiveChannel(string channelId, int? asUnitId)
  */
 const mockInvoke = jest.fn().mockResolvedValue(undefined);
 
@@ -71,6 +72,15 @@ describe('chat hub invocations', () => {
     expect(mockInvoke).toHaveBeenCalledWith('chatHub', 'JoinChannel', 'channel-1', null);
   });
 
+  it('sends both SetActiveChannel arguments, with null clearing the marker', () => {
+    useChatStore.getState().setActiveChannel('channel-1');
+    expect(mockInvoke).toHaveBeenCalledWith('chatHub', 'SetActiveChannel', 'channel-1', null);
+
+    mockInvoke.mockClear();
+    useChatStore.getState().setActiveChannel(null);
+    expect(mockInvoke).toHaveBeenCalledWith('chatHub', 'SetActiveChannel', null, null);
+  });
+
   it('sends all four Typing arguments in hub order', () => {
     useChatStore.getState().sendTyping('channel-1', true);
 
@@ -107,6 +117,55 @@ describe('chat hub invocations', () => {
     await useChatStore.getState().markChannelRead('channel-1');
 
     expect(mockInvoke).toHaveBeenCalledWith('chatHub', 'MarkRead', 'channel-1', 42, null);
+  });
+});
+
+describe('active-channel marker resynchronization', () => {
+  // syncActiveChannelMarker settles on the microtask queue; two ticks drain it.
+  const flush = async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  };
+
+  beforeEach(async () => {
+    mockInvoke.mockClear();
+    mockInvoke.mockResolvedValue(undefined);
+    useChatStore.getState().reset();
+    await flush();
+    mockInvoke.mockClear();
+  });
+
+  it('re-asserts a non-null marker on reconnect', async () => {
+    useChatStore.getState().setActiveChannel('channel-1');
+    await flush();
+    mockInvoke.mockClear();
+
+    useChatStore.getState().handleChatConnected();
+
+    expect(mockInvoke).toHaveBeenCalledWith('chatHub', 'SetActiveChannel', 'channel-1', null);
+  });
+
+  it('retries a null marker that failed to send once reconnected', async () => {
+    mockInvoke.mockRejectedValue(new Error('disconnected'));
+    useChatStore.getState().setActiveChannel(null);
+    await flush();
+    mockInvoke.mockClear();
+    mockInvoke.mockResolvedValue(undefined);
+
+    useChatStore.getState().handleChatConnected();
+
+    expect(mockInvoke).toHaveBeenCalledWith('chatHub', 'SetActiveChannel', null, null);
+  });
+
+  it('does not resend a null marker the hub already confirmed', async () => {
+    useChatStore.getState().setActiveChannel(null);
+    await flush();
+    mockInvoke.mockClear();
+
+    useChatStore.getState().handleChatConnected();
+    await flush();
+
+    expect(mockInvoke).not.toHaveBeenCalledWith('chatHub', 'SetActiveChannel', expect.anything(), expect.anything());
   });
 });
 

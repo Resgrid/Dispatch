@@ -384,6 +384,8 @@
     "open_assistant": "Відкрити асистента",
     "create_conversation_failed": "Не вдалося розпочати розмову",
     "group_name": "Назва групи",
+    "group_name_optional": "Назва групи (необов'язково)",
+    "unit": "Підрозділ",
     "search_people": "Пошук людей",
     "no_people": "Людей не знайдено",
     "create_group_with": "Створити групу ({{count}})",

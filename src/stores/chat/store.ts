@@ -233,6 +233,23 @@ async function safeInvoke(method: string, ...args: unknown[]): Promise<void> {
   }
 }
 
+/** Active-channel marker the hub has not confirmed yet. Kept — null included, since
+ * null means "clear the marker" — until an invoke succeeds, so a send that failed
+ * while offline can be replayed on reconnect. */
+let pendingActiveChannelSync: { channelId: string | null } | null = null;
+
+async function syncActiveChannelMarker(channelId: string | null): Promise<void> {
+  const marker = { channelId };
+  pendingActiveChannelSync = marker;
+  try {
+    await signalRService.invoke(Env.CHAT_HUB_NAME, 'SetActiveChannel', channelId, null);
+    // Only clear if no newer marker superseded this one while in flight.
+    if (pendingActiveChannelSync === marker) pendingActiveChannelSync = null;
+  } catch (error) {
+    logger.debug({ message: 'chat: invoke SetActiveChannel skipped', context: { error } });
+  }
+}
+
 export const useChatStore = create<ChatState>()(
   persist(
     (set, get) => ({
@@ -285,6 +302,9 @@ export const useChatStore = create<ChatState>()(
 
       setActiveChannel: (channelId: string | null) => {
         set({ activeChannelId: channelId });
+        // Report the actively viewed conversation to the hub so the server can
+        // suppress push notifications for it; null clears the marker.
+        void syncActiveChannelMarker(channelId ?? null);
       },
 
       // ------------------------------------------------------------------
@@ -851,6 +871,13 @@ export const useChatStore = create<ChatState>()(
           void get().joinChannel(activeChannelId);
           void get().loadNewerMessages(activeChannelId);
         }
+        // Re-report the active conversation so the server-side notification
+        // suppression marker survives reconnects. A pending null (screen closed
+        // while offline) is flushed too, so the server stops suppressing push
+        // for a channel no longer on screen.
+        if (activeChannelId !== null || pendingActiveChannelSync !== null) {
+          void syncActiveChannelMarker(activeChannelId);
+        }
       },
 
       reset: () => {
@@ -859,6 +886,7 @@ export const useChatStore = create<ChatState>()(
         lastTypingSentAt.clear();
         lastMarkedSeq.clear();
         pendingChatbotMessages.clear();
+        pendingActiveChannelSync = null;
         clearChatbotTypingTimeout();
         if (outboxDrainTimer) {
           clearTimeout(outboxDrainTimer);

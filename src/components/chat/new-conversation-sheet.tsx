@@ -1,4 +1,4 @@
-import { Check, Search, Users } from 'lucide-react-native';
+import { Check, Search, Truck, Users } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -34,8 +34,15 @@ function recipientUserId(recipient: RecipientsResultData): string {
 }
 
 function isPersonRecipient(recipient: RecipientsResultData): boolean {
+  // Recipients with an empty Type are the server's pseudo-entries
+  // ({ Id: "0", Name: "Everyone" } / { Id: "-1", Name: "Nobody" }) — never DM targets.
   const type = (recipient.Type ?? '').toLowerCase();
-  return type === 'personnel' || type === 'person' || type === 'user' || type === 'p' || type === '';
+  return type === 'personnel' || type === 'person' || type === 'user' || type === 'p';
+}
+
+function isUnitRecipient(recipient: RecipientsResultData): boolean {
+  const type = (recipient.Type ?? '').toLowerCase();
+  return type === 'unit' || type === 'units' || type === 'u';
 }
 
 export function NewConversationSheet({ isOpen, onClose, mode, onCreated }: NewConversationSheetProps) {
@@ -56,10 +63,13 @@ export function NewConversationSheet({ isOpen, onClose, mode, onCreated }: NewCo
     setQuery('');
     setLoadError(false);
     setLoading(true);
-    getRecipients(true, false)
+    // DM mode also offers units (Dispatch can open a 1:1 with a unit);
+    // group membership only supports users, so group mode stays people-only.
+    const includeUnits = mode === 'dm';
+    getRecipients(true, includeUnits)
       .then((result) => {
         if (cancelled) return;
-        setRecipients((result.Data ?? []).filter(isPersonRecipient));
+        setRecipients((result.Data ?? []).filter((r) => isPersonRecipient(r) || (includeUnits && isUnitRecipient(r))));
       })
       .catch((error) => {
         if (cancelled) return;
@@ -73,7 +83,7 @@ export function NewConversationSheet({ isOpen, onClose, mode, onCreated }: NewCo
     return () => {
       cancelled = true;
     };
-  }, [isOpen]);
+  }, [isOpen, mode]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -94,7 +104,8 @@ export function NewConversationSheet({ isOpen, onClose, mode, onCreated }: NewCo
     async (recipient: RecipientsResultData) => {
       setSubmitting(true);
       try {
-        const response = await createDirectMessage({ TargetUserId: recipientUserId(recipient) });
+        const targetId = recipientUserId(recipient);
+        const response = await createDirectMessage(isUnitRecipient(recipient) ? { TargetUnitId: parseInt(targetId, 10) } : { TargetUserId: targetId });
         if (response.Data?.ChatChannelId) {
           onCreated(response.Data.ChatChannelId);
           onClose();
@@ -110,9 +121,10 @@ export function NewConversationSheet({ isOpen, onClose, mode, onCreated }: NewCo
   );
 
   const createGroup = useCallback(async () => {
-    if (!groupName.trim() || selected.size === 0) return;
+    if (selected.size === 0) return;
     setSubmitting(true);
     try {
+      // Name is optional — the server auto-names the group after its members.
       const response = await createAdHocChannel({ Name: groupName.trim(), MemberUserIds: Array.from(selected) });
       if (response.Data?.ChatChannelId) {
         onCreated(response.Data.ChatChannelId);
@@ -139,7 +151,7 @@ export function NewConversationSheet({ isOpen, onClose, mode, onCreated }: NewCo
 
           {mode === 'group' ? (
             <Input>
-              <InputField placeholder={t('chat.group_name')} value={groupName} onChangeText={setGroupName} />
+              <InputField placeholder={t('chat.group_name_optional')} value={groupName} onChangeText={setGroupName} />
             </Input>
           ) : null}
 
@@ -167,16 +179,28 @@ export function NewConversationSheet({ isOpen, onClose, mode, onCreated }: NewCo
               {filtered.map((recipient) => {
                 const userId = recipientUserId(recipient);
                 const isSelected = selected.has(userId);
+                const isUnit = isUnitRecipient(recipient);
                 return (
                   <Pressable key={recipient.Id} className="py-2" onPress={() => (mode === 'dm' ? startDirectMessage(recipient) : toggle(userId))} disabled={submitting}>
                     <HStack className="items-center justify-between">
                       <HStack className="flex-1 items-center" space="sm">
-                        <Avatar size="sm">
-                          <AvatarImage source={{ uri: getAvatarUrl(userId) }} />
-                        </Avatar>
+                        {isUnit ? (
+                          <Center className="size-8 rounded-full bg-secondary-200">
+                            <Truck size={16} color="#6b7280" />
+                          </Center>
+                        ) : (
+                          <Avatar size="sm">
+                            <AvatarImage source={{ uri: getAvatarUrl(userId) }} />
+                          </Avatar>
+                        )}
                         <Text className="flex-1 text-typography-900" numberOfLines={1}>
                           {recipient.Name}
                         </Text>
+                        {isUnit ? (
+                          <Box className="rounded-full bg-secondary-200 px-2 py-0.5">
+                            <Text className="text-xs text-typography-600">{t('chat.unit')}</Text>
+                          </Box>
+                        ) : null}
                       </HStack>
                       {mode === 'group' && isSelected ? (
                         <Box className="rounded-full bg-primary-600 p-1">
@@ -191,7 +215,7 @@ export function NewConversationSheet({ isOpen, onClose, mode, onCreated }: NewCo
           )}
 
           {mode === 'group' ? (
-            <Button className="mb-2 w-full bg-primary-600" onPress={createGroup} isDisabled={submitting || !groupName.trim() || selected.size === 0}>
+            <Button className="mb-2 w-full bg-primary-600" onPress={createGroup} isDisabled={submitting || selected.size === 0}>
               <Users size={18} color="#ffffff" />
               <ButtonText className="ml-2">{t('chat.create_group_with', { count: selected.size })}</ButtonText>
             </Button>

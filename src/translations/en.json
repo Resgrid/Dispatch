@@ -384,6 +384,8 @@
     "open_assistant": "Open Assistant",
     "create_conversation_failed": "Could not start the conversation",
     "group_name": "Group name",
+    "group_name_optional": "Group name (optional)",
+    "unit": "Unit",
     "search_people": "Search people",
     "no_people": "No people found",
     "create_group_with": "Create group ({{count}})",

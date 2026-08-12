@@ -384,6 +384,8 @@
     "open_assistant": "Otwórz asystenta",
     "create_conversation_failed": "Nie można rozpocząć rozmowy",
     "group_name": "Nazwa grupy",
+    "group_name_optional": "Nazwa grupy (opcjonalnie)",
+    "unit": "Jednostka",
     "search_people": "Szukaj osób",
     "no_people": "Nie znaleziono osób",
     "create_group_with": "Utwórz grupę ({{count}})",
