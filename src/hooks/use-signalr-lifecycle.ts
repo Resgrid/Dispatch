@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 
 import { logger } from '@/lib/logging';
+import { useIncidentCommandStore } from '@/stores/incident-command/store';
 import { useSignalRStore } from '@/stores/signalr/signalr-store';
 
 import { useAppLifecycle } from './use-app-lifecycle';
@@ -136,6 +137,16 @@ export function useSignalRLifecycle({ isSignedIn, hasInitialized }: UseSignalRLi
           });
         }
       });
+
+      // The hubs replay nothing that was pushed while the app was away, so board changes another
+      // user made during the gap would stay invisible. Reconnecting restores the feed; this
+      // backfills what it missed.
+      if (results[0].status === 'fulfilled') {
+        const openCallId = useIncidentCommandStore.getState().callId;
+        if (openCallId) {
+          useIncidentCommandStore.getState().handleIncidentCommandUpdated(openCallId);
+        }
+      }
     } catch (error) {
       logger.error({
         message: 'Unexpected error during SignalR reconnect on app resume',

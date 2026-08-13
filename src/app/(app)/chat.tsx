@@ -35,7 +35,12 @@ function ChannelRow({ channel, onPress }: { channel: ChatChannelResultData; onPr
         </Avatar>
       );
     }
-    const isIncident = channel.ChannelType === ChatChannelType.Incident || channel.ChannelType === ChatChannelType.IncidentLane || channel.ChannelType === ChatChannelType.IncidentCommand;
+    const isIncident =
+      channel.ChannelType === ChatChannelType.Incident ||
+      channel.ChannelType === ChatChannelType.IncidentLane ||
+      channel.ChannelType === ChatChannelType.IncidentCommand ||
+      channel.ChannelType === ChatChannelType.IncidentLeads ||
+      channel.ChannelType === ChatChannelType.IncidentDispatch;
     const Icon = channel.ChannelType === ChatChannelType.Chatbot ? Sparkles : isIncident ? Network : Users;
     return (
       <Box className="size-10 items-center justify-center rounded-full bg-primary-100">

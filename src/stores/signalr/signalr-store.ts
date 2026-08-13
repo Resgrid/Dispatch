@@ -220,6 +220,22 @@ let updateHubHandlers: EventHandlers = {
 };
 
 /**
+ * Lifecycle listeners for the update hub (reconnect/disconnect), kept apart from the method handlers
+ * so they can be torn down without touching the event subscriptions.
+ */
+const updateHubLifecycleHandlers: Record<string, ((...args: unknown[]) => void) | null> = {};
+
+function unregisterUpdateHubLifecycleHandlers(): void {
+  Object.keys(updateHubLifecycleHandlers).forEach((event) => {
+    const handler = updateHubLifecycleHandlers[event];
+    if (handler) {
+      signalRService.off(event, handler);
+      updateHubLifecycleHandlers[event] = null;
+    }
+  });
+}
+
+/**
  * Helper function to unregister all update hub event handlers
  */
 function unregisterUpdateHubHandlers(): void {
@@ -526,6 +542,47 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
       };
       signalRService.on('onConnected', updateHubHandlers.onConnected);
 
+      /**
+       * An automatic reconnect gets a new connection id, so the department group joined above is gone
+       * with the old one — without re-announcing, the app goes quiet and stops seeing other users'
+       * board changes until it is backgrounded and resumed. The hub also replays nothing from the
+       * outage, so the open board is reloaded once the group is rejoined.
+       */
+      unregisterUpdateHubLifecycleHandlers();
+
+      const updateReconnected = `${SignalRService.HUB_RECONNECTED_EVENT}:${Env.CHANNEL_HUB_NAME}`;
+      const onUpdateReconnected = () => {
+        const reconnectDepartmentId = Number(securityStore.getState().rights?.DepartmentId ?? '0');
+        if (!Number.isFinite(reconnectDepartmentId)) {
+          return;
+        }
+        signalRService
+          .invoke(Env.CHANNEL_HUB_NAME, 'connect', reconnectDepartmentId)
+          .then(() => {
+            set({ isUpdateHubConnected: true, error: null });
+            logger.info({ message: 'Re-announced to update hub after reconnect; reloading incident command', context: { departmentId: reconnectDepartmentId } });
+            // Lazy import to avoid circular dependency
+            const { useIncidentCommandStore } = require('../incident-command/store');
+            const openCallId = useIncidentCommandStore.getState().callId;
+            if (openCallId) {
+              useIncidentCommandStore.getState().handleIncidentCommandUpdated(openCallId);
+            }
+          })
+          .catch((error) => {
+            logger.warn({ message: 'Failed to re-announce to update hub after reconnect', context: { error } });
+          });
+      };
+      updateHubLifecycleHandlers[updateReconnected] = onUpdateReconnected;
+      signalRService.on(updateReconnected, onUpdateReconnected);
+
+      const updateDisconnected = `${SignalRService.HUB_DISCONNECTED_EVENT}:${Env.CHANNEL_HUB_NAME}`;
+      const onUpdateDisconnected = () => {
+        // Clearing the flag is what lets connectUpdateHub rebuild the session later.
+        set({ isUpdateHubConnected: false });
+      };
+      updateHubLifecycleHandlers[updateDisconnected] = onUpdateDisconnected;
+      signalRService.on(updateDisconnected, onUpdateDisconnected);
+
       // Note: Connection state monitoring is now handled internally by the SignalR service
       // The service properly tracks connection state and will emit events through the registered handlers
       // We don't need to access internal connection objects anymore
@@ -547,6 +604,7 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
     try {
       // Unregister all handlers BEFORE disconnecting to prevent memory leaks
       unregisterUpdateHubHandlers();
+      unregisterUpdateHubLifecycleHandlers();
 
       await signalRService.disconnectFromHub(Env.CHANNEL_HUB_NAME);
       set({ isUpdateHubConnected: false, lastUpdateMessage: null });

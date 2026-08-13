@@ -4,9 +4,43 @@ import { createInput } from '@gluestack-ui/core/input/creator';
 import { tva, useStyleContext, type VariantProps, withStyleContext } from '@gluestack-ui/utils/nativewind-utils';
 import { styled } from 'nativewind';
 import React from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import { Platform, Pressable, TextInput, View } from 'react-native';
 
 const SCOPE = 'INPUT';
+
+/**
+ * Android field metrics, applied from JS because the class layer cannot express them correctly.
+ *
+ * Measured on device, each case a real Input/InputField:
+ *   - the class `h-full` (height: 100%) resolves taller than the fixed-height parent on Android, and
+ *     the parent's overflow-hidden then clips the top of the glyphs;
+ *   - an explicit pixel height matching the parent renders correctly;
+ *   - overriding only the lineHeight, at either the class or the style layer, does not help;
+ *   - lineHeight 0 (what iOS uses) hides Android text completely, and a later `undefined` does not
+ *     clear the value the size class sets.
+ *
+ * So Android gets a concrete height plus a lineHeight near the font size, and drops the extra font
+ * padding. iOS keeps the zero lineHeight that upstream applied through `ios:leading-[0px]`; that class
+ * is gone from the base style so the value can be chosen per platform here.
+ */
+const ANDROID_FIELD_METRICS: Record<string, { height: number; lineHeight: number }> = {
+  sm: { height: 36, lineHeight: 18 },
+  md: { height: 40, lineHeight: 20 },
+  lg: { height: 44, lineHeight: 22 },
+  xl: { height: 48, lineHeight: 25 },
+};
+
+const useTextFieldVerticalFix = (size: string | undefined) =>
+  React.useMemo(() => {
+    if (Platform.OS === 'ios') {
+      return { lineHeight: 0 } as const;
+    }
+    if (Platform.OS === 'android') {
+      const metrics = ANDROID_FIELD_METRICS[size ?? 'md'] ?? ANDROID_FIELD_METRICS.md;
+      return { height: metrics.height, lineHeight: metrics.lineHeight, includeFontPadding: false, textAlignVertical: 'center' } as const;
+    }
+    return undefined;
+  }, [size]);
 
 const StyledUIIcon = styled(UIIcon, { className: 'style' });
 
@@ -60,7 +94,7 @@ const inputSlotStyle = tva({
 });
 
 const inputFieldStyle = tva({
-  base: 'flex-1 text-typography-900 py-0 px-3 placeholder:text-typography-500 h-full ios:leading-[0px] web:cursor-text web:data-[disabled=true]:cursor-not-allowed',
+  base: 'flex-1 text-typography-900 py-0 px-3 placeholder:text-typography-500 h-full web:cursor-text web:data-[disabled=true]:cursor-not-allowed',
 
   parentVariants: {
     variant: {
@@ -136,8 +170,9 @@ const InputSlot = React.forwardRef<React.ComponentRef<typeof UIInput.Slot>, IInp
 
 type IInputFieldProps = React.ComponentProps<typeof UIInput.Input> & VariantProps<typeof inputFieldStyle> & { className?: string };
 
-const InputField = React.forwardRef<React.ComponentRef<typeof UIInput.Input>, IInputFieldProps>(function InputField({ className, ...props }, ref) {
+const InputField = React.forwardRef<React.ComponentRef<typeof UIInput.Input>, IInputFieldProps>(function InputField({ className, style, ...props }, ref) {
   const { variant: parentVariant, size: parentSize } = useStyleContext(SCOPE);
+  const verticalFix = useTextFieldVerticalFix(parentSize);
 
   return (
     <UIInput.Input
@@ -150,6 +185,7 @@ const InputField = React.forwardRef<React.ComponentRef<typeof UIInput.Input>, II
         },
         class: className,
       })}
+      style={[verticalFix, style]}
     />
   );
 });

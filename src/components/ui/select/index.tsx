@@ -7,7 +7,7 @@ import { tva } from '@gluestack-ui/utils/nativewind-utils';
 import { useStyleContext, withStyleContext } from '@gluestack-ui/utils/nativewind-utils';
 import { styled } from 'nativewind';
 import React from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import { Platform, Pressable, TextInput, View } from 'react-native';
 
 import {
   Actionsheet,
@@ -66,8 +66,33 @@ const selectTriggerStyle = tva({
   },
 });
 
+/**
+ * Mirrors the Input component: on Android the class `h-full` resolves taller than the fixed-height
+ * trigger and the trigger's overflow-hidden clips the top of the value, so the field gets a concrete
+ * height and a lineHeight near the font size instead. iOS keeps the zero lineHeight that
+ * `ios:leading-[0px]` used to supply.
+ */
+const ANDROID_FIELD_METRICS: Record<string, { height: number; lineHeight: number }> = {
+  sm: { height: 36, lineHeight: 18 },
+  md: { height: 40, lineHeight: 20 },
+  lg: { height: 44, lineHeight: 22 },
+  xl: { height: 48, lineHeight: 25 },
+};
+
+const useTextFieldVerticalFix = (size: string | undefined) =>
+  React.useMemo(() => {
+    if (Platform.OS === 'ios') {
+      return { lineHeight: 0 } as const;
+    }
+    if (Platform.OS === 'android') {
+      const metrics = ANDROID_FIELD_METRICS[size ?? 'md'] ?? ANDROID_FIELD_METRICS.md;
+      return { height: metrics.height, lineHeight: metrics.lineHeight, includeFontPadding: false, textAlignVertical: 'center' } as const;
+    }
+    return undefined;
+  }, [size]);
+
 const selectInputStyle = tva({
-  base: 'py-auto px-3 placeholder:text-typography-500 web:w-full h-full text-typography-900 pointer-events-none web:outline-none ios:leading-[0px]',
+  base: 'py-auto px-3 placeholder:text-typography-500 web:w-full h-full text-typography-900 pointer-events-none web:outline-none',
   parentVariants: {
     size: {
       xl: 'text-xl',
@@ -146,8 +171,9 @@ const SelectTrigger = React.forwardRef<React.ComponentRef<typeof UISelect.Trigge
 
 type ISelectInputProps = VariantProps<typeof selectInputStyle> & React.ComponentProps<typeof UISelect.Input> & { className?: string };
 
-const SelectInput = React.forwardRef<React.ComponentRef<typeof UISelect.Input>, ISelectInputProps>(function SelectInput({ className, ...props }, ref) {
+const SelectInput = React.forwardRef<React.ComponentRef<typeof UISelect.Input>, ISelectInputProps>(function SelectInput({ className, style, ...props }, ref) {
   const { size: parentSize, variant: parentVariant } = useStyleContext();
+  const verticalFix = useTextFieldVerticalFix(parentSize);
   return (
     <UISelect.Input
       className={selectInputStyle({
@@ -159,6 +185,7 @@ const SelectInput = React.forwardRef<React.ComponentRef<typeof UISelect.Input>, 
       })}
       ref={ref}
       {...props}
+      style={[verticalFix, style]}
     />
   );
 });
