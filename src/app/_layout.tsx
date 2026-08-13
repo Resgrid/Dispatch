@@ -1,5 +1,5 @@
-// Import  global CSS file
-import '../../global.css';
+// Import global CSS (platform-specific entry: global.css on native, global.web.css on web)
+import '../lib/theme-styles';
 import '../lib/i18n';
 
 import { Env } from '@env';

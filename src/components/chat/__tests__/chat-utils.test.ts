@@ -3,7 +3,7 @@ import { type TFunction } from 'i18next';
 
 import { ChatChannelType, type ChatChannelResultData } from '@/models/v4/chat';
 
-import { copyToClipboard, getChannelDisplayName, getImageMimeType, hasLink, linkifySegments } from '../chat-utils';
+import { copyToClipboard, getChannelDisplayName, getImageMimeType, groupChannels, hasLink, linkifySegments } from '../chat-utils';
 
 jest.mock('expo-clipboard', () => ({ setStringAsync: jest.fn() }));
 
@@ -31,6 +31,31 @@ describe('chat-utils', () => {
     it('resolves the generic channel fallback through t()', () => {
       const channel = buildChannel({ Name: '', ChannelType: ChatChannelType.AdHocGroup });
       expect(getChannelDisplayName(channel, mockT)).toBe('chat.channel');
+    });
+  });
+
+  describe('groupChannels', () => {
+    it('buckets every incident-scoped channel type into the incidents section', () => {
+      const grouped = groupChannels([
+        buildChannel({ ChatChannelId: 'a', ChannelType: ChatChannelType.Incident }),
+        buildChannel({ ChatChannelId: 'b', ChannelType: ChatChannelType.IncidentLane }),
+        buildChannel({ ChatChannelId: 'c', ChannelType: ChatChannelType.IncidentCommand }),
+        buildChannel({ ChatChannelId: 'd', ChannelType: ChatChannelType.IncidentLeads }),
+        buildChannel({ ChatChannelId: 'e', ChannelType: ChatChannelType.IncidentDispatch }),
+      ]);
+      expect(grouped.incidents.map((c) => c.ChatChannelId).sort()).toEqual(['a', 'b', 'c', 'd', 'e']);
+      expect(grouped.channels).toHaveLength(0);
+    });
+
+    it('buckets the unit dispatch line into the channels section', () => {
+      const grouped = groupChannels([buildChannel({ ChatChannelId: 'ud', ChannelType: ChatChannelType.UnitDispatch })]);
+      expect(grouped.channels.map((c) => c.ChatChannelId)).toEqual(['ud']);
+      expect(grouped.incidents).toHaveLength(0);
+    });
+
+    it('skips archived channels', () => {
+      const grouped = groupChannels([buildChannel({ ChatChannelId: 'x', ChannelType: ChatChannelType.Incident, IsArchived: true })]);
+      expect(grouped.incidents).toHaveLength(0);
     });
   });
 

@@ -23,6 +23,8 @@ export function groupChannels(channels: ChatChannelResultData[]): GroupedChannel
       case ChatChannelType.Incident:
       case ChatChannelType.IncidentLane:
       case ChatChannelType.IncidentCommand:
+      case ChatChannelType.IncidentLeads:
+      case ChatChannelType.IncidentDispatch:
         grouped.incidents.push(channel);
         break;
       case ChatChannelType.Chatbot:

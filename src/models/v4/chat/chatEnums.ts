@@ -17,6 +17,8 @@ export enum ChatChannelType {
   IncidentLeads = 9,
   /** The incident's line to the dispatch desk: everyone on the incident, plus every authorized dispatcher. */
   IncidentDispatch = 10,
+  /** A unit's standing line to the dispatch desk: the unit identity plus every authorized dispatcher. Department-wide, not call-scoped. */
+  UnitDispatch = 11,
 }
 
 /** Message type (ChatMessageResultData.MessageType). */

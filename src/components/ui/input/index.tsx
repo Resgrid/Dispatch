@@ -6,6 +6,8 @@ import { styled } from 'nativewind';
 import React from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 
+import { useTextFieldVerticalFix } from '../text-field-metrics';
+
 const SCOPE = 'INPUT';
 
 const StyledUIIcon = styled(UIIcon, { className: 'style' });
@@ -60,7 +62,7 @@ const inputSlotStyle = tva({
 });
 
 const inputFieldStyle = tva({
-  base: 'flex-1 text-typography-900 py-0 px-3 placeholder:text-typography-500 h-full ios:leading-[0px] web:cursor-text web:data-[disabled=true]:cursor-not-allowed',
+  base: 'flex-1 text-typography-900 py-0 px-3 placeholder:text-typography-500 h-full web:cursor-text web:data-[disabled=true]:cursor-not-allowed',
 
   parentVariants: {
     variant: {
@@ -136,8 +138,9 @@ const InputSlot = React.forwardRef<React.ComponentRef<typeof UIInput.Slot>, IInp
 
 type IInputFieldProps = React.ComponentProps<typeof UIInput.Input> & VariantProps<typeof inputFieldStyle> & { className?: string };
 
-const InputField = React.forwardRef<React.ComponentRef<typeof UIInput.Input>, IInputFieldProps>(function InputField({ className, ...props }, ref) {
+const InputField = React.forwardRef<React.ComponentRef<typeof UIInput.Input>, IInputFieldProps>(function InputField({ className, style, ...props }, ref) {
   const { variant: parentVariant, size: parentSize } = useStyleContext(SCOPE);
+  const verticalFix = useTextFieldVerticalFix(parentSize);
 
   return (
     <UIInput.Input
@@ -150,6 +153,7 @@ const InputField = React.forwardRef<React.ComponentRef<typeof UIInput.Input>, II
         },
         class: className,
       })}
+      style={[verticalFix, style]}
     />
   );
 });

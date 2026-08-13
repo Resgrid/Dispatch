@@ -1,0 +1,12 @@
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/preflight.css' layer(base);
+@import 'tailwindcss/utilities.css';
+@import 'nativewind/theme';
+
+@import './theme-tokens.css';
+
+/* Web dark mode: the .dark class GluestackUIProvider puts on <html> (see index.web.tsx). It is
+   always present — explicit modes set .dark/.light directly, and system mode sets one from the
+   media query — so the class alone is authoritative. Matching prefers-color-scheme here as well
+   would make an explicit Light choice render dark utilities on a dark-themed OS. */
+@custom-variant dark (&:where(.dark, .dark *));

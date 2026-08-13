@@ -9,6 +9,8 @@ import { styled } from 'nativewind';
 import React from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 
+// Mirrors the Input component: the trigger's fixed height clips `h-full` text on Android the same way.
+import { useTextFieldVerticalFix } from '../text-field-metrics';
 import {
   Actionsheet,
   ActionsheetBackdrop,
@@ -67,7 +69,7 @@ const selectTriggerStyle = tva({
 });
 
 const selectInputStyle = tva({
-  base: 'py-auto px-3 placeholder:text-typography-500 web:w-full h-full text-typography-900 pointer-events-none web:outline-none ios:leading-[0px]',
+  base: 'py-auto px-3 placeholder:text-typography-500 web:w-full h-full text-typography-900 pointer-events-none web:outline-none',
   parentVariants: {
     size: {
       xl: 'text-xl',
@@ -146,8 +148,9 @@ const SelectTrigger = React.forwardRef<React.ComponentRef<typeof UISelect.Trigge
 
 type ISelectInputProps = VariantProps<typeof selectInputStyle> & React.ComponentProps<typeof UISelect.Input> & { className?: string };
 
-const SelectInput = React.forwardRef<React.ComponentRef<typeof UISelect.Input>, ISelectInputProps>(function SelectInput({ className, ...props }, ref) {
+const SelectInput = React.forwardRef<React.ComponentRef<typeof UISelect.Input>, ISelectInputProps>(function SelectInput({ className, style, ...props }, ref) {
   const { size: parentSize, variant: parentVariant } = useStyleContext();
+  const verticalFix = useTextFieldVerticalFix(parentSize);
   return (
     <UISelect.Input
       className={selectInputStyle({
@@ -159,6 +162,7 @@ const SelectInput = React.forwardRef<React.ComponentRef<typeof UISelect.Input>, 
       })}
       ref={ref}
       {...props}
+      style={[verticalFix, style]}
     />
   );
 });
