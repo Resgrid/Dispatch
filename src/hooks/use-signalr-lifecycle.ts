@@ -141,7 +141,9 @@ export function useSignalRLifecycle({ isSignedIn, hasInitialized }: UseSignalRLi
       // The hubs replay nothing that was pushed while the app was away, so board changes another
       // user made during the gap would stay invisible. Reconnecting restores the feed; this
       // backfills what it missed.
-      if (results[0].status === 'fulfilled') {
+      // connectUpdateHub swallows its own errors, so a fulfilled result alone does not mean the
+      // hub is up — the store's connected flag is the real signal.
+      if (results[0].status === 'fulfilled' && useSignalRStore.getState().isUpdateHubConnected) {
         const openCallId = useIncidentCommandStore.getState().callId;
         if (openCallId) {
           useIncidentCommandStore.getState().handleIncidentCommandUpdated(openCallId);
