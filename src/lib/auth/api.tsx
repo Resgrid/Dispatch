@@ -204,8 +204,11 @@ export const refreshTokenRequest = async (refreshToken: string): Promise<AuthRes
 
     return response.data;
   } catch (error) {
-    logger.error({
-      message: 'Token refresh failed',
+    // performTokenRefresh owns the verdict on this failure - an expired refresh token is a
+    // normal end of session, a network outage is not. Record the sanitized transport detail
+    // here as a breadcrumb so the same failure is not reported twice.
+    logger.warn({
+      message: 'Token refresh request failed',
       context: sanitizeAuthError(error),
     });
     throw error;

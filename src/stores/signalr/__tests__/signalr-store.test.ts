@@ -24,6 +24,7 @@ jest.mock('@/services/signalr.service', () => {
     on: jest.fn(),
     connectToHub: jest.fn().mockResolvedValue(undefined),
     disconnectAll: jest.fn().mockResolvedValue(undefined),
+    isHubConnected: jest.fn().mockReturnValue(true),
   };
   return {
     signalRService: mockInstance,

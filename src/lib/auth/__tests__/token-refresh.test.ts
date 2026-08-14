@@ -1,4 +1,9 @@
-import { cancelScheduledTokenRefresh, scheduleTokenRefresh } from '../token-refresh';
+import { AxiosError, type AxiosResponse } from 'axios';
+
+import { logger } from '@/lib/logging';
+
+import { refreshTokenRequest } from '../api';
+import { cancelScheduledTokenRefresh, initTokenRefresh, performTokenRefresh, scheduleTokenRefresh } from '../token-refresh';
 
 jest.mock('@/lib/logging', () => ({
   logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
@@ -7,6 +12,9 @@ jest.mock('@/lib/logging', () => ({
 jest.mock('../api', () => ({
   refreshTokenRequest: jest.fn(),
 }));
+
+const mockRefreshTokenRequest = refreshTokenRequest as jest.MockedFunction<typeof refreshTokenRequest>;
+const mockLogger = logger as jest.Mocked<typeof logger>;
 
 describe('scheduleTokenRefresh', () => {
   let setTimeoutSpy: jest.SpyInstance;
@@ -48,5 +56,50 @@ describe('scheduleTokenRefresh', () => {
     scheduleTokenRefresh(3600);
     scheduleTokenRefresh(7200);
     expect(jest.getTimerCount()).toBe(1);
+  });
+});
+
+describe('performTokenRefresh failure reporting', () => {
+  const handlers = {
+    getRefreshToken: jest.fn<string | null, []>(),
+    applyAuthResponse: jest.fn(),
+    onRefreshFailed: jest.fn(),
+  };
+
+  const axiosErrorWithStatus = (status: number): AxiosError => new AxiosError('Request failed with status code ' + status, 'ERR_BAD_REQUEST', undefined, undefined, { status } as AxiosResponse);
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    handlers.getRefreshToken.mockReturnValue('refresh-token');
+    initTokenRefresh(handlers);
+  });
+
+  it.each([400, 401])('treats a %i from the token endpoint as an expired session, not an error', async (status) => {
+    mockRefreshTokenRequest.mockRejectedValue(axiosErrorWithStatus(status));
+
+    await expect(performTokenRefresh()).resolves.toBe(false);
+
+    expect(mockLogger.warn).toHaveBeenCalledWith(expect.objectContaining({ message: 'Token refresh rejected, ending session' }));
+    expect(mockLogger.error).not.toHaveBeenCalled();
+    expect(handlers.onRefreshFailed).toHaveBeenCalledTimes(1);
+  });
+
+  it('still reports an unreachable token endpoint as an error', async () => {
+    mockRefreshTokenRequest.mockRejectedValue(new AxiosError('Network Error', 'ERR_NETWORK'));
+
+    await expect(performTokenRefresh()).resolves.toBe(false);
+
+    expect(mockLogger.error).toHaveBeenCalledWith(expect.objectContaining({ message: 'Token refresh failed' }));
+    expect(handlers.onRefreshFailed).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not report a missing refresh token as an error', async () => {
+    handlers.getRefreshToken.mockReturnValue(null);
+
+    await expect(performTokenRefresh()).resolves.toBe(false);
+
+    expect(mockRefreshTokenRequest).not.toHaveBeenCalled();
+    expect(mockLogger.error).not.toHaveBeenCalled();
+    expect(handlers.onRefreshFailed).toHaveBeenCalledTimes(1);
   });
 });

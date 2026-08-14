@@ -75,10 +75,20 @@ describe('SignalRService - Enhanced Features', () => {
       state: HubConnectionState.Disconnected,
     } as any;
 
+    // invoke() refuses to send on a connection that is not Connected, so the mock has to
+    // track state the way a real HubConnection does.
+    (mockConnection.start as jest.Mock).mockImplementation(async () => {
+      (mockConnection as any).state = HubConnectionState.Connected;
+    });
+    (mockConnection.stop as jest.Mock).mockImplementation(async () => {
+      (mockConnection as any).state = HubConnectionState.Disconnected;
+    });
+
     // Mock HubConnectionBuilder
     mockBuilderInstance = {
       withUrl: jest.fn().mockReturnThis(),
       withAutomaticReconnect: jest.fn().mockReturnThis(),
+      withServerTimeout: jest.fn().mockReturnThis(),
       configureLogging: jest.fn().mockReturnThis(),
       build: jest.fn().mockReturnValue(mockConnection),
     } as any;
