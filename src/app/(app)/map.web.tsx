@@ -41,10 +41,10 @@ export default function MapWeb() {
   const [visiblePoiLayerIds, setVisiblePoiLayerIds] = useState<Set<string>>(new Set());
   const [isLayersPanelOpen, setIsLayersPanelOpen] = useState(false);
 
-  const location = useLocationStore((state) => ({
-    latitude: state.latitude,
-    longitude: state.longitude,
-  }));
+  // Selected field by field: an object selector builds a new reference on every store
+  // write, so this re-rendered on every GPS fix.
+  const userLatitude = useLocationStore((state) => state.latitude);
+  const userLongitude = useLocationStore((state) => state.longitude);
 
   // Map layers hook
   const { layers, visibleLayers, isLoading: isLayersLoading, fetchLayers, toggleLayer, showAllLayers, hideAllLayers, getVisibleLayerData } = useMapLayers({ initialLayerType: MapLayerType.ALL, autoFetch: true });
@@ -114,13 +114,13 @@ export default function MapWeb() {
 
     mapboxgl.accessToken = Env.MAPBOX_PUBKEY;
 
-    const initialCenter: [number, number] = location.longitude && location.latitude ? [location.longitude, location.latitude] : [-98.5795, 39.8283]; // Center of USA as fallback
+    const initialCenter: [number, number] = userLongitude && userLatitude ? [userLongitude, userLatitude] : [-98.5795, 39.8283]; // Center of USA as fallback
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: getMapStyle(),
       center: initialCenter,
-      zoom: location.latitude && location.longitude ? 12 : 3,
+      zoom: userLatitude && userLongitude ? 12 : 3,
     });
 
     map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
@@ -149,7 +149,7 @@ export default function MapWeb() {
       map.current?.remove();
       map.current = null;
     };
-  }, [getMapStyle, location.latitude, location.longitude]);
+  }, [getMapStyle, userLatitude, userLongitude]);
 
   // Update map style when theme changes
   useEffect(() => {

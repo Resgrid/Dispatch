@@ -26,15 +26,22 @@ export const useLocationStore = create<LocationState>()((set) => ({
   timestamp: null,
   isBackgroundEnabled: false,
   isMapLocked: false,
+  // iOS ignores `timeInterval` on watchPositionAsync, so a stationary device still
+  // delivers fixes many times a second. Writing every one of them notified every
+  // subscriber at that rate and React eventually gave up with "Maximum update depth
+  // exceeded". Bail out when the fix carries nothing new — returning the current state
+  // makes zustand skip the notification entirely. `timestamp` is deliberately left out
+  // of the comparison: it changes on every fix and has no subscriber, so including it
+  // would defeat the guard.
   setLocation: (location) =>
-    set({
-      latitude: location.coords.latitude,
-      longitude: location.coords.longitude,
-      heading: location.coords.heading,
-      accuracy: location.coords.accuracy,
-      speed: location.coords.speed,
-      altitude: location.coords.altitude,
-      timestamp: location.timestamp,
+    set((state) => {
+      const { latitude, longitude, heading, accuracy, speed, altitude } = location.coords;
+
+      if (state.latitude === latitude && state.longitude === longitude && state.heading === heading && state.accuracy === accuracy && state.speed === speed && state.altitude === altitude) {
+        return state;
+      }
+
+      return { latitude, longitude, heading, accuracy, speed, altitude, timestamp: location.timestamp };
     }),
   setBackgroundEnabled: (enabled) => set({ isBackgroundEnabled: enabled }),
   setMapLocked: (locked) => set({ isMapLocked: locked }),

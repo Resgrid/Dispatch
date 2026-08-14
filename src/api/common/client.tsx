@@ -32,6 +32,17 @@ const processQueue = (error: Error | null) => {
   failedQueue = [];
 };
 
+/**
+ * Raised instead of sending a request that has no session behind it. Callers can tell this
+ * apart from a server rejection: nothing was sent and nothing is wrong with the request.
+ */
+export class NoActiveSessionError extends Error {
+  constructor(url?: string) {
+    super(`Request to ${url ?? 'the API'} skipped: no active session`);
+    this.name = 'NoActiveSessionError';
+  }
+}
+
 // Request interceptor for API calls
 axiosInstance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
@@ -40,9 +51,15 @@ axiosInstance.interceptors.request.use(
     config.baseURL = getBaseApiUrl();
 
     const accessToken = useAuthStore.getState().accessToken;
-    if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
+    // Every endpoint reached through this instance is authenticated - the anonymous ones
+    // (token grant, SSO discovery) use their own clients. Sending without a token is a
+    // guaranteed 401 that then drags a refresh attempt and a logout behind it, which is
+    // exactly what a screen unmounting after sign-out produces a burst of.
+    if (!accessToken) {
+      return Promise.reject(new NoActiveSessionError(config.url));
     }
+
+    config.headers.Authorization = `Bearer ${accessToken}`;
     return config;
   },
   (error: AxiosError) => {
@@ -60,6 +77,14 @@ axiosInstance.interceptors.response.use(
     }
     // Handle 401 errors
     if (error.response?.status === 401 && !(originalRequest as InternalAxiosRequestConfig & { _retry?: boolean })._retry) {
+      // Nothing to refresh with: a 401 that arrives after the session ended (or with no
+      // refresh token to begin with) would otherwise start a refresh, fail it, and drive
+      // another logout for every request still in flight.
+      const { refreshToken, status } = useAuthStore.getState();
+      if (!refreshToken || status === 'signedOut') {
+        return Promise.reject(error);
+      }
+
       if (isRefreshing) {
         // If refreshing, queue the request
         return new Promise((resolve, reject) => {
@@ -100,9 +125,11 @@ axiosInstance.interceptors.response.use(
         return axiosInstance(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError as Error);
-        logger.error({
-          message: 'Token refresh failed',
-          context: { error: refreshError instanceof Error ? refreshError.message : String(refreshError) },
+        // performTokenRefresh already reported why the refresh failed; this only records
+        // which request was abandoned as a result.
+        logger.warn({
+          message: 'Request abandoned after token refresh failed',
+          context: { url: originalRequest.url?.split('?')[0], error: refreshError instanceof Error ? refreshError.message : String(refreshError) },
         });
         return Promise.reject(refreshError);
       } finally {

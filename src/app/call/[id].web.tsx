@@ -97,10 +97,10 @@ export default function CallDetailWeb() {
   const { setIsOpen: setStatusBottomSheetOpen, setSelectedCall } = useStatusBottomSheetStore();
   const showToast = useToastStore((state) => state.showToast);
 
-  const userLocation = useLocationStore((state) => ({
-    latitude: state.latitude,
-    longitude: state.longitude,
-  }));
+  // Selected field by field: an object selector builds a new reference on every store
+  // write, so this re-rendered on every GPS fix.
+  const userLatitude = useLocationStore((state) => state.latitude);
+  const userLongitude = useLocationStore((state) => state.longitude);
 
   const handleBack = () => router.back();
 
@@ -223,7 +223,7 @@ export default function CallDetailWeb() {
     }
     try {
       const destinationName = call?.Address || t('call_detail.call_location');
-      const success = await openMapsWithDirections(coordinates.latitude, coordinates.longitude, destinationName, userLocation.latitude || undefined, userLocation.longitude || undefined);
+      const success = await openMapsWithDirections(coordinates.latitude, coordinates.longitude, destinationName, userLatitude || undefined, userLongitude || undefined);
       if (!success) showToast('error', t('call_detail.failed_to_open_maps'));
     } catch (err) {
       logger.error({ message: 'Failed to open maps for routing', context: { error: err, callId, coordinates } });

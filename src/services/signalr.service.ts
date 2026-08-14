@@ -82,6 +82,14 @@ class SignalRService {
   private readonly RECONNECT_INTERVAL = 5000; // 5 seconds
   private readonly RECONNECT_BACKOFF_MULTIPLIER = 1.5;
 
+  /**
+   * How long the client waits for any server message before declaring the connection dead.
+   * The client default of 30s is two server keepalive pings; a browser that froze the tab or
+   * a laptop that briefly slept blows straight past it and tears down a socket that was fine.
+   * 60s rides out one missed ping window at the cost of a slower dead-socket detection.
+   */
+  private readonly SERVER_TIMEOUT_MS = 60000;
+
   private static instance: SignalRService | null = null;
 
   private constructor() {
@@ -398,6 +406,7 @@ class SignalRService {
               }
         )
         .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
+        .withServerTimeout(this.SERVER_TIMEOUT_MS)
         .configureLogging(LogLevel.Warning);
 
       const connection = connectionBuilder.build();
@@ -585,6 +594,7 @@ class SignalRService {
           accessTokenFactory: () => token,
         })
         .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
+        .withServerTimeout(this.SERVER_TIMEOUT_MS)
         .configureLogging(LogLevel.Warning)
         .build();
 
@@ -906,9 +916,30 @@ class SignalRService {
 
     const connection = this.connections.get(hubName);
     if (connection) {
+      // withAutomaticReconnect keeps the connection object alive while the transport is
+      // down, so a live map entry is not proof anything can be sent. Invoking anyway throws
+      // "Cannot send data if the connection is not in the 'Connected' State" from inside the
+      // SignalR client, which reaches error reporting with no hint of which hub it came from.
+      if (connection.state !== HubConnectionState.Connected) {
+        logger.warn({
+          message: `Skipping invoke of method ${method} on hub: ${hubName} - connection is not connected`,
+          context: { state: connection.state },
+        });
+        throw new Error(`Cannot invoke method ${method} on hub ${hubName}: hub is not connected`);
+      }
+
       try {
         return await connection.invoke(method, ...args);
       } catch (error) {
+        // A drop between the state check and the send is transport noise, not a hub fault.
+        if (connection.state !== HubConnectionState.Connected) {
+          logger.warn({
+            message: `Invoke of method ${method} on hub ${hubName} was interrupted by a connection drop`,
+            context: { error, state: connection.state },
+          });
+          throw error;
+        }
+
         logger.error({
           message: `Error invoking method ${method} from hub: ${hubName}`,
           context: { error },

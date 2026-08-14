@@ -74,6 +74,7 @@ describe('SignalRService - Reconnect Self-Blocking Fix', () => {
     mockBuilderInstance = {
       withUrl: jest.fn().mockReturnThis(),
       withAutomaticReconnect: jest.fn().mockReturnThis(),
+      withServerTimeout: jest.fn().mockReturnThis(),
       configureLogging: jest.fn().mockReturnThis(),
       build: jest.fn().mockReturnValue(mockConnection),
     } as any;

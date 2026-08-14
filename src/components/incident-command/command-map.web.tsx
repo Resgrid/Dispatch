@@ -39,7 +39,10 @@ export const CommandMap: React.FC = () => {
   const showToast = useToastStore((s) => s.showToast);
   const board = useIncidentCommandStore((s) => s.board);
   const capabilities = useIncidentCommandStore((s) => s.capabilities);
-  const userLocation = useLocationStore((s) => ({ latitude: s.latitude, longitude: s.longitude }));
+  // Selected field by field: an object selector builds a new reference on every store
+  // write, so this re-rendered on every GPS fix.
+  const userLatitude = useLocationStore((state) => state.latitude);
+  const userLongitude = useLocationStore((state) => state.longitude);
 
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -60,9 +63,9 @@ export const CommandMap: React.FC = () => {
     const lng = parseFloat(command?.CommandPostLongitude ?? '');
     const lat = parseFloat(command?.CommandPostLatitude ?? '');
     if (!isNaN(lng) && !isNaN(lat) && (lng !== 0 || lat !== 0)) return [lng, lat];
-    if (userLocation.longitude && userLocation.latitude) return [userLocation.longitude, userLocation.latitude];
+    if (userLongitude && userLatitude) return [userLongitude, userLatitude];
     return [-98.5795, 39.8283];
-  }, [board?.Command, userLocation.longitude, userLocation.latitude]);
+  }, [board?.Command, userLongitude, userLatitude]);
 
   useEffect(() => {
     addModeRef.current = addMode;

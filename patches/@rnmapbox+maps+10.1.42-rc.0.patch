@@ -1,0 +1,60 @@
+diff --git a/node_modules/@rnmapbox/maps/android/src/main/mapbox-v11-compat/v11/com/rnmapbox/rnmbx/v11compat/Location.kt b/node_modules/@rnmapbox/maps/android/src/main/mapbox-v11-compat/v11/com/rnmapbox/rnmbx/v11compat/Location.kt
+index 8cda49e..05cbf87 100644
+--- a/node_modules/@rnmapbox/maps/android/src/main/mapbox-v11-compat/v11/com/rnmapbox/rnmbx/v11compat/Location.kt
++++ b/node_modules/@rnmapbox/maps/android/src/main/mapbox-v11-compat/v11/com/rnmapbox/rnmbx/v11compat/Location.kt
+@@ -73,17 +73,50 @@ fun LocationEngine.requestLocationUpdatesV11(callback: LocationEngineCallback, l
+     }
+   }
+   val observer = LocationObserverAdapter(callback)
++  // Publish into `observers` *before* registering with the provider, and pin the provider we
++  // register on. A concurrent `removeLocationUpdates` (same two threads described below) that
++  // lands between the two steps would otherwise never see this observer and would leave it
++  // registered — feeding location updates to a callback the caller already tore down, on a
++  // provider instance the request refresh above may have replaced. Registration itself stays
++  // outside the monitor: no Mapbox SDK call is ever made while holding it.
++  val provider = locationProvider
++  synchronized(observers) {
++    observers.add(observer)
++  }
+   if (looper != null) {
+-    locationProvider.addLocationObserver(observer, looper)
++    provider.addLocationObserver(observer, looper)
+   } else {
+-    locationProvider.addLocationObserver(observer)
++    provider.addLocationObserver(observer)
++  }
++  // Gone from the list means a removal ran while we were registering, and its
++  // `removeLocationObserver` hit a provider that did not know this observer yet. Undo here.
++  val canceled = synchronized(observers) { !observers.contains(observer) }
++  if (canceled) {
++    provider.removeLocationObserver(observer)
+   }
+-  observers.add(observer)
+ }
+ 
++// `observers` is reached from more than one thread: LocationManager.enable() runs on the
++// main thread when the activity resumes, and again on the React native-modules thread when
++// RNMBXLocationModule.start()/setMinDisplacement() land. Unsynchronized, the two overlap
++// inside Kotlin's `removeAll { }` (filterInPlace), whose trailing `removeAt(readIndex)`
++// walks indices captured before the other thread shrank the list — IndexOutOfBoundsException
++// "Index 0 out of bounds for length 0", crashing the app on foreground.
++//
++// Guard both mutations, and match on identity via a plain collection so `filterInPlace`
++// is not involved at all. `removeLocationObserver` runs outside the lock: it calls into the
++// Mapbox SDK and must not be holding our monitor while it does.
++//
++// Dropping an observer from the list is also the cancel signal for a registration still
++// in flight on the other thread — see `requestLocationUpdatesV11`, which re-checks
++// membership after registering and unregisters itself if it was pulled out meanwhile.
+ fun LocationEngine.removeLocationUpdates(callback: LocationEngineCallback) {
+-  observers.filter { it.callback == callback }.forEach { locationProvider.removeLocationObserver(it) }
+-  observers.removeAll { it.callback == callback }
++  val stale = synchronized(observers) {
++    val matched = observers.filter { it.callback == callback }
++    observers.removeAll(matched.toSet())
++    matched
++  }
++  stale.forEach { locationProvider.removeLocationObserver(it) }
+ }
+ 
+ fun LocationEngine.getLastLocation(callback: LocationEngineCallback) {

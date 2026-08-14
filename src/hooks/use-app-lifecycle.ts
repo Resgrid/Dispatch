@@ -16,13 +16,16 @@ export const useAppLifecycle = () => {
     []
   );
 
-  // On native platforms, subscribe to the store
-  const storeValues = useAppLifecycleStore((state) => ({
-    appState: state.appState,
-    isActive: state.isActive,
-    isBackground: state.isBackground,
-    lastActiveTimestamp: state.lastActiveTimestamp,
-  }));
+  // On native platforms, subscribe to the store. Selected field by field and reassembled
+  // with useMemo: an object selector builds a new reference on every store write, so every
+  // consumer of this hook re-rendered whether or not these four values changed — the same
+  // stable-reference concern the web branch above already handles.
+  const appState = useAppLifecycleStore((state) => state.appState);
+  const isActive = useAppLifecycleStore((state) => state.isActive);
+  const isBackground = useAppLifecycleStore((state) => state.isBackground);
+  const lastActiveTimestamp = useAppLifecycleStore((state) => state.lastActiveTimestamp);
+
+  const storeValues = useMemo(() => ({ appState, isActive, isBackground, lastActiveTimestamp }), [appState, isActive, isBackground, lastActiveTimestamp]);
 
   // Choose which values to return based on platform
   const values = Platform.OS === 'web' ? staticWebValues : storeValues;

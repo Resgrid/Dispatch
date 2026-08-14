@@ -109,6 +109,12 @@ async function runChatArm(): Promise<void> {
 
   stopChatHeartbeat();
   chatHeartbeatTimer = setInterval(() => {
+    // Automatic reconnect leaves the hub down for as long as its backoff runs, and no close
+    // event fires meanwhile to stop this timer. Skipping the beat costs nothing: the arm that
+    // follows the reconnect restarts the heartbeat.
+    if (!signalRService.isHubConnected(Env.CHAT_HUB_NAME)) {
+      return;
+    }
     signalRService.invoke(Env.CHAT_HUB_NAME, 'Heartbeat').catch(() => {
       // Heartbeat is best-effort; ignore transient failures.
     });

@@ -32,10 +32,10 @@ export const PinDetailModal: React.FC<PinDetailModalProps> = ({ pin, isOpen, onC
   const { colorScheme } = useColorScheme();
   const router = useRouter();
   const showToast = useToastStore((state) => state.showToast);
-  const userLocation = useLocationStore((state) => ({
-    latitude: state.latitude,
-    longitude: state.longitude,
-  }));
+  // Selected field by field: an object selector builds a new reference on every store
+  // write, so this re-rendered on every GPS fix.
+  const userLatitude = useLocationStore((state) => state.latitude);
+  const userLongitude = useLocationStore((state) => state.longitude);
 
   if (!pin) return null;
 
@@ -56,7 +56,7 @@ export const PinDetailModal: React.FC<PinDetailModalProps> = ({ pin, isOpen, onC
     }
 
     try {
-      const success = await openMapsWithDirections(pin.Latitude, pin.Longitude, pin.Title, userLocation.latitude || undefined, userLocation.longitude || undefined);
+      const success = await openMapsWithDirections(pin.Latitude, pin.Longitude, pin.Title, userLatitude || undefined, userLongitude || undefined);
 
       if (!success) {
         showToast('error', t('map.failed_to_open_maps'));

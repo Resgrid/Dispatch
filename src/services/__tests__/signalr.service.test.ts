@@ -1,4 +1,4 @@
-import { HubConnection, HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
+import { HubConnection, HubConnectionBuilder, HubConnectionState, LogLevel } from '@microsoft/signalr';
 
 import { logger } from '@/lib/logging';
 import { HubConnectingState } from '../signalr.service';
@@ -64,12 +64,14 @@ describe('SignalRService', () => {
       onclose: jest.fn(),
       onreconnecting: jest.fn(),
       onreconnected: jest.fn(),
+      state: HubConnectionState.Connected,
     } as any;
 
     // Mock HubConnectionBuilder
     mockBuilderInstance = {
       withUrl: jest.fn().mockReturnThis(),
       withAutomaticReconnect: jest.fn().mockReturnThis(),
+      withServerTimeout: jest.fn().mockReturnThis(),
       configureLogging: jest.fn().mockReturnThis(),
       build: jest.fn().mockReturnValue(mockConnection),
     } as any;
@@ -416,6 +418,44 @@ describe('SignalRService', () => {
       );
 
       expect(mockConnection.invoke).not.toHaveBeenCalled();
+    });
+
+    it('should not send while the connection is between reconnects', async () => {
+      await signalRService.connectToHubWithEventingUrl(mockConfig);
+
+      // Automatic reconnect keeps the connection object in place while the transport is
+      // down; sending anyway throws from inside the SignalR client.
+      (mockConnection as any).state = HubConnectionState.Reconnecting;
+
+      await expect(signalRService.invoke(mockConfig.name, 'testMethod', {})).rejects.toThrow(
+        `Cannot invoke method testMethod on hub ${mockConfig.name}: hub is not connected`
+      );
+
+      expect(mockConnection.invoke).not.toHaveBeenCalled();
+      expect(mockLogger.error).not.toHaveBeenCalledWith(
+        expect.objectContaining({ message: expect.stringContaining('Error invoking method') })
+      );
+    });
+
+    it('should treat an in-flight invoke killed by a connection drop as a warning', async () => {
+      await signalRService.connectToHubWithEventingUrl(mockConfig);
+
+      // A server timeout tears the transport down: the client rejects every pending
+      // invocation and moves the connection into Reconnecting in the same tick.
+      const timeoutError = new Error('Server timeout elapsed without receiving a message from the server.');
+      mockConnection.invoke.mockImplementation(() => {
+        (mockConnection as any).state = HubConnectionState.Reconnecting;
+        return Promise.reject(timeoutError);
+      });
+
+      await expect(signalRService.invoke(mockConfig.name, 'Heartbeat')).rejects.toThrow(timeoutError);
+
+      expect(mockLogger.error).not.toHaveBeenCalledWith(
+        expect.objectContaining({ message: expect.stringContaining('Error invoking method') })
+      );
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.objectContaining({ message: `Invoke of method Heartbeat on hub ${mockConfig.name} was interrupted by a connection drop` })
+      );
     });
   });
 

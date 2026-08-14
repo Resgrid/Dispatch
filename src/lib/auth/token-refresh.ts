@@ -1,3 +1,5 @@
+import axios from 'axios';
+
 import { logger } from '@/lib/logging';
 
 import { refreshTokenRequest } from './api';
@@ -78,10 +80,19 @@ export function performTokenRefresh(): Promise<boolean> {
       scheduleTokenRefresh(response.expires_in);
       return true;
     } catch (error) {
-      logger.error({
-        message: 'Token refresh failed',
-        context: { error: error instanceof Error ? error.message : String(error) },
-      });
+      // A refresh token the server no longer honours is how a session ends: the token
+      // endpoint answers 400/401, the user goes back to the login screen, and nothing is
+      // broken. Only the shapes that mean something is actually wrong - network loss,
+      // server faults - are worth reporting as errors.
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+      const context = { status, error: error instanceof Error ? error.message : String(error) };
+
+      if (status === 400 || status === 401) {
+        logger.warn({ message: 'Token refresh rejected, ending session', context });
+      } else {
+        logger.error({ message: 'Token refresh failed', context });
+      }
+
       handlers.onRefreshFailed();
       return false;
     }

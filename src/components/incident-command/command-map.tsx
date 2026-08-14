@@ -48,7 +48,10 @@ export const CommandMap: React.FC = () => {
   const showToast = useToastStore((s) => s.showToast);
   const board = useIncidentCommandStore((s) => s.board);
   const capabilities = useIncidentCommandStore((s) => s.capabilities);
-  const userLocation = useLocationStore((s) => ({ latitude: s.latitude, longitude: s.longitude }));
+  // Selected field by field: an object selector builds a new reference on every store
+  // write, so this re-rendered on every GPS fix.
+  const userLatitude = useLocationStore((state) => state.latitude);
+  const userLongitude = useLocationStore((state) => state.longitude);
   const cameraRef = useRef<Mapbox.Camera>(null);
   const [addMode, setAddMode] = useState(false);
   const [pending, setPending] = useState<{ longitude: number; latitude: number } | null>(null);
@@ -80,9 +83,9 @@ export const CommandMap: React.FC = () => {
     if (!isNaN(lng) && !isNaN(lat) && (lng !== 0 || lat !== 0)) return [lng, lat];
     const fromAnnotation = parsed.find((p) => p.point)?.point;
     if (fromAnnotation) return fromAnnotation;
-    if (userLocation.longitude && userLocation.latitude) return [userLocation.longitude, userLocation.latitude];
+    if (userLongitude && userLatitude) return [userLongitude, userLatitude];
     return [0, 0];
-  }, [board?.Command, parsed, userLocation.longitude, userLocation.latitude]);
+  }, [board?.Command, parsed, userLongitude, userLatitude]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleMapPress = (event: any) => {
