@@ -99,10 +99,10 @@ export default function CallDetail() {
   const textColor = colorScheme === 'dark' ? '#FFFFFF' : '#000000';
 
   // Get current user location from the location store
-  const userLocation = useLocationStore((state) => ({
-    latitude: state.latitude,
-    longitude: state.longitude,
-  }));
+  // Selected field by field: an object selector builds a new reference on every store
+  // write, so this re-rendered on every GPS fix.
+  const userLatitude = useLocationStore((state) => state.latitude);
+  const userLongitude = useLocationStore((state) => state.longitude);
 
   const handleBack = () => {
     router.back();
@@ -267,7 +267,7 @@ export default function CallDetail() {
 
     try {
       const destinationName = call?.Address || t('call_detail.call_location');
-      const success = await openMapsWithDirections(coordinates.latitude, coordinates.longitude, destinationName, userLocation.latitude || undefined, userLocation.longitude || undefined);
+      const success = await openMapsWithDirections(coordinates.latitude, coordinates.longitude, destinationName, userLatitude || undefined, userLongitude || undefined);
 
       if (!success) {
         showToast('error', t('call_detail.failed_to_open_maps'));

@@ -95,10 +95,10 @@ export const VideoFeedFormSheet: React.FC<VideoFeedFormSheetProps> = ({ isOpen, 
   const { colorScheme } = useColorScheme();
   const showToast = useToastStore((state) => state.showToast);
   const { addFeed, updateFeed, isSaving } = useCallVideoFeedsStore();
-  const userLocation = useLocationStore((state) => ({
-    latitude: state.latitude,
-    longitude: state.longitude,
-  }));
+  // Selected field by field: an object selector builds a new reference on every store
+  // write, so this re-rendered on every GPS fix.
+  const userLatitude = useLocationStore((state) => state.latitude);
+  const userLongitude = useLocationStore((state) => state.longitude);
 
   const isEditing = !!editFeed;
 
@@ -149,9 +149,9 @@ export const VideoFeedFormSheet: React.FC<VideoFeedFormSheetProps> = ({ isOpen, 
   };
 
   const handleUseCurrentLocation = () => {
-    if (userLocation.latitude && userLocation.longitude) {
-      setLatitude(String(userLocation.latitude));
-      setLongitude(String(userLocation.longitude));
+    if (userLatitude && userLongitude) {
+      setLatitude(String(userLatitude));
+      setLongitude(String(userLongitude));
     }
   };
 

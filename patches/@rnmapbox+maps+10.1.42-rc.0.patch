@@ -1,0 +1,36 @@
+diff --git a/node_modules/@rnmapbox/maps/android/src/main/mapbox-v11-compat/v11/com/rnmapbox/rnmbx/v11compat/Location.kt b/node_modules/@rnmapbox/maps/android/src/main/mapbox-v11-compat/v11/com/rnmapbox/rnmbx/v11compat/Location.kt
+index 8cda49e..ed6ccd3 100644
+--- a/node_modules/@rnmapbox/maps/android/src/main/mapbox-v11-compat/v11/com/rnmapbox/rnmbx/v11compat/Location.kt
++++ b/node_modules/@rnmapbox/maps/android/src/main/mapbox-v11-compat/v11/com/rnmapbox/rnmbx/v11compat/Location.kt
+@@ -78,12 +78,28 @@ fun LocationEngine.requestLocationUpdatesV11(callback: LocationEngineCallback, l
+   } else {
+     locationProvider.addLocationObserver(observer)
+   }
+-  observers.add(observer)
++  synchronized(observers) {
++    observers.add(observer)
++  }
+ }
+ 
++// `observers` is reached from more than one thread: LocationManager.enable() runs on the
++// main thread when the activity resumes, and again on the React native-modules thread when
++// RNMBXLocationModule.start()/setMinDisplacement() land. Unsynchronized, the two overlap
++// inside Kotlin's `removeAll { }` (filterInPlace), whose trailing `removeAt(readIndex)`
++// walks indices captured before the other thread shrank the list — IndexOutOfBoundsException
++// "Index 0 out of bounds for length 0", crashing the app on foreground.
++//
++// Guard both mutations, and match on identity via a plain collection so `filterInPlace`
++// is not involved at all. `removeLocationObserver` runs outside the lock: it calls into the
++// Mapbox SDK and must not be holding our monitor while it does.
+ fun LocationEngine.removeLocationUpdates(callback: LocationEngineCallback) {
+-  observers.filter { it.callback == callback }.forEach { locationProvider.removeLocationObserver(it) }
+-  observers.removeAll { it.callback == callback }
++  val stale = synchronized(observers) {
++    val matched = observers.filter { it.callback == callback }
++    observers.removeAll(matched.toSet())
++    matched
++  }
++  stale.forEach { locationProvider.removeLocationObserver(it) }
+ }
+ 
+ fun LocationEngine.getLastLocation(callback: LocationEngineCallback) {

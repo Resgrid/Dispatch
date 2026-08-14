@@ -71,7 +71,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       foregroundImage: './assets/adaptive-icon.png',
       backgroundColor: '#2484c4',
     },
-    softwareKeyboardLayoutMode: 'pan',
+    // 'pan' makes Android scroll the window under the IME on its own, which fights
+    // react-native-keyboard-controller. Its hooks flip the activity to adjustResize on
+    // mount and call setDefaultMode() on unmount, restoring whatever this value is — so
+    // with 'pan' any closing sheet or modal drops the app back into pan mode and inputs
+    // end up under the keyboard. Edge-to-edge means the OS no longer resizes for us
+    // either, so 'resize' leaves keyboard avoidance entirely to the library.
+    softwareKeyboardLayoutMode: 'resize',
     package: Env.PACKAGE,
     intentFilters: [
       {
