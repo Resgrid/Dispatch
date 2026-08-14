@@ -31,6 +31,8 @@ import { Loading } from '@/components/common/loading';
 import ZeroState from '@/components/common/zero-state';
 import { IncidentCommandTab } from '@/components/incident-command/incident-command-tab';
 import StaticMap from '@/components/maps/static-map';
+import { AlarmLevelBadge } from '@/components/runcards/alarm-level-badge';
+import { EscalateAlarmButton } from '@/components/runcards/escalate-alarm-button';
 import { Box } from '@/components/ui/box';
 import { Button, ButtonIcon, ButtonText } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -350,6 +352,17 @@ export default function CallDetailWeb() {
         return (
           <View style={styles.tabContent}>
             {canUserCreateCalls && call && isCallActive(call.State) ? (
+              <View className="mb-4">
+                <EscalateAlarmButton
+                  callId={call.CallId}
+                  alarmLevel={call.AlarmLevel}
+                  activeRunCardId={call.ActiveRunCardId ?? null}
+                  canEscalate={!!canUserCreateCalls && isCallActive(call.State)}
+                  onEscalated={() => fetchCallDetail(callId)}
+                />
+              </View>
+            ) : null}
+            {canUserCreateCalls && call && isCallActive(call.State) ? (
               <Button variant="solid" action="primary" size="sm" onPress={() => setIsDispatchModalOpen(true)} className="mb-4">
                 <ButtonIcon as={UserPlusIcon} className="mr-2" />
                 <ButtonText>{t('call_detail.dispatch_more')}</ButtonText>
@@ -466,6 +479,9 @@ export default function CallDetailWeb() {
                 <Text style={StyleSheet.flatten([styles.priorityText, { color: callPriority.Color }])}>{callPriority.Name}</Text>
               </View>
             ) : null}
+
+            {/* Renders only once the call has been escalated past the first alarm. */}
+            <AlarmLevelBadge alarmLevel={call.AlarmLevel} />
           </View>
 
           {/* Main Content - Two Column on Wide Screens */}

@@ -23,8 +23,26 @@ interface DispatchSelectionModalProps {
 export const DispatchSelectionModal: React.FC<DispatchSelectionModalProps> = ({ isVisible, onClose, onConfirm, initialSelection }) => {
   const { t } = useTranslation();
   const { colorScheme } = useColorScheme();
-  const { data, selection, isLoading, error, searchQuery, fetchDispatchData, setSelection, toggleEveryone, toggleUser, toggleGroup, toggleRole, toggleUnit, setSearchQuery, clearSelection, getFilteredData } =
-    useDispatchStore();
+  const {
+    data,
+    selection,
+    isLoading,
+    error,
+    loadFailures,
+    searchQuery,
+    fetchDispatchData,
+    setSelection,
+    toggleEveryone,
+    toggleUser,
+    toggleGroup,
+    toggleRole,
+    toggleUnit,
+    setSearchQuery,
+    clearSelection,
+    getFilteredData,
+  } = useDispatchStore();
+
+  const hasLoadFailure = loadFailures.users || loadFailures.groups || loadFailures.units;
 
   const filteredData = useMemo(() => getFilteredData(), [getFilteredData]);
 
@@ -105,6 +123,18 @@ export const DispatchSelectionModal: React.FC<DispatchSelectionModalProps> = ({ 
         </Box>
       ) : (
         <ScrollView className="flex-1 px-4">
+          {/* Partial load warning — the sections that did load are still usable. */}
+          {hasLoadFailure && (
+            <Card className={`mb-4 rounded-lg border p-3 ${colorScheme === 'dark' ? 'border-amber-700 bg-amber-950' : 'border-amber-300 bg-amber-50'}`}>
+              <HStack className="items-center justify-between gap-3">
+                <Text className="flex-1 text-sm text-amber-700">{t('calls.dispatch_recipients_partial_load')}</Text>
+                <TouchableOpacity onPress={() => fetchDispatchData(true)}>
+                  <Text className="text-sm font-semibold text-blue-500">{t('common.retry')}</Text>
+                </TouchableOpacity>
+              </HStack>
+            </Card>
+          )}
+
           {/* Everyone Option */}
           <Card className={`mb-4 rounded-lg border p-4 ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
             <TouchableOpacity onPress={toggleEveryone}>
@@ -232,6 +262,14 @@ export const DispatchSelectionModal: React.FC<DispatchSelectionModalProps> = ({ 
           {searchQuery && filteredData.users.length === 0 && filteredData.groups.length === 0 && filteredData.roles.length === 0 && filteredData.units.length === 0 && (
             <Box className="items-center justify-center py-8">
               <Text className="text-center text-neutral-500">{t('common.no_results_found')}</Text>
+            </Box>
+          )}
+
+          {/* Everything loaded and there is genuinely nothing to pick beyond Everyone. Say so, rather
+              than leaving the dispatcher staring at a single option wondering what broke. */}
+          {!searchQuery && !hasLoadFailure && data.users.length === 0 && data.groups.length === 0 && data.roles.length === 0 && data.units.length === 0 && (
+            <Box className="items-center justify-center px-4 py-8">
+              <Text className="text-center text-neutral-500">{t('calls.dispatch_recipients_empty')}</Text>
             </Box>
           )}
         </ScrollView>

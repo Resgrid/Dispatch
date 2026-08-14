@@ -11,6 +11,7 @@ import { securityStore } from '../security/store';
 // Well-known feature flag keys. Keep values in sync with Resgrid.Model.FeatureFlagKeys.
 export const FeatureFlagKeys = {
   ChatSystem: 'Chat.System',
+  DispatchRunCards: 'Dispatch.RunCards',
 } as const;
 
 export type FeatureFlagKey = (typeof FeatureFlagKeys)[keyof typeof FeatureFlagKeys];
@@ -106,6 +107,13 @@ export const useFeatureFlag = (key: string, defaultValue = false) => featureFlag
 
 export const useIsChatEnabled = () => useFeatureFlag(FeatureFlagKeys.ChatSystem);
 
+/**
+ * Run cards gate every recommendation and escalation surface in the app. The server refuses
+ * `RunCards/GetRecommendation` (404) and `Calls/EscalateCall` (400) when the flag is off, so the UI
+ * must stay hidden rather than offer actions that cannot succeed.
+ */
+export const useIsRunCardsEnabled = () => useFeatureFlag(FeatureFlagKeys.DispatchRunCards);
+
 export type FeatureFlagStatus = 'unknown' | 'enabled' | 'disabled';
 
 // Tri-state hook for gating that must not act before flags resolve (e.g. redirecting away
@@ -121,3 +129,8 @@ export const useFeatureFlagStatus = (key: string): FeatureFlagStatus =>
   });
 
 export const useChatSystemStatus = (): FeatureFlagStatus => useFeatureFlagStatus(FeatureFlagKeys.ChatSystem);
+
+export const useRunCardsStatus = (): FeatureFlagStatus => useFeatureFlagStatus(FeatureFlagKeys.DispatchRunCards);
+
+/** Non-reactive read for imperative paths (stores, effects) that must not fire a gated request. */
+export const isRunCardsEnabled = (): boolean => featureFlagsStore.getState().isEnabled(FeatureFlagKeys.DispatchRunCards);

@@ -10,6 +10,7 @@ import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersD
 import { type GetMapLayersData } from '@/models/v4/mapping/getMapLayersResultData';
 import { useLocationStore } from '@/stores/app/location-store';
 import { useSignalRStore } from '@/stores/signalr/signalr-store';
+import { getDepartmentMapCenter } from '@/lib/map-center';
 
 import MapPins from './map-pins';
 
@@ -267,7 +268,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
   };
 
   // Initial camera position
-  const initialCenter: [number, number] = location.longitude && location.latitude ? [location.longitude, location.latitude] : [-98.5795, 39.8283];
+  const initialCenter: [number, number] = location.longitude && location.latitude ? [location.longitude, location.latitude] : [getDepartmentMapCenter().longitude, getDepartmentMapCenter().latitude];
 
   return (
     <View style={StyleSheet.flatten([styles.container, style])} testID={testID}>

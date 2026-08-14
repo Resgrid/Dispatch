@@ -3,7 +3,7 @@ import { type CallPrioritiesResult } from '@/models/v4/callPriorities/callPriori
 import { createCachedApiEndpoint } from '../common/cached-client';
 
 const callsPrioritesApi = createCachedApiEndpoint('/CallPriorities/GetAllCallPriorites', {
-  ttl: 60 * 1000 * 2880, // Cache for 2 days
+  ttl: 6 * 60 * 60 * 1000, // Cache for 6 hours -- reference data, changes rarely
   enabled: true,
 });
 

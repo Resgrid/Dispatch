@@ -1,6 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { render } from '@testing-library/react-native';
-import axios from 'axios';
 import * as Location from 'expo-location';
 import { type Href, router, Stack } from 'expo-router';
 import { BookOpenIcon, ChevronDownIcon, ChevronUpIcon, FileTextIcon, LinkIcon, PlusIcon, SearchIcon, UserIcon } from 'lucide-react-native';
@@ -15,6 +14,7 @@ import * as z from 'zod';
 import { createCall } from '@/api/calls/calls';
 import { getNewCallData } from '@/api/dispatch/dispatch';
 import { getNewCallForm } from '@/api/forms/forms';
+import { forwardGeocode, plusCodeLookup, reverseGeocode, what3WordsLookup } from '@/api/geocoding/geocoding';
 import { saveUdfValues } from '@/api/userDefinedFields/userDefinedFields';
 import { CallFormRenderer } from '@/components/calls/call-form-renderer';
 import { CallTemplatesModal, type TemplateSelection } from '@/components/calls/call-templates-modal';
@@ -26,6 +26,8 @@ import { UdfFieldsRenderer } from '@/components/calls/udf-fields-renderer';
 import { Loading } from '@/components/common/loading';
 import FullScreenLocationPicker from '@/components/maps/full-screen-location-picker';
 import LocationPicker from '@/components/maps/location-picker';
+import { RecommendationPanel } from '@/components/runcards/recommendation-panel';
+import { useCallRecommendation } from '@/components/runcards/use-call-recommendation';
 import { CustomBottomSheet } from '@/components/ui/bottom-sheet';
 import { Box } from '@/components/ui/box';
 import { Button, ButtonText } from '@/components/ui/button';
@@ -37,9 +39,11 @@ import { Select, SelectBackdrop, SelectContent, SelectIcon, SelectInput, SelectI
 import { Text } from '@/components/ui/text';
 import { Textarea, TextareaInput } from '@/components/ui/textarea';
 import { useAnalytics } from '@/hooks/use-analytics';
+import { useNewCallFieldPolicy } from '@/hooks/use-new-call-field-policy';
 import { useToast } from '@/hooks/use-toast';
 import { getPoiDestinationOptionLabel } from '@/lib/poi-display';
 import { type CallResultData } from '@/models/v4/calls/callResultData';
+import { NewCallFieldKeys } from '@/models/v4/calls/newCallFieldPolicyResultData';
 import { type ContactResultData } from '@/models/v4/contacts/contactResultData';
 import { type FormResultData } from '@/models/v4/forms/formResultData';
 import { type PoiResultData } from '@/models/v4/mapping/poiResultData';
@@ -172,6 +176,10 @@ export default function NewCall() {
     roles: [],
     units: [],
   });
+
+  // The department's new-call field policy: hides fields it does not use and blocks submission
+  // until the ones it marked required have values. Unconfigured departments see the stock form.
+  const fieldPolicy = useNewCallFieldPolicy();
   const [selectedLocation, setSelectedLocation] = useState<{
     latitude: number;
     longitude: number;
@@ -183,6 +191,7 @@ export default function NewCall() {
     handleSubmit,
     formState: { errors },
     setValue,
+    watch,
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -257,6 +266,30 @@ export default function NewCall() {
 
   const onSubmit = async (data: FormValues) => {
     try {
+      // The department may require fields beyond the built-in mandatory four. Enforced here for a
+      // clear message, and again on the server so an old build cannot slip an incomplete call past.
+      // Form shapes differ slightly between the apps (not every one offers scheduling or a
+      // destination POI), so the optional fields are read through a loose view.
+      const policyValues = data as Record<string, unknown>;
+      const missingFields = fieldPolicy.missingRequired({
+        [NewCallFieldKeys.Address]: policyValues.address,
+        [NewCallFieldKeys.Geolocation]: data.latitude && data.longitude ? `${data.latitude},${data.longitude}` : '',
+        [NewCallFieldKeys.What3Words]: policyValues.what3words,
+        [NewCallFieldKeys.PlusCode]: policyValues.plusCode,
+        [NewCallFieldKeys.Note]: policyValues.note,
+        [NewCallFieldKeys.ContactName]: policyValues.contactName,
+        [NewCallFieldKeys.ContactInfo]: policyValues.contactInfo,
+        [NewCallFieldKeys.DestinationPoi]: policyValues.destinationPoiId,
+        [NewCallFieldKeys.DispatchOn]: policyValues.scheduledOn,
+        [NewCallFieldKeys.DispatchList]:
+          dispatchSelection.everyone || dispatchSelection.units.length > 0 || dispatchSelection.users.length > 0 || dispatchSelection.groups.length > 0 || dispatchSelection.roles.length > 0,
+      });
+
+      if (missingFields.length > 0) {
+        toast.error(t('calls.required_fields_missing', { fields: missingFields.join(', ') }));
+        return;
+      }
+
       // If we have latitude and longitude, add them to the data
       if (selectedLocation?.latitude && selectedLocation?.longitude) {
         data.latitude = selectedLocation.latitude;
@@ -344,6 +377,19 @@ export default function NewCall() {
     setValue('dispatchSelection', selection);
   };
 
+  // Run card recommendation. Inert unless the department has Dispatch.RunCards enabled.
+  const runCardRecommendation = useCallRecommendation({
+    priorityName: watch('priority'),
+    typeName: watch('type'),
+    latitude: selectedLocation?.latitude ?? null,
+    longitude: selectedLocation?.longitude ?? null,
+    callPriorities,
+  });
+
+  const handleApplyRecommendation = () => {
+    handleDispatchSelection(runCardRecommendation.applyToSelection(dispatchSelection));
+  };
+
   // Get dispatch selection summary
   const getDispatchSummary = () => {
     if (dispatchSelection.everyone) {
@@ -404,18 +450,11 @@ export default function NewCall() {
 
     setIsGeocodingAddress(true);
     try {
-      // Get Google Maps API key from CoreStore config
-      const apiKey = config?.GoogleMapsKey;
+      // Proxied through the Resgrid API — see src/api/geocoding/geocoding.ts for why.
+      const lookup = await forwardGeocode(address);
 
-      if (!apiKey) {
-        throw new Error('Google Maps API key not configured');
-      }
-
-      // Make request to Google Maps Geocoding API
-      const response = await axios.get<GeocodingResponse>(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`);
-
-      if (response.data.status === 'OK' && response.data.results.length > 0) {
-        const results = response.data.results;
+      if (lookup.candidates.length > 0) {
+        const results = lookup.candidates;
 
         if (results.length === 1) {
           // Single result - use it directly
@@ -437,8 +476,8 @@ export default function NewCall() {
           setShowAddressSelection(true);
         }
       } else {
-        // Show error toast for no results
-        toast.error(t('calls.address_not_found'));
+        // The lookup running and matching nothing is a different problem to the lookup failing.
+        toast.error(t(lookup.succeeded ? 'calls.address_not_found' : 'calls.geocoding_error'));
       }
     } catch (error) {
       console.error('Error geocoding address:', error);
@@ -494,21 +533,15 @@ export default function NewCall() {
 
     setIsGeocodingWhat3Words(true);
     try {
-      // Get what3words API key from CoreStore config
-      const apiKey = config?.W3WKey;
+      // Proxied through the Resgrid API — see src/api/geocoding/geocoding.ts for why.
+      const lookup = await what3WordsLookup(what3words);
 
-      if (!apiKey) {
-        throw new Error('what3words API key not configured');
-      }
-
-      // Make request to what3words API
-      const response = await axios.get<What3WordsResponse>(`https://api.what3words.com/v3/convert-to-coordinates?words=${encodeURIComponent(what3words)}&key=${apiKey}`);
-
-      if (response.data.coordinates) {
+      if (lookup.candidates.length > 0) {
+        const result = lookup.candidates[0];
         const newLocation = {
-          latitude: response.data.coordinates.lat,
-          longitude: response.data.coordinates.lng,
-          address: response.data.nearestPlace,
+          latitude: result.geometry.location.lat,
+          longitude: result.geometry.location.lng,
+          address: result.formatted_address,
         };
 
         // Update the selected location and form values
@@ -517,8 +550,7 @@ export default function NewCall() {
         // Show success toast
         toast.success(t('calls.what3words_found'));
       } else {
-        // Show error toast for no results
-        toast.error(t('calls.what3words_not_found'));
+        toast.error(t(lookup.succeeded ? 'calls.what3words_not_found' : 'calls.what3words_geocoding_error'));
       }
     } catch (error) {
       console.error('Error geocoding what3words:', error);
@@ -551,18 +583,11 @@ export default function NewCall() {
 
     setIsGeocodingPlusCode(true);
     try {
-      // Get Google Maps API key from CoreStore config
-      const apiKey = config?.GoogleMapsKey;
+      // Proxied through the Resgrid API — see src/api/geocoding/geocoding.ts for why.
+      const lookup = await plusCodeLookup(plusCode);
 
-      if (!apiKey) {
-        throw new Error('Google Maps API key not configured');
-      }
-
-      // Make request to Google Maps Geocoding API with plus code
-      const response = await axios.get<GeocodingResponse>(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(plusCode)}&key=${apiKey}`);
-
-      if (response.data.status === 'OK' && response.data.results.length > 0) {
-        const result = response.data.results[0];
+      if (lookup.candidates.length > 0) {
+        const result = lookup.candidates[0];
         const newLocation = {
           latitude: result.geometry.location.lat,
           longitude: result.geometry.location.lng,
@@ -575,8 +600,7 @@ export default function NewCall() {
         // Show success toast
         toast.success(t('calls.plus_code_found'));
       } else {
-        // Show error toast for no results
-        toast.error(t('calls.plus_code_not_found'));
+        toast.error(t(lookup.succeeded ? 'calls.plus_code_not_found' : 'calls.plus_code_geocoding_error'));
       }
     } catch (error) {
       console.error('Error geocoding plus code:', error);
@@ -627,22 +651,14 @@ export default function NewCall() {
 
     setIsGeocodingCoordinates(true);
     try {
-      // Get Google Maps API key from CoreStore config
-      const apiKey = config?.GoogleMapsKey;
+      // Proxied through the Resgrid API — see src/api/geocoding/geocoding.ts for why.
+      const lookup = await reverseGeocode(latitude, longitude);
 
-      if (!apiKey) {
-        throw new Error('Google Maps API key not configured');
-      }
-
-      // Make request to Google Maps Reverse Geocoding API
-      const response = await axios.get<GeocodingResponse>(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`);
-
-      if (response.data.status === 'OK' && response.data.results.length > 0) {
-        const result = response.data.results[0];
+      if (lookup.address) {
         const newLocation = {
           latitude,
           longitude,
-          address: result.formatted_address,
+          address: lookup.address,
         };
 
         // Update the selected location and form values
@@ -855,27 +871,29 @@ export default function NewCall() {
               ) : null}
             </Card>
 
-            <Card className={`mb-4 rounded-lg border ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
-              <TouchableOpacity onPress={() => toggleSection('note')} className="flex-row items-center justify-between p-4">
-                <Text className="text-base font-semibold">{t('calls.note')}</Text>
-                {sectionsExpanded.note ? <ChevronUpIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} />}
-              </TouchableOpacity>
-              {sectionsExpanded.note ? (
-                <View className="px-4 pb-4">
-                  <FormControl>
-                    <Controller
-                      control={control}
-                      name="note"
-                      render={({ field: { onChange, onBlur, value } }) => (
-                        <Textarea>
-                          <TextareaInput value={value} onChangeText={onChange} onBlur={onBlur} numberOfLines={4} placeholder={t('calls.note_placeholder')} />
-                        </Textarea>
-                      )}
-                    />
-                  </FormControl>
-                </View>
-              ) : null}
-            </Card>
+            {fieldPolicy.isVisible(NewCallFieldKeys.Note) ? (
+              <Card className={`mb-4 rounded-lg border ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
+                <TouchableOpacity onPress={() => toggleSection('note')} className="flex-row items-center justify-between p-4">
+                  <Text className="text-base font-semibold">{t('calls.note')}</Text>
+                  {sectionsExpanded.note ? <ChevronUpIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} />}
+                </TouchableOpacity>
+                {sectionsExpanded.note ? (
+                  <View className="px-4 pb-4">
+                    <FormControl>
+                      <Controller
+                        control={control}
+                        name="note"
+                        render={({ field: { onChange, onBlur, value } }) => (
+                          <Textarea>
+                            <TextareaInput value={value} onChangeText={onChange} onBlur={onBlur} numberOfLines={4} placeholder={t('calls.note_placeholder')} />
+                          </Textarea>
+                        )}
+                      />
+                    </FormControl>
+                  </View>
+                ) : null}
+              </Card>
+            ) : null}
 
             <Card className={`mb-4 rounded-lg border ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
               <TouchableOpacity onPress={() => toggleSection('location')} className="flex-row items-center justify-between p-4">
@@ -1019,51 +1037,54 @@ export default function NewCall() {
               ) : null}
             </Card>
 
-            <Card className={`mb-4 rounded-lg border ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
-              <TouchableOpacity onPress={() => toggleSection('contact')} className="flex-row items-center justify-between p-4">
-                <View className="flex-row items-center">
-                  <UserIcon size={16} color={colorScheme === 'dark' ? '#e5e7eb' : '#374151'} />
-                  <Text className="ml-2 text-base font-semibold">{t('calls.contact_information', 'Contact Information')}</Text>
-                </View>
-                {sectionsExpanded.contact ? <ChevronUpIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} />}
-              </TouchableOpacity>
-              {sectionsExpanded.contact ? (
-                <View className="px-4 pb-4">
-                  <Button variant="outline" className="mb-3 w-full" onPress={() => setShowContactPicker(true)}>
-                    <UserIcon size={16} color={colorScheme === 'dark' ? '#ffffff' : '#374151'} />
-                    <ButtonText className="ml-2">{t('calls.contact_picker.search_placeholder', 'Search contacts...')}</ButtonText>
-                  </Button>
-                  <FormControl className="mb-3">
-                    <FormControlLabel>
-                      <FormControlLabelText>{t('calls.contact_name')}</FormControlLabelText>
-                    </FormControlLabel>
-                    <Controller
-                      control={control}
-                      name="contactName"
-                      render={({ field: { onChange, onBlur, value } }) => (
-                        <Input>
-                          <InputField placeholder={t('calls.contact_name_placeholder')} value={value} onChangeText={onChange} onBlur={onBlur} />
-                        </Input>
-                      )}
-                    />
-                  </FormControl>
-                  <FormControl>
-                    <FormControlLabel>
-                      <FormControlLabelText>{t('calls.contact_info')}</FormControlLabelText>
-                    </FormControlLabel>
-                    <Controller
-                      control={control}
-                      name="contactInfo"
-                      render={({ field: { onChange, onBlur, value } }) => (
-                        <Input>
-                          <InputField placeholder={t('calls.contact_info_placeholder')} value={value} onChangeText={onChange} onBlur={onBlur} />
-                        </Input>
-                      )}
-                    />
-                  </FormControl>
-                </View>
-              ) : null}
-            </Card>
+            {/* One card holds both contact fields, so it shows when either is enabled. */}
+            {fieldPolicy.isVisible(NewCallFieldKeys.ContactName) || fieldPolicy.isVisible(NewCallFieldKeys.ContactInfo) ? (
+              <Card className={`mb-4 rounded-lg border ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
+                <TouchableOpacity onPress={() => toggleSection('contact')} className="flex-row items-center justify-between p-4">
+                  <View className="flex-row items-center">
+                    <UserIcon size={16} color={colorScheme === 'dark' ? '#e5e7eb' : '#374151'} />
+                    <Text className="ml-2 text-base font-semibold">{t('calls.contact_information', 'Contact Information')}</Text>
+                  </View>
+                  {sectionsExpanded.contact ? <ChevronUpIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} />}
+                </TouchableOpacity>
+                {sectionsExpanded.contact ? (
+                  <View className="px-4 pb-4">
+                    <Button variant="outline" className="mb-3 w-full" onPress={() => setShowContactPicker(true)}>
+                      <UserIcon size={16} color={colorScheme === 'dark' ? '#ffffff' : '#374151'} />
+                      <ButtonText className="ml-2">{t('calls.contact_picker.search_placeholder', 'Search contacts...')}</ButtonText>
+                    </Button>
+                    <FormControl className="mb-3">
+                      <FormControlLabel>
+                        <FormControlLabelText>{t('calls.contact_name')}</FormControlLabelText>
+                      </FormControlLabel>
+                      <Controller
+                        control={control}
+                        name="contactName"
+                        render={({ field: { onChange, onBlur, value } }) => (
+                          <Input>
+                            <InputField placeholder={t('calls.contact_name_placeholder')} value={value} onChangeText={onChange} onBlur={onBlur} />
+                          </Input>
+                        )}
+                      />
+                    </FormControl>
+                    <FormControl>
+                      <FormControlLabel>
+                        <FormControlLabelText>{t('calls.contact_info')}</FormControlLabelText>
+                      </FormControlLabel>
+                      <Controller
+                        control={control}
+                        name="contactInfo"
+                        render={({ field: { onChange, onBlur, value } }) => (
+                          <Input>
+                            <InputField placeholder={t('calls.contact_info_placeholder')} value={value} onChangeText={onChange} onBlur={onBlur} />
+                          </Input>
+                        )}
+                      />
+                    </FormControl>
+                  </View>
+                ) : null}
+              </Card>
+            ) : null}
 
             {/* Protocols */}
             <Card className={`mb-4 rounded-lg border ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
@@ -1164,6 +1185,17 @@ export default function NewCall() {
               </TouchableOpacity>
               {sectionsExpanded.dispatch ? (
                 <View className="px-4 pb-4">
+                  {runCardRecommendation.isRunCardsEnabled ? (
+                    <RecommendationPanel
+                      recommendation={runCardRecommendation.recommendation}
+                      isLoading={runCardRecommendation.isLoading}
+                      error={runCardRecommendation.error}
+                      hasFetched={runCardRecommendation.hasFetched}
+                      isApplied={runCardRecommendation.isApplied}
+                      onApply={handleApplyRecommendation}
+                      onRefresh={runCardRecommendation.refresh}
+                    />
+                  ) : null}
                   <Button onPress={() => setShowDispatchModal(true)} className="w-full">
                     <ButtonText>{getDispatchSummary()}</ButtonText>
                   </Button>

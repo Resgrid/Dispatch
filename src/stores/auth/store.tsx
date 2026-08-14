@@ -10,6 +10,8 @@ import { clearPasswordVerificationHash, loginRequest, storePasswordVerificationH
 import { cancelScheduledTokenRefresh, initTokenRefresh, performTokenRefresh, scheduleTokenRefresh } from '../../lib/auth/token-refresh';
 import type { AuthResponse, AuthState, LoginCredentials } from '../../lib/auth/types';
 import { type ProfileModel } from '../../lib/auth/types';
+import { cacheManager } from '@/lib/cache/cache-manager';
+import { clearCacheScope, setCacheScope } from '@/lib/cache/cache-scope';
 
 // Create MMKV storage instance for auth persistence
 const authStorage = new MMKV({
@@ -272,6 +274,34 @@ initTokenRefresh({
       void useAuthStore.getState().logout();
     }
   },
+});
+
+// Keep the API cache scoped to whoever is signed in. Cache keys embed this identity, so stamping it
+// here means a second user on the same device can never be served the first user's cached rosters,
+// units or contacts -- and signing out drops the scope so nothing leaks into an anonymous session.
+useAuthStore.subscribe((state, previousState) => {
+  if (state.userId === previousState.userId) {
+    return;
+  }
+
+  try {
+    // Drop everything the previous identity cached before the new scope goes live, so nothing from
+    // the old account can be read back even if a key were to collide.
+    cacheManager.clear();
+
+    if (state.userId) {
+      setCacheScope({ userId: state.userId });
+    } else {
+      clearCacheScope();
+    }
+  } catch (error) {
+    // Cache hygiene must never be able to break sign-in or sign-out. The scope is still correct
+    // in memory for this session, and a stale entry expires on its own.
+    logger.warn({
+      message: 'Failed to reset the API cache scope on identity change',
+      context: { error },
+    });
+  }
 });
 
 export default useAuthStore;

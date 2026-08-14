@@ -296,6 +296,8 @@
     "select_address_placeholder": "Виберіть адресу виклику",
     "select_description": "Вибрати опис",
     "select_dispatch_recipients": "Вибрати отримувачів диспетчеризації",
+    "dispatch_recipients_partial_load": "Деяких отримувачів не вдалося завантажити. Списки нижче можуть бути неповними.",
+    "dispatch_recipients_empty": "Вам не видно жодного персоналу, груп, ролей чи підрозділів. Перевірте дозволи вашого відділу або надішліть Усім.",
     "select_location": "Вибрати місце на карті",
     "select_name": "Вибрати назву",
     "select_nature": "Вибрати характер",
@@ -369,7 +371,8 @@
       "no_audio_description": "Аудіо, додане до цього виклику, з’явиться тут.",
       "error": "Не вдалося завантажити аудіо",
       "audio_name": "Аудіокліп"
-    }
+    },
+    "required_fields_missing": "Ваш відділ вимагає ці поля перед створенням виклику: {{fields}}"
   },
   "chat": {
     "title": "Чат",
@@ -1215,6 +1218,7 @@
     "english": "Англійська",
     "french": "Французька",
     "german": "Німецька",
+    "greek": "Грецька",
     "italian": "Італійська",
     "enter_password": "Введіть ваш пароль",
     "enter_server_url": "Введіть URL API Resgrid (напр., https://api.resgrid.com)",
@@ -1536,5 +1540,55 @@
     },
     "stats_label": "Погодні попередження"
   },
-  "welcome": "Ласкаво просимо до додатку obytes"
+  "welcome": "Ласкаво просимо до додатку obytes",
+  "run_cards": {
+    "title": "Рекомендація плану реагування",
+    "checking": "Перевірка планів реагування…",
+    "lookup_failed": "Не вдалося перевірити плани реагування. Ви все ще можете вислати вручну.",
+    "summary": "Рекомендовано {{units}} підрозділів, {{personnel}} осіб",
+    "units_section": "Рекомендовані підрозділи ({{count}})",
+    "personnel_section": "Рекомендований персонал ({{count}})",
+    "shortfalls_section": "Не вдалося закрити",
+    "shortfall_line": "{{name}}: {{filled}} з {{required}} — {{reason}}",
+    "move_ups_section": "Переміщення для покриття",
+    "move_up_line": "{{station}}: {{available}} з {{minimum}} після висилання — пропозиція {{resource}}",
+    "move_up_no_donor": "джерела не знайдено",
+    "notes_section": "Як це було вирішено",
+    "apply": "Застосувати рекомендацію",
+    "applied": "Рекомендацію застосовано",
+    "stale_location": "Застаріле місцезнаходження",
+    "auto_dispatch": "Автоматичне висилання",
+    "auto_dispatch_explainer": "Цей відділ автоматично висилає за відповідними планами; ці ресурси сповіщаються під час створення виклику.",
+    "alarm_level": "Тривога {{level}}",
+    "alarm_level_label": "Рівень тривоги",
+    "escalate": "Оголосити тривогу {{level}}",
+    "escalate_confirm": "Оголосити тривогу {{level}}? Це вишле ресурси наступного рівня та сповістить лише новододаних.",
+    "escalate_confirm_action": "Оголосити тривогу",
+    "escalate_succeeded": "Тривога {{level}} — додано {{units}} підрозділів, {{personnel}} осіб",
+    "escalate_nothing_to_add": "На наступному рівні нічого додавати",
+    "escalate_failed": "Не вдалося підвищити рівень тривоги. Спробуйте ще раз.",
+    "mode": {
+      "manual_only": "Ручний вибір",
+      "station_based": "За частиною",
+      "closest_unit": "Найближчий підрозділ"
+    },
+    "reason": {
+      "unknown": "Обрано",
+      "in_geofence": "У зоні частини",
+      "cascade_station": "Найближча частина",
+      "closest_by_distance": "Найближче за відстанню",
+      "closest_by_eta": "Найближче за часом",
+      "rest_period_overridden": "Період відпочинку проігноровано"
+    },
+    "shortfall": {
+      "unknown": "причину не вказано",
+      "no_candidates": "немає доступних",
+      "outside_radius": "поза радіусом пошуку",
+      "locations_stale": "місцезнаходження занадто старі",
+      "no_location_data": "немає даних про місцезнаходження",
+      "not_staffed": "недостатньо екіпажу",
+      "all_in_rest_period": "усі на відпочинку",
+      "stations_exhausted": "більше немає частин для пошуку"
+    }
+  }
 }

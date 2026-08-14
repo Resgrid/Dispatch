@@ -1,5 +1,7 @@
 import { storage } from '@/lib/storage';
 
+import { getCacheScopeKey } from './cache-scope';
+
 interface CacheItem<T> {
   data: T;
   timestamp: number;
@@ -21,7 +23,9 @@ export class CacheManager {
 
   private getCacheKey(endpoint: string, params?: Record<string, unknown>): string {
     const queryString = params ? `?${new URLSearchParams(params as Record<string, string>)}` : '';
-    return `api_cache_${endpoint}${queryString}`;
+    // Scope by the signed-in identity so a second user (or a department switch) on the same device
+    // is never served the previous account's rosters, units or contacts out of MMKV.
+    return `api_cache_${getCacheScopeKey()}_${endpoint}${queryString}`;
   }
 
   private isExpired(timestamp: number, expiresIn: number): boolean {

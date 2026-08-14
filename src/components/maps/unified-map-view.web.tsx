@@ -12,6 +12,7 @@ import { createMapMarkerElement } from '@/lib/map-markers-web';
 import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersData';
 import { type GetMapLayersData } from '@/models/v4/mapping/getMapLayersResultData';
 import { useLocationStore } from '@/stores/app/location-store';
+import { getDepartmentMapCenter } from '@/lib/map-center';
 
 // Mapbox GL CSS needs to be injected for web
 const MAPBOX_GL_CSS_URL = 'https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.css';
@@ -90,7 +91,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     mapboxgl.accessToken = Env.MAPBOX_PUBKEY;
 
     const { latitude, longitude } = useLocationStore.getState();
-    const initialCenter: [number, number] = longitude && latitude ? [longitude, latitude] : [-98.5795, 39.8283];
+    const initialCenter: [number, number] = longitude && latitude ? [longitude, latitude] : [getDepartmentMapCenter().longitude, getDepartmentMapCenter().latitude];
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,

@@ -13,6 +13,7 @@ import { IncidentCapabilities, IncidentMapAnnotationType } from '@/models/v4/inc
 import { useLocationStore } from '@/stores/app/location-store';
 import { useIncidentCommandStore } from '@/stores/incident-command/store';
 import { useToastStore } from '@/stores/toast/store';
+import { getDepartmentMapCenter } from '@/lib/map-center';
 
 const MAPBOX_GL_CSS_URL = 'https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.css';
 
@@ -64,7 +65,7 @@ export const CommandMap: React.FC = () => {
     const lat = parseFloat(command?.CommandPostLatitude ?? '');
     if (!isNaN(lng) && !isNaN(lat) && (lng !== 0 || lat !== 0)) return [lng, lat];
     if (userLongitude && userLatitude) return [userLongitude, userLatitude];
-    return [-98.5795, 39.8283];
+    return [getDepartmentMapCenter().longitude, getDepartmentMapCenter().latitude];
   }, [board?.Command, userLongitude, userLatitude]);
 
   useEffect(() => {

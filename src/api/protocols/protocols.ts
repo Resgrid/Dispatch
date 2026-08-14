@@ -4,7 +4,7 @@ import { createCachedApiEndpoint } from '../common/cached-client';
 import { createApiEndpoint } from '../common/client';
 
 const getAllProtocolsApi = createCachedApiEndpoint('/Protocols/GetAllProtocols', {
-  ttl: 60 * 1000 * 2880, // Cache for 2 days
+  ttl: 6 * 60 * 60 * 1000, // Cache for 6 hours -- reference data, changes rarely
   enabled: true,
 });
 

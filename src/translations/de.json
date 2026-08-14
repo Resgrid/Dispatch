@@ -296,6 +296,8 @@
     "select_address_placeholder": "Adresse des Einsatzes auswählen",
     "select_description": "Beschreibung auswählen",
     "select_dispatch_recipients": "Alarmierungsempfänger auswählen",
+    "dispatch_recipients_partial_load": "Einige Empfänger konnten nicht geladen werden. Die Listen unten sind möglicherweise unvollständig.",
+    "dispatch_recipients_empty": "Für Sie sind keine Personen, Gruppen, Rollen oder Einheiten sichtbar. Prüfen Sie die Berechtigungen Ihrer Abteilung oder alarmieren Sie Alle.",
     "select_location": "Standort auf Karte auswählen",
     "select_name": "Name auswählen",
     "select_nature": "Art auswählen",
@@ -369,7 +371,8 @@
       "no_audio_description": "An diesen Einsatz angehängte Audioaufnahmen werden hier angezeigt.",
       "error": "Audio konnte nicht geladen werden",
       "audio_name": "Audioclip"
-    }
+    },
+    "required_fields_missing": "Ihre Abteilung benötigt diese Felder, bevor ein Einsatz angelegt werden kann: {{fields}}"
   },
   "chat": {
     "title": "Chat",
@@ -1215,6 +1218,7 @@
     "english": "Englisch",
     "french": "Französisch",
     "german": "Deutsch",
+    "greek": "Griechisch",
     "italian": "Italienisch",
     "enter_password": "Passwort eingeben",
     "enter_server_url": "Resgrid-API-URL eingeben (z. B. https://api.resgrid.com)",
@@ -1536,5 +1540,55 @@
     },
     "stats_label": "Wetterwarnungen"
   },
-  "welcome": "Willkommen bei der obytes App-Seite"
+  "welcome": "Willkommen bei der obytes App-Seite",
+  "run_cards": {
+    "title": "Alarmierungsplan-Empfehlung",
+    "checking": "Alarmierungspläne werden geprüft…",
+    "lookup_failed": "Alarmierungspläne konnten nicht geprüft werden. Manuelle Alarmierung ist weiterhin möglich.",
+    "summary": "{{units}} Einheit(en), {{personnel}} Einsatzkräfte empfohlen",
+    "units_section": "Empfohlene Einheiten ({{count}})",
+    "personnel_section": "Empfohlenes Personal ({{count}})",
+    "shortfalls_section": "Nicht erfüllbar",
+    "shortfall_line": "{{name}}: {{filled}} von {{required}} — {{reason}}",
+    "move_ups_section": "Nachrücken zur Abdeckung",
+    "move_up_line": "{{station}}: {{available}} von {{minimum}} nach der Alarmierung — Vorschlag {{resource}}",
+    "move_up_no_donor": "keine Quelle gefunden",
+    "notes_section": "Wie das entschieden wurde",
+    "apply": "Empfehlung übernehmen",
+    "applied": "Empfehlung übernommen",
+    "stale_location": "Veralteter Standort",
+    "auto_dispatch": "Automatische Alarmierung",
+    "auto_dispatch_explainer": "Diese Abteilung alarmiert passende Alarmierungspläne automatisch; diese Kräfte werden beim Anlegen des Einsatzes alarmiert.",
+    "alarm_level": "Alarmstufe {{level}}",
+    "alarm_level_label": "Alarmstufe",
+    "escalate": "Alarmstufe {{level}} auslösen",
+    "escalate_confirm": "Alarmstufe {{level}} auslösen? Damit werden die Kräfte der nächsten Stufe alarmiert, benachrichtigt werden nur die neu hinzugefügten.",
+    "escalate_confirm_action": "Alarmstufe auslösen",
+    "escalate_succeeded": "Alarmstufe {{level}} ausgelöst — {{units}} Einheit(en), {{personnel}} Einsatzkräfte hinzugefügt",
+    "escalate_nothing_to_add": "Auf der nächsten Alarmstufe gibt es nichts hinzuzufügen",
+    "escalate_failed": "Der Einsatz konnte nicht hochgestuft werden. Bitte erneut versuchen.",
+    "mode": {
+      "manual_only": "Manuelle Auswahl",
+      "station_based": "Nach Wache",
+      "closest_unit": "Nächste Einheit"
+    },
+    "reason": {
+      "unknown": "Ausgewählt",
+      "in_geofence": "Im Wachbereich",
+      "cascade_station": "Nächstgelegene Wache",
+      "closest_by_distance": "Kürzeste Entfernung",
+      "closest_by_eta": "Kürzeste Fahrzeit",
+      "rest_period_overridden": "Ruhezeit übergangen"
+    },
+    "shortfall": {
+      "unknown": "kein Grund angegeben",
+      "no_candidates": "nichts verfügbar",
+      "outside_radius": "außerhalb des Suchradius",
+      "locations_stale": "Standorte zu alt",
+      "no_location_data": "keine Standortdaten",
+      "not_staffed": "zu wenig Besatzung",
+      "all_in_rest_period": "alle in Ruhezeit",
+      "stations_exhausted": "keine weiteren Wachen"
+    }
+  }
 }

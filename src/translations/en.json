@@ -295,6 +295,8 @@
     "select_address_placeholder": "Select the address of the call",
     "select_description": "Select Description",
     "select_dispatch_recipients": "Select Dispatch Recipients",
+    "dispatch_recipients_partial_load": "Some recipients couldn't be loaded. The lists below may be incomplete.",
+    "dispatch_recipients_empty": "No personnel, groups, roles or units are visible to you. Check your department's permissions, or dispatch to Everyone.",
     "select_destination_poi": "Select destination POI",
     "select_location": "Select Location on Map",
     "select_name": "Select Name",
@@ -369,7 +371,8 @@
       "no_audio_description": "Audio attached to this call will appear here.",
       "error": "Failed to load audio",
       "audio_name": "Audio clip"
-    }
+    },
+    "required_fields_missing": "Your department requires these fields before a call can be created: {{fields}}"
   },
   "chat": {
     "title": "Chat",
@@ -1215,6 +1218,7 @@
     "english": "English",
     "french": "French",
     "german": "German",
+    "greek": "Greek",
     "italian": "Italian",
     "enter_password": "Enter your password",
     "enter_server_url": "Enter Resgrid API URL (e.g., https://api.resgrid.com)",
@@ -1536,5 +1540,55 @@
     },
     "stats_label": "Weather Alerts"
   },
-  "welcome": "Welcome to obytes app site"
+  "welcome": "Welcome to obytes app site",
+  "run_cards": {
+    "title": "Run card recommendation",
+    "checking": "Checking run cards…",
+    "lookup_failed": "Couldn't check run cards. You can still dispatch manually.",
+    "summary": "{{units}} unit(s), {{personnel}} responder(s) recommended",
+    "units_section": "Recommended units ({{count}})",
+    "personnel_section": "Recommended personnel ({{count}})",
+    "shortfalls_section": "Could not fill",
+    "shortfall_line": "{{name}}: {{filled}} of {{required}} — {{reason}}",
+    "move_ups_section": "Coverage move-ups",
+    "move_up_line": "{{station}}: {{available}} of {{minimum}} after dispatch — suggest {{resource}}",
+    "move_up_no_donor": "no donor found",
+    "notes_section": "How this was decided",
+    "apply": "Apply recommendation",
+    "applied": "Recommendation applied",
+    "stale_location": "Stale location",
+    "auto_dispatch": "Auto dispatch",
+    "auto_dispatch_explainer": "This department auto-dispatches matching run cards; these resources are alerted when the call is created.",
+    "alarm_level": "Alarm {{level}}",
+    "alarm_level_label": "Alarm level",
+    "escalate": "Strike alarm {{level}}",
+    "escalate_confirm": "Strike alarm {{level}}? This dispatches the next level's resources and alerts only the newly added ones.",
+    "escalate_confirm_action": "Strike alarm",
+    "escalate_succeeded": "Alarm {{level}} struck — {{units}} unit(s), {{personnel}} responder(s) added",
+    "escalate_nothing_to_add": "Nothing to add at the next alarm level",
+    "escalate_failed": "Couldn't escalate the call. Please try again.",
+    "mode": {
+      "manual_only": "Manual selection",
+      "station_based": "Station based",
+      "closest_unit": "Closest unit"
+    },
+    "reason": {
+      "unknown": "Selected",
+      "in_geofence": "In station area",
+      "cascade_station": "Nearest station",
+      "closest_by_distance": "Closest by distance",
+      "closest_by_eta": "Closest by ETA",
+      "rest_period_overridden": "Rest period overridden"
+    },
+    "shortfall": {
+      "unknown": "no reason given",
+      "no_candidates": "nothing available",
+      "outside_radius": "outside search radius",
+      "locations_stale": "locations too old",
+      "no_location_data": "no location data",
+      "not_staffed": "not enough crew",
+      "all_in_rest_period": "all in rest period",
+      "stations_exhausted": "no stations left to search"
+    }
+  }
 }

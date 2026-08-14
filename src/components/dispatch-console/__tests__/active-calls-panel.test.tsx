@@ -163,6 +163,8 @@ const mockCalls: CallResultData[] = [
     Protocols: [],
     UdfValues: [],
     CheckInTimersEnabled: false,
+    AlarmLevel: 1,
+    ActiveRunCardId: null,
   },
   {
     CallId: 'call-2',
@@ -204,6 +206,8 @@ const mockCalls: CallResultData[] = [
     Protocols: [],
     UdfValues: [],
     CheckInTimersEnabled: false,
+    AlarmLevel: 1,
+    ActiveRunCardId: null,
   },
   {
     CallId: 'call-3',
@@ -245,6 +249,8 @@ const mockCalls: CallResultData[] = [
     Protocols: [],
     UdfValues: [],
     CheckInTimersEnabled: false,
+    AlarmLevel: 1,
+    ActiveRunCardId: null,
   },
 ];
 

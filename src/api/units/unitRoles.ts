@@ -7,7 +7,7 @@ import { createCachedApiEndpoint } from '../common/cached-client';
 import { createApiEndpoint } from '../common/client';
 
 const getRolesForUnitApi = createCachedApiEndpoint('/UnitRoles/GetRolesForUnit', {
-  ttl: 60 * 1000 * 2880, // Cache for 2 days
+  ttl: 15 * 60 * 1000, // Cache for 15 minutes -- operational data, must not go stale
   enabled: true,
 });
 

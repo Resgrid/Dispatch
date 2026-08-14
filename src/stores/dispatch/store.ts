@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { getAllGroups } from '@/api/groups/groups';
 import { getAllPersonnelInfos } from '@/api/personnel/personnel';
 import { getUnits } from '@/api/units/units';
+import { logger } from '@/lib/logging';
 
 export interface DispatchSelection {
   everyone: boolean;
@@ -24,13 +25,24 @@ export interface DispatchData {
   units: DispatchItem[];
 }
 
+export interface DispatchLoadFailures {
+  users: boolean;
+  groups: boolean;
+  units: boolean;
+}
+
 interface DispatchState {
   data: DispatchData;
   selection: DispatchSelection;
   isLoading: boolean;
   error: string | null;
+  /**
+   * Which sections failed to load. Previously one failing request emptied the whole picker and the
+   * dispatcher saw only "Everyone" -- indistinguishable from a department with no units or crew.
+   */
+  loadFailures: DispatchLoadFailures;
   searchQuery: string;
-  fetchDispatchData: () => Promise<void>;
+  fetchDispatchData: (forceRefresh?: boolean) => Promise<void>;
   setSelection: (selection: DispatchSelection) => void;
   toggleEveryone: () => void;
   toggleUser: (userId: string) => void;
@@ -60,55 +72,75 @@ export const useDispatchStore = create<DispatchState>((set, get) => ({
   selection: initialSelection,
   isLoading: false,
   error: null,
+  loadFailures: { users: false, groups: false, units: false },
   searchQuery: '',
 
-  fetchDispatchData: async () => {
+  fetchDispatchData: async (forceRefresh = false) => {
     set({ isLoading: true, error: null });
-    try {
-      const [personnelResult, groupsResult, unitsResult] = await Promise.all([getAllPersonnelInfos(''), getAllGroups(), getUnits()]);
 
-      const users: DispatchItem[] = (personnelResult?.Data ?? []).map((p) => ({
-        Id: p.UserId,
-        Name: `${p.FirstName} ${p.LastName}`.trim(),
-      }));
+    // allSettled, not all: personnel, groups and units are independent lists, and a dispatcher who
+    // can still see units must not lose them because the personnel call failed.
+    const [personnelSettled, groupsSettled, unitsSettled] = await Promise.allSettled([getAllPersonnelInfos(''), getAllGroups(), getUnits(forceRefresh)]);
 
-      const groups: DispatchItem[] = (groupsResult?.Data ?? []).map((g) => ({
-        Id: g.GroupId,
-        Name: g.Name,
-      }));
+    const personnelResult = personnelSettled.status === 'fulfilled' ? personnelSettled.value : null;
+    const groupsResult = groupsSettled.status === 'fulfilled' ? groupsSettled.value : null;
+    const unitsResult = unitsSettled.status === 'fulfilled' ? unitsSettled.value : null;
 
-      const units: DispatchItem[] = (unitsResult?.Data ?? []).map((u) => ({
-        Id: u.UnitId,
-        Name: u.Name,
-      }));
+    const loadFailures = {
+      users: personnelSettled.status === 'rejected',
+      groups: groupsSettled.status === 'rejected',
+      units: unitsSettled.status === 'rejected',
+    };
 
-      // Extract unique roles from personnel data
-      const roleSet = new Map<string, string>();
-      (personnelResult?.Data ?? []).forEach((p) => {
-        if (p.Roles) {
-          p.Roles.forEach((role) => {
-            if (role && !roleSet.has(role)) {
-              roleSet.set(role, role);
-            }
-          });
-        }
-      });
-      const roles: DispatchItem[] = Array.from(roleSet.entries()).map(([name]) => ({
-        Id: name,
-        Name: name,
-      }));
-
-      set({
-        data: { users, groups, roles, units },
-        isLoading: false,
-      });
-    } catch (error) {
-      console.error('fetchDispatchData failed:', error);
-      set({
-        error: 'Failed to fetch dispatch data',
-        isLoading: false,
-      });
+    if (personnelSettled.status === 'rejected') {
+      logger.error({ message: 'Failed to load dispatch personnel', context: { error: personnelSettled.reason } });
     }
+    if (groupsSettled.status === 'rejected') {
+      logger.error({ message: 'Failed to load dispatch groups', context: { error: groupsSettled.reason } });
+    }
+    if (unitsSettled.status === 'rejected') {
+      logger.error({ message: 'Failed to load dispatch units', context: { error: unitsSettled.reason } });
+    }
+
+    const users: DispatchItem[] = (personnelResult?.Data ?? []).map((p) => ({
+      Id: p.UserId,
+      Name: `${p.FirstName} ${p.LastName}`.trim(),
+    }));
+
+    const groups: DispatchItem[] = (groupsResult?.Data ?? []).map((g) => ({
+      Id: g.GroupId,
+      Name: g.Name,
+    }));
+
+    const units: DispatchItem[] = (unitsResult?.Data ?? []).map((u) => ({
+      Id: u.UnitId,
+      Name: u.Name,
+    }));
+
+    // Extract unique roles from personnel data
+    const roleSet = new Map<string, string>();
+    (personnelResult?.Data ?? []).forEach((p) => {
+      if (p.Roles) {
+        p.Roles.forEach((role) => {
+          if (role && !roleSet.has(role)) {
+            roleSet.set(role, role);
+          }
+        });
+      }
+    });
+    const roles: DispatchItem[] = Array.from(roleSet.entries()).map(([name]) => ({
+      Id: name,
+      Name: name,
+    }));
+
+    set({
+      data: { users, groups, roles, units },
+      loadFailures,
+      // Only a total failure is a modal-level error; a partial one is reported per section so the
+      // dispatcher can still work with whatever loaded.
+      error: loadFailures.users && loadFailures.groups && loadFailures.units ? 'Failed to fetch dispatch data' : null,
+      isLoading: false,
+    });
   },
 
   setSelection: (selection: DispatchSelection) => {

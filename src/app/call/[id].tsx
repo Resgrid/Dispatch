@@ -30,6 +30,8 @@ import ZeroState from '@/components/common/zero-state';
 import { IncidentCommandTab } from '@/components/incident-command/incident-command-tab';
 // Import a static map component instead of react-native-maps
 import StaticMap from '@/components/maps/static-map';
+import { AlarmLevelBadge } from '@/components/runcards/alarm-level-badge';
+import { EscalateAlarmButton } from '@/components/runcards/escalate-alarm-button';
 import { FocusAwareStatusBar, SafeAreaView } from '@/components/ui';
 import { Box } from '@/components/ui/box';
 import { Button, ButtonIcon, ButtonText } from '@/components/ui/button';
@@ -359,6 +361,15 @@ export default function CallDetail() {
                   {callPriority?.Name}
                 </Text>
               </Box>
+              {/* Renders only once the call has been escalated past the first alarm. */}
+              {call.AlarmLevel > 1 ? (
+                <Box className="border-b border-outline-100 pb-2">
+                  <Text className="text-sm text-gray-500">{t('run_cards.alarm_level_label')}</Text>
+                  <Box className="mt-1 flex-row">
+                    <AlarmLevelBadge alarmLevel={call.AlarmLevel} />
+                  </Box>
+                </Box>
+              ) : null}
               <Box className="border-b border-outline-100 pb-2">
                 <Text className="text-sm text-gray-500">{t('call_detail.timestamp')}</Text>
                 <Text className="font-medium">{formatDateForDisplay(parseDateISOString(call.LoggedOn), 'MMM d, h:mm a')}</Text>
@@ -522,6 +533,17 @@ export default function CallDetail() {
         icon: <UsersIcon size={16} />,
         content: (
           <Box className="p-4">
+            {canUserCreateCalls && isCallActive(call.State) ? (
+              <Box className="mb-4">
+                <EscalateAlarmButton
+                  callId={call.CallId}
+                  alarmLevel={call.AlarmLevel}
+                  activeRunCardId={call.ActiveRunCardId ?? null}
+                  canEscalate={!!canUserCreateCalls && isCallActive(call.State)}
+                  onEscalated={() => fetchCallDetail(callId)}
+                />
+              </Box>
+            ) : null}
             {canUserCreateCalls && isCallActive(call.State) ? (
               <Button variant="solid" action="primary" size="sm" className="mb-4" onPress={() => setIsDispatchModalOpen(true)}>
                 <ButtonIcon as={UserPlusIcon} className="mr-2" />

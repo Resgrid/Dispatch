@@ -8,17 +8,17 @@ import { createCachedApiEndpoint } from '../common/cached-client';
 import { createApiEndpoint } from '../common/client';
 
 const getAllNotesApi = createCachedApiEndpoint('/Notes/GetAllNotes', {
-  ttl: 60 * 1000 * 2880, // Cache for 2 days
+  ttl: 15 * 60 * 1000, // Cache for 15 minutes -- operational data, must not go stale
   enabled: true,
 });
 
 const getDispatchNoteApi = createCachedApiEndpoint('/Notes/GetDispatchNote', {
-  ttl: 60 * 1000 * 1440, // Cache for 1 days
+  ttl: 15 * 60 * 1000, // Cache for 15 minutes -- operational data, must not go stale
   enabled: true,
 });
 
 const getNoteCategoriesApi = createCachedApiEndpoint('/Notes/GetNoteCategories', {
-  ttl: 60 * 1000 * 2880, // Cache for 2 days
+  ttl: 15 * 60 * 1000, // Cache for 15 minutes -- operational data, must not go stale
   enabled: true,
 });
 

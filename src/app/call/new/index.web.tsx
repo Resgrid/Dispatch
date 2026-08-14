@@ -1,5 +1,4 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import axios from 'axios';
 import { type Href, router, Stack } from 'expo-router';
 import { BookOpenIcon, CalendarClockIcon, ChevronDownIcon, ChevronUpIcon, FileTextIcon, LinkIcon, MapPinIcon, PlusIcon, SearchIcon, UserIcon, XIcon } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
@@ -12,6 +11,7 @@ import * as z from 'zod';
 import { createCall } from '@/api/calls/calls';
 import { getNewCallData } from '@/api/dispatch/dispatch';
 import { getNewCallForm } from '@/api/forms/forms';
+import { forwardGeocode, plusCodeLookup, reverseGeocode, what3WordsLookup } from '@/api/geocoding/geocoding';
 import { saveUdfValues } from '@/api/userDefinedFields/userDefinedFields';
 import { CallFormRenderer } from '@/components/calls/call-form-renderer';
 import { CallTemplatesModal, type TemplateSelection } from '@/components/calls/call-templates-modal';
@@ -23,6 +23,8 @@ import { UdfFieldsRenderer } from '@/components/calls/udf-fields-renderer';
 import { Loading } from '@/components/common/loading';
 import FullScreenLocationPicker from '@/components/maps/full-screen-location-picker';
 import LocationPicker from '@/components/maps/location-picker';
+import { RecommendationPanel } from '@/components/runcards/recommendation-panel';
+import { useCallRecommendation } from '@/components/runcards/use-call-recommendation';
 import { Box } from '@/components/ui/box';
 import { Button, ButtonText } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -31,9 +33,11 @@ import { HStack } from '@/components/ui/hstack';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useAnalytics } from '@/hooks/use-analytics';
+import { useNewCallFieldPolicy } from '@/hooks/use-new-call-field-policy';
 import { useToast } from '@/hooks/use-toast';
 import { getPoiDestinationOptionLabel } from '@/lib/poi-display';
 import { type CallResultData } from '@/models/v4/calls/callResultData';
+import { NewCallFieldKeys } from '@/models/v4/calls/newCallFieldPolicyResultData';
 import { type ContactResultData } from '@/models/v4/contacts/contactResultData';
 import { type FormResultData } from '@/models/v4/forms/formResultData';
 import { type PoiResultData } from '@/models/v4/mapping/poiResultData';
@@ -295,6 +299,10 @@ export default function NewCallWeb() {
     roles: [],
     units: [],
   });
+
+  // The department's new-call field policy: hides fields it does not use and blocks submission
+  // until the ones it marked required have values. Unconfigured departments see the stock form.
+  const fieldPolicy = useNewCallFieldPolicy();
   const [selectedLocation, setSelectedLocation] = useState<{
     latitude: number;
     longitude: number;
@@ -357,6 +365,8 @@ export default function NewCallWeb() {
     },
   });
 
+  const watchedPriority = watch('priority');
+  const watchedType = watch('type');
   const watchedAddress = watch('address');
   const watchedCoordinates = watch('coordinates');
   const watchedWhat3Words = watch('what3words');
@@ -410,6 +420,31 @@ export default function NewCallWeb() {
     async (data: FormValues) => {
       try {
         setIsSubmitting(true);
+
+        // The department may require fields beyond the built-in mandatory four. Enforced here for a
+        // clear message, and again on the server so an old build cannot slip an incomplete call past.
+        // Form shapes differ slightly between the apps (not every one offers scheduling or a
+        // destination POI), so the optional fields are read through a loose view.
+        const policyValues = data as Record<string, unknown>;
+        const missingFields = fieldPolicy.missingRequired({
+          [NewCallFieldKeys.Address]: policyValues.address,
+          [NewCallFieldKeys.Geolocation]: data.latitude && data.longitude ? `${data.latitude},${data.longitude}` : '',
+          [NewCallFieldKeys.What3Words]: policyValues.what3words,
+          [NewCallFieldKeys.PlusCode]: policyValues.plusCode,
+          [NewCallFieldKeys.Note]: policyValues.note,
+          [NewCallFieldKeys.ContactName]: policyValues.contactName,
+          [NewCallFieldKeys.ContactInfo]: policyValues.contactInfo,
+          [NewCallFieldKeys.DestinationPoi]: policyValues.destinationPoiId,
+          [NewCallFieldKeys.DispatchOn]: policyValues.scheduledOn,
+          [NewCallFieldKeys.DispatchList]:
+            dispatchSelection.everyone || dispatchSelection.units.length > 0 || dispatchSelection.users.length > 0 || dispatchSelection.groups.length > 0 || dispatchSelection.roles.length > 0,
+        });
+
+        if (missingFields.length > 0) {
+          setIsSubmitting(false);
+          toast.error(t('calls.required_fields_missing', { fields: missingFields.join(', ') }));
+          return;
+        }
 
         if (selectedLocation?.latitude && selectedLocation?.longitude) {
           data.latitude = selectedLocation.latitude;
@@ -480,7 +515,7 @@ export default function NewCallWeb() {
         setIsSubmitting(false);
       }
     },
-    [selectedLocation, callPriorities, callTypes, toast, t, callFormData, linkedCall?.callId, udfValues]
+    [selectedLocation, callPriorities, callTypes, toast, t, callFormData, linkedCall?.callId, udfValues, fieldPolicy, dispatchSelection]
   );
 
   // Keyboard shortcuts
@@ -532,6 +567,19 @@ export default function NewCallWeb() {
     [setValue]
   );
 
+  // Run card recommendation. Inert unless the department has Dispatch.RunCards enabled.
+  const runCardRecommendation = useCallRecommendation({
+    priorityName: watchedPriority,
+    typeName: watchedType,
+    latitude: selectedLocation?.latitude ?? null,
+    longitude: selectedLocation?.longitude ?? null,
+    callPriorities,
+  });
+
+  const handleApplyRecommendation = useCallback(() => {
+    handleDispatchSelection(runCardRecommendation.applyToSelection(dispatchSelection));
+  }, [runCardRecommendation, dispatchSelection, handleDispatchSelection]);
+
   const getDispatchSummary = () => {
     if (dispatchSelection.everyone) {
       return t('calls.everyone');
@@ -580,13 +628,10 @@ export default function NewCallWeb() {
 
     setIsGeocodingAddress(true);
     try {
-      const apiKey = config?.GoogleMapsKey;
-      if (!apiKey) throw new Error('Google Maps API key not configured');
+      const lookup = await forwardGeocode(address);
 
-      const response = await axios.get<GeocodingResponse>(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`);
-
-      if (response.data.status === 'OK' && response.data.results.length > 0) {
-        const results = response.data.results;
+      if (lookup.candidates.length > 0) {
+        const results = lookup.candidates;
         if (results.length === 1) {
           const result = results[0];
           handleLocationSelected({
@@ -600,7 +645,7 @@ export default function NewCallWeb() {
           setShowAddressSelection(true);
         }
       } else {
-        toast.error(t('calls.address_not_found'));
+        toast.error(t(lookup.succeeded ? 'calls.address_not_found' : 'calls.geocoding_error'));
       }
     } catch (err) {
       console.error('Error geocoding address:', err);
@@ -634,20 +679,18 @@ export default function NewCallWeb() {
 
     setIsGeocodingWhat3Words(true);
     try {
-      const apiKey = config?.W3WKey;
-      if (!apiKey) throw new Error('what3words API key not configured');
+      const lookup = await what3WordsLookup(what3words);
 
-      const response = await axios.get<What3WordsResponse>(`https://api.what3words.com/v3/convert-to-coordinates?words=${encodeURIComponent(what3words)}&key=${apiKey}`);
-
-      if (response.data.coordinates) {
+      if (lookup.candidates.length > 0) {
+        const result = lookup.candidates[0];
         handleLocationSelected({
-          latitude: response.data.coordinates.lat,
-          longitude: response.data.coordinates.lng,
-          address: response.data.nearestPlace,
+          latitude: result.geometry.location.lat,
+          longitude: result.geometry.location.lng,
+          address: result.formatted_address,
         });
         toast.success(t('calls.what3words_found'));
       } else {
-        toast.error(t('calls.what3words_not_found'));
+        toast.error(t(lookup.succeeded ? 'calls.what3words_not_found' : 'calls.what3words_geocoding_error'));
       }
     } catch (err) {
       console.error('Error geocoding what3words:', err);
@@ -665,13 +708,10 @@ export default function NewCallWeb() {
 
     setIsGeocodingPlusCode(true);
     try {
-      const apiKey = config?.GoogleMapsKey;
-      if (!apiKey) throw new Error('Google Maps API key not configured');
+      const lookup = await plusCodeLookup(plusCode);
 
-      const response = await axios.get<GeocodingResponse>(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(plusCode)}&key=${apiKey}`);
-
-      if (response.data.status === 'OK' && response.data.results.length > 0) {
-        const result = response.data.results[0];
+      if (lookup.candidates.length > 0) {
+        const result = lookup.candidates[0];
         handleLocationSelected({
           latitude: result.geometry.location.lat,
           longitude: result.geometry.location.lng,
@@ -679,7 +719,7 @@ export default function NewCallWeb() {
         });
         toast.success(t('calls.plus_code_found'));
       } else {
-        toast.error(t('calls.plus_code_not_found'));
+        toast.error(t(lookup.succeeded ? 'calls.plus_code_not_found' : 'calls.plus_code_geocoding_error'));
       }
     } catch (err) {
       console.error('Error geocoding plus code:', err);
@@ -713,17 +753,13 @@ export default function NewCallWeb() {
 
     setIsGeocodingCoordinates(true);
     try {
-      const apiKey = config?.GoogleMapsKey;
-      if (!apiKey) throw new Error('Google Maps API key not configured');
+      const lookup = await reverseGeocode(latitude, longitude);
 
-      const response = await axios.get<GeocodingResponse>(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`);
-
-      if (response.data.status === 'OK' && response.data.results.length > 0) {
-        const result = response.data.results[0];
+      if (lookup.address) {
         handleLocationSelected({
           latitude,
           longitude,
-          address: result.formatted_address,
+          address: lookup.address,
         });
         toast.success(t('calls.coordinates_found'));
       } else {
@@ -790,87 +826,99 @@ export default function NewCallWeb() {
           <View style={isWideScreen ? styles.twoColumnLayout : styles.singleColumnLayout}>
             {/* Left Column - Call Details */}
             <View style={isWideScreen ? styles.leftColumn : styles.fullWidth}>
-              <Card style={StyleSheet.flatten([styles.card, isDark ? styles.cardDark : styles.cardLight])}>
-                <Pressable style={styles.collapsibleHeader} onPress={() => toggleSection('callDetails')}>
-                  <Text style={StyleSheet.flatten([styles.sectionTitle, isDark ? styles.sectionTitleDark : styles.sectionTitleLight, { marginBottom: 0 }])}>{t('calls.call_details')}</Text>
-                  <View>{sectionsExpanded.callDetails ? <ChevronUpIcon size={20} color={isDark ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={20} color={isDark ? '#9ca3af' : '#6b7280'} />}</View>
-                </Pressable>
-                {sectionsExpanded.callDetails ? (
-                  <View style={{ marginTop: 16 }}>
-                    <Controller
-                      control={control}
-                      name="name"
-                      render={({ field: { onChange, onBlur, value } }) => (
-                        <WebInput label={t('calls.name')} placeholder={t('calls.name_placeholder')} value={value} onChange={onChange} onBlur={onBlur} error={errors.name?.message} required autoFocus testID="name-input" />
-                      )}
-                    />
+              {fieldPolicy.isVisible(NewCallFieldKeys.Note) ? (
+                <Card style={StyleSheet.flatten([styles.card, isDark ? styles.cardDark : styles.cardLight])}>
+                  <Pressable style={styles.collapsibleHeader} onPress={() => toggleSection('callDetails')}>
+                    <Text style={StyleSheet.flatten([styles.sectionTitle, isDark ? styles.sectionTitleDark : styles.sectionTitleLight, { marginBottom: 0 }])}>{t('calls.call_details')}</Text>
+                    <View>{sectionsExpanded.callDetails ? <ChevronUpIcon size={20} color={isDark ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={20} color={isDark ? '#9ca3af' : '#6b7280'} />}</View>
+                  </Pressable>
+                  {sectionsExpanded.callDetails ? (
+                    <View style={{ marginTop: 16 }}>
+                      <Controller
+                        control={control}
+                        name="name"
+                        render={({ field: { onChange, onBlur, value } }) => (
+                          <WebInput
+                            label={t('calls.name')}
+                            placeholder={t('calls.name_placeholder')}
+                            value={value}
+                            onChange={onChange}
+                            onBlur={onBlur}
+                            error={errors.name?.message}
+                            required
+                            autoFocus
+                            testID="name-input"
+                          />
+                        )}
+                      />
 
-                    <Controller
-                      control={control}
-                      name="nature"
-                      render={({ field: { onChange, onBlur, value } }) => (
-                        <WebInput
-                          label={t('calls.nature')}
-                          placeholder={t('calls.nature_placeholder')}
-                          value={value}
-                          onChange={onChange}
-                          onBlur={onBlur}
-                          error={errors.nature?.message}
-                          multiline
-                          rows={3}
-                          required
-                          testID="nature-input"
-                        />
-                      )}
-                    />
+                      <Controller
+                        control={control}
+                        name="nature"
+                        render={({ field: { onChange, onBlur, value } }) => (
+                          <WebInput
+                            label={t('calls.nature')}
+                            placeholder={t('calls.nature_placeholder')}
+                            value={value}
+                            onChange={onChange}
+                            onBlur={onBlur}
+                            error={errors.nature?.message}
+                            multiline
+                            rows={3}
+                            required
+                            testID="nature-input"
+                          />
+                        )}
+                      />
 
-                    <View style={styles.twoInputRow}>
-                      <View style={styles.halfWidth}>
-                        <Controller
-                          control={control}
-                          name="priority"
-                          render={({ field: { onChange, value } }) => (
-                            <WebSelect
-                              label={t('calls.priority')}
-                              placeholder={t('calls.select_priority')}
-                              value={value}
-                              onChange={onChange}
-                              options={callPriorities.map((p) => ({ id: p.Id, name: p.Name, color: p.Color }))}
-                              error={errors.priority?.message}
-                              required
-                            />
-                          )}
-                        />
+                      <View style={styles.twoInputRow}>
+                        <View style={styles.halfWidth}>
+                          <Controller
+                            control={control}
+                            name="priority"
+                            render={({ field: { onChange, value } }) => (
+                              <WebSelect
+                                label={t('calls.priority')}
+                                placeholder={t('calls.select_priority')}
+                                value={value}
+                                onChange={onChange}
+                                options={callPriorities.map((p) => ({ id: p.Id, name: p.Name, color: p.Color }))}
+                                error={errors.priority?.message}
+                                required
+                              />
+                            )}
+                          />
+                        </View>
+                        <View style={styles.halfWidth}>
+                          <Controller
+                            control={control}
+                            name="type"
+                            render={({ field: { onChange, value } }) => (
+                              <WebSelect
+                                label={t('calls.type')}
+                                placeholder={t('calls.select_type')}
+                                value={value}
+                                onChange={onChange}
+                                options={callTypes.map((t) => ({ id: t.Id, name: t.Name }))}
+                                error={errors.type?.message}
+                                required
+                              />
+                            )}
+                          />
+                        </View>
                       </View>
-                      <View style={styles.halfWidth}>
-                        <Controller
-                          control={control}
-                          name="type"
-                          render={({ field: { onChange, value } }) => (
-                            <WebSelect
-                              label={t('calls.type')}
-                              placeholder={t('calls.select_type')}
-                              value={value}
-                              onChange={onChange}
-                              options={callTypes.map((t) => ({ id: t.Id, name: t.Name }))}
-                              error={errors.type?.message}
-                              required
-                            />
-                          )}
-                        />
-                      </View>
+
+                      <Controller
+                        control={control}
+                        name="note"
+                        render={({ field: { onChange, onBlur, value } }) => (
+                          <WebInput label={t('calls.note')} placeholder={t('calls.note_placeholder')} value={value || ''} onChange={onChange} onBlur={onBlur} multiline rows={4} testID="note-input" />
+                        )}
+                      />
                     </View>
-
-                    <Controller
-                      control={control}
-                      name="note"
-                      render={({ field: { onChange, onBlur, value } }) => (
-                        <WebInput label={t('calls.note')} placeholder={t('calls.note_placeholder')} value={value || ''} onChange={onChange} onBlur={onBlur} multiline rows={4} testID="note-input" />
-                      )}
-                    />
-                  </View>
-                ) : null}
-              </Card>
+                  ) : null}
+                </Card>
+              ) : null}
 
               {/* Schedule Dispatch */}
               <Card style={StyleSheet.flatten([styles.card, isDark ? styles.cardDark : styles.cardLight])}>
@@ -904,43 +952,45 @@ export default function NewCallWeb() {
               </Card>
 
               {/* Contact Information */}
-              <Card style={StyleSheet.flatten([styles.card, isDark ? styles.cardDark : styles.cardLight])}>
-                <Pressable style={styles.collapsibleHeader} onPress={() => toggleSection('contact')}>
-                  <Text style={StyleSheet.flatten([styles.sectionTitle, isDark ? styles.sectionTitleDark : styles.sectionTitleLight, { marginBottom: 0 }])}>{t('calls.contact_information')}</Text>
-                  <View>{sectionsExpanded.contact ? <ChevronUpIcon size={20} color={isDark ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={20} color={isDark ? '#9ca3af' : '#6b7280'} />}</View>
-                </Pressable>
-                {sectionsExpanded.contact ? (
-                  <View style={{ marginTop: 16 }}>
-                    <Pressable style={StyleSheet.flatten([styles.dispatchButton, isDark ? styles.dispatchButtonDark : styles.dispatchButtonLight, { marginBottom: 12 }])} onPress={() => setShowContactPicker(true)}>
-                      <UserIcon size={16} color={isDark ? '#9ca3af' : '#6b7280'} />
-                      <Text style={StyleSheet.flatten([styles.dispatchButtonText, isDark ? styles.dispatchButtonTextDark : styles.dispatchButtonTextLight, { marginLeft: 8 }])}>
-                        {t('calls.contact_picker.search_placeholder', 'Search contacts...')}
-                      </Text>
-                    </Pressable>
+              {fieldPolicy.isVisible(NewCallFieldKeys.ContactName) ? (
+                <Card style={StyleSheet.flatten([styles.card, isDark ? styles.cardDark : styles.cardLight])}>
+                  <Pressable style={styles.collapsibleHeader} onPress={() => toggleSection('contact')}>
+                    <Text style={StyleSheet.flatten([styles.sectionTitle, isDark ? styles.sectionTitleDark : styles.sectionTitleLight, { marginBottom: 0 }])}>{t('calls.contact_information')}</Text>
+                    <View>{sectionsExpanded.contact ? <ChevronUpIcon size={20} color={isDark ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={20} color={isDark ? '#9ca3af' : '#6b7280'} />}</View>
+                  </Pressable>
+                  {sectionsExpanded.contact ? (
+                    <View style={{ marginTop: 16 }}>
+                      <Pressable style={StyleSheet.flatten([styles.dispatchButton, isDark ? styles.dispatchButtonDark : styles.dispatchButtonLight, { marginBottom: 12 }])} onPress={() => setShowContactPicker(true)}>
+                        <UserIcon size={16} color={isDark ? '#9ca3af' : '#6b7280'} />
+                        <Text style={StyleSheet.flatten([styles.dispatchButtonText, isDark ? styles.dispatchButtonTextDark : styles.dispatchButtonTextLight, { marginLeft: 8 }])}>
+                          {t('calls.contact_picker.search_placeholder', 'Search contacts...')}
+                        </Text>
+                      </Pressable>
 
-                    <View style={styles.twoInputRow}>
-                      <View style={styles.halfWidth}>
-                        <Controller
-                          control={control}
-                          name="contactName"
-                          render={({ field: { onChange, onBlur, value } }) => (
-                            <WebInput label={t('calls.contact_name')} placeholder={t('calls.contact_name_placeholder')} value={value || ''} onChange={onChange} onBlur={onBlur} testID="contact-name-input" />
-                          )}
-                        />
-                      </View>
-                      <View style={styles.halfWidth}>
-                        <Controller
-                          control={control}
-                          name="contactInfo"
-                          render={({ field: { onChange, onBlur, value } }) => (
-                            <WebInput label={t('calls.contact_info')} placeholder={t('calls.contact_info_placeholder')} value={value || ''} onChange={onChange} onBlur={onBlur} testID="contact-info-input" />
-                          )}
-                        />
+                      <View style={styles.twoInputRow}>
+                        <View style={styles.halfWidth}>
+                          <Controller
+                            control={control}
+                            name="contactName"
+                            render={({ field: { onChange, onBlur, value } }) => (
+                              <WebInput label={t('calls.contact_name')} placeholder={t('calls.contact_name_placeholder')} value={value || ''} onChange={onChange} onBlur={onBlur} testID="contact-name-input" />
+                            )}
+                          />
+                        </View>
+                        <View style={styles.halfWidth}>
+                          <Controller
+                            control={control}
+                            name="contactInfo"
+                            render={({ field: { onChange, onBlur, value } }) => (
+                              <WebInput label={t('calls.contact_info')} placeholder={t('calls.contact_info_placeholder')} value={value || ''} onChange={onChange} onBlur={onBlur} testID="contact-info-input" />
+                            )}
+                          />
+                        </View>
                       </View>
                     </View>
-                  </View>
-                ) : null}
-              </Card>
+                  ) : null}
+                </Card>
+              ) : null}
 
               {/* Call Form */}
               {callForm ? (
@@ -1161,10 +1211,23 @@ export default function NewCallWeb() {
                   <View>{sectionsExpanded.dispatch ? <ChevronUpIcon size={20} color={isDark ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={20} color={isDark ? '#9ca3af' : '#6b7280'} />}</View>
                 </Pressable>
                 {sectionsExpanded.dispatch ? (
-                  <Pressable style={StyleSheet.flatten([styles.dispatchButton, isDark ? styles.dispatchButtonDark : styles.dispatchButtonLight, { marginTop: 16 }])} onPress={() => setShowDispatchModal(true)}>
-                    <Text style={StyleSheet.flatten([styles.dispatchButtonText, isDark ? styles.dispatchButtonTextDark : styles.dispatchButtonTextLight])}>{getDispatchSummary()}</Text>
-                    <ChevronDownIcon size={20} color={isDark ? '#9ca3af' : '#6b7280'} />
-                  </Pressable>
+                  <View style={{ marginTop: 16 }}>
+                    {runCardRecommendation.isRunCardsEnabled ? (
+                      <RecommendationPanel
+                        recommendation={runCardRecommendation.recommendation}
+                        isLoading={runCardRecommendation.isLoading}
+                        error={runCardRecommendation.error}
+                        hasFetched={runCardRecommendation.hasFetched}
+                        isApplied={runCardRecommendation.isApplied}
+                        onApply={handleApplyRecommendation}
+                        onRefresh={runCardRecommendation.refresh}
+                      />
+                    ) : null}
+                    <Pressable style={StyleSheet.flatten([styles.dispatchButton, isDark ? styles.dispatchButtonDark : styles.dispatchButtonLight])} onPress={() => setShowDispatchModal(true)}>
+                      <Text style={StyleSheet.flatten([styles.dispatchButtonText, isDark ? styles.dispatchButtonTextDark : styles.dispatchButtonTextLight])}>{getDispatchSummary()}</Text>
+                      <ChevronDownIcon size={20} color={isDark ? '#9ca3af' : '#6b7280'} />
+                    </Pressable>
+                  </View>
                 ) : null}
               </Card>
 

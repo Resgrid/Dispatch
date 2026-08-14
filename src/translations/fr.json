@@ -296,6 +296,8 @@
     "select_address_placeholder": "Sélectionner l'adresse de l'appel",
     "select_description": "Sélectionner la description",
     "select_dispatch_recipients": "Sélectionner les destinataires du dispatch",
+    "dispatch_recipients_partial_load": "Certains destinataires n'ont pas pu être chargés. Les listes ci-dessous peuvent être incomplètes.",
+    "dispatch_recipients_empty": "Aucun personnel, groupe, rôle ou unité ne vous est visible. Vérifiez les autorisations de votre service ou envoyez à Tout le monde.",
     "select_location": "Sélectionner l'emplacement sur la carte",
     "select_name": "Sélectionner le nom",
     "select_nature": "Sélectionner la nature",
@@ -369,7 +371,8 @@
       "no_audio_description": "Les fichiers audio joints à cette intervention apparaîtront ici.",
       "error": "Impossible de charger l’audio",
       "audio_name": "Extrait audio"
-    }
+    },
+    "required_fields_missing": "Votre service exige ces champs avant qu'une intervention puisse être créée : {{fields}}"
   },
   "chat": {
     "title": "Chat",
@@ -1215,6 +1218,7 @@
     "english": "Anglais",
     "french": "Français",
     "german": "Allemand",
+    "greek": "Grec",
     "italian": "Italien",
     "enter_password": "Saisissez votre mot de passe",
     "enter_server_url": "Saisissez l'URL de l'API Resgrid (ex. : https://api.resgrid.com)",
@@ -1536,5 +1540,55 @@
     },
     "stats_label": "Alertes météo"
   },
-  "welcome": "Bienvenue sur le site de l'application obytes"
+  "welcome": "Bienvenue sur le site de l'application obytes",
+  "run_cards": {
+    "title": "Recommandation du plan de réponse",
+    "checking": "Vérification des plans de réponse…",
+    "lookup_failed": "Impossible de vérifier les plans de réponse. L'envoi manuel reste possible.",
+    "summary": "{{units}} unité(s), {{personnel}} intervenant(s) recommandé(s)",
+    "units_section": "Unités recommandées ({{count}})",
+    "personnel_section": "Personnel recommandé ({{count}})",
+    "shortfalls_section": "Non pourvu",
+    "shortfall_line": "{{name}} : {{filled}} sur {{required}} — {{reason}}",
+    "move_ups_section": "Redéploiements de couverture",
+    "move_up_line": "{{station}} : {{available}} sur {{minimum}} après envoi — suggestion {{resource}}",
+    "move_up_no_donor": "aucune source trouvée",
+    "notes_section": "Comment cela a été décidé",
+    "apply": "Appliquer la recommandation",
+    "applied": "Recommandation appliquée",
+    "stale_location": "Position obsolète",
+    "auto_dispatch": "Envoi automatique",
+    "auto_dispatch_explainer": "Ce service envoie automatiquement les plans de réponse correspondants ; ces ressources sont alertées à la création de l'intervention.",
+    "alarm_level": "Alerte {{level}}",
+    "alarm_level_label": "Niveau d'alerte",
+    "escalate": "Déclencher l'alerte {{level}}",
+    "escalate_confirm": "Déclencher l'alerte {{level}} ? Cela envoie les ressources du niveau suivant et n'alerte que celles qui sont ajoutées.",
+    "escalate_confirm_action": "Déclencher l'alerte",
+    "escalate_succeeded": "Alerte {{level}} déclenchée — {{units}} unité(s), {{personnel}} intervenant(s) ajouté(s)",
+    "escalate_nothing_to_add": "Rien à ajouter au niveau d'alerte suivant",
+    "escalate_failed": "Impossible d'escalader l'intervention. Veuillez réessayer.",
+    "mode": {
+      "manual_only": "Sélection manuelle",
+      "station_based": "Par caserne",
+      "closest_unit": "Unité la plus proche"
+    },
+    "reason": {
+      "unknown": "Sélectionné",
+      "in_geofence": "Dans le secteur de la caserne",
+      "cascade_station": "Caserne la plus proche",
+      "closest_by_distance": "Plus proche en distance",
+      "closest_by_eta": "Plus proche en temps de trajet",
+      "rest_period_overridden": "Période de repos outrepassée"
+    },
+    "shortfall": {
+      "unknown": "aucune raison indiquée",
+      "no_candidates": "rien de disponible",
+      "outside_radius": "hors du rayon de recherche",
+      "locations_stale": "positions trop anciennes",
+      "no_location_data": "aucune donnée de position",
+      "not_staffed": "effectif insuffisant",
+      "all_in_rest_period": "tous en période de repos",
+      "stations_exhausted": "plus aucune caserne à explorer"
+    }
+  }
 }

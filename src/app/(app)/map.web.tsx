@@ -20,6 +20,7 @@ import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersD
 import { type GetMapLayersData } from '@/models/v4/mapping/getMapLayersResultData';
 import { type PoiLayerData } from '@/models/v4/mapping/poiLayerData';
 import { useLocationStore } from '@/stores/app/location-store';
+import { getDepartmentMapCenter } from '@/lib/map-center';
 
 // Mapbox GL CSS needs to be injected for web
 const MAPBOX_GL_CSS_URL = 'https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.css';
@@ -114,7 +115,7 @@ export default function MapWeb() {
 
     mapboxgl.accessToken = Env.MAPBOX_PUBKEY;
 
-    const initialCenter: [number, number] = userLongitude && userLatitude ? [userLongitude, userLatitude] : [-98.5795, 39.8283]; // Center of USA as fallback
+    const initialCenter: [number, number] = userLongitude && userLatitude ? [userLongitude, userLatitude] : [getDepartmentMapCenter().longitude, getDepartmentMapCenter().latitude]; // Department map center as fallback
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,

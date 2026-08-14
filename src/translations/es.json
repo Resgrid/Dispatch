@@ -295,6 +295,8 @@
     "select_address_placeholder": "Selecciona la dirección de la llamada",
     "select_description": "Seleccionar descripción",
     "select_dispatch_recipients": "Seleccionar Destinatarios de Despacho",
+    "dispatch_recipients_partial_load": "No se pudieron cargar algunos destinatarios. Las listas siguientes pueden estar incompletas.",
+    "dispatch_recipients_empty": "No hay personal, grupos, roles ni unidades visibles para ti. Revisa los permisos de tu departamento o despacha a Todos.",
     "select_destination_poi": "Selecciona el PDI de destino",
     "select_location": "Seleccionar ubicación en el mapa",
     "select_name": "Seleccionar nombre",
@@ -369,7 +371,8 @@
       "no_audio_description": "El audio adjunto a esta llamada aparecerá aquí.",
       "error": "No se pudo cargar el audio",
       "audio_name": "Clip de audio"
-    }
+    },
+    "required_fields_missing": "Tu departamento exige estos campos antes de poder crear un aviso: {{fields}}"
   },
   "chat": {
     "title": "Chat",
@@ -1215,6 +1218,7 @@
     "english": "Inglés",
     "french": "Francés",
     "german": "Alemán",
+    "greek": "Griego",
     "italian": "Italiano",
     "enter_password": "Introduce tu contraseña",
     "enter_server_url": "Introduce la URL de la API de Resgrid (ej: https://api.resgrid.com)",
@@ -1536,5 +1540,55 @@
     },
     "stats_label": "Alertas Meteorológicas"
   },
-  "welcome": "Bienvenido al sitio de la aplicación obytes"
+  "welcome": "Bienvenido al sitio de la aplicación obytes",
+  "run_cards": {
+    "title": "Recomendación del plan de respuesta",
+    "checking": "Comprobando planes de respuesta…",
+    "lookup_failed": "No se pudieron comprobar los planes de respuesta. Aún puedes despachar manualmente.",
+    "summary": "{{units}} unidad(es), {{personnel}} efectivo(s) recomendados",
+    "units_section": "Unidades recomendadas ({{count}})",
+    "personnel_section": "Personal recomendado ({{count}})",
+    "shortfalls_section": "No se pudo cubrir",
+    "shortfall_line": "{{name}}: {{filled}} de {{required}} — {{reason}}",
+    "move_ups_section": "Reubicaciones de cobertura",
+    "move_up_line": "{{station}}: {{available}} de {{minimum}} tras el despacho — se sugiere {{resource}}",
+    "move_up_no_donor": "no se encontró origen",
+    "notes_section": "Cómo se decidió",
+    "apply": "Aplicar recomendación",
+    "applied": "Recomendación aplicada",
+    "stale_location": "Ubicación desactualizada",
+    "auto_dispatch": "Despacho automático",
+    "auto_dispatch_explainer": "Este departamento despacha automáticamente los planes de respuesta coincidentes; estos recursos se alertan al crear el aviso.",
+    "alarm_level": "Alarma {{level}}",
+    "alarm_level_label": "Nivel de alarma",
+    "escalate": "Activar alarma {{level}}",
+    "escalate_confirm": "¿Activar la alarma {{level}}? Se despacharán los recursos del siguiente nivel y solo se alertará a los nuevos.",
+    "escalate_confirm_action": "Activar alarma",
+    "escalate_succeeded": "Alarma {{level}} activada — {{units}} unidad(es), {{personnel}} efectivo(s) añadidos",
+    "escalate_nothing_to_add": "No hay nada que añadir en el siguiente nivel de alarma",
+    "escalate_failed": "No se pudo escalar el aviso. Inténtalo de nuevo.",
+    "mode": {
+      "manual_only": "Selección manual",
+      "station_based": "Por parque",
+      "closest_unit": "Unidad más cercana"
+    },
+    "reason": {
+      "unknown": "Seleccionado",
+      "in_geofence": "En la zona del parque",
+      "cascade_station": "Parque más cercano",
+      "closest_by_distance": "Más cercano por distancia",
+      "closest_by_eta": "Más cercano por tiempo",
+      "rest_period_overridden": "Periodo de descanso omitido"
+    },
+    "shortfall": {
+      "unknown": "sin motivo indicado",
+      "no_candidates": "nada disponible",
+      "outside_radius": "fuera del radio de búsqueda",
+      "locations_stale": "ubicaciones demasiado antiguas",
+      "no_location_data": "sin datos de ubicación",
+      "not_staffed": "dotación insuficiente",
+      "all_in_rest_period": "todos en periodo de descanso",
+      "stations_exhausted": "no quedan parques por buscar"
+    }
+  }
 }

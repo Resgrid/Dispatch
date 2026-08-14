@@ -295,6 +295,8 @@
     "select_address_placeholder": "اختر عنوان المكالمة",
     "select_description": "اختر الوصف",
     "select_dispatch_recipients": "اختيار مستقبلي الإرسال",
+    "dispatch_recipients_partial_load": "تعذر تحميل بعض المستلمين. قد تكون القوائم أدناه غير مكتملة.",
+    "dispatch_recipients_empty": "لا يظهر لك أي أفراد أو مجموعات أو أدوار أو وحدات. تحقق من أذونات قسمك أو أرسل إلى الجميع.",
     "select_destination_poi": "اختر نقطة اهتمام الوجهة",
     "select_location": "اختر الموقع على الخريطة",
     "select_name": "اختر الاسم",
@@ -369,7 +371,8 @@
       "no_audio_description": "ستظهر هنا التسجيلات الصوتية المرفقة بهذا البلاغ.",
       "error": "تعذر تحميل الصوت",
       "audio_name": "مقطع صوتي"
-    }
+    },
+    "required_fields_missing": "يطلب قسمك هذه الحقول قبل إنشاء البلاغ: {{fields}}"
   },
   "chat": {
     "title": "الدردشة",
@@ -1215,6 +1218,7 @@
     "english": "إنجليزي",
     "french": "فرنسي",
     "german": "ألماني",
+    "greek": "اليونانية",
     "italian": "إيطالي",
     "enter_password": "أدخل كلمة المرور الخاصة بك",
     "enter_server_url": "أدخل عنوان URL لواجهة برمجة تطبيقات Resgrid (مثال: https://api.resgrid.com)",
@@ -1536,5 +1540,55 @@
     },
     "stats_label": "تنبيهات الطقس"
   },
-  "welcome": "مرحبًا بك في موقع تطبيق obytes"
+  "welcome": "مرحبًا بك في موقع تطبيق obytes",
+  "run_cards": {
+    "title": "توصية خطة الاستجابة",
+    "checking": "جارٍ التحقق من خطط الاستجابة…",
+    "lookup_failed": "تعذر التحقق من خطط الاستجابة. لا يزال بإمكانك الإرسال يدويًا.",
+    "summary": "موصى بـ {{units}} وحدة، {{personnel}} مستجيب",
+    "units_section": "الوحدات الموصى بها ({{count}})",
+    "personnel_section": "الأفراد الموصى بهم ({{count}})",
+    "shortfalls_section": "تعذر توفيره",
+    "shortfall_line": "{{name}}: {{filled}} من {{required}} — {{reason}}",
+    "move_ups_section": "إعادة توزيع التغطية",
+    "move_up_line": "{{station}}: {{available}} من {{minimum}} بعد الإرسال — اقتراح {{resource}}",
+    "move_up_no_donor": "لم يُعثر على مصدر",
+    "notes_section": "كيف تم اتخاذ القرار",
+    "apply": "تطبيق التوصية",
+    "applied": "تم تطبيق التوصية",
+    "stale_location": "موقع قديم",
+    "auto_dispatch": "إرسال تلقائي",
+    "auto_dispatch_explainer": "يرسل هذا القسم خطط الاستجابة المطابقة تلقائيًا؛ يتم تنبيه هذه الموارد عند إنشاء البلاغ.",
+    "alarm_level": "إنذار {{level}}",
+    "alarm_level_label": "مستوى الإنذار",
+    "escalate": "إطلاق الإنذار {{level}}",
+    "escalate_confirm": "إطلاق الإنذار {{level}}؟ سيؤدي ذلك إلى إرسال موارد المستوى التالي وتنبيه الجدد فقط.",
+    "escalate_confirm_action": "إطلاق الإنذار",
+    "escalate_succeeded": "تم إطلاق الإنذار {{level}} — تمت إضافة {{units}} وحدة، {{personnel}} مستجيب",
+    "escalate_nothing_to_add": "لا شيء لإضافته في مستوى الإنذار التالي",
+    "escalate_failed": "تعذر رفع مستوى البلاغ. يرجى المحاولة مرة أخرى.",
+    "mode": {
+      "manual_only": "اختيار يدوي",
+      "station_based": "حسب المركز",
+      "closest_unit": "أقرب وحدة"
+    },
+    "reason": {
+      "unknown": "تم اختياره",
+      "in_geofence": "داخل نطاق المركز",
+      "cascade_station": "أقرب مركز",
+      "closest_by_distance": "الأقرب مسافةً",
+      "closest_by_eta": "الأقرب زمنًا",
+      "rest_period_overridden": "تم تجاوز فترة الراحة"
+    },
+    "shortfall": {
+      "unknown": "لم يُذكر سبب",
+      "no_candidates": "لا يوجد متاح",
+      "outside_radius": "خارج نطاق البحث",
+      "locations_stale": "المواقع قديمة جدًا",
+      "no_location_data": "لا توجد بيانات موقع",
+      "not_staffed": "طاقم غير كافٍ",
+      "all_in_rest_period": "الجميع في فترة راحة",
+      "stations_exhausted": "لا توجد مراكز أخرى للبحث"
+    }
+  }
 }

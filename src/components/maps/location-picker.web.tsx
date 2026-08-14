@@ -6,6 +6,7 @@ import { Text } from 'react-native';
 
 import { Button, ButtonText } from '@/components/ui/button';
 import { Env } from '@/lib/env';
+import { getDepartmentMapCenter } from '@/lib/map-center';
 
 // Mapbox GL CSS needs to be injected for web
 const MAPBOX_GL_CSS_URL = 'https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.css';
@@ -92,7 +93,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ initialLocation, onLoca
 
     mapboxgl.accessToken = Env.MAPBOX_PUBKEY;
 
-    const initialCenter: [number, number] = currentLocation ? [currentLocation.longitude, currentLocation.latitude] : [-98.5795, 39.8283];
+    const initialCenter: [number, number] = currentLocation ? [currentLocation.longitude, currentLocation.latitude] : [getDepartmentMapCenter().longitude, getDepartmentMapCenter().latitude];
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
