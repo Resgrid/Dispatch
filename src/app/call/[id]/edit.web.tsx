@@ -527,11 +527,12 @@ export default function EditCallWeb() {
           setShowAddressSelection(true);
         }
       } else {
+        // The lookup running and matching nothing is a different problem to the lookup failing.
         toast.show({
           placement: 'top',
           render: () => (
             <Box className="rounded-lg bg-red-500 p-4 shadow-lg">
-              <Text className="text-white">{t('calls.address_not_found')}</Text>
+              <Text className="text-white">{t(lookup.succeeded ? 'calls.address_not_found' : 'calls.geocoding_error')}</Text>
             </Box>
           ),
         });

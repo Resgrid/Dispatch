@@ -267,8 +267,10 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     onMapReady?.();
   };
 
-  // Initial camera position
-  const initialCenter: [number, number] = location.longitude && location.latitude ? [location.longitude, location.latitude] : [getDepartmentMapCenter().longitude, getDepartmentMapCenter().latitude];
+  // Initial camera position. Read the department center once: two calls are two store reads, and
+  // the second could see a different config.
+  const departmentCenter = getDepartmentMapCenter();
+  const initialCenter: [number, number] = location.longitude && location.latitude ? [location.longitude, location.latitude] : [departmentCenter.longitude, departmentCenter.latitude];
 
   return (
     <View style={StyleSheet.flatten([styles.container, style])} testID={testID}>
@@ -282,7 +284,8 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         rotateEnabled={interactive}
         pitchEnabled={interactive}
       >
-        <Mapbox.Camera ref={cameraRef} defaultSettings={{ centerCoordinate: initialCenter, zoomLevel: location.latitude && location.longitude ? 12 : 3 }} />
+        {/* The department configured a zoom to go with its center; a fixed 3 opens on the whole globe. */}
+        <Mapbox.Camera ref={cameraRef} defaultSettings={{ centerCoordinate: initialCenter, zoomLevel: location.latitude && location.longitude ? 12 : departmentCenter.zoomLevel }} />
 
         {/* Render custom layers */}
         {renderMapLayers()}

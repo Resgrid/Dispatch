@@ -229,17 +229,19 @@ export const RecommendationPanel: React.FC<RecommendationPanelProps> = ({ recomm
             </VStack>
           ) : null}
 
-          {canApply ? (
-            <HStack className="items-center gap-2">
+          {/* Refresh stays put even when there is nothing to apply: a shortfall-only recommendation
+              is the one most worth re-running, once a unit clears or a crew signs on. */}
+          <HStack className="items-center gap-2">
+            {canApply ? (
               <Button variant={isApplied ? 'outline' : 'solid'} action="primary" onPress={onApply} className="flex-1" testID={`${testID}-apply`}>
                 {isApplied ? <CheckIcon size={16} color={isDark ? '#e5e5e5' : '#404040'} /> : null}
                 <ButtonText>{isApplied ? t('run_cards.applied') : t('run_cards.apply')}</ButtonText>
               </Button>
-              <TouchableOpacity onPress={onRefresh} testID={`${testID}-refresh`}>
-                <RefreshCwIcon size={18} color={isDark ? '#a3a3a3' : '#737373'} />
-              </TouchableOpacity>
-            </HStack>
-          ) : null}
+            ) : null}
+            <TouchableOpacity onPress={onRefresh} testID={`${testID}-refresh`}>
+              <RefreshCwIcon size={18} color={isDark ? '#a3a3a3' : '#737373'} />
+            </TouchableOpacity>
+          </HStack>
         </VStack>
       ) : null}
     </Card>

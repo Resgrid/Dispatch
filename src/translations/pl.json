@@ -297,7 +297,7 @@
     "select_description": "Wybierz opis",
     "select_dispatch_recipients": "Wybierz odbiorców dyspozycji",
     "dispatch_recipients_partial_load": "Nie udało się wczytać niektórych odbiorców. Poniższe listy mogą być niekompletne.",
-    "dispatch_recipients_empty": "Nie widzisz żadnego personelu, grup, ról ani jednostek. Sprawdź uprawnienia swojej jednostki lub wyślij do Wszystkich.",
+    "dispatch_recipients_empty": "Nie widzisz żadnego personelu, grup, ról ani jednostek. Sprawdź uprawnienia swojego departamentu lub wyślij do Wszystkich.",
     "select_location": "Wybierz lokalizację na mapie",
     "select_name": "Wybierz nazwę",
     "select_nature": "Wybierz charakter",
@@ -372,8 +372,8 @@
       "error": "Nie udało się załadować dźwięku",
       "audio_name": "Klip dźwiękowy"
     },
-    "required_fields_missing": "Twoja jednostka wymaga tych pól przed utworzeniem zgłoszenia: {{fields}}",
-    "field_policy_loading": "Ustawienia zgłoszeń Twojej jednostki są jeszcze wczytywane, spróbuj ponownie za chwilę"
+    "required_fields_missing": "Twój departament wymaga tych pól przed utworzeniem zgłoszenia: {{fields}}",
+    "field_policy_loading": "Ustawienia zgłoszeń Twojego departamentu są jeszcze wczytywane, spróbuj ponownie za chwilę"
   },
   "chat": {
     "title": "Czat",
@@ -1559,7 +1559,7 @@
     "applied": "Rekomendacja zastosowana",
     "stale_location": "Nieaktualna lokalizacja",
     "auto_dispatch": "Automatyczne zadysponowanie",
-    "auto_dispatch_explainer": "Ta jednostka automatycznie dysponuje pasujące plany; te zasoby są alarmowane przy tworzeniu zdarzenia.",
+    "auto_dispatch_explainer": "Ten departament automatycznie wysyła pasujące plany; te zasoby są alarmowane przy tworzeniu zdarzenia.",
     "alarm_level": "Alarm {{level}}",
     "alarm_level_label": "Poziom alarmu",
     "escalate": "Ogłoś alarm {{level}}",

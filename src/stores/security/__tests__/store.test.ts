@@ -55,11 +55,18 @@ jest.mock('react-native', () => ({
   },
 }));
 
+// Mock the API cache scope
+jest.mock('@/lib/cache/cache-scope', () => ({
+  setCacheScope: jest.fn(),
+}));
+
 // Import after mocks
 import { securityStore, useSecurityStore } from '../store';
 import { getCurrentUsersRights } from '@/api/security/security';
+import { setCacheScope } from '@/lib/cache/cache-scope';
 
 const mockGetCurrentUsersRights = getCurrentUsersRights as jest.MockedFunction<typeof getCurrentUsersRights>;
+const mockSetCacheScope = setCacheScope as jest.MockedFunction<typeof setCacheScope>;
 
 
 describe('useSecurityStore', () => {
@@ -267,6 +274,73 @@ describe('useSecurityStore', () => {
 
       const { result } = renderHook(() => useSecurityStore());
       expect(result.current.isUserGroupAdmin(1)).toBe(false);
+    });
+  });
+
+  // Cache keys embed the department, so a user who moves between departments must not be served the
+  // previous department's cached rosters, units or contacts.
+  describe('API cache scope', () => {
+    it('stamps the department on the cache scope once rights resolve', async () => {
+      mockGetCurrentUsersRights.mockResolvedValue({
+        Data: mockRightsData,
+        PageSize: 0,
+        Timestamp: '',
+        Version: '',
+        Node: '',
+        RequestId: '',
+        Status: '',
+        Environment: '',
+      });
+
+      mockSetCacheScope.mockClear();
+
+      await act(async () => {
+        await securityStore.getState().getRights();
+      });
+
+      expect(mockSetCacheScope).toHaveBeenCalledWith({ departmentId: 'dept-123' });
+    });
+
+    it('moves the scope with the department, not just the first fetch', () => {
+      act(() => {
+        securityStore.setState({ rights: mockRightsData, error: null });
+      });
+
+      mockSetCacheScope.mockClear();
+
+      act(() => {
+        securityStore.setState({ rights: { ...mockRightsData, DepartmentId: 'dept-456' }, error: null });
+      });
+
+      expect(mockSetCacheScope).toHaveBeenCalledWith({ departmentId: 'dept-456' });
+    });
+
+    it('leaves the scope alone when rights change but the department does not', () => {
+      act(() => {
+        securityStore.setState({ rights: mockRightsData, error: null });
+      });
+
+      mockSetCacheScope.mockClear();
+
+      act(() => {
+        securityStore.setState({ rights: { ...mockRightsData, IsAdmin: false }, error: null });
+      });
+
+      expect(mockSetCacheScope).not.toHaveBeenCalled();
+    });
+
+    it('drops the department from the scope when rights go away', () => {
+      act(() => {
+        securityStore.setState({ rights: mockRightsData, error: null });
+      });
+
+      mockSetCacheScope.mockClear();
+
+      act(() => {
+        securityStore.setState({ rights: null, error: null });
+      });
+
+      expect(mockSetCacheScope).toHaveBeenCalledWith({ departmentId: null });
     });
   });
 });

@@ -4,6 +4,7 @@ import { create, type StateCreator } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { getCurrentUsersRights } from '@/api/security/security';
+import { setCacheScope } from '@/lib/cache/cache-scope';
 import { logger } from '@/lib/logging';
 import { type DepartmentRightsResultData } from '@/models/v4/security/departmentRightsResultData';
 
@@ -33,6 +34,23 @@ const mmkvStorage = {
   },
 };
 
+/**
+ * The department half of the API cache scope. Rights are where the department id is resolved, so
+ * this store owns stamping it: cache keys embed it, and without it a user who moves between
+ * departments reads the previous department's cached rosters, units and contacts back out of MMKV.
+ */
+const applyDepartmentCacheScope = (departmentId: string | null | undefined): void => {
+  try {
+    setCacheScope({ departmentId: departmentId ? String(departmentId) : null });
+  } catch (error) {
+    // Never let cache bookkeeping break sign-in. A stale scope only costs a cache miss.
+    logger.warn({
+      message: 'Failed to apply the department to the API cache scope',
+      context: { error },
+    });
+  }
+};
+
 // Base store creator without persistence
 const createSecurityStore: StateCreator<SecurityState> = (set, _get) => ({
   error: null,
@@ -44,6 +62,8 @@ const createSecurityStore: StateCreator<SecurityState> = (set, _get) => ({
       set({
         rights: response.Data,
       });
+
+      applyDepartmentCacheScope(response.Data?.DepartmentId);
     } catch (error) {
       logger.error({
         message: 'Failed to get user rights',
@@ -69,6 +89,21 @@ export const securityStore =
           }),
         })
       );
+
+// Rights also arrive without going through getRights — persisted rights rehydrate during store
+// creation above, and a department switch lands as a plain state change. Keep the scope in step with
+// whatever the rights currently say rather than only with the fetch path.
+securityStore.subscribe((state, previousState) => {
+  if (state.rights?.DepartmentId === previousState.rights?.DepartmentId) {
+    return;
+  }
+
+  applyDepartmentCacheScope(state.rights?.DepartmentId ?? null);
+});
+
+// Rehydration finishes inside create(), before the subscription above exists, so stamp the scope
+// once from whatever rights were restored.
+applyDepartmentCacheScope(securityStore.getState().rights?.DepartmentId ?? null);
 
 export const useSecurityStore = () => {
   const store = securityStore();

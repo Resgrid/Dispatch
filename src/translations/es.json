@@ -372,8 +372,8 @@
       "error": "No se pudo cargar el audio",
       "audio_name": "Clip de audio"
     },
-    "required_fields_missing": "Tu departamento exige estos campos antes de poder crear un aviso: {{fields}}",
-    "field_policy_loading": "Aún se están cargando los ajustes de avisos de tu departamento, inténtalo de nuevo en un momento"
+    "required_fields_missing": "Tu departamento exige estos campos antes de poder crear una llamada: {{fields}}",
+    "field_policy_loading": "Aún se están cargando los ajustes de llamadas de tu departamento, inténtalo de nuevo en un momento"
   },
   "chat": {
     "title": "Chat",
@@ -1559,7 +1559,7 @@
     "applied": "Recomendación aplicada",
     "stale_location": "Ubicación desactualizada",
     "auto_dispatch": "Despacho automático",
-    "auto_dispatch_explainer": "Este departamento despacha automáticamente los planes de respuesta coincidentes; estos recursos se alertan al crear el aviso.",
+    "auto_dispatch_explainer": "Este departamento despacha automáticamente los planes de respuesta coincidentes; estos recursos se alertan al crear la llamada.",
     "alarm_level": "Alarma {{level}}",
     "alarm_level_label": "Nivel de alarma",
     "escalate": "Activar alarma {{level}}",
@@ -1567,7 +1567,7 @@
     "escalate_confirm_action": "Activar alarma",
     "escalate_succeeded": "Alarma {{level}} activada — {{units}} unidad(es), {{personnel}} efectivo(s) añadidos",
     "escalate_nothing_to_add": "No hay nada que añadir en el siguiente nivel de alarma",
-    "escalate_failed": "No se pudo escalar el aviso. Inténtalo de nuevo.",
+    "escalate_failed": "No se pudo escalar la llamada. Inténtalo de nuevo.",
     "mode": {
       "manual_only": "Selección manual",
       "station_based": "Por parque",

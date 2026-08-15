@@ -93,13 +93,16 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ initialLocation, onLoca
 
     mapboxgl.accessToken = Env.MAPBOX_PUBKEY;
 
-    const initialCenter: [number, number] = currentLocation ? [currentLocation.longitude, currentLocation.latitude] : [getDepartmentMapCenter().longitude, getDepartmentMapCenter().latitude];
+    // Read once: two calls are two store reads, and the second could see a different config.
+    const departmentCenter = getDepartmentMapCenter();
+    const initialCenter: [number, number] = currentLocation ? [currentLocation.longitude, currentLocation.latitude] : [departmentCenter.longitude, departmentCenter.latitude];
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/streets-v12',
       center: initialCenter,
-      zoom: currentLocation ? 15 : 3,
+      // The department configured a zoom to go with its center; a fixed 3 opens on the whole globe.
+      zoom: currentLocation ? 15 : departmentCenter.zoomLevel,
     });
 
     map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');

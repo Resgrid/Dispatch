@@ -308,6 +308,8 @@ export default function NewCall() {
         [NewCallFieldKeys.ContactName]: data.contactName,
         [NewCallFieldKeys.ContactInfo]: data.contactInfo,
         [NewCallFieldKeys.DestinationPoi]: data.destinationPoiId,
+        [NewCallFieldKeys.Protocols]: selectedProtocols.length > 0,
+        [NewCallFieldKeys.LinkedCall]: !!linkedCall,
         [NewCallFieldKeys.DispatchList]:
           dispatchSelection.everyone || dispatchSelection.units.length > 0 || dispatchSelection.users.length > 0 || dispatchSelection.groups.length > 0 || dispatchSelection.roles.length > 0,
       });
@@ -745,6 +747,15 @@ export default function NewCall() {
     );
   }
 
+  // Every rule the department can set drives its own control. The location card groups five of
+  // them, so it only disappears once the policy has hidden all five.
+  const showAddress = fieldPolicy.isVisible(NewCallFieldKeys.Address);
+  const showGeolocation = fieldPolicy.isVisible(NewCallFieldKeys.Geolocation);
+  const showWhat3Words = fieldPolicy.isVisible(NewCallFieldKeys.What3Words);
+  const showPlusCode = fieldPolicy.isVisible(NewCallFieldKeys.PlusCode);
+  const showDestinationPoi = fieldPolicy.isVisible(NewCallFieldKeys.DestinationPoi);
+  const showLocationCard = showAddress || showGeolocation || showWhat3Words || showPlusCode || showDestinationPoi;
+
   return (
     <>
       <FocusAwareStatusBar />
@@ -928,147 +939,168 @@ export default function NewCall() {
               </Card>
             ) : null}
 
-            <Card className={`mb-4 rounded-lg border ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
-              <TouchableOpacity onPress={() => toggleSection('location')} className="flex-row items-center justify-between p-4">
-                <Text className="text-base font-semibold">{t('calls.call_location')}</Text>
-                {sectionsExpanded.location ? <ChevronUpIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} />}
-              </TouchableOpacity>
-              {sectionsExpanded.location ? (
-                <View className="px-4 pb-4">
-                  {/* Address Field */}
-                  <FormControl className="mb-4">
-                    <FormControlLabel>
-                      <FormControlLabelText>{t('calls.address')}</FormControlLabelText>
-                    </FormControlLabel>
-                    <Controller
-                      control={control}
-                      name="address"
-                      render={({ field: { onChange, onBlur, value } }) => (
-                        <Box className="flex-row items-center space-x-2">
-                          <Box className="flex-1">
-                            <Input>
-                              <InputField testID="address-input" placeholder={t('calls.address_placeholder')} value={value} onChangeText={onChange} onBlur={onBlur} />
-                            </Input>
-                          </Box>
-                          <Button testID="address-search-button" size="sm" variant="outline" className="ml-2" onPress={() => handleAddressSearch(value || '')} disabled={isGeocodingAddress || !value?.trim()}>
-                            {isGeocodingAddress ? <Text>...</Text> : <SearchIcon size={16} color={colorScheme === 'dark' ? '#ffffff' : '#000000'} />}
+            {showLocationCard ? (
+              <Card className={`mb-4 rounded-lg border ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
+                <TouchableOpacity onPress={() => toggleSection('location')} className="flex-row items-center justify-between p-4">
+                  <Text className="text-base font-semibold">{t('calls.call_location')}</Text>
+                  {sectionsExpanded.location ? <ChevronUpIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} />}
+                </TouchableOpacity>
+                {sectionsExpanded.location ? (
+                  <View className="px-4 pb-4">
+                    {/* Address Field */}
+                    {showAddress ? (
+                      <FormControl className="mb-4">
+                        <FormControlLabel>
+                          <FormControlLabelText>{t('calls.address')}</FormControlLabelText>
+                        </FormControlLabel>
+                        <Controller
+                          control={control}
+                          name="address"
+                          render={({ field: { onChange, onBlur, value } }) => (
+                            <Box className="flex-row items-center space-x-2">
+                              <Box className="flex-1">
+                                <Input>
+                                  <InputField testID="address-input" placeholder={t('calls.address_placeholder')} value={value} onChangeText={onChange} onBlur={onBlur} />
+                                </Input>
+                              </Box>
+                              <Button testID="address-search-button" size="sm" variant="outline" className="ml-2" onPress={() => handleAddressSearch(value || '')} disabled={isGeocodingAddress || !value?.trim()}>
+                                {isGeocodingAddress ? <Text>...</Text> : <SearchIcon size={16} color={colorScheme === 'dark' ? '#ffffff' : '#000000'} />}
+                              </Button>
+                            </Box>
+                          )}
+                        />
+                      </FormControl>
+                    ) : null}
+
+                    {/* GPS Coordinates Field */}
+                    {showGeolocation ? (
+                      <FormControl className="mb-4">
+                        <FormControlLabel>
+                          <FormControlLabelText>{t('calls.coordinates')}</FormControlLabelText>
+                        </FormControlLabel>
+                        <Controller
+                          control={control}
+                          name="coordinates"
+                          render={({ field: { onChange, onBlur, value } }) => (
+                            <Box className="flex-row items-center space-x-2">
+                              <Box className="flex-1">
+                                <Input>
+                                  <InputField testID="coordinates-input" placeholder={t('calls.coordinates_placeholder')} value={value} onChangeText={onChange} onBlur={onBlur} />
+                                </Input>
+                              </Box>
+                              <Button
+                                testID="coordinates-search-button"
+                                size="sm"
+                                variant="outline"
+                                className="ml-2"
+                                onPress={() => handleCoordinatesSearch(value || '')}
+                                disabled={isGeocodingCoordinates || !value?.trim()}
+                              >
+                                {isGeocodingCoordinates ? <Text>...</Text> : <SearchIcon size={16} color={colorScheme === 'dark' ? '#ffffff' : '#000000'} />}
+                              </Button>
+                            </Box>
+                          )}
+                        />
+                      </FormControl>
+                    ) : null}
+
+                    {/* what3words Field */}
+                    {showWhat3Words ? (
+                      <FormControl className="mb-4">
+                        <FormControlLabel>
+                          <FormControlLabelText>{t('calls.what3words')}</FormControlLabelText>
+                        </FormControlLabel>
+                        <Controller
+                          control={control}
+                          name="what3words"
+                          render={({ field: { onChange, onBlur, value } }) => (
+                            <Box className="flex-row items-center space-x-2">
+                              <Box className="flex-1">
+                                <Input>
+                                  <InputField testID="what3words-input" placeholder={t('calls.what3words_placeholder')} value={value} onChangeText={onChange} onBlur={onBlur} />
+                                </Input>
+                              </Box>
+                              <Button testID="what3words-search-button" size="sm" variant="outline" className="ml-2" onPress={() => handleWhat3WordsSearch(value || '')} disabled={isGeocodingWhat3Words || !value?.trim()}>
+                                {isGeocodingWhat3Words ? <Text>...</Text> : <SearchIcon size={16} color={colorScheme === 'dark' ? '#ffffff' : '#000000'} />}
+                              </Button>
+                            </Box>
+                          )}
+                        />
+                      </FormControl>
+                    ) : null}
+
+                    {/* Plus Code Field */}
+                    {showPlusCode ? (
+                      <FormControl className="mb-4">
+                        <FormControlLabel>
+                          <FormControlLabelText>{t('calls.plus_code')}</FormControlLabelText>
+                        </FormControlLabel>
+                        <Controller
+                          control={control}
+                          name="plusCode"
+                          render={({ field: { onChange, onBlur, value } }) => (
+                            <Box className="flex-row items-center space-x-2">
+                              <Box className="flex-1">
+                                <Input>
+                                  <InputField testID="plus-code-input" placeholder={t('calls.plus_code_placeholder')} value={value} onChangeText={onChange} onBlur={onBlur} />
+                                </Input>
+                              </Box>
+                              <Button testID="plus-code-search-button" size="sm" variant="outline" className="ml-2" onPress={() => handlePlusCodeSearch(value || '')} disabled={isGeocodingPlusCode || !value?.trim()}>
+                                {isGeocodingPlusCode ? <Text>...</Text> : <SearchIcon size={16} color={colorScheme === 'dark' ? '#ffffff' : '#000000'} />}
+                              </Button>
+                            </Box>
+                          )}
+                        />
+                      </FormControl>
+                    ) : null}
+
+                    {/* Map Preview — the map is how a dispatcher fills the geolocation in. */}
+                    {showGeolocation ? (
+                      <Box className="mb-4">
+                        {selectedLocation ? (
+                          <LocationPicker initialLocation={selectedLocation} onLocationSelected={handleLocationSelected} height={200} />
+                        ) : (
+                          <Button onPress={() => setShowLocationPicker(true)} className="w-full">
+                            <ButtonText>{t('calls.select_location')}</ButtonText>
                           </Button>
-                        </Box>
-                      )}
-                    />
-                  </FormControl>
+                        )}
+                      </Box>
+                    ) : null}
 
-                  {/* GPS Coordinates Field */}
-                  <FormControl className="mb-4">
-                    <FormControlLabel>
-                      <FormControlLabelText>{t('calls.coordinates')}</FormControlLabelText>
-                    </FormControlLabel>
-                    <Controller
-                      control={control}
-                      name="coordinates"
-                      render={({ field: { onChange, onBlur, value } }) => (
-                        <Box className="flex-row items-center space-x-2">
-                          <Box className="flex-1">
-                            <Input>
-                              <InputField testID="coordinates-input" placeholder={t('calls.coordinates_placeholder')} value={value} onChangeText={onChange} onBlur={onBlur} />
-                            </Input>
-                          </Box>
-                          <Button testID="coordinates-search-button" size="sm" variant="outline" className="ml-2" onPress={() => handleCoordinatesSearch(value || '')} disabled={isGeocodingCoordinates || !value?.trim()}>
-                            {isGeocodingCoordinates ? <Text>...</Text> : <SearchIcon size={16} color={colorScheme === 'dark' ? '#ffffff' : '#000000'} />}
-                          </Button>
-                        </Box>
-                      )}
-                    />
-                  </FormControl>
-
-                  {/* what3words Field */}
-                  <FormControl className="mb-4">
-                    <FormControlLabel>
-                      <FormControlLabelText>{t('calls.what3words')}</FormControlLabelText>
-                    </FormControlLabel>
-                    <Controller
-                      control={control}
-                      name="what3words"
-                      render={({ field: { onChange, onBlur, value } }) => (
-                        <Box className="flex-row items-center space-x-2">
-                          <Box className="flex-1">
-                            <Input>
-                              <InputField testID="what3words-input" placeholder={t('calls.what3words_placeholder')} value={value} onChangeText={onChange} onBlur={onBlur} />
-                            </Input>
-                          </Box>
-                          <Button testID="what3words-search-button" size="sm" variant="outline" className="ml-2" onPress={() => handleWhat3WordsSearch(value || '')} disabled={isGeocodingWhat3Words || !value?.trim()}>
-                            {isGeocodingWhat3Words ? <Text>...</Text> : <SearchIcon size={16} color={colorScheme === 'dark' ? '#ffffff' : '#000000'} />}
-                          </Button>
-                        </Box>
-                      )}
-                    />
-                  </FormControl>
-
-                  {/* Plus Code Field */}
-                  <FormControl className="mb-4">
-                    <FormControlLabel>
-                      <FormControlLabelText>{t('calls.plus_code')}</FormControlLabelText>
-                    </FormControlLabel>
-                    <Controller
-                      control={control}
-                      name="plusCode"
-                      render={({ field: { onChange, onBlur, value } }) => (
-                        <Box className="flex-row items-center space-x-2">
-                          <Box className="flex-1">
-                            <Input>
-                              <InputField testID="plus-code-input" placeholder={t('calls.plus_code_placeholder')} value={value} onChangeText={onChange} onBlur={onBlur} />
-                            </Input>
-                          </Box>
-                          <Button testID="plus-code-search-button" size="sm" variant="outline" className="ml-2" onPress={() => handlePlusCodeSearch(value || '')} disabled={isGeocodingPlusCode || !value?.trim()}>
-                            {isGeocodingPlusCode ? <Text>...</Text> : <SearchIcon size={16} color={colorScheme === 'dark' ? '#ffffff' : '#000000'} />}
-                          </Button>
-                        </Box>
-                      )}
-                    />
-                  </FormControl>
-
-                  {/* Map Preview */}
-                  <Box className="mb-4">
-                    {selectedLocation ? (
-                      <LocationPicker initialLocation={selectedLocation} onLocationSelected={handleLocationSelected} height={200} />
-                    ) : (
-                      <Button onPress={() => setShowLocationPicker(true)} className="w-full">
-                        <ButtonText>{t('calls.select_location')}</ButtonText>
-                      </Button>
-                    )}
-                  </Box>
-
-                  <FormControl>
-                    <FormControlLabel>
-                      <FormControlLabelText>{t('calls.destination_poi')}</FormControlLabelText>
-                    </FormControlLabel>
-                    <Controller
-                      control={control}
-                      name="destinationPoiId"
-                      render={({ field: { onChange, value } }) => (
-                        <Select selectedValue={value || NO_DESTINATION_VALUE} onValueChange={(selectedValue) => onChange(selectedValue === NO_DESTINATION_VALUE ? '' : selectedValue)}>
-                          <SelectTrigger>
-                            <SelectInput placeholder={t('calls.select_destination_poi')} className="w-5/6" />
-                            <SelectIcon as={ChevronDownIcon} className="mr-3" />
-                          </SelectTrigger>
-                          <SelectPortal>
-                            <SelectBackdrop />
-                            <SelectContent>
-                              <SelectItem label={t('calls.no_destination')} value={NO_DESTINATION_VALUE} />
-                              {destinationPois.map((poi) => (
-                                <SelectItem key={poi.PoiId} label={getPoiDestinationOptionLabel(poi)} value={poi.PoiId.toString()} />
-                              ))}
-                            </SelectContent>
-                          </SelectPortal>
-                        </Select>
-                      )}
-                    />
-                    {isLoadingDestinationPois ? <Text className="mt-2 text-xs text-gray-500 dark:text-gray-400">{t('calls.loading_destination_pois')}</Text> : null}
-                    {!isLoadingDestinationPois && destinationPois.length === 0 ? <Text className="mt-2 text-xs text-gray-500 dark:text-gray-400">{t('calls.no_destination_pois_available')}</Text> : null}
-                  </FormControl>
-                </View>
-              ) : null}
-            </Card>
+                    {showDestinationPoi ? (
+                      <FormControl>
+                        <FormControlLabel>
+                          <FormControlLabelText>{t('calls.destination_poi')}</FormControlLabelText>
+                        </FormControlLabel>
+                        <Controller
+                          control={control}
+                          name="destinationPoiId"
+                          render={({ field: { onChange, value } }) => (
+                            <Select selectedValue={value || NO_DESTINATION_VALUE} onValueChange={(selectedValue) => onChange(selectedValue === NO_DESTINATION_VALUE ? '' : selectedValue)}>
+                              <SelectTrigger>
+                                <SelectInput placeholder={t('calls.select_destination_poi')} className="w-5/6" />
+                                <SelectIcon as={ChevronDownIcon} className="mr-3" />
+                              </SelectTrigger>
+                              <SelectPortal>
+                                <SelectBackdrop />
+                                <SelectContent>
+                                  <SelectItem label={t('calls.no_destination')} value={NO_DESTINATION_VALUE} />
+                                  {destinationPois.map((poi) => (
+                                    <SelectItem key={poi.PoiId} label={getPoiDestinationOptionLabel(poi)} value={poi.PoiId.toString()} />
+                                  ))}
+                                </SelectContent>
+                              </SelectPortal>
+                            </Select>
+                          )}
+                        />
+                        {isLoadingDestinationPois ? <Text className="mt-2 text-xs text-gray-500 dark:text-gray-400">{t('calls.loading_destination_pois')}</Text> : null}
+                        {!isLoadingDestinationPois && destinationPois.length === 0 ? <Text className="mt-2 text-xs text-gray-500 dark:text-gray-400">{t('calls.no_destination_pois_available')}</Text> : null}
+                      </FormControl>
+                    ) : null}
+                  </View>
+                ) : null}
+              </Card>
+            ) : null}
 
             {/* One card holds both contact fields, so it shows when either is enabled. */}
             {fieldPolicy.isVisible(NewCallFieldKeys.ContactName) || fieldPolicy.isVisible(NewCallFieldKeys.ContactInfo) ? (
@@ -1125,64 +1157,68 @@ export default function NewCall() {
             ) : null}
 
             {/* Protocols */}
-            <Card className={`mb-4 rounded-lg border ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
-              <TouchableOpacity onPress={() => toggleSection('protocols')} className="flex-row items-center justify-between p-4">
-                <View className="flex-row items-center">
-                  <BookOpenIcon size={16} color={colorScheme === 'dark' ? '#e5e7eb' : '#374151'} />
-                  <Text className="ml-2 text-base font-semibold">{t('calls.protocols.title', 'Protocols')}</Text>
-                  {selectedProtocols.length > 0 ? (
-                    <View className={`ml-2 rounded-full px-2 py-0.5 ${colorScheme === 'dark' ? 'bg-blue-800' : 'bg-blue-100'}`}>
-                      <Text className={`text-xs font-medium ${colorScheme === 'dark' ? 'text-blue-200' : 'text-blue-700'}`}>{selectedProtocols.length}</Text>
-                    </View>
-                  ) : null}
-                </View>
-                {sectionsExpanded.protocols ? <ChevronUpIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} />}
-              </TouchableOpacity>
-              {sectionsExpanded.protocols ? (
-                <View className="px-4 pb-4">
-                  <Button variant="outline" className="w-full" onPress={() => setShowProtocolSelector(true)}>
-                    <BookOpenIcon size={16} color={colorScheme === 'dark' ? '#ffffff' : '#374151'} />
-                    <ButtonText className="ml-2">
-                      {selectedProtocols.length > 0 ? `${selectedProtocols.length} ${t('calls.protocols.selected_count', 'selected')}` : t('calls.protocols.select', 'Select Protocols')}
-                    </ButtonText>
-                  </Button>
-                </View>
-              ) : null}
-            </Card>
+            {fieldPolicy.isVisible(NewCallFieldKeys.Protocols) ? (
+              <Card className={`mb-4 rounded-lg border ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
+                <TouchableOpacity onPress={() => toggleSection('protocols')} className="flex-row items-center justify-between p-4">
+                  <View className="flex-row items-center">
+                    <BookOpenIcon size={16} color={colorScheme === 'dark' ? '#e5e7eb' : '#374151'} />
+                    <Text className="ml-2 text-base font-semibold">{t('calls.protocols.title', 'Protocols')}</Text>
+                    {selectedProtocols.length > 0 ? (
+                      <View className={`ml-2 rounded-full px-2 py-0.5 ${colorScheme === 'dark' ? 'bg-blue-800' : 'bg-blue-100'}`}>
+                        <Text className={`text-xs font-medium ${colorScheme === 'dark' ? 'text-blue-200' : 'text-blue-700'}`}>{selectedProtocols.length}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  {sectionsExpanded.protocols ? <ChevronUpIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} />}
+                </TouchableOpacity>
+                {sectionsExpanded.protocols ? (
+                  <View className="px-4 pb-4">
+                    <Button variant="outline" className="w-full" onPress={() => setShowProtocolSelector(true)}>
+                      <BookOpenIcon size={16} color={colorScheme === 'dark' ? '#ffffff' : '#374151'} />
+                      <ButtonText className="ml-2">
+                        {selectedProtocols.length > 0 ? `${selectedProtocols.length} ${t('calls.protocols.selected_count', 'selected')}` : t('calls.protocols.select', 'Select Protocols')}
+                      </ButtonText>
+                    </Button>
+                  </View>
+                ) : null}
+              </Card>
+            ) : null}
 
             {/* Linked Call */}
-            <Card className={`mb-4 rounded-lg border ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
-              <TouchableOpacity onPress={() => toggleSection('linkedCall')} className="flex-row items-center justify-between p-4">
-                <View className="flex-row items-center">
-                  <LinkIcon size={16} color={colorScheme === 'dark' ? '#e5e7eb' : '#374151'} />
-                  <Text className="ml-2 text-base font-semibold">{t('calls.linked_calls.title', 'Linked Call')}</Text>
-                  {linkedCall ? (
-                    <View className={`ml-2 rounded-full px-2 py-0.5 ${colorScheme === 'dark' ? 'bg-green-800' : 'bg-green-100'}`}>
-                      <Text className={`text-xs font-medium ${colorScheme === 'dark' ? 'text-green-200' : 'text-green-700'}`}>#{linkedCall.number}</Text>
-                    </View>
-                  ) : null}
-                </View>
-                {sectionsExpanded.linkedCall ? <ChevronUpIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} />}
-              </TouchableOpacity>
-              {sectionsExpanded.linkedCall ? (
-                <View className="px-4 pb-4">
-                  {linkedCall ? (
-                    <Box className={`mb-3 rounded-md p-3 ${colorScheme === 'dark' ? 'bg-neutral-800' : 'bg-neutral-100'}`}>
-                      <Text className="text-sm font-medium">
-                        #{linkedCall.number} — {linkedCall.name}
-                      </Text>
-                      <Button size="sm" variant="link" onPress={() => setLinkedCall(null)}>
-                        <ButtonText className="text-red-500">{t('common.remove', 'Remove')}</ButtonText>
-                      </Button>
-                    </Box>
-                  ) : null}
-                  <Button variant="outline" className="w-full" onPress={() => setShowLinkedCallsModal(true)}>
-                    <LinkIcon size={16} color={colorScheme === 'dark' ? '#ffffff' : '#374151'} />
-                    <ButtonText className="ml-2">{linkedCall ? t('calls.linked_calls.change', 'Change linked call') : t('calls.linked_calls.select', 'Link to existing call')}</ButtonText>
-                  </Button>
-                </View>
-              ) : null}
-            </Card>
+            {fieldPolicy.isVisible(NewCallFieldKeys.LinkedCall) ? (
+              <Card className={`mb-4 rounded-lg border ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
+                <TouchableOpacity onPress={() => toggleSection('linkedCall')} className="flex-row items-center justify-between p-4">
+                  <View className="flex-row items-center">
+                    <LinkIcon size={16} color={colorScheme === 'dark' ? '#e5e7eb' : '#374151'} />
+                    <Text className="ml-2 text-base font-semibold">{t('calls.linked_calls.title', 'Linked Call')}</Text>
+                    {linkedCall ? (
+                      <View className={`ml-2 rounded-full px-2 py-0.5 ${colorScheme === 'dark' ? 'bg-green-800' : 'bg-green-100'}`}>
+                        <Text className={`text-xs font-medium ${colorScheme === 'dark' ? 'text-green-200' : 'text-green-700'}`}>#{linkedCall.number}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  {sectionsExpanded.linkedCall ? <ChevronUpIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} />}
+                </TouchableOpacity>
+                {sectionsExpanded.linkedCall ? (
+                  <View className="px-4 pb-4">
+                    {linkedCall ? (
+                      <Box className={`mb-3 rounded-md p-3 ${colorScheme === 'dark' ? 'bg-neutral-800' : 'bg-neutral-100'}`}>
+                        <Text className="text-sm font-medium">
+                          #{linkedCall.number} — {linkedCall.name}
+                        </Text>
+                        <Button size="sm" variant="link" onPress={() => setLinkedCall(null)}>
+                          <ButtonText className="text-red-500">{t('common.remove', 'Remove')}</ButtonText>
+                        </Button>
+                      </Box>
+                    ) : null}
+                    <Button variant="outline" className="w-full" onPress={() => setShowLinkedCallsModal(true)}>
+                      <LinkIcon size={16} color={colorScheme === 'dark' ? '#ffffff' : '#374151'} />
+                      <ButtonText className="ml-2">{linkedCall ? t('calls.linked_calls.change', 'Change linked call') : t('calls.linked_calls.select', 'Link to existing call')}</ButtonText>
+                    </Button>
+                  </View>
+                ) : null}
+              </Card>
+            ) : null}
 
             {/* Additional Fields (UDF) */}
             <Card className={`mb-4 rounded-lg border ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
@@ -1216,30 +1252,32 @@ export default function NewCall() {
               </Card>
             ) : null}
 
-            <Card className={`mb-4 rounded-lg border ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
-              <TouchableOpacity onPress={() => toggleSection('dispatch')} className="flex-row items-center justify-between p-4">
-                <Text className="text-base font-semibold">{t('calls.dispatch_to')}</Text>
-                {sectionsExpanded.dispatch ? <ChevronUpIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} />}
-              </TouchableOpacity>
-              {sectionsExpanded.dispatch ? (
-                <View className="px-4 pb-4">
-                  {runCardRecommendation.isRunCardsEnabled ? (
-                    <RecommendationPanel
-                      recommendation={runCardRecommendation.recommendation}
-                      isLoading={runCardRecommendation.isLoading}
-                      error={runCardRecommendation.error}
-                      hasFetched={runCardRecommendation.hasFetched}
-                      isApplied={runCardRecommendation.isApplied}
-                      onApply={handleApplyRecommendation}
-                      onRefresh={runCardRecommendation.refresh}
-                    />
-                  ) : null}
-                  <Button onPress={() => setShowDispatchModal(true)} className="w-full">
-                    <ButtonText>{getDispatchSummary()}</ButtonText>
-                  </Button>
-                </View>
-              ) : null}
-            </Card>
+            {fieldPolicy.isVisible(NewCallFieldKeys.DispatchList) ? (
+              <Card className={`mb-4 rounded-lg border ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
+                <TouchableOpacity onPress={() => toggleSection('dispatch')} className="flex-row items-center justify-between p-4">
+                  <Text className="text-base font-semibold">{t('calls.dispatch_to')}</Text>
+                  {sectionsExpanded.dispatch ? <ChevronUpIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} />}
+                </TouchableOpacity>
+                {sectionsExpanded.dispatch ? (
+                  <View className="px-4 pb-4">
+                    {runCardRecommendation.isRunCardsEnabled ? (
+                      <RecommendationPanel
+                        recommendation={runCardRecommendation.recommendation}
+                        isLoading={runCardRecommendation.isLoading}
+                        error={runCardRecommendation.error}
+                        hasFetched={runCardRecommendation.hasFetched}
+                        isApplied={runCardRecommendation.isApplied}
+                        onApply={handleApplyRecommendation}
+                        onRefresh={runCardRecommendation.refresh}
+                      />
+                    ) : null}
+                    <Button onPress={() => setShowDispatchModal(true)} className="w-full">
+                      <ButtonText>{getDispatchSummary()}</ButtonText>
+                    </Button>
+                  </View>
+                ) : null}
+              </Card>
+            ) : null}
 
             <Box className="mb-6 flex-row space-x-4" style={{ paddingBottom: Math.max(insets.bottom, 16) }}>
               <Button className="mr-10 flex-1" variant="outline" onPress={() => router.back()}>

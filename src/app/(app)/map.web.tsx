@@ -115,13 +115,17 @@ export default function MapWeb() {
 
     mapboxgl.accessToken = Env.MAPBOX_PUBKEY;
 
-    const initialCenter: [number, number] = userLongitude && userLatitude ? [userLongitude, userLatitude] : [getDepartmentMapCenter().longitude, getDepartmentMapCenter().latitude]; // Department map center as fallback
+    // Department map center as fallback. Read once: two calls are two store reads, and the second
+    // could see a different config.
+    const departmentCenter = getDepartmentMapCenter();
+    const initialCenter: [number, number] = userLongitude && userLatitude ? [userLongitude, userLatitude] : [departmentCenter.longitude, departmentCenter.latitude];
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: getMapStyle(),
       center: initialCenter,
-      zoom: userLatitude && userLongitude ? 12 : 3,
+      // The department configured a zoom to go with its center; a fixed 3 opens on the whole globe.
+      zoom: userLatitude && userLongitude ? 12 : departmentCenter.zoomLevel,
     });
 
     map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');

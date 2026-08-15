@@ -65,12 +65,17 @@ export const useCallRecommendation = ({ priorityName, typeName, latitude, longit
   const canRequest = isRunCardsEnabled && priorityId !== null && !!typeName;
 
   useEffect(() => {
+    // Dropping the priority or type mid-debounce has to cancel the pending lookup as well as drop
+    // what is on screen. Returning early would let the timer fire with the inputs the dispatcher
+    // just removed, and leave a recommendation matching a call that no longer exists.
     if (!canRequest) {
+      clear();
       return;
     }
 
+    // A new request supersedes any pending timer and any in-flight lookup; the store handles both.
     fetchRecommendationDebounced(request);
-  }, [canRequest, request, fetchRecommendationDebounced]);
+  }, [canRequest, request, fetchRecommendationDebounced, clear]);
 
   // Leaving the screen must not strand a recommendation for the next call composed.
   useEffect(() => () => clear(), [clear]);
