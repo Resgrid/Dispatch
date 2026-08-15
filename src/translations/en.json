@@ -372,7 +372,8 @@
       "error": "Failed to load audio",
       "audio_name": "Audio clip"
     },
-    "required_fields_missing": "Your department requires these fields before a call can be created: {{fields}}"
+    "required_fields_missing": "Your department requires these fields before a call can be created: {{fields}}",
+    "field_policy_loading": "Still loading your department's call settings, please try again in a moment"
   },
   "chat": {
     "title": "Chat",

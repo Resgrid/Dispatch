@@ -29,19 +29,28 @@ export const FALLBACK_MAP_CENTER: MapCenter = {
   zoomLevel: 9,
 };
 
-const isUsableCoordinate = (value: number | null | undefined): value is number => typeof value === 'number' && Number.isFinite(value) && value !== 0;
+const isUsableCoordinate = (value: number | null | undefined, limit: number): value is number => typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= limit;
 
 const toMapCenter = (latitude: number | null | undefined, longitude: number | null | undefined, zoomLevel: number | null | undefined): MapCenter => {
+  // Out of range is corrupt rather than merely absent, and handing it to the map is worse than
+  // showing the fallback.
+  if (!isUsableCoordinate(latitude, 90) || !isUsableCoordinate(longitude, 180)) {
+    return FALLBACK_MAP_CENTER;
+  }
+
   // 0,0 is Null Island — the shape of an unset value rather than a real department, so treat it as
-  // missing instead of dropping the user in the Atlantic.
-  if (!isUsableCoordinate(latitude) || !isUsableCoordinate(longitude)) {
+  // missing instead of dropping the user in the Atlantic. Only the pair: a lone zero is an ordinary
+  // coordinate on the equator or the prime meridian, and rejecting those moved real departments
+  // (Ghana, Ecuador, most of the UK) to the other side of the world.
+  if (latitude === 0 && longitude === 0) {
     return FALLBACK_MAP_CENTER;
   }
 
   return {
     latitude,
     longitude,
-    zoomLevel: typeof zoomLevel === 'number' && zoomLevel > 0 ? zoomLevel : FALLBACK_MAP_CENTER.zoomLevel,
+    // Infinity is greater than zero, so the positivity test alone would let it reach the camera.
+    zoomLevel: typeof zoomLevel === 'number' && Number.isFinite(zoomLevel) && zoomLevel > 0 ? zoomLevel : FALLBACK_MAP_CENTER.zoomLevel,
   };
 };
 

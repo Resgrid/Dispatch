@@ -372,7 +372,8 @@
       "error": "Det gick inte att läsa in ljud",
       "audio_name": "Ljudklipp"
     },
-    "required_fields_missing": "Din avdelning kräver dessa fält innan ett ärende kan skapas: {{fields}}"
+    "required_fields_missing": "Din avdelning kräver dessa fält innan ett ärende kan skapas: {{fields}}",
+    "field_policy_loading": "Din avdelnings ärendeinställningar laddas fortfarande, försök igen om ett ögonblick"
   },
   "chat": {
     "title": "Chatt",

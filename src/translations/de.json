@@ -372,7 +372,8 @@
       "error": "Audio konnte nicht geladen werden",
       "audio_name": "Audioclip"
     },
-    "required_fields_missing": "Ihre Abteilung benötigt diese Felder, bevor ein Einsatz angelegt werden kann: {{fields}}"
+    "required_fields_missing": "Ihre Abteilung benötigt diese Felder, bevor ein Einsatz angelegt werden kann: {{fields}}",
+    "field_policy_loading": "Die Einsatzeinstellungen Ihrer Abteilung werden noch geladen, bitte versuchen Sie es gleich erneut"
   },
   "chat": {
     "title": "Chat",

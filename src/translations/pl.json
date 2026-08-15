@@ -372,7 +372,8 @@
       "error": "Nie udało się załadować dźwięku",
       "audio_name": "Klip dźwiękowy"
     },
-    "required_fields_missing": "Twoja jednostka wymaga tych pól przed utworzeniem zdarzenia: {{fields}}"
+    "required_fields_missing": "Twoja jednostka wymaga tych pól przed utworzeniem zgłoszenia: {{fields}}",
+    "field_policy_loading": "Ustawienia zgłoszeń Twojej jednostki są jeszcze wczytywane, spróbuj ponownie za chwilę"
   },
   "chat": {
     "title": "Czat",

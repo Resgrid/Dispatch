@@ -65,6 +65,15 @@ describe('useNewCallFieldPolicy', () => {
     expect(missing).toEqual([NewCallFieldKeys.Note, NewCallFieldKeys.Protocols]);
   });
 
+  it('treats an unselected dispatch list as missing', async () => {
+    // The new-call screens collapse "anyone selected?" to a boolean, so false has to read as blank
+    // rather than as a filled-in field.
+    const result = await renderPolicy([{ Key: NewCallFieldKeys.DispatchList, Visible: true, Required: true }]);
+
+    expect(result.current.missingRequired({ [NewCallFieldKeys.DispatchList]: false })).toEqual([NewCallFieldKeys.DispatchList]);
+    expect(result.current.missingRequired({ [NewCallFieldKeys.DispatchList]: true })).toEqual([]);
+  });
+
   it('never requires a hidden field', async () => {
     // Requiring something nobody can fill in would make call creation impossible; the server takes
     // the same stance, so the two cannot disagree.

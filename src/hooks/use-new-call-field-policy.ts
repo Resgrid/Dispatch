@@ -46,6 +46,12 @@ const hasValue = (value: unknown): boolean => {
     return Number.isFinite(value) && value !== 0;
   }
 
+  // Callers answer "is this filled in?" with a boolean for fields that are a selection rather than
+  // a value — an empty dispatch list arrives as false, and that is a blank field, not a filled one.
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
   if (Array.isArray(value)) {
     return value.length > 0;
   }

@@ -372,7 +372,8 @@
       "error": "Impossibile caricare l’audio",
       "audio_name": "Clip audio"
     },
-    "required_fields_missing": "Il tuo dipartimento richiede questi campi prima di poter creare una chiamata: {{fields}}"
+    "required_fields_missing": "Il tuo dipartimento richiede questi campi prima di poter creare una chiamata: {{fields}}",
+    "field_policy_loading": "Le impostazioni delle chiamate del tuo dipartimento sono ancora in caricamento, riprova tra un momento"
   },
   "chat": {
     "title": "Chat",

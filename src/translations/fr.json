@@ -372,7 +372,8 @@
       "error": "Impossible de charger l’audio",
       "audio_name": "Extrait audio"
     },
-    "required_fields_missing": "Votre service exige ces champs avant qu'une intervention puisse être créée : {{fields}}"
+    "required_fields_missing": "Votre service exige ces champs avant qu'un appel puisse être créé : {{fields}}",
+    "field_policy_loading": "Les paramètres d'appel de votre service sont encore en cours de chargement, veuillez réessayer dans un instant"
   },
   "chat": {
     "title": "Chat",
