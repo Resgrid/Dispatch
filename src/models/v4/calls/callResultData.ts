@@ -29,6 +29,13 @@ export class CallResultData {
   public IncidentId: string = '';
   public AudioFileId: string = '';
   public Type: string = 'No Type';
+  /**
+   * Current alarm level (1-based). Only moves above 1 when the call has been escalated through a
+   * run card; the server normalises pre-run-card calls to 1.
+   */
+  public AlarmLevel: number = 1;
+  /** The run card driving this call's dispatch, or null when no card matched. */
+  public ActiveRunCardId: number | null = null;
   public LoggedOnUtc: string = '';
   public DispatchedOn: string = '';
   public DispatchedOnUtc: string = '';

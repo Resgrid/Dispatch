@@ -10,7 +10,7 @@ const getPersonnelInfoApi = createApiEndpoint('/Personnel/GetPersonnelInfo');
 const getAllPersonnelInfosApi = createApiEndpoint('/Personnel/GetAllPersonnelInfos');
 
 const ugetPersonnelFilterOptionsApi = createCachedApiEndpoint('/Personnel/GetPersonnelFilterOptions', {
-  ttl: 60 * 1000 * 2880, // Cache for 2 days
+  ttl: 15 * 60 * 1000, // Cache for 15 minutes -- operational data, must not go stale
   enabled: true,
 });
 

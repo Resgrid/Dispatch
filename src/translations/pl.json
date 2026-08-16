@@ -296,6 +296,8 @@
     "select_address_placeholder": "Wybierz adres zgłoszenia",
     "select_description": "Wybierz opis",
     "select_dispatch_recipients": "Wybierz odbiorców dyspozycji",
+    "dispatch_recipients_partial_load": "Nie udało się wczytać niektórych odbiorców. Poniższe listy mogą być niekompletne.",
+    "dispatch_recipients_empty": "Nie widzisz żadnego personelu, grup, ról ani jednostek. Sprawdź uprawnienia swojego departamentu lub wyślij do Wszystkich.",
     "select_location": "Wybierz lokalizację na mapie",
     "select_name": "Wybierz nazwę",
     "select_nature": "Wybierz charakter",
@@ -369,7 +371,9 @@
       "no_audio_description": "Nagrania dołączone do tego zgłoszenia pojawią się tutaj.",
       "error": "Nie udało się załadować dźwięku",
       "audio_name": "Klip dźwiękowy"
-    }
+    },
+    "required_fields_missing": "Twój departament wymaga tych pól przed utworzeniem zgłoszenia: {{fields}}",
+    "field_policy_loading": "Ustawienia zgłoszeń Twojego departamentu są jeszcze wczytywane, spróbuj ponownie za chwilę"
   },
   "chat": {
     "title": "Czat",
@@ -1215,6 +1219,7 @@
     "english": "Angielski",
     "french": "Francuski",
     "german": "Niemiecki",
+    "greek": "Grecki",
     "italian": "Włoski",
     "enter_password": "Wprowadź swoje hasło",
     "enter_server_url": "Wprowadź adres URL API Resgrid (np. https://api.resgrid.com)",
@@ -1536,5 +1541,55 @@
     },
     "stats_label": "Alerty pogodowe"
   },
-  "welcome": "Witaj w aplikacji obytes"
+  "welcome": "Witaj w aplikacji obytes",
+  "run_cards": {
+    "title": "Rekomendacja planu zadysponowania",
+    "checking": "Sprawdzanie planów zadysponowania…",
+    "lookup_failed": "Nie udało się sprawdzić planów zadysponowania. Nadal możesz zadysponować ręcznie.",
+    "summary": "Zalecane: {{units}} jedn., {{personnel}} ratowników",
+    "units_section": "Zalecane jednostki ({{count}})",
+    "personnel_section": "Zalecany personel ({{count}})",
+    "shortfalls_section": "Nie udało się obsadzić",
+    "shortfall_line": "{{name}}: {{filled}} z {{required}} — {{reason}}",
+    "move_ups_section": "Przesunięcia dla pokrycia",
+    "move_up_line": "{{station}}: {{available}} z {{minimum}} po zadysponowaniu — sugestia {{resource}}",
+    "move_up_no_donor": "nie znaleziono źródła",
+    "notes_section": "Jak to ustalono",
+    "apply": "Zastosuj rekomendację",
+    "applied": "Rekomendacja zastosowana",
+    "stale_location": "Nieaktualna lokalizacja",
+    "auto_dispatch": "Automatyczne zadysponowanie",
+    "auto_dispatch_explainer": "Ten departament automatycznie wysyła pasujące plany; te zasoby są alarmowane przy tworzeniu zdarzenia.",
+    "alarm_level": "Alarm {{level}}",
+    "alarm_level_label": "Poziom alarmu",
+    "escalate": "Ogłoś alarm {{level}}",
+    "escalate_confirm": "Ogłosić alarm {{level}}? Zadysponuje to zasoby kolejnego poziomu i zaalarmuje tylko nowo dodane.",
+    "escalate_confirm_action": "Ogłoś alarm",
+    "escalate_succeeded": "Ogłoszono alarm {{level}} — dodano {{units}} jedn., {{personnel}} ratowników",
+    "escalate_nothing_to_add": "Brak zasobów do dodania na kolejnym poziomie alarmu",
+    "escalate_failed": "Nie udało się podnieść poziomu alarmu. Spróbuj ponownie.",
+    "mode": {
+      "manual_only": "Wybór ręczny",
+      "station_based": "Według jednostki",
+      "closest_unit": "Najbliższa jednostka"
+    },
+    "reason": {
+      "unknown": "Wybrano",
+      "in_geofence": "W obszarze jednostki",
+      "cascade_station": "Najbliższa jednostka",
+      "closest_by_distance": "Najbliżej wg odległości",
+      "closest_by_eta": "Najbliżej wg czasu dojazdu",
+      "rest_period_overridden": "Pominięto okres odpoczynku"
+    },
+    "shortfall": {
+      "unknown": "nie podano powodu",
+      "no_candidates": "brak dostępnych",
+      "outside_radius": "poza promieniem wyszukiwania",
+      "locations_stale": "lokalizacje zbyt stare",
+      "no_location_data": "brak danych lokalizacji",
+      "not_staffed": "za mała obsada",
+      "all_in_rest_period": "wszyscy w okresie odpoczynku",
+      "stations_exhausted": "brak kolejnych jednostek do sprawdzenia"
+    }
+  }
 }

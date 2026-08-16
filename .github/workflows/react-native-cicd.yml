@@ -97,15 +97,17 @@ jobs:
           node-version: '24'
           cache: 'yarn'
 
-      - name: 📦 Setup yarn cache
-        uses: actions/cache@v3
+      # node_modules is post-patch-package state, so patches/ must be part of the key:
+      # restoring an already-patched tree built from a different patches/ revision makes
+      # the re-apply fail. No restore-keys for the same reason — a prefix match would hand
+      # back node_modules patched by some other revision. The yarn tarball cache is handled
+      # by setup-node's `cache: yarn` above, so a key miss here is only a re-link, not a
+      # re-download.
+      - name: 📦 Setup node_modules cache
+        uses: actions/cache@v4
         with:
-          path: |
-            ~/.cache/yarn
-            node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
+          path: node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('yarn.lock', 'patches/**') }}
 
       - name: 📦 Install dependencies
         run: yarn install --frozen-lockfile
@@ -172,15 +174,17 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: 📦 Setup yarn cache
-        uses: actions/cache@v3
+      # node_modules is post-patch-package state, so patches/ must be part of the key:
+      # restoring an already-patched tree built from a different patches/ revision makes
+      # the re-apply fail. No restore-keys for the same reason — a prefix match would hand
+      # back node_modules patched by some other revision. The yarn tarball cache is handled
+      # by setup-node's `cache: yarn` above, so a key miss here is only a re-link, not a
+      # re-download.
+      - name: 📦 Setup node_modules cache
+        uses: actions/cache@v4
         with:
-          path: |
-            ~/.cache/yarn
-            node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
+          path: node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('yarn.lock', 'patches/**') }}
 
       - name: 📦 Install dependencies
         run: |

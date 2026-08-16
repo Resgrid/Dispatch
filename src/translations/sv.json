@@ -296,6 +296,8 @@
     "select_address_placeholder": "Välj adressen för ärendet",
     "select_description": "Välj beskrivning",
     "select_dispatch_recipients": "Välj larmmottagare",
+    "dispatch_recipients_partial_load": "Vissa mottagare kunde inte läsas in. Listorna nedan kan vara ofullständiga.",
+    "dispatch_recipients_empty": "Ingen personal, inga grupper, roller eller enheter är synliga för dig. Kontrollera avdelningens behörigheter eller larma Alla.",
     "select_location": "Välj plats på kartan",
     "select_name": "Välj namn",
     "select_nature": "Välj händelsetyp",
@@ -369,7 +371,9 @@
       "no_audio_description": "Ljud som bifogats till det här larmet visas här.",
       "error": "Det gick inte att läsa in ljud",
       "audio_name": "Ljudklipp"
-    }
+    },
+    "required_fields_missing": "Din avdelning kräver dessa fält innan ett ärende kan skapas: {{fields}}",
+    "field_policy_loading": "Din avdelnings ärendeinställningar laddas fortfarande, försök igen om ett ögonblick"
   },
   "chat": {
     "title": "Chatt",
@@ -1215,6 +1219,7 @@
     "english": "Engelska",
     "french": "Franska",
     "german": "Tyska",
+    "greek": "Grekiska",
     "italian": "Italienska",
     "enter_password": "Ange ditt lösenord",
     "enter_server_url": "Ange Resgrid API-URL (t.ex. https://api.resgrid.com)",
@@ -1536,5 +1541,55 @@
     },
     "stats_label": "Vädervarningar"
   },
-  "welcome": "Välkommen till obytes app-webbplats"
+  "welcome": "Välkommen till obytes app-webbplats",
+  "run_cards": {
+    "title": "Rekommendation från insatsplan",
+    "checking": "Kontrollerar insatsplaner…",
+    "lookup_failed": "Kunde inte kontrollera insatsplanerna. Du kan fortfarande larma manuellt.",
+    "summary": "{{units}} enhet(er), {{personnel}} personer rekommenderas",
+    "units_section": "Rekommenderade enheter ({{count}})",
+    "personnel_section": "Rekommenderad personal ({{count}})",
+    "shortfalls_section": "Kunde inte fyllas",
+    "shortfall_line": "{{name}}: {{filled}} av {{required}} — {{reason}}",
+    "move_ups_section": "Omflättningar för täckning",
+    "move_up_line": "{{station}}: {{available}} av {{minimum}} efter larm — förslag {{resource}}",
+    "move_up_no_donor": "ingen källa hittad",
+    "notes_section": "Så här beslutades det",
+    "apply": "Använd rekommendationen",
+    "applied": "Rekommendationen använd",
+    "stale_location": "Gammal position",
+    "auto_dispatch": "Automatiskt larm",
+    "auto_dispatch_explainer": "Den här avdelningen larmar matchande insatsplaner automatiskt; dessa resurser larmas när ärendet skapas.",
+    "alarm_level": "Larm {{level}}",
+    "alarm_level_label": "Larmnivå",
+    "escalate": "Utlös larm {{level}}",
+    "escalate_confirm": "Utlösa larm {{level}}? Det larmar nästa nivås resurser och meddelar bara de nytillkomna.",
+    "escalate_confirm_action": "Utlös larm",
+    "escalate_succeeded": "Larm {{level}} utlöst — {{units}} enhet(er), {{personnel}} personer tillagda",
+    "escalate_nothing_to_add": "Inget att lägga till på nästa larmnivå",
+    "escalate_failed": "Kunde inte höja ärendets larmnivå. Försök igen.",
+    "mode": {
+      "manual_only": "Manuellt val",
+      "station_based": "Efter station",
+      "closest_unit": "Närmaste enhet"
+    },
+    "reason": {
+      "unknown": "Vald",
+      "in_geofence": "Inom stationens område",
+      "cascade_station": "Närmaste station",
+      "closest_by_distance": "Närmast i avstånd",
+      "closest_by_eta": "Närmast i restid",
+      "rest_period_overridden": "Vilotid åsidosatt"
+    },
+    "shortfall": {
+      "unknown": "ingen orsak angiven",
+      "no_candidates": "inget tillgängligt",
+      "outside_radius": "utanför sökradien",
+      "locations_stale": "positioner för gamla",
+      "no_location_data": "inga positionsdata",
+      "not_staffed": "för lite bemanning",
+      "all_in_rest_period": "alla i vilotid",
+      "stations_exhausted": "inga fler stationer att söka"
+    }
+  }
 }

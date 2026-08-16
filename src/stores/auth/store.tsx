@@ -4,6 +4,8 @@ import { MMKV } from 'react-native-mmkv';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import { cacheManager } from '@/lib/cache/cache-manager';
+import { clearCacheScope, setCacheScope } from '@/lib/cache/cache-scope';
 import { logger } from '@/lib/logging';
 
 import { clearPasswordVerificationHash, loginRequest, storePasswordVerificationHash } from '../../lib/auth/api';
@@ -272,6 +274,44 @@ initTokenRefresh({
       void useAuthStore.getState().logout();
     }
   },
+});
+
+// Keep the API cache scoped to whoever is signed in. Cache keys embed this identity, so stamping it
+// here means a second user on the same device can never be served the first user's cached rosters,
+// units or contacts -- and signing out drops the scope so nothing leaks into an anonymous session.
+useAuthStore.subscribe((state, previousState) => {
+  if (state.userId === previousState.userId) {
+    return;
+  }
+
+  try {
+    // Drop everything the previous identity cached before the new scope goes live, so nothing from
+    // the old account can be read back even if a key were to collide.
+    cacheManager.clear();
+  } catch (error) {
+    // Cache hygiene must never be able to break sign-in or sign-out. Stale entries expire on their
+    // own, and the scope moved on below, so they are no longer addressable by the new identity.
+    logger.warn({
+      message: 'Failed to clear the API cache on identity change',
+      context: { error },
+    });
+  }
+
+  // Deliberately outside the clear() attempt: leaving the scope on the previous user is the one
+  // failure that actually leaks, since cache keys embed it and the entries we just failed to drop
+  // are still there. The new identity has to take over the scope whether or not the clear worked.
+  try {
+    if (state.userId) {
+      setCacheScope({ userId: state.userId });
+    } else {
+      clearCacheScope();
+    }
+  } catch (error) {
+    logger.warn({
+      message: 'Failed to reset the API cache scope on identity change',
+      context: { error },
+    });
+  }
 });
 
 export default useAuthStore;

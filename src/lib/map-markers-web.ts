@@ -159,7 +159,7 @@ export const createMapMarkerElement = (pin: MapMakerInfoData, colorScheme: 'dark
     iconContainer.style.height = '32px';
 
     const iconKey = resolveMapMarkerIconKey(pin) as MapIconKey;
-    const iconData = MAP_ICONS[iconKey] || MAP_ICONS['call'];
+    const iconData = MAP_ICONS[iconKey] || MAP_ICONS['flag'];
     const img = document.createElement('img');
     const imgSrc = getMapIconWebUrl(iconData);
     img.src = imgSrc;
@@ -168,7 +168,7 @@ export const createMapMarkerElement = (pin: MapMakerInfoData, colorScheme: 'dark
     img.style.objectFit = 'contain';
     img.alt = pin.Title;
     img.onerror = () => {
-      img.src = getMapIconWebUrl(MAP_ICONS['call']);
+      img.src = getMapIconWebUrl(MAP_ICONS['flag']);
     };
     iconContainer.appendChild(img);
     el.appendChild(iconContainer);

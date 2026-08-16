@@ -296,6 +296,8 @@
     "select_address_placeholder": "Seleziona l'indirizzo dell'intervento",
     "select_description": "Seleziona descrizione",
     "select_dispatch_recipients": "Seleziona destinatari invio",
+    "dispatch_recipients_partial_load": "Non è stato possibile caricare alcuni destinatari. Gli elenchi seguenti potrebbero essere incompleti.",
+    "dispatch_recipients_empty": "Nessun personale, gruppo, ruolo o unità è visibile. Controlla i permessi del tuo dipartimento oppure invia a Tutti.",
     "select_location": "Seleziona posizione sulla mappa",
     "select_name": "Seleziona nome",
     "select_nature": "Seleziona natura",
@@ -369,7 +371,9 @@
       "no_audio_description": "L’audio allegato a questa chiamata verrà visualizzato qui.",
       "error": "Impossibile caricare l’audio",
       "audio_name": "Clip audio"
-    }
+    },
+    "required_fields_missing": "Il tuo dipartimento richiede questi campi prima di poter creare una chiamata: {{fields}}",
+    "field_policy_loading": "Le impostazioni delle chiamate del tuo dipartimento sono ancora in caricamento, riprova tra un momento"
   },
   "chat": {
     "title": "Chat",
@@ -1215,6 +1219,7 @@
     "english": "Inglese",
     "french": "Francese",
     "german": "Tedesco",
+    "greek": "Greco",
     "italian": "Italiano",
     "enter_password": "Inserisci la tua password",
     "enter_server_url": "Inserisci l'URL dell'API Resgrid (es. https://api.resgrid.com)",
@@ -1536,5 +1541,55 @@
     },
     "stats_label": "Allerte meteo"
   },
-  "welcome": "Benvenuto nel sito dell'app obytes"
+  "welcome": "Benvenuto nel sito dell'app obytes",
+  "run_cards": {
+    "title": "Raccomandazione del piano di risposta",
+    "checking": "Verifica dei piani di risposta…",
+    "lookup_failed": "Impossibile verificare i piani di risposta. Puoi comunque inviare manualmente.",
+    "summary": "{{units}} unità, {{personnel}} operatori consigliati",
+    "units_section": "Unità consigliate ({{count}})",
+    "personnel_section": "Personale consigliato ({{count}})",
+    "shortfalls_section": "Non copribile",
+    "shortfall_line": "{{name}}: {{filled}} su {{required}} — {{reason}}",
+    "move_ups_section": "Ricollocazioni di copertura",
+    "move_up_line": "{{station}}: {{available}} su {{minimum}} dopo l'invio — si suggerisce {{resource}}",
+    "move_up_no_donor": "nessuna origine trovata",
+    "notes_section": "Come è stato deciso",
+    "apply": "Applica la raccomandazione",
+    "applied": "Raccomandazione applicata",
+    "stale_location": "Posizione non aggiornata",
+    "auto_dispatch": "Invio automatico",
+    "auto_dispatch_explainer": "Questo dipartimento invia automaticamente i piani di risposta corrispondenti; queste risorse vengono allertate alla creazione della chiamata.",
+    "alarm_level": "Allarme {{level}}",
+    "alarm_level_label": "Livello di allarme",
+    "escalate": "Attiva allarme {{level}}",
+    "escalate_confirm": "Attivare l'allarme {{level}}? Verranno inviate le risorse del livello successivo e allertate solo quelle appena aggiunte.",
+    "escalate_confirm_action": "Attiva allarme",
+    "escalate_succeeded": "Allarme {{level}} attivato — {{units}} unità, {{personnel}} operatori aggiunti",
+    "escalate_nothing_to_add": "Nulla da aggiungere al livello di allarme successivo",
+    "escalate_failed": "Impossibile far salire di livello la chiamata. Riprova.",
+    "mode": {
+      "manual_only": "Selezione manuale",
+      "station_based": "Per sede",
+      "closest_unit": "Unità più vicina"
+    },
+    "reason": {
+      "unknown": "Selezionato",
+      "in_geofence": "Nell'area della sede",
+      "cascade_station": "Sede più vicina",
+      "closest_by_distance": "Più vicino per distanza",
+      "closest_by_eta": "Più vicino per tempo di percorrenza",
+      "rest_period_overridden": "Periodo di riposo ignorato"
+    },
+    "shortfall": {
+      "unknown": "nessun motivo indicato",
+      "no_candidates": "nulla disponibile",
+      "outside_radius": "fuori dal raggio di ricerca",
+      "locations_stale": "posizioni troppo vecchie",
+      "no_location_data": "nessun dato di posizione",
+      "not_staffed": "equipaggio insufficiente",
+      "all_in_rest_period": "tutti in periodo di riposo",
+      "stations_exhausted": "nessuna sede rimasta da cercare"
+    }
+  }
 }

@@ -1,5 +1,4 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import axios from 'axios';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { ChevronDownIcon, ChevronUpIcon, PlusIcon, SearchIcon } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
@@ -10,6 +9,7 @@ import { ScrollView, TouchableOpacity, View } from 'react-native';
 import * as z from 'zod';
 
 import { getNewCallData } from '@/api/dispatch/dispatch';
+import { forwardGeocode } from '@/api/geocoding/geocoding';
 import { saveUdfValues } from '@/api/userDefinedFields/userDefinedFields';
 import { DispatchSelectionModal } from '@/components/calls/dispatch-selection-modal';
 import { UdfFieldsRenderer } from '@/components/calls/udf-fields-renderer';
@@ -382,16 +382,11 @@ export default function EditCall() {
 
     setIsGeocodingAddress(true);
     try {
-      const apiKey = config?.GoogleMapsKey;
+      // Proxied through the Resgrid API — see src/api/geocoding/geocoding.ts for why.
+      const lookup = await forwardGeocode(address);
 
-      if (!apiKey) {
-        throw new Error('Google Maps API key not configured');
-      }
-
-      const response = await axios.get<GeocodingResponse>(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`);
-
-      if (response.data.status === 'OK' && response.data.results.length > 0) {
-        const results = response.data.results;
+      if (lookup.candidates.length > 0) {
+        const results = lookup.candidates;
 
         if (results.length === 1) {
           const result = results[0];
@@ -418,12 +413,13 @@ export default function EditCall() {
           setShowAddressSelection(true);
         }
       } else {
+        // The lookup running and matching nothing is a different problem to the lookup failing.
         toast.show({
           placement: 'top',
           render: () => {
             return (
               <Box className="rounded-lg bg-red-500 p-4 shadow-lg">
-                <Text className="text-white">{t('calls.address_not_found')}</Text>
+                <Text className="text-white">{t(lookup.succeeded ? 'calls.address_not_found' : 'calls.geocoding_error')}</Text>
               </Box>
             );
           },

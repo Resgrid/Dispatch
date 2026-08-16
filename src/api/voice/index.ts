@@ -11,14 +11,14 @@ const getConnectToSessionApi = createApiEndpoint('/Voice/ConnectToSession');
 const getCanConnectToVoiceSessionApi = createApiEndpoint('/Voice/CanConnectToVoiceSession');
 
 //const getDepartmentVoiceSettingsApi = createCachedApiEndpoint('/Voice/GetDepartmentVoiceSettings', {
-//  ttl: 60 * 1000 * 2880, // Cache for 2 days
+//  ttl: 15 * 60 * 1000, // Cache for 15 minutes -- operational data, must not go stale
 //  enabled: true,
 //});
 
 const getDepartmentVoiceSettingsApi = createApiEndpoint('/Voice/GetDepartmentVoiceSettings');
 
 const getDepartmentAudioStreamsApi = createCachedApiEndpoint('/Voice/GetDepartmentAudioStreams', {
-  ttl: 60 * 1000 * 2880, // Cache for 2 days
+  ttl: 15 * 60 * 1000, // Cache for 15 minutes -- operational data, must not go stale
   enabled: false,
 });
 

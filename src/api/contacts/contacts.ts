@@ -8,12 +8,12 @@ import { createApiEndpoint } from '../common/client';
 
 // Define API endpoints
 const getAllContactsApi = createCachedApiEndpoint('/Contacts/GetAllContacts', {
-  ttl: 60 * 1000 * 1440, // Cache for 1 day
+  ttl: 15 * 60 * 1000, // Cache for 15 minutes -- operational data, must not go stale
   enabled: true,
 });
 
 const getAllContactCategoriesApi = createCachedApiEndpoint('/Contacts/GetAllContactCategories', {
-  ttl: 60 * 1000 * 1440, // Cache for 1 day
+  ttl: 15 * 60 * 1000, // Cache for 15 minutes -- operational data, must not go stale
   enabled: true,
 });
 

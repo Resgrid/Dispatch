@@ -25,6 +25,9 @@ const mockConfig: GetConfigResultData = {
   NovuApplicationId: '',
   AnalyticsApiKey: '',
   AnalyticsHost: '',
+  MapCenterLatitude: 0,
+  MapCenterLongitude: 0,
+  MapCenterZoomLevel: 9,
 };
 
 // Mock the core store

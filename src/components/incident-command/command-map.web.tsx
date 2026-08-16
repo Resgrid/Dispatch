@@ -9,12 +9,16 @@ import { HStack } from '@/components/ui/hstack';
 import { Input, InputField } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import { Env } from '@/lib/env';
+import { getDepartmentMapCenter } from '@/lib/map-center';
 import { IncidentCapabilities, IncidentMapAnnotationType } from '@/models/v4/incidentCommand/incidentCommandEnums';
 import { useLocationStore } from '@/stores/app/location-store';
 import { useIncidentCommandStore } from '@/stores/incident-command/store';
 import { useToastStore } from '@/stores/toast/store';
 
 const MAPBOX_GL_CSS_URL = 'https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.css';
+
+/** Close enough to work a scene, used whenever the camera opens on a known incident location. */
+const INCIDENT_ZOOM = 13;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyGeoJson = any;
@@ -58,13 +62,19 @@ export const CommandMap: React.FC = () => {
   const canManage = (capabilities & IncidentCapabilities.ManageAnnotations) === IncidentCapabilities.ManageAnnotations;
   const annotations = useMemo(() => (board?.Annotations ?? []).filter((a) => !a.DeletedOn), [board?.Annotations]);
 
-  const center = useMemo<[number, number]>(() => {
+  // A command post or a device fix is a specific spot, so it keeps the close incident zoom. Only the
+  // department fallback is a whole service area, and it carries the zoom the department chose.
+  const camera = useMemo<{ center: [number, number]; zoom: number }>(() => {
     const command = board?.Command;
     const lng = parseFloat(command?.CommandPostLongitude ?? '');
     const lat = parseFloat(command?.CommandPostLatitude ?? '');
-    if (!isNaN(lng) && !isNaN(lat) && (lng !== 0 || lat !== 0)) return [lng, lat];
-    if (userLongitude && userLatitude) return [userLongitude, userLatitude];
-    return [-98.5795, 39.8283];
+    if (!isNaN(lng) && !isNaN(lat) && (lng !== 0 || lat !== 0)) return { center: [lng, lat], zoom: INCIDENT_ZOOM };
+    if (userLongitude && userLatitude) return { center: [userLongitude, userLatitude], zoom: INCIDENT_ZOOM };
+
+    // Read once: two calls are two store reads, and the second could see a different config.
+    const departmentCenter = getDepartmentMapCenter();
+
+    return { center: [departmentCenter.longitude, departmentCenter.latitude], zoom: departmentCenter.zoomLevel };
   }, [board?.Command, userLongitude, userLatitude]);
 
   useEffect(() => {
@@ -89,8 +99,8 @@ export const CommandMap: React.FC = () => {
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/streets-v12',
-      center,
-      zoom: 13,
+      center: camera.center,
+      zoom: camera.zoom,
     });
     map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
     map.current.on('load', () => setIsReady(true));

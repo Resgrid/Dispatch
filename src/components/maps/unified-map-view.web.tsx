@@ -7,6 +7,7 @@ import { StyleSheet, View } from 'react-native';
 import { getMapDataAndMarkers } from '@/api/mapping/mapping';
 import { Env } from '@/lib/env';
 import { logger } from '@/lib/logging';
+import { getDepartmentMapCenter } from '@/lib/map-center';
 import { getMapPinSummary, hasValidMapCoordinates } from '@/lib/map-markers';
 import { createMapMarkerElement } from '@/lib/map-markers-web';
 import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersData';
@@ -90,13 +91,16 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     mapboxgl.accessToken = Env.MAPBOX_PUBKEY;
 
     const { latitude, longitude } = useLocationStore.getState();
-    const initialCenter: [number, number] = longitude && latitude ? [longitude, latitude] : [-98.5795, 39.8283];
+    // Read once: two calls are two store reads, and the second could see a different config.
+    const departmentCenter = getDepartmentMapCenter();
+    const initialCenter: [number, number] = longitude && latitude ? [longitude, latitude] : [departmentCenter.longitude, departmentCenter.latitude];
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: getMapStyle(),
       center: initialCenter,
-      zoom: latitude && longitude ? 12 : 3,
+      // The department configured a zoom to go with its center; a fixed 3 opens on the whole globe.
+      zoom: latitude && longitude ? 12 : departmentCenter.zoomLevel,
       interactive,
     });
 

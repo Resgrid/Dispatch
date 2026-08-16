@@ -5,22 +5,22 @@ import { type UnitsResult } from '@/models/v4/units/unitsResult';
 import { createCachedApiEndpoint } from '../common/cached-client';
 
 const unitsApi = createCachedApiEndpoint('/Units/GetAllUnits', {
-  ttl: 60 * 1000 * 2880, // Cache for 2 days
+  ttl: 15 * 60 * 1000, // Cache for 15 minutes -- operational data, must not go stale
   enabled: true,
 });
 
 const unitsInfosApi = createCachedApiEndpoint('/Units/GetAllUnitsInfos', {
-  ttl: 60 * 1000 * 2880, // Cache for 2 days
+  ttl: 15 * 60 * 1000, // Cache for 15 minutes -- operational data, must not go stale
   enabled: true,
 });
 
 const unitsFilterOptionsApi = createCachedApiEndpoint('/Units/GetUnitsFilterOptions', {
-  ttl: 60 * 1000 * 2880, // Cache for 2 days
+  ttl: 15 * 60 * 1000, // Cache for 15 minutes -- operational data, must not go stale
   enabled: true,
 });
 
-export const getUnits = async () => {
-  const response = await unitsApi.get<UnitsResult>();
+export const getUnits = async (forceRefresh = false) => {
+  const response = await unitsApi.get<UnitsResult>(undefined, { forceRefresh });
   return response.data;
 };
 

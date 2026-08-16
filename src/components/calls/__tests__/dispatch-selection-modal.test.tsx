@@ -21,6 +21,7 @@ const mockDispatchStore = {
   },
   isLoading: false,
   error: null,
+  loadFailures: { users: false, groups: false, units: false },
   searchQuery: '',
   fetchDispatchData: jest.fn(),
   setSelection: jest.fn(),
