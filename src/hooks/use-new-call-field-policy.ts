@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { getNewCallFieldPolicy } from '@/api/calls/newCallFieldPolicy';
 import { logger } from '@/lib/logging';
-import { NewCallFieldKeys, type NewCallFieldKey, type NewCallFieldRuleData } from '@/models/v4/calls/newCallFieldPolicyResultData';
+import { type NewCallFieldKey, NewCallFieldKeys, type NewCallFieldRuleData } from '@/models/v4/calls/newCallFieldPolicyResultData';
 
 /**
  * Applies the department's new-call field policy to a call form.

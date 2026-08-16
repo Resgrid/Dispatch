@@ -7,12 +7,12 @@ import { StyleSheet, View } from 'react-native';
 import { getMapDataAndMarkers } from '@/api/mapping/mapping';
 import { Env } from '@/lib/env';
 import { logger } from '@/lib/logging';
+import { getDepartmentMapCenter } from '@/lib/map-center';
 import { getMapPinSummary, hasValidMapCoordinates } from '@/lib/map-markers';
 import { createMapMarkerElement } from '@/lib/map-markers-web';
 import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersData';
 import { type GetMapLayersData } from '@/models/v4/mapping/getMapLayersResultData';
 import { useLocationStore } from '@/stores/app/location-store';
-import { getDepartmentMapCenter } from '@/lib/map-center';
 
 // Mapbox GL CSS needs to be injected for web
 const MAPBOX_GL_CSS_URL = 'https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.css';

@@ -9,11 +9,11 @@ import { HStack } from '@/components/ui/hstack';
 import { Input, InputField } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import { Env } from '@/lib/env';
+import { getDepartmentMapCenter } from '@/lib/map-center';
 import { IncidentCapabilities, IncidentMapAnnotationType } from '@/models/v4/incidentCommand/incidentCommandEnums';
 import { useLocationStore } from '@/stores/app/location-store';
 import { useIncidentCommandStore } from '@/stores/incident-command/store';
 import { useToastStore } from '@/stores/toast/store';
-import { getDepartmentMapCenter } from '@/lib/map-center';
 
 const MAPBOX_GL_CSS_URL = 'https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.css';
 

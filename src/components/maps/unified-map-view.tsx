@@ -6,11 +6,11 @@ import { StyleSheet, View } from 'react-native';
 
 import { getMapDataAndMarkers } from '@/api/mapping/mapping';
 import { logger } from '@/lib/logging';
+import { getDepartmentMapCenter } from '@/lib/map-center';
 import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersData';
 import { type GetMapLayersData } from '@/models/v4/mapping/getMapLayersResultData';
 import { useLocationStore } from '@/stores/app/location-store';
 import { useSignalRStore } from '@/stores/signalr/signalr-store';
-import { getDepartmentMapCenter } from '@/lib/map-center';
 
 import MapPins from './map-pins';
 

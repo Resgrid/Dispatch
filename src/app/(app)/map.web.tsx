@@ -13,6 +13,7 @@ import { useAnalytics } from '@/hooks/use-analytics';
 import { MapLayerType, useMapLayers } from '@/hooks/use-map-layers';
 import { Env } from '@/lib/env';
 import { logger } from '@/lib/logging';
+import { getDepartmentMapCenter } from '@/lib/map-center';
 import { getMapPinSummary, hasValidMapCoordinates } from '@/lib/map-markers';
 import { createMapMarkerElement } from '@/lib/map-markers-web';
 import { createDefaultVisiblePoiLayerIds, filterMapPinsByPoiLayers, getPoiMapLayerId } from '@/lib/poi-map-layers';
@@ -20,7 +21,6 @@ import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersD
 import { type GetMapLayersData } from '@/models/v4/mapping/getMapLayersResultData';
 import { type PoiLayerData } from '@/models/v4/mapping/poiLayerData';
 import { useLocationStore } from '@/stores/app/location-store';
-import { getDepartmentMapCenter } from '@/lib/map-center';
 
 // Mapbox GL CSS needs to be injected for web
 const MAPBOX_GL_CSS_URL = 'https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.css';
