@@ -107,7 +107,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('yarn.lock', 'patches/**') }}
+          key: ${{ runner.os }}-node-modules-v2-${{ hashFiles('yarn.lock', 'patches/**') }}
 
       - name: 📦 Install dependencies
         run: yarn install --frozen-lockfile
@@ -184,7 +184,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('yarn.lock', 'patches/**') }}
+          key: ${{ runner.os }}-node-modules-v2-${{ hashFiles('yarn.lock', 'patches/**') }}
 
       - name: 📦 Install dependencies
         run: |
@@ -231,9 +231,9 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.eas-build-local
-          key: ${{ runner.os }}-eas-build-local-${{ hashFiles('**/package.json') }}
+          key: ${{ runner.os }}-eas-build-local-v2-${{ hashFiles('**/package.json') }}
           restore-keys: |
-            ${{ runner.os }}-eas-build-local-
+            ${{ runner.os }}-eas-build-local-v2-
 
       - name: 🔄 Verify EAS CLI installation
         run: |
