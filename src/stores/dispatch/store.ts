@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import { getAllGroups } from '@/api/groups/groups';
+import { getRecipients } from '@/api/messaging/messages';
 import { getAllPersonnelInfos } from '@/api/personnel/personnel';
 import { getUnits } from '@/api/units/units';
 import { logger } from '@/lib/logging';
@@ -28,6 +29,7 @@ export interface DispatchData {
 export interface DispatchLoadFailures {
   users: boolean;
   groups: boolean;
+  roles: boolean;
   units: boolean;
 }
 
@@ -72,23 +74,25 @@ export const useDispatchStore = create<DispatchState>((set, get) => ({
   selection: initialSelection,
   isLoading: false,
   error: null,
-  loadFailures: { users: false, groups: false, units: false },
+  loadFailures: { users: false, groups: false, roles: false, units: false },
   searchQuery: '',
 
   fetchDispatchData: async (forceRefresh = false) => {
     set({ isLoading: true, error: null });
 
-    // allSettled, not all: personnel, groups and units are independent lists, and a dispatcher who
-    // can still see units must not lose them because the personnel call failed.
-    const [personnelSettled, groupsSettled, unitsSettled] = await Promise.allSettled([getAllPersonnelInfos(''), getAllGroups(), getUnits(forceRefresh)]);
+    // allSettled, not all: personnel, groups, roles and units are independent lists, and a dispatcher
+    // who can still see units must not lose them because the personnel call failed.
+    const [personnelSettled, groupsSettled, recipientsSettled, unitsSettled] = await Promise.allSettled([getAllPersonnelInfos(''), getAllGroups(), getRecipients(true, false), getUnits(forceRefresh)]);
 
     const personnelResult = personnelSettled.status === 'fulfilled' ? personnelSettled.value : null;
     const groupsResult = groupsSettled.status === 'fulfilled' ? groupsSettled.value : null;
+    const recipientsResult = recipientsSettled.status === 'fulfilled' ? recipientsSettled.value : null;
     const unitsResult = unitsSettled.status === 'fulfilled' ? unitsSettled.value : null;
 
     const loadFailures = {
       users: personnelSettled.status === 'rejected',
       groups: groupsSettled.status === 'rejected',
+      roles: recipientsSettled.status === 'rejected',
       units: unitsSettled.status === 'rejected',
     };
 
@@ -97,6 +101,9 @@ export const useDispatchStore = create<DispatchState>((set, get) => ({
     }
     if (groupsSettled.status === 'rejected') {
       logger.error({ message: 'Failed to load dispatch groups', context: { error: groupsSettled.reason } });
+    }
+    if (recipientsSettled.status === 'rejected') {
+      logger.error({ message: 'Failed to load dispatch roles', context: { error: recipientsSettled.reason } });
     }
     if (unitsSettled.status === 'rejected') {
       logger.error({ message: 'Failed to load dispatch units', context: { error: unitsSettled.reason } });
@@ -117,28 +124,22 @@ export const useDispatchStore = create<DispatchState>((set, get) => ({
       Name: u.Name,
     }));
 
-    // Extract unique roles from personnel data
-    const roleSet = new Map<string, string>();
-    (personnelResult?.Data ?? []).forEach((p) => {
-      if (p.Roles) {
-        p.Roles.forEach((role) => {
-          if (role && !roleSet.has(role)) {
-            roleSet.set(role, role);
-          }
-        });
-      }
-    });
-    const roles: DispatchItem[] = Array.from(roleSet.entries()).map(([name]) => ({
-      Id: name,
-      Name: name,
-    }));
+    // Roles come from the recipients endpoint because it is the only one that carries the role id.
+    // The personnel payload only names the roles a member holds, and dispatching by name put
+    // "R:PARAMEDICO" on the wire, which the API could not resolve to a role.
+    const roles: DispatchItem[] = (recipientsResult?.Data ?? [])
+      .filter((recipient) => recipient?.Id && recipient.Type === 'Roles')
+      .map((recipient) => ({
+        Id: recipient.Id.replace(/^R:/, ''),
+        Name: recipient.Name,
+      }));
 
     set({
       data: { users, groups, roles, units },
       loadFailures,
       // Only a total failure is a modal-level error; a partial one is reported per section so the
       // dispatcher can still work with whatever loaded.
-      error: loadFailures.users && loadFailures.groups && loadFailures.units ? 'Failed to fetch dispatch data' : null,
+      error: loadFailures.users && loadFailures.groups && loadFailures.roles && loadFailures.units ? 'Failed to fetch dispatch data' : null,
       isLoading: false,
     });
   },

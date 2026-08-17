@@ -287,7 +287,8 @@ export default function EditCallWeb() {
   useEffect(() => {
     if (call) {
       const priority = callPriorities.find((p) => p.Id === call.Priority);
-      const type = callTypes.find((t) => t.Id === call.Type);
+      // Call.Type is the type's text, not its id -- matching on Id left the picker blank on every edit.
+      const type = callTypes.find((t) => t.Name === call.Type);
 
       // Build dispatch selection from existing dispatches
       const initialDispatch: DispatchSelection = {
@@ -407,7 +408,8 @@ export default function EditCallWeb() {
         name: data.name,
         nature: data.nature,
         priority: priority?.Id || 0,
-        type: type?.Id || '',
+        // The API matches the call type by its text, not its id.
+        type: type?.Name || '',
         note: data.note,
         destinationPoiId: data.destinationPoiId ? Number(data.destinationPoiId) : null,
         address: data.address,
