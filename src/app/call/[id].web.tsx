@@ -53,6 +53,7 @@ import { type DispatchSelection } from '@/stores/dispatch/store';
 import { useSecurityStore } from '@/stores/security/store';
 import { useStatusBottomSheetStore } from '@/stores/status/store';
 import { useToastStore } from '@/stores/toast/store';
+import { decodeHtmlEntitiesIfEncoded } from '@/utils/html-entities';
 
 import CallAudioModal from '../../components/calls/call-audio-modal';
 import { useCallDetailMenu } from '../../components/calls/call-detail-menu';
@@ -316,7 +317,10 @@ export default function CallDetailWeb() {
             <View style={styles.infoRow}>
               <Text style={StyleSheet.flatten([styles.infoLabel, isDark ? styles.infoLabelDark : styles.infoLabelLight])}>{t('call_detail.note')}</Text>
               <View style={StyleSheet.flatten([styles.noteContainer, isDark ? styles.noteContainerDark : styles.noteContainerLight])}>
-                <div style={{ color: isDark ? '#d1d5db' : '#374151', fontSize: 14, lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(call.Note || '<em>No notes</em>') }} />
+                <div
+                  style={{ color: isDark ? '#d1d5db' : '#374151', fontSize: 14, lineHeight: 1.6 }}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(decodeHtmlEntitiesIfEncoded(call.Note || '<em>No notes</em>')) }}
+                />
               </View>
             </View>
           </View>
@@ -339,7 +343,10 @@ export default function CallDetailWeb() {
                   <Text style={StyleSheet.flatten([styles.protocolName, isDark ? styles.protocolNameDark : styles.protocolNameLight])}>{protocol.Name}</Text>
                   <Text style={StyleSheet.flatten([styles.protocolDescription, isDark ? styles.protocolDescriptionDark : styles.protocolDescriptionLight])}>{protocol.Description}</Text>
                   <View style={StyleSheet.flatten([styles.protocolText, isDark ? styles.protocolTextDark : styles.protocolTextLight])}>
-                    <div style={{ color: isDark ? '#d1d5db' : '#374151', fontSize: 14, lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(protocol.ProtocolText || '') }} />
+                    <div
+                      style={{ color: isDark ? '#d1d5db' : '#374151', fontSize: 14, lineHeight: 1.6 }}
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(decodeHtmlEntitiesIfEncoded(protocol.ProtocolText || '')) }}
+                    />
                   </View>
                 </Card>
               ))
@@ -469,7 +476,7 @@ export default function CallDetailWeb() {
 
             {/* Call Nature */}
             <View style={StyleSheet.flatten([styles.natureContainer, isDark ? styles.natureContainerDark : styles.natureContainerLight])}>
-              <div style={{ color: isDark ? '#d1d5db' : '#374151', fontSize: 14, lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(call.Nature || '') }} />
+              <div style={{ color: isDark ? '#d1d5db' : '#374151', fontSize: 14, lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(decodeHtmlEntitiesIfEncoded(call.Nature || '')) }} />
             </View>
 
             {/* Priority Badge */}

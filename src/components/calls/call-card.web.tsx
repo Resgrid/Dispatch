@@ -9,6 +9,7 @@ import { VStack } from '@/components/ui/vstack';
 import { getTimeAgoUtc, invertColor } from '@/lib/utils';
 import { type CallPriorityResultData } from '@/models/v4/callPriorities/callPriorityResultData';
 import type { CallResultData } from '@/models/v4/calls/callResultData';
+import { sanitizeHtmlContent } from '@/utils/html-sanitizer';
 
 function getColor(call: CallResultData, priority: CallPriorityResultData | undefined) {
   if (!call) {
@@ -131,7 +132,7 @@ export const CallCard: React.FC<CallCardProps> = ({ call, priority }) => {
                       }
                     </style>
                   </head>
-                  <body>${call.Nature}</body>
+                  <body>${sanitizeHtmlContent(call.Nature ?? '')}</body>
                 </html>
               `}
               style={{ width: '100%', height: '100%', border: 'none', backgroundColor: bgColor }}

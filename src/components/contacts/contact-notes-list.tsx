@@ -8,6 +8,7 @@ import { WebView } from 'react-native-webview';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { type ContactNoteResultData } from '@/models/v4/contacts/contactNoteResultData';
 import { useContactsStore } from '@/stores/contacts/store';
+import { sanitizeHtmlContent } from '@/utils/html-sanitizer';
 
 import { Box } from '../ui/box';
 import { Card } from '../ui/card';
@@ -193,7 +194,7 @@ const ContactNoteCard: React.FC<ContactNoteCardProps> = ({ note }) => {
                         }
                       </style>
                     </head>
-                    <body>${noteContent}</body>
+                    <body>${sanitizeHtmlContent(noteContent)}</body>
                   </html>
                 `,
               }}

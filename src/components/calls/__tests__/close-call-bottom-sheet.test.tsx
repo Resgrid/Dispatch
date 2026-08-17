@@ -42,17 +42,33 @@ jest.mock('nativewind', () => ({
 (global as any).cssInterop = jest.fn();
 
 // Mock UI components
-jest.mock('@/components/ui/bottom-sheet', () => ({
-  CustomBottomSheet: ({ children, isOpen }: any) => {
-    const { View } = require('react-native');
-    return isOpen ? <View testID="bottom-sheet">{children}</View> : null;
+jest.mock('@/components/ui/actionsheet', () => {
+  const { View } = require('react-native');
+  return {
+    Actionsheet: ({ isOpen, children }: any) => (isOpen ? <View testID="actionsheet">{children}</View> : null),
+    ActionsheetBackdrop: ({ children }: any) => <View testID="actionsheet-backdrop">{children}</View>,
+    ActionsheetContent: ({ children, style }: any) => (
+      <View testID="actionsheet-content" style={style}>
+        {children}
+      </View>
+    ),
+    ActionsheetDragIndicator: () => <View testID="actionsheet-drag-indicator" />,
+    ActionsheetDragIndicatorWrapper: ({ children }: any) => <View testID="actionsheet-drag-indicator-wrapper">{children}</View>,
+  };
+});
+
+jest.mock('@/components/ui/heading', () => ({
+  Heading: ({ children, ...props }: any) => {
+    const { Text } = require('react-native');
+    return <Text {...props}>{children}</Text>;
   },
 }));
 
 jest.mock('@/components/ui/button', () => ({
-  Button: ({ children, onPress, testID, disabled, ...props }: any) => {
+  Button: ({ children, onPress, testID, disabled, isDisabled, ...props }: any) => {
     const { TouchableOpacity } = require('react-native');
-    return <TouchableOpacity onPress={onPress} testID={testID} disabled={disabled} {...props}>{children}</TouchableOpacity>;
+    const resolvedDisabled = disabled ?? isDisabled;
+    return <TouchableOpacity onPress={onPress} testID={testID} disabled={resolvedDisabled} accessibilityState={{ disabled: !!resolvedDisabled }} {...props}>{children}</TouchableOpacity>;
   },
   ButtonText: ({ children, ...props }: any) => {
     const { Text } = require('react-native');

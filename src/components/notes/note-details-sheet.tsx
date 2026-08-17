@@ -8,6 +8,7 @@ import WebView from 'react-native-webview';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { formatDateForDisplay, parseDateISOString } from '@/lib/utils';
 import { useNotesStore } from '@/stores/notes/store';
+import { sanitizeHtmlContent } from '@/utils/html-sanitizer';
 
 import { Actionsheet, ActionsheetBackdrop, ActionsheetContent, ActionsheetDragIndicator, ActionsheetDragIndicatorWrapper } from '../ui/actionsheet';
 import { Box } from '../ui/box';
@@ -90,7 +91,7 @@ export const NoteDetailsSheet: React.FC = () => {
                           }
                         </style>
                       </head>
-                      <body>${selectedNote.Body}</body>
+                      <body>${sanitizeHtmlContent(selectedNote.Body ?? '')}</body>
                     </html>
                   `,
                 }}
