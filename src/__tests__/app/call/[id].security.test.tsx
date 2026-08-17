@@ -241,6 +241,13 @@ jest.mock('../../../components/status/status-bottom-sheet', () => ({
   StatusBottomSheet: () => <div data-testid="status-bottom-sheet">Status Sheet</div>,
 }));
 
+// The dispatch selection modal is now a gluestack Actionsheet; importing the real one
+// pulls in @gluestack-ui overlay code that needs the full react-native StatusBar, which
+// this suite's minimal react-native mock does not provide. Mock it like the other sheets.
+jest.mock('../../../components/calls/dispatch-selection-modal', () => ({
+  DispatchSelectionModal: () => <div data-testid="dispatch-selection-modal">Dispatch Selection</div>,
+}));
+
 jest.mock('@/components/incident-command/incident-command-tab', () => ({
   IncidentCommandTab: () => <div data-testid="incident-command-tab">Incident Command Tab</div>,
 }));

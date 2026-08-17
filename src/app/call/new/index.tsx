@@ -767,12 +767,12 @@ export default function NewCall() {
         }}
       />
       <View className="size-full flex-1">
-        <Box className={`size-full w-full flex-1 ${colorScheme === 'dark' ? 'bg-neutral-950' : 'bg-neutral-50'}`}>
+        <Box className="size-full w-full flex-1 bg-gray-50 dark:bg-gray-900">
           <ScrollView className="flex-1 px-4 py-6" contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) }} style={{ paddingTop: Math.max(insets.top, 16) }}>
             <Text className="mb-6 text-2xl font-bold">{t('calls.create_new_call')}</Text>
 
             {/* Call Templates */}
-            <Card className={`mb-4 rounded-lg border ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
+            <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
               <TouchableOpacity onPress={() => toggleSection('templates')} className="flex-row items-center justify-between p-4">
                 <View className="flex-row items-center">
                   <FileTextIcon size={16} color={colorScheme === 'dark' ? '#e5e7eb' : '#374151'} />
@@ -790,7 +790,7 @@ export default function NewCall() {
               ) : null}
             </Card>
 
-            <Card className={`mb-4 rounded-lg border ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
+            <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
               <TouchableOpacity onPress={() => toggleSection('callName')} className="flex-row items-center justify-between p-4">
                 <Text className="text-base font-semibold">{t('calls.name')}</Text>
                 {sectionsExpanded.callName ? <ChevronUpIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} />}
@@ -817,7 +817,7 @@ export default function NewCall() {
               ) : null}
             </Card>
 
-            <Card className={`mb-4 rounded-lg border ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
+            <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
               <TouchableOpacity onPress={() => toggleSection('nature')} className="flex-row items-center justify-between p-4">
                 <Text className="text-base font-semibold">{t('calls.nature')}</Text>
                 {sectionsExpanded.nature ? <ChevronUpIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} />}
@@ -844,7 +844,7 @@ export default function NewCall() {
               ) : null}
             </Card>
 
-            <Card className={`mb-4 rounded-lg border ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
+            <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
               <TouchableOpacity onPress={() => toggleSection('priorityType')} className="flex-row items-center justify-between p-4">
                 <Text className="text-base font-semibold">{t('calls.priority_and_type', 'Priority & Type')}</Text>
                 {sectionsExpanded.priorityType ? <ChevronUpIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} />}
@@ -916,7 +916,7 @@ export default function NewCall() {
             </Card>
 
             {fieldPolicy.isVisible(NewCallFieldKeys.Note) ? (
-              <Card className={`mb-4 rounded-lg border ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
+              <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
                 <TouchableOpacity onPress={() => toggleSection('note')} className="flex-row items-center justify-between p-4">
                   <Text className="text-base font-semibold">{t('calls.note')}</Text>
                   {sectionsExpanded.note ? <ChevronUpIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} />}
@@ -940,7 +940,7 @@ export default function NewCall() {
             ) : null}
 
             {showLocationCard ? (
-              <Card className={`mb-4 rounded-lg border ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
+              <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
                 <TouchableOpacity onPress={() => toggleSection('location')} className="flex-row items-center justify-between p-4">
                   <Text className="text-base font-semibold">{t('calls.call_location')}</Text>
                   {sectionsExpanded.location ? <ChevronUpIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} />}
@@ -1104,7 +1104,7 @@ export default function NewCall() {
 
             {/* One card holds both contact fields, so it shows when either is enabled. */}
             {fieldPolicy.isVisible(NewCallFieldKeys.ContactName) || fieldPolicy.isVisible(NewCallFieldKeys.ContactInfo) ? (
-              <Card className={`mb-4 rounded-lg border ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
+              <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
                 <TouchableOpacity onPress={() => toggleSection('contact')} className="flex-row items-center justify-between p-4">
                   <View className="flex-row items-center">
                     <UserIcon size={16} color={colorScheme === 'dark' ? '#e5e7eb' : '#374151'} />
@@ -1158,14 +1158,14 @@ export default function NewCall() {
 
             {/* Protocols */}
             {fieldPolicy.isVisible(NewCallFieldKeys.Protocols) ? (
-              <Card className={`mb-4 rounded-lg border ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
+              <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
                 <TouchableOpacity onPress={() => toggleSection('protocols')} className="flex-row items-center justify-between p-4">
                   <View className="flex-row items-center">
                     <BookOpenIcon size={16} color={colorScheme === 'dark' ? '#e5e7eb' : '#374151'} />
                     <Text className="ml-2 text-base font-semibold">{t('calls.protocols.title', 'Protocols')}</Text>
                     {selectedProtocols.length > 0 ? (
-                      <View className={`ml-2 rounded-full px-2 py-0.5 ${colorScheme === 'dark' ? 'bg-blue-800' : 'bg-blue-100'}`}>
-                        <Text className={`text-xs font-medium ${colorScheme === 'dark' ? 'text-blue-200' : 'text-blue-700'}`}>{selectedProtocols.length}</Text>
+                      <View className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 dark:bg-blue-800">
+                        <Text className="text-xs font-medium text-blue-700 dark:text-blue-200">{selectedProtocols.length}</Text>
                       </View>
                     ) : null}
                   </View>
@@ -1186,14 +1186,14 @@ export default function NewCall() {
 
             {/* Linked Call */}
             {fieldPolicy.isVisible(NewCallFieldKeys.LinkedCall) ? (
-              <Card className={`mb-4 rounded-lg border ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
+              <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
                 <TouchableOpacity onPress={() => toggleSection('linkedCall')} className="flex-row items-center justify-between p-4">
                   <View className="flex-row items-center">
                     <LinkIcon size={16} color={colorScheme === 'dark' ? '#e5e7eb' : '#374151'} />
                     <Text className="ml-2 text-base font-semibold">{t('calls.linked_calls.title', 'Linked Call')}</Text>
                     {linkedCall ? (
-                      <View className={`ml-2 rounded-full px-2 py-0.5 ${colorScheme === 'dark' ? 'bg-green-800' : 'bg-green-100'}`}>
-                        <Text className={`text-xs font-medium ${colorScheme === 'dark' ? 'text-green-200' : 'text-green-700'}`}>#{linkedCall.number}</Text>
+                      <View className="ml-2 rounded-full bg-green-100 px-2 py-0.5 dark:bg-green-800">
+                        <Text className="text-xs font-medium text-green-700 dark:text-green-200">#{linkedCall.number}</Text>
                       </View>
                     ) : null}
                   </View>
@@ -1202,7 +1202,7 @@ export default function NewCall() {
                 {sectionsExpanded.linkedCall ? (
                   <View className="px-4 pb-4">
                     {linkedCall ? (
-                      <Box className={`mb-3 rounded-md p-3 ${colorScheme === 'dark' ? 'bg-neutral-800' : 'bg-neutral-100'}`}>
+                      <Box className="mb-3 rounded-md bg-gray-50 p-3 dark:bg-gray-700">
                         <Text className="text-sm font-medium">
                           #{linkedCall.number} — {linkedCall.name}
                         </Text>
@@ -1221,7 +1221,7 @@ export default function NewCall() {
             ) : null}
 
             {/* Additional Fields (UDF) */}
-            <Card className={`mb-4 rounded-lg border ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
+            <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
               <TouchableOpacity onPress={() => toggleSection('additionalFields')} className="flex-row items-center justify-between p-4">
                 <Text className="text-base font-semibold">{t('calls.additional_fields', 'Additional Fields')}</Text>
                 {sectionsExpanded.additionalFields ? (
@@ -1239,7 +1239,7 @@ export default function NewCall() {
 
             {/* Call Form */}
             {callForm ? (
-              <Card className={`mb-4 rounded-lg border ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
+              <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
                 <TouchableOpacity onPress={() => toggleSection('callForm')} className="flex-row items-center justify-between p-4">
                   <Text className="text-base font-semibold">{callForm.Name || t('calls.form.title', 'Call Form')}</Text>
                   {sectionsExpanded.callForm ? <ChevronUpIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} />}
@@ -1253,7 +1253,7 @@ export default function NewCall() {
             ) : null}
 
             {fieldPolicy.isVisible(NewCallFieldKeys.DispatchList) ? (
-              <Card className={`mb-4 rounded-lg border ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
+              <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
                 <TouchableOpacity onPress={() => toggleSection('dispatch')} className="flex-row items-center justify-between p-4">
                   <Text className="text-base font-semibold">{t('calls.dispatch_to')}</Text>
                   {sectionsExpanded.dispatch ? <ChevronUpIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} />}

@@ -51,6 +51,23 @@ jest.mock('nativewind', () => ({
   cssInterop: jest.fn(),
 }));
 
+// The component is now a gluestack Actionsheet (renders inside a native Modal),
+// so mock the actionsheet parts to render inline like the other sheet tests do.
+jest.mock('@/components/ui/actionsheet', () => {
+  const { View } = require('react-native');
+  return {
+    Actionsheet: ({ isOpen, children }: any) => (isOpen ? <View testID="actionsheet">{children}</View> : null),
+    ActionsheetBackdrop: ({ children }: any) => <View testID="actionsheet-backdrop">{children}</View>,
+    ActionsheetContent: ({ children, style }: any) => (
+      <View testID="actionsheet-content" style={style}>
+        {children}
+      </View>
+    ),
+    ActionsheetDragIndicator: () => <View testID="actionsheet-drag-indicator" />,
+    ActionsheetDragIndicatorWrapper: ({ children }: any) => <View testID="actionsheet-drag-indicator-wrapper">{children}</View>,
+  };
+});
+
 // Mock translations
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({

@@ -4,12 +4,15 @@ import { Keyboard, Platform } from 'react-native';
 /**
  * Current soft-keyboard height in dp, or 0 when it is closed.
  *
- * Bottom sheets render inside a native `Modal`, which owns its own window.
- * react-native-keyboard-controller's inset animations are bound to the main window,
- * so `KeyboardAvoidingView`/`KeyboardAwareScrollView` never move sheet content and the
- * keyboard sits on top of it. React Native's own `Keyboard` events are dispatched
- * regardless of which window is focused, so they still describe the keyboard correctly
- * inside a sheet — use them to size the gap the sheet needs to leave.
+ * Bottom sheets render inside a native `Modal`, which owns its own window. The modal
+ * window itself never resizes or pans for the keyboard on either platform, so the sheet
+ * must leave the gap itself — pad `ActionsheetContent` by this height and the
+ * content-sized, bottom-anchored sheet slides up out from under the keyboard.
+ *
+ * IMPORTANT: this must be the ONLY keyboard compensation inside a sheet. Do NOT nest a
+ * `KeyboardAwareScrollView`/`KeyboardAvoidingView` in sheet content: keyboard events are
+ * window-agnostic on both platforms, so those components still fire inside the modal and
+ * shift the content a second keyboard-height, pushing it out of the visible sheet.
  *
  * iOS gets the `Will` events so the sheet moves with the keyboard animation; Android only
  * reports usable frames on `Did`.
