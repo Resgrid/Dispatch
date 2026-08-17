@@ -44,7 +44,7 @@ export const DispatchSelectionModal: React.FC<DispatchSelectionModalProps> = ({ 
     getFilteredData,
   } = useDispatchStore();
 
-  const hasLoadFailure = loadFailures.users || loadFailures.groups || loadFailures.units;
+  const hasLoadFailure = loadFailures.users || loadFailures.groups || loadFailures.roles || loadFailures.units;
 
   const filteredData = useMemo(() => getFilteredData(), [getFilteredData]);
 

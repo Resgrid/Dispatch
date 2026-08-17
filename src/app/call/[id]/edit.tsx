@@ -187,7 +187,8 @@ export default function EditCall() {
   useEffect(() => {
     if (call) {
       const priority = callPriorities.find((p) => p.Id === call.Priority);
-      const type = callTypes.find((t) => t.Id === call.Type);
+      // Call.Type is the type's text, not its id -- matching on Id left the picker blank on every edit.
+      const type = callTypes.find((t) => t.Name === call.Type);
 
       // Build dispatch selection from existing dispatches
       const initialDispatch: DispatchSelection = {
