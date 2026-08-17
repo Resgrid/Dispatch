@@ -1,5 +1,4 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { render } from '@testing-library/react-native';
 import * as Location from 'expo-location';
 import { type Href, router, Stack } from 'expo-router';
 import { BookOpenIcon, ChevronDownIcon, ChevronUpIcon, FileTextIcon, LinkIcon, PlusIcon, SearchIcon, UserIcon } from 'lucide-react-native';
@@ -13,10 +12,8 @@ import * as z from 'zod';
 
 import { createCall } from '@/api/calls/calls';
 import { getNewCallData } from '@/api/dispatch/dispatch';
-import { getNewCallForm } from '@/api/forms/forms';
 import { forwardGeocode, plusCodeLookup, reverseGeocode, what3WordsLookup } from '@/api/geocoding/geocoding';
 import { saveUdfValues } from '@/api/userDefinedFields/userDefinedFields';
-import { CallFormRenderer } from '@/components/calls/call-form-renderer';
 import { CallTemplatesModal, type TemplateSelection } from '@/components/calls/call-templates-modal';
 import { ContactPickerModal } from '@/components/calls/contact-picker-modal';
 import { DispatchSelectionModal } from '@/components/calls/dispatch-selection-modal';
@@ -61,7 +58,6 @@ const NEW_CALL_FIELD_LABEL_KEYS: Partial<Record<NewCallFieldKey, string>> = {
   [NewCallFieldKeys.DispatchList]: 'calls.dispatch_to',
 };
 import { type ContactResultData } from '@/models/v4/contacts/contactResultData';
-import { type FormResultData } from '@/models/v4/forms/formResultData';
 import { type PoiResultData } from '@/models/v4/mapping/poiResultData';
 import { type UdfFieldValueInput } from '@/models/v4/userDefinedFields/udfFieldValueInput';
 import { useCoreStore } from '@/stores/app/core-store';
@@ -154,8 +150,6 @@ export default function NewCall() {
   const [showContactPicker, setShowContactPicker] = useState(false);
   const [showProtocolSelector, setShowProtocolSelector] = useState(false);
   const [showLinkedCallsModal, setShowLinkedCallsModal] = useState(false);
-  const [callFormData, setCallFormData] = useState<string | null>(null);
-  const [callForm, setCallForm] = useState<FormResultData | null>(null);
   const [destinationPois, setDestinationPois] = useState<PoiResultData[]>([]);
   const [isLoadingDestinationPois, setIsLoadingDestinationPois] = useState(false);
   const [udfValues, setUdfValues] = useState<UdfFieldValueInput[]>([]);
@@ -171,7 +165,6 @@ export default function NewCall() {
     contact: false,
     protocols: false,
     linkedCall: false,
-    callForm: false,
     additionalFields: false,
     dispatch: true,
   });
@@ -239,14 +232,6 @@ export default function NewCall() {
     fetchCallPriorities();
     fetchCallTypes();
   }, [fetchCallPriorities, fetchCallTypes]);
-
-  useEffect(() => {
-    getNewCallForm()
-      .then((result) => {
-        if (result?.Data?.Data) setCallForm(result.Data);
-      })
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -364,7 +349,6 @@ export default function NewCall() {
         dispatchRoles: data.dispatchSelection?.roles,
         dispatchUnits: data.dispatchSelection?.units,
         dispatchEveryone: data.dispatchSelection?.everyone,
-        callFormData: callFormData ?? undefined,
         linkedCallId: linkedCall?.callId,
       });
 
@@ -1236,21 +1220,6 @@ export default function NewCall() {
                 </View>
               ) : null}
             </Card>
-
-            {/* Call Form */}
-            {callForm ? (
-              <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
-                <TouchableOpacity onPress={() => toggleSection('callForm')} className="flex-row items-center justify-between p-4">
-                  <Text className="text-base font-semibold">{callForm.Name || t('calls.form.title', 'Call Form')}</Text>
-                  {sectionsExpanded.callForm ? <ChevronUpIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} />}
-                </TouchableOpacity>
-                {sectionsExpanded.callForm ? (
-                  <View className="px-4 pb-4">
-                    <CallFormRenderer formSchemaJson={callForm.Data} onFormDataChange={setCallFormData} height={400} />
-                  </View>
-                ) : null}
-              </Card>
-            ) : null}
 
             {fieldPolicy.isVisible(NewCallFieldKeys.DispatchList) ? (
               <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
