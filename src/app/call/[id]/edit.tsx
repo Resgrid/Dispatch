@@ -509,11 +509,11 @@ export default function EditCall() {
         }}
       />
       <View className="size-full flex-1">
-        <Box className={`size-full w-full flex-1 ${colorScheme === 'dark' ? 'bg-neutral-950' : 'bg-neutral-50'}`}>
+        <Box className="size-full w-full flex-1 bg-gray-50 dark:bg-gray-900">
           <ScrollView className="flex-1 px-4 py-6">
             <Text className="mb-6 text-2xl font-bold">{t('calls.edit_call_description')}</Text>
 
-            <Card className={`mb-8 rounded-lg border p-4 ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
+            <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
               <FormControl isInvalid={!!errors.name}>
                 <FormControlLabel>
                   <FormControlLabelText>{t('calls.name')}</FormControlLabelText>
@@ -535,7 +535,7 @@ export default function EditCall() {
               </FormControl>
             </Card>
 
-            <Card className={`mb-8 rounded-lg border p-4 ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
+            <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
               <FormControl isInvalid={!!errors.nature}>
                 <FormControlLabel>
                   <FormControlLabelText>{t('calls.nature')}</FormControlLabelText>
@@ -557,7 +557,7 @@ export default function EditCall() {
               </FormControl>
             </Card>
 
-            <Card className={`mb-8 rounded-lg border p-4 ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
+            <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
               <FormControl isInvalid={!!errors.priority}>
                 <FormControlLabel>
                   <FormControlLabelText>{t('calls.priority')}</FormControlLabelText>
@@ -590,7 +590,7 @@ export default function EditCall() {
               </FormControl>
             </Card>
 
-            <Card className={`mb-8 rounded-lg border p-4 ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
+            <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
               <FormControl isInvalid={!!errors.type}>
                 <FormControlLabel>
                   <FormControlLabelText>{t('calls.type')}</FormControlLabelText>
@@ -623,7 +623,7 @@ export default function EditCall() {
               </FormControl>
             </Card>
 
-            <Card className={`mb-8 rounded-lg border p-4 ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
+            <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
               <FormControl>
                 <FormControlLabel>
                   <FormControlLabelText>{t('calls.note')}</FormControlLabelText>
@@ -640,7 +640,7 @@ export default function EditCall() {
               </FormControl>
             </Card>
 
-            <Card className={`mb-8 rounded-lg border p-4 ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
+            <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
               <Text className="mb-4 text-lg font-semibold">{t('calls.call_location')}</Text>
 
               {/* Address Field */}
@@ -707,7 +707,7 @@ export default function EditCall() {
               </FormControl>
             </Card>
 
-            <Card className={`mb-8 rounded-lg border p-4 ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
+            <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
               <FormControl>
                 <FormControlLabel>
                   <FormControlLabelText>{t('calls.contact_name')}</FormControlLabelText>
@@ -724,7 +724,7 @@ export default function EditCall() {
               </FormControl>
             </Card>
 
-            <Card className={`mb-8 rounded-lg border p-4 ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
+            <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
               <FormControl>
                 <FormControlLabel>
                   <FormControlLabelText>{t('calls.contact_info')}</FormControlLabelText>
@@ -742,7 +742,7 @@ export default function EditCall() {
             </Card>
 
             {/* Additional Fields (UDF) */}
-            <Card className={`mb-8 rounded-lg border p-4 ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
+            <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
               <TouchableOpacity className="flex-row items-center justify-between" onPress={() => setIsAdditionalFieldsExpanded((prev) => !prev)}>
                 <Text className="text-lg font-semibold">{t('calls.additional_fields', 'Additional Fields')}</Text>
                 {isAdditionalFieldsExpanded ? <ChevronUpIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} />}
@@ -754,14 +754,14 @@ export default function EditCall() {
               ) : null}
             </Card>
 
-            <Card className={`mb-8 rounded-lg border p-4 ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
+            <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
               <Text className="mb-4 text-lg font-semibold">{t('calls.dispatch_to')}</Text>
               <Button onPress={() => setShowDispatchModal(true)} className="w-full">
                 <ButtonText>{getDispatchSummary()}</ButtonText>
               </Button>
             </Card>
 
-            <Card className={`mb-8 rounded-lg border p-4 ${colorScheme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-white'}`}>
+            <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
               <View className="flex-row items-center justify-between">
                 <View className="mr-3 flex-1">
                   <Text className="text-base font-semibold">{t('calls.notify_cancelled_entities')}</Text>

@@ -194,6 +194,40 @@ interface SignalRState {
  * These are defined at module scope to ensure they're the same reference
  * for both registering and unregistering
  */
+/**
+ * A call id is a non-empty string or a finite number and nothing else. Anything looser gets
+ * stringified into a plausible-looking id — an array of one becomes its element, an object becomes
+ * "[object Object]" — and would be treated as a real incident instead of falling through to the
+ * fallback path.
+ */
+function toCallId(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value);
+  }
+  return undefined;
+}
+
+/**
+ * The affected incident's call id. Core sends it as a bare string — the eventing worker forwards the
+ * topic's ItemId, which is CallId.ToString() — with object payloads tolerated so a producer sending a
+ * richer message keeps working.
+ */
+function extractCommandCallId(message: unknown): string | undefined {
+  const scalar = toCallId(message);
+  if (scalar !== undefined) {
+    return scalar;
+  }
+  if (message !== null && typeof message === 'object') {
+    const m = message as { CallId?: unknown; callId?: unknown };
+    return toCallId(m.CallId ?? m.callId);
+  }
+  return undefined;
+}
+
 interface EventHandlers {
   personnelStatusUpdated: ((data: unknown) => void) | null;
   personnelStaffingUpdated: ((data: unknown) => void) | null;
@@ -224,6 +258,19 @@ let updateHubHandlers: EventHandlers = {
   incidentCommandUpdated: null,
   onConnected: null,
 };
+
+// Rejoining the department group after an update-hub reconnect.
+const UPDATE_REJOIN_RETRY_MS = 5000;
+const UPDATE_REJOIN_MAX_ATTEMPTS = 3;
+let updateRejoinTimer: ReturnType<typeof setTimeout> | null = null;
+let updateRejoinAttempts = 0;
+
+function stopUpdateRejoinRetry(): void {
+  if (updateRejoinTimer) {
+    clearTimeout(updateRejoinTimer);
+    updateRejoinTimer = null;
+  }
+}
 
 /**
  * Lifecycle listeners for the update hub (reconnect/disconnect), kept apart from the method handlers
@@ -527,9 +574,9 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
           message: 'incidentCommandUpdated',
           context: { message },
         });
-        // Payload is the affected call id (string). It is a lightweight "something changed for this
-        // call" notification — the client refetches the affected command board.
-        const callId = extractAlertId(message);
+        // Payload is the affected call id. extractAlertId reads alert-shaped keys and accepts blanks,
+        // so the command feed gets its own strict reader.
+        const callId = extractCommandCallId(message);
         const now = Date.now();
         set({ lastUpdateMessage: null, lastUpdateTimestamp: now, lastEventType: 'incidentCommandUpdated', lastIncidentCommandUpdateTimestamp: now });
         if (callId) {
@@ -557,7 +604,17 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
       unregisterUpdateHubLifecycleHandlers();
 
       const updateReconnected = `${SignalRService.HUB_RECONNECTED_EVENT}:${Env.CHANNEL_HUB_NAME}`;
-      const onUpdateReconnected = () => {
+
+      /**
+       * Rejoin the department group, retrying a few times before giving up.
+       *
+       * A failed rejoin is silent and total: the socket is up, so nothing looks wrong, but the
+       * connection belongs to no group and no board change will ever arrive. Nothing else clears the
+       * connected flag either — an automatic reconnect never raises the disconnected event, only a
+       * close does — so it has to be cleared here or connectUpdateHub's already-connected guard
+       * would block every later repair.
+       */
+      const rejoinDepartmentGroup = () => {
         const reconnectDepartmentId = Number(securityStore.getState().rights?.DepartmentId ?? '0');
         if (!Number.isFinite(reconnectDepartmentId)) {
           return;
@@ -565,6 +622,8 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
         signalRService
           .invoke(Env.CHANNEL_HUB_NAME, 'connect', reconnectDepartmentId)
           .then(() => {
+            stopUpdateRejoinRetry();
+            updateRejoinAttempts = 0;
             set({ isUpdateHubConnected: true, error: null });
             logger.info({ message: 'Re-announced to update hub after reconnect; reloading incident command', context: { departmentId: reconnectDepartmentId } });
             // Lazy import to avoid circular dependency
@@ -575,15 +634,36 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
             }
           })
           .catch((error) => {
-            logger.warn({ message: 'Failed to re-announce to update hub after reconnect', context: { error } });
+            updateRejoinAttempts += 1;
+            logger.warn({ message: 'Failed to re-announce to update hub after reconnect', context: { error, attempt: updateRejoinAttempts, maxAttempts: UPDATE_REJOIN_MAX_ATTEMPTS } });
+            set({ isUpdateHubConnected: false });
+
+            if (updateRejoinAttempts < UPDATE_REJOIN_MAX_ATTEMPTS) {
+              stopUpdateRejoinRetry();
+              updateRejoinTimer = setTimeout(() => {
+                updateRejoinTimer = null;
+                rejoinDepartmentGroup();
+              }, UPDATE_REJOIN_RETRY_MS);
+            } else {
+              logger.error({ message: 'Giving up re-announcing to update hub; the next connectUpdateHub will rebuild the session', context: { attempts: updateRejoinAttempts } });
+            }
           });
+      };
+
+      const onUpdateReconnected = () => {
+        stopUpdateRejoinRetry();
+        updateRejoinAttempts = 0;
+        rejoinDepartmentGroup();
       };
       updateHubLifecycleHandlers[updateReconnected] = onUpdateReconnected;
       signalRService.on(updateReconnected, onUpdateReconnected);
 
       const updateDisconnected = `${SignalRService.HUB_DISCONNECTED_EVENT}:${Env.CHANNEL_HUB_NAME}`;
       const onUpdateDisconnected = () => {
-        // Clearing the flag is what lets connectUpdateHub rebuild the session later.
+        // A dropped transport supersedes any rejoin still pending against the old connection, and
+        // clearing the flag is what lets connectUpdateHub rebuild the session later.
+        stopUpdateRejoinRetry();
+        updateRejoinAttempts = 0;
         set({ isUpdateHubConnected: false });
       };
       updateHubLifecycleHandlers[updateDisconnected] = onUpdateDisconnected;
@@ -609,6 +689,8 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
   disconnectUpdateHub: async () => {
     try {
       // Unregister all handlers BEFORE disconnecting to prevent memory leaks
+      stopUpdateRejoinRetry();
+      updateRejoinAttempts = 0;
       unregisterUpdateHubHandlers();
       unregisterUpdateHubLifecycleHandlers();
 
