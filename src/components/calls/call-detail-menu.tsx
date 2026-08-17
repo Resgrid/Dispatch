@@ -1,4 +1,5 @@
 import { CalendarClockIcon, EditIcon, MoreVerticalIcon, Trash2Icon, UserPlusIcon, XIcon } from 'lucide-react-native';
+import { useColorScheme } from 'nativewind';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -19,7 +20,13 @@ interface CallDetailMenuProps {
 export const useCallDetailMenu = ({ onEditCall, onCloseCall, onDeleteCall, onRescheduleCall, onDispatchMore, canUserCreateCalls = false }: CallDetailMenuProps) => {
   const { t } = useTranslation();
   const { trackEvent } = useAnalytics();
+  const { colorScheme } = useColorScheme();
   const [isKebabMenuOpen, setIsKebabMenuOpen] = useState(false);
+
+  // lucide icons draw with `stroke="currentColor"`, which react-native-svg resolves
+  // to black — a `className` text colour never reaches them, so they need explicit colors.
+  const menuIconColor = colorScheme === 'dark' ? '#d1d5db' : '#374151';
+  const destructiveIconColor = colorScheme === 'dark' ? '#f87171' : '#dc2626';
 
   // Track when call detail menu is opened
   useEffect(() => {
@@ -44,7 +51,7 @@ export const useCallDetailMenu = ({ onEditCall, onCloseCall, onDeleteCall, onRes
 
     return (
       <Pressable onPressIn={openMenu} testID="kebab-menu-button" className="rounded p-2">
-        <MoreVerticalIcon size={24} className="text-gray-700 dark:text-gray-300" />
+        <MoreVerticalIcon size={24} color={menuIconColor} />
       </Pressable>
     );
   };
@@ -71,7 +78,7 @@ export const useCallDetailMenu = ({ onEditCall, onCloseCall, onDeleteCall, onRes
             testID="edit-call-button"
           >
             <HStack className="items-center">
-              <EditIcon size={16} className="mr-3 text-gray-700 dark:text-gray-300" />
+              <EditIcon size={16} color={menuIconColor} className="mr-3" />
               <ActionsheetItemText>{t('call_detail.edit_call')}</ActionsheetItemText>
             </HStack>
           </ActionsheetItem>
@@ -85,7 +92,7 @@ export const useCallDetailMenu = ({ onEditCall, onCloseCall, onDeleteCall, onRes
               testID="dispatch-more-button"
             >
               <HStack className="items-center">
-                <UserPlusIcon size={16} className="mr-3 text-gray-700 dark:text-gray-300" />
+                <UserPlusIcon size={16} color={menuIconColor} className="mr-3" />
                 <ActionsheetItemText>{t('call_detail.dispatch_more')}</ActionsheetItemText>
               </HStack>
             </ActionsheetItem>
@@ -100,7 +107,7 @@ export const useCallDetailMenu = ({ onEditCall, onCloseCall, onDeleteCall, onRes
               testID="reschedule-call-button"
             >
               <HStack className="items-center">
-                <CalendarClockIcon size={16} className="mr-3 text-gray-700 dark:text-gray-300" />
+                <CalendarClockIcon size={16} color={menuIconColor} className="mr-3" />
                 <ActionsheetItemText>{t('call_detail.reschedule')}</ActionsheetItemText>
               </HStack>
             </ActionsheetItem>
@@ -114,7 +121,7 @@ export const useCallDetailMenu = ({ onEditCall, onCloseCall, onDeleteCall, onRes
             testID="close-call-button"
           >
             <HStack className="items-center">
-              <XIcon size={16} className="mr-3 text-gray-700 dark:text-gray-300" />
+              <XIcon size={16} color={menuIconColor} className="mr-3" />
               <ActionsheetItemText>{t('call_detail.close_call')}</ActionsheetItemText>
             </HStack>
           </ActionsheetItem>
@@ -128,7 +135,7 @@ export const useCallDetailMenu = ({ onEditCall, onCloseCall, onDeleteCall, onRes
               testID="delete-call-button"
             >
               <HStack className="items-center">
-                <Trash2Icon size={16} className="mr-3 text-red-600 dark:text-red-400" />
+                <Trash2Icon size={16} color={destructiveIconColor} className="mr-3" />
                 <ActionsheetItemText className="text-red-600 dark:text-red-400">{t('call_detail.delete_call')}</ActionsheetItemText>
               </HStack>
             </ActionsheetItem>

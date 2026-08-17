@@ -2,9 +2,10 @@ import { useColorScheme } from 'nativewind';
 import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { Platform, ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 
 import { getNoteCategories, saveNote } from '@/api/notes/notes';
+import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
 import { logger } from '@/lib/logging';
 import { type NoteCategoryResultData } from '@/models/v4/notes/noteCategoryResultData';
 import { SaveNoteInput } from '@/models/v4/notes/saveNoteInput';
@@ -34,6 +35,7 @@ interface AddNoteBottomSheetProps {
 export function AddNoteBottomSheet({ isOpen, onClose, onNoteAdded }: AddNoteBottomSheetProps) {
   const { t } = useTranslation();
   const { colorScheme } = useColorScheme();
+  const keyboardHeight = useKeyboardHeight();
   const [isLoading, setIsLoading] = useState(false);
   const [categories, setCategories] = useState<NoteCategoryResultData[]>([]);
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(false);
@@ -127,12 +129,15 @@ export function AddNoteBottomSheet({ isOpen, onClose, onNoteAdded }: AddNoteBott
   return (
     <Actionsheet isOpen={isOpen} onClose={handleClose} snapPoints={[85]}>
       <ActionsheetBackdrop />
-      <ActionsheetContent className={`rounded-t-3xl px-4 pb-6 ${colorScheme === 'dark' ? 'bg-neutral-900' : 'bg-white'}`}>
+      {/* The sheet renders inside a native Modal the OS does not resize for the keyboard,
+          so padding by the keyboard height reserves the covered strip. flexShrink on the
+          scrollview lets it compress into the remaining space and actually scroll. */}
+      <ActionsheetContent className={`rounded-t-3xl px-4 pb-6 ${colorScheme === 'dark' ? 'bg-neutral-900' : 'bg-white'}`} style={keyboardHeight > 0 ? { paddingBottom: keyboardHeight } : undefined}>
         <ActionsheetDragIndicatorWrapper>
           <ActionsheetDragIndicator />
         </ActionsheetDragIndicatorWrapper>
 
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}>
+        <ScrollView keyboardShouldPersistTaps="handled" style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <VStack space="lg" className="mt-4 w-full">
             {/* Header */}
             <Text className={`text-xl font-semibold ${colorScheme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t('dispatch.add_note_title')}</Text>
@@ -255,6 +260,11 @@ export function AddNoteBottomSheet({ isOpen, onClose, onNoteAdded }: AddNoteBott
 }
 
 const styles = StyleSheet.create({
+  scrollView: {
+    width: '100%',
+    flexGrow: 0,
+    flexShrink: 1,
+  },
   scrollContent: {
     flexGrow: 1,
     paddingBottom: 20,

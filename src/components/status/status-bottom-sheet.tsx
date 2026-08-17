@@ -2,8 +2,10 @@ import { ArrowLeft, ArrowRight, Check } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, TouchableOpacity } from 'react-native';
+import { Platform, ScrollView, TouchableOpacity } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
+import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
 import { DestinationEntityType, type DestinationTab, getDefaultDestinationTab, getDestinationCapabilities, getEnabledDestinationTabs } from '@/lib/destination-helpers';
 import { getPoiSelectionLabel } from '@/lib/poi-display';
 import { invertColor } from '@/lib/utils';
@@ -27,6 +29,7 @@ import { VStack } from '../ui/vstack';
 export const StatusBottomSheet = () => {
   const { t } = useTranslation();
   const { colorScheme } = useColorScheme();
+  const keyboardHeight = useKeyboardHeight();
   const [selectedTab, setSelectedTab] = React.useState<DestinationTab>('calls');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const hasPreselectedRef = React.useRef(false);
@@ -503,12 +506,16 @@ export const StatusBottomSheet = () => {
   return (
     <Actionsheet isOpen={isOpen} onClose={handleClose} snapPoints={[90]}>
       <ActionsheetBackdrop />
-      <ActionsheetContent className="bg-white dark:bg-gray-900">
+      {/* The sheet renders inside a native Modal, so keyboard-controller's window-bound
+          avoidance never moves it — padding by the keyboard height reserves the covered
+          strip instead. shrink on the column lets the step content compress into the
+          remaining space so its scrollview actually scrolls rather than Yoga clipping it. */}
+      <ActionsheetContent className="bg-white dark:bg-gray-900" style={{ paddingBottom: keyboardHeight }}>
         <ActionsheetDragIndicatorWrapper>
           <ActionsheetDragIndicator />
         </ActionsheetDragIndicatorWrapper>
 
-        <VStack space="md" className="w-full p-4">
+        <VStack space="md" className="w-full shrink p-4">
           {/* Step indicator */}
           <HStack space="sm" className="mb-2 justify-center">
             <Text className="text-sm text-gray-500 dark:text-gray-400">
@@ -731,43 +738,50 @@ export const StatusBottomSheet = () => {
           )}
 
           {currentStep === 'add-note' && (
-            <VStack space="md" className="w-full">
-              {/* Selected Status */}
-              <VStack space="sm">
-                <Text className="font-medium">{t('status.selected_status')}:</Text>
-                <VStack className="rounded-lg p-2" style={{ backgroundColor: selectedStatus?.BColor || '#f3f4f6' }}>
-                  <Text className="font-bold" style={{ color: invertColor(selectedStatus?.BColor || '#f3f4f6', true) }}>
-                    {selectedStatus?.Text}
-                  </Text>
+            <KeyboardAwareScrollView
+              keyboardShouldPersistTaps={Platform.OS === 'android' ? 'handled' : 'always'}
+              showsVerticalScrollIndicator={false}
+              bottomOffset={20}
+              style={{ flexGrow: 0, flexShrink: 1, width: '100%' }}
+            >
+              <VStack space="md" className="w-full">
+                {/* Selected Status */}
+                <VStack space="sm">
+                  <Text className="font-medium">{t('status.selected_status')}:</Text>
+                  <VStack className="rounded-lg p-2" style={{ backgroundColor: selectedStatus?.BColor || '#f3f4f6' }}>
+                    <Text className="font-bold" style={{ color: invertColor(selectedStatus?.BColor || '#f3f4f6', true) }}>
+                      {selectedStatus?.Text}
+                    </Text>
+                  </VStack>
                 </VStack>
-              </VStack>
 
-              {/* Selected Destination */}
-              <VStack space="sm">
-                <Text className="font-medium">{t('status.selected_destination')}:</Text>
-                <Text className="text-sm text-gray-600 dark:text-gray-400">{getSelectedDestinationDisplay()}</Text>
-              </VStack>
+                {/* Selected Destination */}
+                <VStack space="sm">
+                  <Text className="font-medium">{t('status.selected_destination')}:</Text>
+                  <Text className="text-sm text-gray-600 dark:text-gray-400">{getSelectedDestinationDisplay()}</Text>
+                </VStack>
 
-              <VStack space="sm">
-                <Text className="font-medium">
-                  {t('status.note')} {isNoteRequired ? '' : `(${t('common.optional')})`}:
-                </Text>
-                <Textarea size="md" className="min-h-[100px] w-full">
-                  <TextareaInput placeholder={isNoteRequired ? t('status.note_required') : t('status.note_optional')} value={note} onChangeText={setNote} />
-                </Textarea>
-              </VStack>
+                <VStack space="sm">
+                  <Text className="font-medium">
+                    {t('status.note')} {isNoteRequired ? '' : `(${t('common.optional')})`}:
+                  </Text>
+                  <Textarea size="md" className="min-h-[100px] w-full">
+                    <TextareaInput placeholder={isNoteRequired ? t('status.note_required') : t('status.note_optional')} value={note} onChangeText={setNote} />
+                  </Textarea>
+                </VStack>
 
-              <HStack space="xs" className="justify-between px-2">
-                <Button variant="outline" onPress={handlePrevious} className="px-3" isDisabled={isSubmitting}>
-                  <ArrowLeft size={14} color={colorScheme === 'dark' ? '#737373' : '#737373'} />
-                  <ButtonText className="text-sm">{t('common.previous')}</ButtonText>
-                </Button>
-                <Button onPress={handleSubmit} isDisabled={!canProceedFromCurrentStep() || isSubmitting} className="bg-blue-600 px-3">
-                  {isSubmitting && <Spinner size="small" color="white" />}
-                  <ButtonText className="text-sm">{isSubmitting ? t('common.submitting') : t('common.submit')}</ButtonText>
-                </Button>
-              </HStack>
-            </VStack>
+                <HStack space="xs" className="justify-between px-2">
+                  <Button variant="outline" onPress={handlePrevious} className="px-3" isDisabled={isSubmitting}>
+                    <ArrowLeft size={14} color={colorScheme === 'dark' ? '#737373' : '#737373'} />
+                    <ButtonText className="text-sm">{t('common.previous')}</ButtonText>
+                  </Button>
+                  <Button onPress={handleSubmit} isDisabled={!canProceedFromCurrentStep() || isSubmitting} className="bg-blue-600 px-3">
+                    {isSubmitting && <Spinner size="small" color="white" />}
+                    <ButtonText className="text-sm">{isSubmitting ? t('common.submitting') : t('common.submit')}</ButtonText>
+                  </Button>
+                </HStack>
+              </VStack>
+            </KeyboardAwareScrollView>
           )}
         </VStack>
       </ActionsheetContent>

@@ -55,6 +55,7 @@ import { type DispatchSelection } from '@/stores/dispatch/store';
 import { useSecurityStore } from '@/stores/security/store';
 import { useStatusBottomSheetStore } from '@/stores/status/store';
 import { useToastStore } from '@/stores/toast/store';
+import { sanitizeHtmlContent } from '@/utils/html-sanitizer';
 
 import CallAudioModal from '../../components/calls/call-audio-modal';
 import { useCallDetailMenu } from '../../components/calls/call-detail-menu';
@@ -434,7 +435,7 @@ export default function CallDetail() {
                                       }
                                     </style>
                                   </head>
-                                  <body>${call.Note}</body>
+                                  <body>${sanitizeHtmlContent(call.Note ?? '')}</body>
                                 </html>
                               `,
                     }}
@@ -482,9 +483,9 @@ export default function CallDetail() {
             {callExtraData?.Protocols && callExtraData.Protocols.length > 0 ? (
               <VStack className="space-y-3">
                 {callExtraData.Protocols.map((protocol, index) => (
-                  <Box key={index} className="rounded-lg bg-gray-50 p-3">
+                  <Box key={index} className="rounded-lg bg-gray-50 p-3 dark:bg-gray-800">
                     <Text className="font-semibold">{protocol.Name}</Text>
-                    <Text className="text-sm text-gray-600">{protocol.Description}</Text>
+                    <Text className="text-sm text-gray-600 dark:text-gray-400">{protocol.Description}</Text>
                     <Box>
                       <WebView
                         style={[styles.container, { height: 200 }]}
@@ -511,7 +512,7 @@ export default function CallDetail() {
                                       }
                                     </style>
                                   </head>
-                                  <body>${protocol.ProtocolText}</body>
+                                  <body>${sanitizeHtmlContent(protocol.ProtocolText ?? '')}</body>
                                 </html>
                               `,
                         }}
@@ -696,7 +697,7 @@ export default function CallDetail() {
                                       }
                                     </style>
                                   </head>
-                                  <body>${call.Nature}</body>
+                                  <body>${sanitizeHtmlContent(call.Nature ?? '')}</body>
                                 </html>
                               `,
                 }}

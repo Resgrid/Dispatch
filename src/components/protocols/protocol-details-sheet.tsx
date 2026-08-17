@@ -7,6 +7,7 @@ import WebView from 'react-native-webview';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { formatDateForDisplay, parseDateISOString, stripHtmlTags } from '@/lib/utils';
 import { useProtocolsStore } from '@/stores/protocols/store';
+import { sanitizeHtmlContent } from '@/utils/html-sanitizer';
 
 import { Actionsheet, ActionsheetBackdrop, ActionsheetContent, ActionsheetDragIndicator, ActionsheetDragIndicatorWrapper } from '../ui/actionsheet';
 import { Box } from '../ui/box';
@@ -104,7 +105,7 @@ export const ProtocolDetailsSheet: React.FC = () => {
                           }
                         </style>
                       </head>
-                      <body>${selectedProtocol.ProtocolText}</body>
+                      <body>${sanitizeHtmlContent(selectedProtocol.ProtocolText ?? '')}</body>
                     </html>
                   `,
                 }}
