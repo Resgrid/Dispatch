@@ -2,7 +2,7 @@ import { type Href, router } from 'expo-router';
 import { AlertTriangle, Clock, ExternalLink, MapPin, Navigation, Plus, Radio, Search, UserPlus, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Animated, Easing, FlatList, Modal, Platform, Pressable, ScrollView, StyleSheet, Text as RNText, TextInput, View } from 'react-native';
+import { FlatList, Modal, Platform, Pressable, ScrollView, StyleSheet, Text as RNText, TextInput, View } from 'react-native';
 
 import { getCallExtraData, updateCall } from '@/api/calls/calls';
 import { DispatchSelectionModal } from '@/components/calls/dispatch-selection-modal';
@@ -12,6 +12,7 @@ import { HStack } from '@/components/ui/hstack';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
+import { useCheckInTimerPolling } from '@/hooks/use-check-in-timer-polling';
 import { buildAddResourcesUpdateRequest, EMPTY_DISPATCH_SELECTION } from '@/lib/dispatch-helpers';
 import { logger } from '@/lib/logging';
 import { getTimeAgoUtc, invertColor, isCallActive, stripHtmlTags } from '@/lib/utils';
@@ -28,146 +29,8 @@ import { useSecurityStore } from '@/stores/security/store';
 import { useToastStore } from '@/stores/toast/store';
 
 import { AnimatedRefreshIcon } from './animated-refresh-icon';
+import { DispatchTicker } from './dispatch-ticker';
 import { PanelHeader } from './panel-header';
-
-// Type → badge appearance
-const getDispatchTypeStyle = (type: string): { bg: string; fg: string; label: string } => {
-  const t = (type || '').toLowerCase();
-  if (t.includes('user') || t.includes('personnel')) return { bg: '#2563eb', fg: '#ffffff', label: 'P' };
-  if (t.includes('unit')) return { bg: '#d97706', fg: '#ffffff', label: 'U' };
-  if (t.includes('group')) return { bg: '#059669', fg: '#ffffff', label: 'G' };
-  if (t.includes('role')) return { bg: '#7c3aed', fg: '#ffffff', label: 'R' };
-  return { bg: '#6b7280', fg: '#ffffff', label: '•' };
-};
-
-const DispatchBadge: React.FC<{ dispatch: DispatchedEventResultData; isOverdue?: boolean }> = React.memo(({ dispatch, isOverdue }) => {
-  const ts = getDispatchTypeStyle(dispatch.Type);
-  const opacity = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    if (isOverdue) {
-      const blink = Animated.loop(
-        Animated.sequence([
-          Animated.timing(opacity, { toValue: 0.3, duration: 500, easing: Easing.linear, useNativeDriver: Platform.OS !== 'web' }),
-          Animated.timing(opacity, { toValue: 1, duration: 500, easing: Easing.linear, useNativeDriver: Platform.OS !== 'web' }),
-        ])
-      );
-      blink.start();
-      return () => blink.stop();
-    } else {
-      opacity.setValue(1);
-    }
-  }, [isOverdue, opacity]);
-
-  const bgColor = isOverdue ? '#dc2626' : ts.bg;
-
-  return (
-    <Animated.View style={StyleSheet.flatten([styles.dispatchBadge, { backgroundColor: bgColor, opacity }])}>
-      <RNText style={StyleSheet.flatten([styles.dispatchBadgeLabel, { color: ts.fg }])}>{ts.label}</RNText>
-      <View style={styles.dispatchBadgeDivider} />
-      <RNText style={StyleSheet.flatten([styles.dispatchBadgeName, { color: ts.fg }])} numberOfLines={1}>
-        {dispatch.Name}
-      </RNText>
-    </Animated.View>
-  );
-});
-
-DispatchBadge.displayName = 'DispatchBadge';
-
-// Animated horizontal dispatch ticker with color-coded badges
-const DispatchTicker: React.FC<{
-  dispatches: DispatchedEventResultData[];
-  isLoading?: boolean;
-  textColor?: string;
-  overdueEntityIds?: Set<string>;
-}> = React.memo(({ dispatches, isLoading, textColor = '#ffffff', overdueEntityIds }) => {
-  // Deduplicate dispatches by Id (or Type+Name as fallback key)
-  const uniqueDispatches = useMemo(() => {
-    const seen = new Set<string>();
-    return dispatches.filter((d) => {
-      const key = d.Id || `${d.Type}:${d.Name}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  }, [dispatches]);
-
-  const translateX = useRef(new Animated.Value(0)).current;
-  const containerWidthRef = useRef(0);
-  const contentWidthRef = useRef(0);
-  const animRef = useRef<Animated.CompositeAnimation | null>(null);
-
-  const startAnim = useCallback(() => {
-    if (containerWidthRef.current <= 0 || contentWidthRef.current <= 0) return;
-    animRef.current?.stop();
-    if (contentWidthRef.current <= containerWidthRef.current) {
-      // Content fits – no scrolling needed
-      translateX.setValue(0);
-      return;
-    }
-    translateX.setValue(containerWidthRef.current);
-    const totalDistance = contentWidthRef.current + containerWidthRef.current;
-    animRef.current = Animated.loop(
-      Animated.timing(translateX, {
-        toValue: -contentWidthRef.current,
-        duration: (totalDistance / 60) * 1000,
-        easing: Easing.linear,
-        useNativeDriver: Platform.OS !== 'web',
-      })
-    );
-    animRef.current.start();
-  }, [translateX]);
-
-  useEffect(() => {
-    if (isLoading || uniqueDispatches.length === 0) {
-      if (animRef.current) {
-        animRef.current.stop();
-        animRef.current = null;
-      }
-    }
-    return () => {
-      if (animRef.current) {
-        animRef.current.stop();
-        animRef.current = null;
-      }
-    };
-  }, [isLoading, uniqueDispatches.length]);
-
-  return (
-    <View
-      style={styles.tickerContainer}
-      onLayout={(e) => {
-        containerWidthRef.current = e.nativeEvent.layout.width;
-        startAnim();
-      }}
-    >
-      {isLoading ? (
-        <RNText style={StyleSheet.flatten([styles.tickerPlaceholder, { color: `${textColor}80` }])}>…</RNText>
-      ) : uniqueDispatches.length === 0 ? (
-        <RNText style={StyleSheet.flatten([styles.tickerPlaceholder, { color: `${textColor}80` }])}>—</RNText>
-      ) : (
-        <Animated.View style={StyleSheet.flatten([styles.tickerScrollTrack, { transform: [{ translateX }] }])}>
-          <View
-            style={styles.tickerBadgeRow}
-            onLayout={(e) => {
-              contentWidthRef.current = e.nativeEvent.layout.width;
-              startAnim();
-            }}
-          >
-            {uniqueDispatches.map((d, i) => (
-              <React.Fragment key={d.Id || `${d.Type}:${d.Name}`}>
-                {i > 0 ? <View style={styles.tickerBadgeGap} /> : null}
-                <DispatchBadge dispatch={d} isOverdue={overdueEntityIds?.has(d.Id)} />
-              </React.Fragment>
-            ))}
-          </View>
-        </Animated.View>
-      )}
-    </View>
-  );
-});
-
-DispatchTicker.displayName = 'DispatchTicker';
 
 // Compact call card optimized for dispatch dashboard
 const DashboardCallCard: React.FC<{
@@ -327,7 +190,7 @@ const CallItemWrapper: React.FC<{
 
 CallItemWrapper.displayName = 'CallItemWrapper';
 
-export const ActiveCallsPanel: React.FC<ActiveCallsPanelProps> = ({ selectedCallId, onSelectCall, isFilterActive = false, flexWeight }) => {
+const ActiveCallsPanelComponent: React.FC<ActiveCallsPanelProps> = ({ selectedCallId, onSelectCall, isFilterActive = false, flexWeight }) => {
   const { t } = useTranslation();
   const { canUserCreateCalls } = useSecurityStore();
   const showToast = useToastStore((state) => state.showToast);
@@ -346,6 +209,9 @@ export const ActiveCallsPanel: React.FC<ActiveCallsPanelProps> = ({ selectedCall
   }, [allTimerStatuses]);
   const isCollapsed = useDashboardViewStore(selectCardCollapsed('active-calls'));
   const setCardCollapsed = useDashboardViewStore((s) => s.setCardCollapsed);
+  // The blinking overdue badges below are this panel's only use for timer statuses, so it drives
+  // the shared poll while expanded rather than relying on the activity log panel to keep it alive.
+  useCheckInTimerPolling(!isCollapsed);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Per-call dispatches cache (fetched eagerly for all active calls)
@@ -559,6 +425,11 @@ export const ActiveCallsPanel: React.FC<ActiveCallsPanelProps> = ({ selectedCall
 
   const keyExtractor = useCallback((item: CallResultData) => item.CallId, []);
 
+  // A flex-sized panel is height-bounded by its parent column, so the list fills the card.
+  // Without a bounding parent (phone single-column ScrollView) the cap keeps the list from
+  // growing to the full length of the call list.
+  const contentStyle = flexWeight === undefined ? StyleSheet.flatten([styles.content, styles.contentCapped]) : styles.content;
+
   return (
     <Box
       className={`overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 ${isCollapsed ? '' : 'flex-1'}`}
@@ -607,7 +478,7 @@ export const ActiveCallsPanel: React.FC<ActiveCallsPanelProps> = ({ selectedCall
             ) : null}
           </HStack>
           {error ? (
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+            <ScrollView style={contentStyle} showsVerticalScrollIndicator={false}>
               <View style={styles.emptyState}>
                 <Icon as={AlertTriangle} size="lg" className="text-red-400" />
                 <Text className="mt-2 text-center text-sm text-red-500">{error}</Text>
@@ -618,7 +489,7 @@ export const ActiveCallsPanel: React.FC<ActiveCallsPanelProps> = ({ selectedCall
             </ScrollView>
           ) : (
             <FlatList<CallResultData>
-              style={styles.content}
+              style={contentStyle}
               contentContainerStyle={styles.contentContainer}
               showsVerticalScrollIndicator={false}
               data={activeCalls}
@@ -647,6 +518,12 @@ export const ActiveCallsPanel: React.FC<ActiveCallsPanelProps> = ({ selectedCall
   );
 };
 
+// Memoized: the panel hangs directly off the dispatch console, so without this any console
+// re-render walks its entire subtree.
+export const ActiveCallsPanel = React.memo(ActiveCallsPanelComponent);
+
+ActiveCallsPanel.displayName = 'ActiveCallsPanel';
+
 const styles = StyleSheet.create({
   contentWrapper: {
     flex: 1,
@@ -658,6 +535,8 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  contentCapped: {
     maxHeight: 300,
   },
   contentContainer: {
@@ -781,50 +660,5 @@ const styles = StyleSheet.create({
   tickerIconWrapper: {
     marginRight: 5,
     flexShrink: 0,
-  },
-  tickerContainer: {
-    flex: 1,
-    overflow: 'hidden',
-    height: 18,
-    justifyContent: 'center',
-  },
-  tickerScrollTrack: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  tickerBadgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  tickerBadgeGap: {
-    width: 5,
-  },
-  tickerPlaceholder: {
-    fontSize: 9,
-    fontStyle: 'italic' as const,
-  },
-  // Dispatch badge pill
-  dispatchBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 3,
-    overflow: 'hidden',
-    height: 14,
-  },
-  dispatchBadgeLabel: {
-    fontSize: 9,
-    fontWeight: '700' as const,
-    paddingHorizontal: 3,
-    opacity: 1,
-  },
-  dispatchBadgeDivider: {
-    width: 1,
-    height: '100%' as unknown as number,
-    backgroundColor: 'rgba(255,255,255,0.35)',
-  },
-  dispatchBadgeName: {
-    fontSize: 9,
-    fontWeight: '500' as const,
-    paddingHorizontal: 4,
   },
 });

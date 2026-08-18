@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 
 import { registerUnitDevice } from '@/api/devices/push';
+import { useAuthStore } from '@/lib/auth';
 import { logger } from '@/lib/logging';
 import { routerPushWithRetry } from '@/lib/navigation';
 import { isNativePushSupported } from '@/lib/platform';
@@ -31,7 +32,17 @@ export function handleChatDeepLink(eventCode: string): boolean {
   if (!match) return false;
   const channelId = match[2];
   if (/[/\\?#]/.test(channelId)) return false;
-  void routerPushWithRetry({ pathname: '/chat/[channelId]', params: { channelId } }, { maxAttempts: 20, retryDelayMs: 250 }).catch((error) => {
+  void routerPushWithRetry(
+    { pathname: '/chat/[channelId]', params: { channelId } },
+    {
+      maxAttempts: 40,
+      retryDelayMs: 250,
+      // On a cold start the session is still hydrating. Pushing a protected route before
+      // it settles gets the route replaced by the auth guard, which is indistinguishable
+      // from the tap doing nothing at all.
+      waitUntil: () => useAuthStore.getState().status === 'signedIn',
+    }
+  ).catch((error) => {
     logger.error({ message: 'Failed to deep-link to chat channel', context: { error, eventCode } });
   });
   return true;
@@ -90,6 +101,9 @@ class PushNotificationService {
   private pushToken: string | null = null;
   private notificationListener: { remove: () => void } | null = null;
   private responseListener: { remove: () => void } | null = null;
+  // A launch tap reaches both getLastNotificationResponseAsync and the response listener;
+  // dedupe on the request identifier so it is only acted on once.
+  private lastHandledResponseId: string | null = null;
 
   private constructor() {
     this.initialize();
@@ -177,12 +191,18 @@ class PushNotificationService {
 
   private async initialize(): Promise<void> {
     if (isNativePushSupported()) {
+      // Listeners go on FIRST: awaiting channel setup before registering them let a tap that
+      // arrived during startup slip past with nothing listening for it.
+      this.notificationListener = Notifications.addNotificationReceivedListener(this.handleNotificationReceived);
+      this.responseListener = Notifications.addNotificationResponseReceivedListener(this.handleNotificationResponse);
+
       // Set up Android notification channels
       await this.setupAndroidNotificationChannels();
 
-      // Set up notification listeners (native only)
-      this.notificationListener = Notifications.addNotificationReceivedListener(this.handleNotificationReceived);
-      this.responseListener = Notifications.addNotificationResponseReceivedListener(this.handleNotificationResponse);
+      // A tap that launched the app from a killed state is never delivered to the response
+      // listener above — expo-notifications only surfaces it here. Without this, cold-start
+      // taps on Dispatch did nothing at all.
+      void this.handleLaunchNotification();
 
       logger.info({
         message: 'Push notification service initialized (native)',
@@ -224,7 +244,45 @@ class PushNotificationService {
   };
 
   private handleNotificationResponse = (response: Notifications.NotificationResponse): void => {
-    const data = response.notification.request.content.data;
+    this.handleResponseOnce(response);
+  };
+
+  /**
+   * The launch notification (app opened from a killed state by a tap) is only available
+   * through getLastNotificationResponseAsync. The same tap can also reach the response
+   * listener, so both routes funnel through handleResponseOnce, which dedupes on the
+   * request identifier.
+   */
+  private async handleLaunchNotification(): Promise<void> {
+    try {
+      const response = await Notifications.getLastNotificationResponseAsync();
+      if (!response) {
+        return;
+      }
+
+      logger.info({
+        message: 'App opened from notification (killed state)',
+        context: { data: response.notification.request.content.data },
+      });
+
+      this.handleResponseOnce(response);
+    } catch (error) {
+      logger.error({
+        message: 'Error checking initial notification',
+        context: { error },
+      });
+    }
+  }
+
+  private handleResponseOnce(response: Notifications.NotificationResponse): void {
+    const identifier = response.notification.request.identifier;
+    if (identifier && identifier === this.lastHandledResponseId) {
+      return;
+    }
+    this.lastHandledResponseId = identifier ?? this.lastHandledResponseId;
+
+    const content = response.notification.request.content;
+    const data = content.data;
 
     logger.info({
       message: 'Notification response received',
@@ -235,9 +293,20 @@ class PushNotificationService {
 
     // Deep-link chat notifications: eventCode "t:{channelId}" (DM) / "g:{channelId}" (group)
     if (data?.eventCode && typeof data.eventCode === 'string') {
-      handleChatDeepLink(data.eventCode);
+      if (handleChatDeepLink(data.eventCode)) {
+        return;
+      }
+
+      // Every other type mirrors the foreground behaviour so the tap surfaces the
+      // notification instead of opening the app to nothing.
+      usePushNotificationModalStore.getState().showNotificationModal({
+        eventCode: data.eventCode,
+        title: content.title || undefined,
+        body: content.body || undefined,
+        data,
+      });
     }
-  };
+  }
 
   public async registerForPushNotifications(unitId: string, departmentCode: string): Promise<string | null> {
     // On web / Electron, push token registration is not available.

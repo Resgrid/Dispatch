@@ -123,7 +123,7 @@ const PersonnelItem: React.FC<{
 
 PersonnelItem.displayName = 'PersonnelItem';
 
-export const PersonnelPanel: React.FC<PersonnelPanelProps> = ({
+const PersonnelPanelComponent: React.FC<PersonnelPanelProps> = ({
   personnel,
   isLoading,
   onRefresh,
@@ -336,6 +336,12 @@ export const PersonnelPanel: React.FC<PersonnelPanelProps> = ({
     </Box>
   );
 };
+
+// Memoized: the panel hangs directly off the dispatch console, so without this any console
+// re-render walks its entire subtree.
+export const PersonnelPanel = React.memo(PersonnelPanelComponent);
+
+PersonnelPanel.displayName = 'PersonnelPanel';
 
 const styles = StyleSheet.create({
   searchInput: {

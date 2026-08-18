@@ -18,15 +18,25 @@ export const getTimerStatuses = async (callId: number) => {
   return response.data;
 };
 
+// The endpoint is per-call, so a busy department turns one refresh into one request per active
+// call. Chunked rather than fired all at once: this runs on a 30s poll and would otherwise put the
+// whole burst on the connection pool at the same moment, ahead of user-initiated requests.
+const STATUS_FETCH_CONCURRENCY = 4;
+
 export const getTimerStatusesForCalls = async (callIds: number[]): Promise<CheckInTimerStatusResult> => {
-  const results = await Promise.allSettled(
-    callIds.map((callId) =>
-      getTimerStatuses(callId).then((result) => ({
-        callId,
-        data: result.Data || [],
-      }))
-    )
-  );
+  const results: PromiseSettledResult<{ callId: number; data: CheckInTimerStatusResult['Data'] }>[] = [];
+  for (let i = 0; i < callIds.length; i += STATUS_FETCH_CONCURRENCY) {
+    const chunk = callIds.slice(i, i + STATUS_FETCH_CONCURRENCY);
+    const chunkResults = await Promise.allSettled(
+      chunk.map((callId) =>
+        getTimerStatuses(callId).then((result) => ({
+          callId,
+          data: result.Data || [],
+        }))
+      )
+    );
+    results.push(...chunkResults);
+  }
 
   const allData = results
     .filter((r): r is PromiseFulfilledResult<{ callId: number; data: CheckInTimerStatusResult['Data'] }> => r.status === 'fulfilled')

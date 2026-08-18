@@ -3,7 +3,6 @@ import { type Href, Redirect, Stack, useFocusEffect, useLocalSearchParams, useRo
 import { Circle } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Platform } from 'react-native';
 
 import { getPresence, uploadAttachment } from '@/api/chat/chat';
 import { AckBanner } from '@/components/chat/ack-banner';
@@ -19,7 +18,7 @@ import { Button, ButtonText } from '@/components/ui/button';
 import { Center } from '@/components/ui/center';
 import { FlatList } from '@/components/ui/flat-list';
 import { HStack } from '@/components/ui/hstack';
-import { KeyboardAvoidingView } from '@/components/ui/keyboard-avoiding-view';
+import { BottomAnchoredKeyboardView } from '@/components/ui/keyboard-avoiding-view';
 import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { Textarea, TextareaInput } from '@/components/ui/textarea';
@@ -301,7 +300,7 @@ export default function ChannelConversationScreen() {
 
       <AckBanner acks={channelAcks} onAcknowledge={(messageId) => useChatStore.getState().acknowledgeMessage(messageId)} />
 
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
+      <BottomAnchoredKeyboardView>
         {loading && inverted.length === 0 ? (
           <Center className="flex-1">
             <Spinner />
@@ -329,7 +328,7 @@ export default function ChannelConversationScreen() {
           onTyping={(isTyping) => channelId && useChatStore.getState().sendTyping(channelId, isTyping)}
           disabled={channel?.IsLocked && !isModerator}
         />
-      </KeyboardAvoidingView>
+      </BottomAnchoredKeyboardView>
 
       <GifPickerSheet isOpen={gifOpen} onClose={() => setGifOpen(false)} onSelect={handleSendGif} />
 

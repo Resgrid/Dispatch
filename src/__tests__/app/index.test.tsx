@@ -25,6 +25,7 @@ jest.mock('@/hooks/use-map-layers', () => ({
     toggleLayer: jest.fn(),
     showAllLayers: jest.fn(),
     hideAllLayers: jest.fn(),
+    visibleLayerData: [],
     getVisibleLayerData: jest.fn(() => []),
   })),
   MapLayerType: { ALL: 'ALL' },

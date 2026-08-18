@@ -140,7 +140,7 @@ const UnitItem: React.FC<{
 
 UnitItem.displayName = 'UnitItem';
 
-export const UnitsPanel: React.FC<UnitsPanelProps> = ({
+const UnitsPanelComponent: React.FC<UnitsPanelProps> = ({
   units,
   isLoading,
   onRefresh,
@@ -317,6 +317,12 @@ export const UnitsPanel: React.FC<UnitsPanelProps> = ({
     </Box>
   );
 };
+
+// Memoized: the panel hangs directly off the dispatch console, so without this any console
+// re-render walks its entire subtree.
+export const UnitsPanel = React.memo(UnitsPanelComponent);
+
+UnitsPanel.displayName = 'UnitsPanel';
 
 const styles = StyleSheet.create({
   contentWrapper: {

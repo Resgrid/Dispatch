@@ -80,7 +80,7 @@ const CallNoteItem: React.FC<{
   );
 };
 
-export const NotesPanel: React.FC<NotesPanelProps> = ({ notes, isLoading, onRefresh, onSelectNote, onNewNote, isCallFilterActive, callNotes, onAddCallNote, isAddingNote, flexWeight }) => {
+const NotesPanelComponent: React.FC<NotesPanelProps> = ({ notes, isLoading, onRefresh, onSelectNote, onNewNote, isCallFilterActive, callNotes, onAddCallNote, isAddingNote, flexWeight }) => {
   const { t } = useTranslation();
   const isCollapsed = useDashboardViewStore(selectCardCollapsed('notes'));
   const setCardCollapsed = useDashboardViewStore((s) => s.setCardCollapsed);
@@ -196,7 +196,7 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({ notes, isLoading, onRefr
             </HStack>
           ) : null}
 
-          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          <ScrollView style={flexWeight === undefined ? StyleSheet.flatten([styles.content, styles.contentCapped]) : styles.content} showsVerticalScrollIndicator={false}>
             {displayNotes ? (
               // Show call notes
               filteredCallNotes && filteredCallNotes.length > 0 ? (
@@ -223,6 +223,12 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({ notes, isLoading, onRefr
   );
 };
 
+// Memoized: the panel hangs directly off the dispatch console, so without this any console
+// re-render walks its entire subtree.
+export const NotesPanel = React.memo(NotesPanelComponent);
+
+NotesPanel.displayName = 'NotesPanel';
+
 const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
@@ -232,6 +238,9 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 8,
+  },
+  // Only capped when no parent bounds the panel's height (phone single-column ScrollView).
+  contentCapped: {
     maxHeight: 250,
   },
   emptyState: {

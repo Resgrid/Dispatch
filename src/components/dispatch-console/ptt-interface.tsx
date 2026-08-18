@@ -24,7 +24,7 @@ interface PTTInterfaceProps {
   currentChannel?: string;
 }
 
-export const PTTInterface: React.FC<PTTInterfaceProps> = ({ onPTTPress, onPTTRelease, isTransmitting: externalTransmitting = false, currentChannel: externalChannel = 'Disconnected' }) => {
+const PTTInterfaceComponent: React.FC<PTTInterfaceProps> = ({ onPTTPress, onPTTRelease, isTransmitting: externalTransmitting = false, currentChannel: externalChannel = 'Disconnected' }) => {
   const { t } = useTranslation();
   const { colorScheme } = useColorScheme();
 
@@ -230,6 +230,12 @@ export const PTTInterface: React.FC<PTTInterfaceProps> = ({ onPTTPress, onPTTRel
     </Box>
   );
 };
+
+// Memoized: the panel hangs directly off the dispatch console, so without this any console
+// re-render walks its entire subtree.
+export const PTTInterface = React.memo(PTTInterfaceComponent);
+
+PTTInterface.displayName = 'PTTInterface';
 
 const styles = StyleSheet.create({
   compactControlButton: {

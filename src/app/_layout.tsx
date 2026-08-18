@@ -26,6 +26,7 @@ import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
 import { loadKeepAliveState } from '@/lib/hooks/use-keep-alive';
 import { loadSelectedTheme } from '@/lib/hooks/use-selected-theme';
 import { logger } from '@/lib/logging';
+import { registerNavigationReadyCheck } from '@/lib/navigation';
 import { getDeviceUuid, setDeviceUuid } from '@/lib/storage/app';
 import { uuidv4 } from '@/lib/utils';
 import { appInitializationService } from '@/services/app-initialization.service';
@@ -142,6 +143,11 @@ function RootLayout() {
     if (ref?.current) {
       navigationIntegration.registerNavigationContainer(ref);
     }
+
+    // Cold-start deep links (a push-notification tap that launched the app) fire before
+    // this tree mounts. Publish the container's own readiness so routerPushWithRetry can
+    // wait for a real signal instead of a thrown error expo-router never raises.
+    registerNavigationReadyCheck(() => ref?.isReady?.() ?? false);
 
     // Skip all native initialization on web platform
     if (Platform.OS === 'web') {
