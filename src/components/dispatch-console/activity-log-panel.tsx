@@ -11,12 +11,12 @@ import { HStack } from '@/components/ui/hstack';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
+import { useCheckInTimerPolling } from '@/hooks/use-check-in-timer-polling';
 import { type DispatchedEventResultData } from '@/models/v4/calls/dispatchedEventResultData';
 import { CheckInTimerStatus } from '@/models/v4/checkIn/checkInEnums';
 import { type PersonnelInfoResultData } from '@/models/v4/personnel/personnelInfoResultData';
 import { type UnitInfoResultData } from '@/models/v4/units/unitInfoResultData';
 import { SEVERITY_COLORS, WeatherAlertSeverity } from '@/models/v4/weatherAlerts/weatherAlertEnums';
-import { useCallsStore } from '@/stores/calls/store';
 import { useCheckInStore } from '@/stores/checkIn/store';
 import { selectCardCollapsed, useDashboardViewStore } from '@/stores/dispatch/dashboard-view-store';
 import { type RadioLogEntry } from '@/stores/dispatch/dispatch-console-store';
@@ -280,7 +280,7 @@ const TabButton: React.FC<{
   );
 };
 
-export const ActivityLogPanel: React.FC<ActivityLogPanelProps> = ({
+const ActivityLogPanelComponent: React.FC<ActivityLogPanelProps> = ({
   entries,
   isLoading,
   debugId = 'unknown',
@@ -312,11 +312,16 @@ export const ActivityLogPanel: React.FC<ActivityLogPanelProps> = ({
   const setCardCollapsed = useDashboardViewStore((s) => s.setCardCollapsed);
   const [activeTab, setActiveTab] = useState<TabType>('activity');
 
-  // Personnel actions store
-  const { isActionsOpen: isPersonnelActionsOpen, openActions: openPersonnelActions, closeActions: closePersonnelActions } = usePersonnelActionsStore();
+  // Personnel actions store — per-field selectors; subscribing to the whole store re-rendered
+  // this panel on every unrelated field change.
+  const isPersonnelActionsOpen = usePersonnelActionsStore((s) => s.isActionsOpen);
+  const openPersonnelActions = usePersonnelActionsStore((s) => s.openActions);
+  const closePersonnelActions = usePersonnelActionsStore((s) => s.closeActions);
 
   // Unit actions store
-  const { isActionsOpen: isUnitActionsOpen, openActions: openUnitActions, closeActions: closeUnitActions } = useUnitActionsStore();
+  const isUnitActionsOpen = useUnitActionsStore((s) => s.isActionsOpen);
+  const openUnitActions = useUnitActionsStore((s) => s.openActions);
+  const closeUnitActions = useUnitActionsStore((s) => s.closeActions);
 
   // Track previous personnel selection to avoid unnecessary store updates
   const prevSelectedPersonnelIdRef = useRef<string | undefined>(undefined);
@@ -388,40 +393,28 @@ export const ActivityLogPanel: React.FC<ActivityLogPanelProps> = ({
   }, [selectedUnit, selectedUnitId, openUnitActions, closeUnitActions]);
 
   // Filter entries when call filter is active
-  const filteredEntries = isCallFilterActive && selectedCallId ? entries.filter((entry) => entry.metadata?.callId === selectedCallId || entry.type === 'system') : entries;
+  const filteredEntries = useMemo(
+    () => (isCallFilterActive && selectedCallId ? entries.filter((entry) => entry.metadata?.callId === selectedCallId || entry.type === 'system') : entries),
+    [entries, isCallFilterActive, selectedCallId]
+  );
 
   // Determine display mode - use call activity if available when filtering
   const useCallActivity = isCallFilterActive && callActivity && callActivity.length > 0;
   const activityCount = useCallActivity ? callActivity.length : filteredEntries.length;
 
   // Active transmissions count
-  const activeTransmissions = radioLog.filter((entry) => entry.isActive).length;
+  const activeTransmissions = useMemo(() => radioLog.filter((entry) => entry.isActive).length, [radioLog]);
 
-  // Check-in timers — fetch timer statuses across all active calls
-  const calls = useCallsStore((s) => s.calls);
-  const { timerStatuses: allTimerStatuses, fetchTimerStatusesForCalls, startPollingForCalls: startCheckInPolling, stopPolling: stopCheckInPolling, isLoadingStatuses: isCheckInsLoading } = useCheckInStore();
+  // Check-in timers. The urgent-count badge sits on the tab bar, so an expanded panel needs this
+  // data whichever tab is showing — but a collapsed panel needs none of it, and the shared hook
+  // keeps the poll alive for the active-calls badges even while this panel is folded away.
+  const allTimerStatuses = useCheckInStore((s) => s.timerStatuses);
+  const isCheckInsLoading = useCheckInStore((s) => s.isLoadingStatuses);
+  useCheckInTimerPolling(!isCollapsed);
 
   const [isCheckInSheetOpen, setIsCheckInSheetOpen] = useState(false);
   const [checkInSheetCallId, setCheckInSheetCallId] = useState<number>(0);
   const [checkInSheetTimer, setCheckInSheetTimer] = useState<(typeof allTimerStatuses)[0] | null>(null);
-
-  // Get all active call IDs to fetch timer statuses for
-  const activeCallIds = useMemo(() => calls.map((c) => parseInt(c.CallId)).filter((id) => !isNaN(id) && id > 0), [calls]);
-  // Stable key derived from the ID set (order-independent) so the polling
-  // interval only resets when the actual set of active calls changes, not on
-  // every SignalR-driven `calls` array identity change.
-  const activeCallIdsKey = useMemo(() => [...activeCallIds].sort((a, b) => a - b).join(','), [activeCallIds]);
-
-  useEffect(() => {
-    if (activeCallIds.length > 0) {
-      fetchTimerStatusesForCalls(activeCallIds);
-      startCheckInPolling(activeCallIds);
-    }
-    return () => {
-      stopCheckInPolling();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeCallIdsKey, fetchTimerStatusesForCalls, startCheckInPolling, stopCheckInPolling]);
 
   // When call filter is active, show only timers for the selected call
   const filteredTimerStatuses = useMemo(() => {
@@ -431,12 +424,13 @@ export const ActivityLogPanel: React.FC<ActivityLogPanelProps> = ({
     return allTimerStatuses.filter((s) => s.CallId === callIdNum);
   }, [allTimerStatuses, isCallFilterActive, selectedCallId]);
 
-  const criticalCheckInCount = filteredTimerStatuses.filter((s) => s.Status === CheckInTimerStatus.Critical).length;
-  const overdueCheckInCount = filteredTimerStatuses.filter((s) => s.Status === CheckInTimerStatus.Overdue || s.Status === CheckInTimerStatus.Red).length;
+  const criticalCheckInCount = useMemo(() => filteredTimerStatuses.filter((s) => s.Status === CheckInTimerStatus.Critical).length, [filteredTimerStatuses]);
+  const overdueCheckInCount = useMemo(() => filteredTimerStatuses.filter((s) => s.Status === CheckInTimerStatus.Overdue || s.Status === CheckInTimerStatus.Red).length, [filteredTimerStatuses]);
   const urgentCheckInCount = criticalCheckInCount + overdueCheckInCount;
 
   // Weather alerts
-  const { alerts: weatherAlerts, settings: weatherSettings } = useWeatherAlertsStore();
+  const weatherAlerts = useWeatherAlertsStore((s) => s.alerts);
+  const weatherSettings = useWeatherAlertsStore((s) => s.settings);
   const weatherAlertCount = weatherAlerts.length;
 
   const handleCheckInFromDashboard = useCallback((timer: (typeof allTimerStatuses)[0]) => {
@@ -789,6 +783,12 @@ export const ActivityLogPanel: React.FC<ActivityLogPanelProps> = ({
     </Box>
   );
 };
+
+// Memoized: the panel hangs directly off the dispatch console, so without this any console
+// re-render walks its entire subtree.
+export const ActivityLogPanel = React.memo(ActivityLogPanelComponent);
+
+ActivityLogPanel.displayName = 'ActivityLogPanel';
 
 const styles = StyleSheet.create({
   content: {

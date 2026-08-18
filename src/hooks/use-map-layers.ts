@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { getMayLayers } from '@/api/mapping/mapping';
 import { logger } from '@/lib/logging';
@@ -28,6 +28,14 @@ interface UseMapLayersResult {
   setLayerVisibility: (layerId: string, visible: boolean) => void;
   showAllLayers: () => void;
   hideAllLayers: () => void;
+  /**
+   * Stable array of the currently visible layers.
+   *
+   * Prefer this over `getVisibleLayerData()` when passing layers to a component: the getter
+   * allocates a fresh array on every call, so calling it inline in JSX changes the prop identity
+   * on every render and forces consumers to tear down and rebuild their GeoJSON sources.
+   */
+  visibleLayerData: GetMapLayersData[];
   getVisibleLayerData: () => GetMapLayersData[];
 }
 
@@ -138,9 +146,9 @@ export const useMapLayers = (options: UseMapLayersOptions = {}): UseMapLayersRes
     setVisibleLayers(new Set());
   }, []);
 
-  const getVisibleLayerData = useCallback((): GetMapLayersData[] => {
-    return layers.filter((layer) => visibleLayers.has(layer.Id));
-  }, [layers, visibleLayers]);
+  const visibleLayerData = useMemo(() => layers.filter((layer) => visibleLayers.has(layer.Id)), [layers, visibleLayers]);
+
+  const getVisibleLayerData = useCallback((): GetMapLayersData[] => visibleLayerData, [visibleLayerData]);
 
   // Auto-fetch on mount if enabled
   useEffect(() => {
@@ -165,6 +173,7 @@ export const useMapLayers = (options: UseMapLayersOptions = {}): UseMapLayersRes
     setLayerVisibility,
     showAllLayers,
     hideAllLayers,
+    visibleLayerData,
     getVisibleLayerData,
   };
 };

@@ -58,7 +58,7 @@ type ResourcePressEvent = Parameters<NonNullable<React.ComponentProps<typeof Pre
  * UnitsPanel/PersonnelPanel (call filtering, on-call highlighting, selection, and status actions) so it
  * stays a drop-in replacement. The call-context props are threaded through from UnitsPanel.
  */
-export const ResourcesPanel: React.FC<ResourcesPanelProps> = ({
+const ResourcesPanelComponent: React.FC<ResourcesPanelProps> = ({
   selectedUnitId,
   selectedPersonnelId,
   onSelectUnit,
@@ -351,6 +351,12 @@ export const ResourcesPanel: React.FC<ResourcesPanelProps> = ({
     </Box>
   );
 };
+
+// Memoized: the panel hangs directly off the dispatch console, so without this any console
+// re-render walks its entire subtree.
+export const ResourcesPanel = React.memo(ResourcesPanelComponent);
+
+ResourcesPanel.displayName = 'ResourcesPanel';
 
 const styles = StyleSheet.create({
   contentWrapper: {

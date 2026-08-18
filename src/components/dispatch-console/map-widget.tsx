@@ -32,7 +32,7 @@ interface MapWidgetProps {
   children?: React.ReactNode;
 }
 
-export const MapWidget: React.FC<MapWidgetProps> = ({ pins, onExpandMap, onRefresh, onCenterOnLocation, onPinPress, autoFetchPins = true, children }) => {
+const MapWidgetComponent: React.FC<MapWidgetProps> = ({ pins, onExpandMap, onRefresh, onCenterOnLocation, onPinPress, autoFetchPins = true, children }) => {
   const { t } = useTranslation();
   const { colorScheme } = useColorScheme();
   const isCollapsed = useDashboardViewStore(selectCardCollapsed('map'));
@@ -40,7 +40,7 @@ export const MapWidget: React.FC<MapWidgetProps> = ({ pins, onExpandMap, onRefre
   const [isLayersPanelOpen, setIsLayersPanelOpen] = useState(false);
 
   // Map layers hook
-  const { layers, visibleLayers, isLoading: isLayersLoading, toggleLayer, showAllLayers, hideAllLayers, getVisibleLayerData } = useMapLayers({ initialLayerType: MapLayerType.ALL, autoFetch: true });
+  const { layers, visibleLayers, isLoading: isLayersLoading, toggleLayer, showAllLayers, hideAllLayers, visibleLayerData } = useMapLayers({ initialLayerType: MapLayerType.ALL, autoFetch: true });
 
   const isDark = colorScheme === 'dark';
 
@@ -132,7 +132,7 @@ export const MapWidget: React.FC<MapWidgetProps> = ({ pins, onExpandMap, onRefre
             {children ? (
               children
             ) : (
-              <UnifiedMapView pins={pins} visibleLayers={getVisibleLayerData()} autoFetchPins={autoFetchPins} onPinPress={onPinPress} showUserLocation={true} interactive={true} testID="map-widget-view" />
+              <UnifiedMapView pins={pins} visibleLayers={visibleLayerData} autoFetchPins={autoFetchPins} onPinPress={onPinPress} showUserLocation={true} interactive={true} testID="map-widget-view" />
             )}
           </View>
         ) : null}
@@ -143,6 +143,12 @@ export const MapWidget: React.FC<MapWidgetProps> = ({ pins, onExpandMap, onRefre
     </>
   );
 };
+
+// Memoized: the widget owns a live Mapbox instance, so a re-render from an unrelated console
+// update is far more expensive here than the shallow prop compare.
+export const MapWidget = React.memo(MapWidgetComponent);
+
+MapWidget.displayName = 'MapWidget';
 
 const styles = StyleSheet.create({
   mapContainer: {

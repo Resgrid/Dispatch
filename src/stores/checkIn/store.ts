@@ -124,7 +124,12 @@ interface CheckInState {
   _pollingCallIds: number[];
 
   fetchTimerStatuses: (callId: number) => Promise<void>;
-  fetchTimerStatusesForCalls: (callIds: number[]) => Promise<void>;
+  /**
+   * @param options.silent Skip the loading flag and reuse the cached resolved timers. Poll rounds
+   *   pass this: flipping `isLoadingStatuses` twice a round re-rendered every consumer for data
+   *   that usually came back identical, and the resolved-timer lookup only supplies display names.
+   */
+  fetchTimerStatusesForCalls: (callIds: number[], options?: { silent?: boolean }) => Promise<void>;
   fetchResolvedTimers: (callId: number) => Promise<void>;
   fetchCheckInHistory: (callId: number) => Promise<void>;
   fetchCallPersonnelStatuses: (callId: number) => Promise<void>;
@@ -165,18 +170,28 @@ export const useCheckInStore = create<CheckInState>((set, get) => ({
     }
   },
 
-  fetchTimerStatusesForCalls: async (callIds: number[]) => {
+  fetchTimerStatusesForCalls: async (callIds: number[], options?: { silent?: boolean }) => {
     if (callIds.length === 0) {
       set({ timerStatuses: [], resolvedTimers: [], isLoadingStatuses: false, statusError: null });
       return;
     }
-    set({ isLoadingStatuses: true, statusError: null });
+    const silent = options?.silent === true;
+    if (!silent) {
+      set({ isLoadingStatuses: true, statusError: null });
+    }
     try {
-      const [statusResult, ...resolvedResults] = await Promise.all([getTimerStatusesForCalls(callIds), ...callIds.map((id) => getTimersForCall(id).catch(() => ({ Data: [] as ResolvedCheckInTimerResultData[] })))]);
-      const allResolved = resolvedResults.flatMap((r) => r.Data || []);
+      // Resolved timers only supply display names for the status rows and change when a call's
+      // timer set is edited, not between poll rounds — so a silent refresh reuses what it has and
+      // halves the requests each round costs.
+      const statusPromise = getTimerStatusesForCalls(callIds);
+      const resolvedPromise = silent
+        ? Promise.resolve(get().resolvedTimers)
+        : Promise.all(callIds.map((id) => getTimersForCall(id).catch(() => ({ Data: [] as ResolvedCheckInTimerResultData[] })))).then((results) => results.flatMap((r) => r.Data || []));
+
+      const [statusResult, allResolved] = await Promise.all([statusPromise, resolvedPromise]);
       const enriched = enrichTimerNames(statusResult.Data || [], allResolved);
       const sorted = enriched.sort(sortByStatusSeverity);
-      set({ timerStatuses: sorted, resolvedTimers: allResolved, isLoadingStatuses: false });
+      set({ timerStatuses: sorted, resolvedTimers: allResolved, isLoadingStatuses: false, statusError: null });
     } catch (error) {
       set({
         statusError: error instanceof Error ? error.message : 'Failed to fetch timer statuses',
@@ -272,7 +287,7 @@ export const useCheckInStore = create<CheckInState>((set, get) => ({
     }
     set({ _pollingCallIds: callIds });
     const interval = setInterval(() => {
-      get().fetchTimerStatusesForCalls(callIds);
+      get().fetchTimerStatusesForCalls(callIds, { silent: true });
     }, intervalMs);
     set({ _pollingInterval: interval });
   },

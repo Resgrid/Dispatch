@@ -33,6 +33,16 @@ const FullScreenLocationPicker: React.FC<FullScreenLocationPickerProps> = ({ ini
   const [isLoading, setIsLoading] = useState(false);
   const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
   const [address, setAddress] = useState<string | undefined>(undefined);
+  // getCurrentPosition can resolve after the picker closes; without this the callbacks
+  // set state on an unmounted component.
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   // Inject Mapbox GL CSS
   useEffect(() => {
@@ -78,6 +88,7 @@ const FullScreenLocationPicker: React.FC<FullScreenLocationPickerProps> = ({ ini
       if ('geolocation' in navigator) {
         navigator.geolocation.getCurrentPosition(
           (position) => {
+            if (!isMounted.current) return;
             const newLocation = {
               latitude: position.coords.latitude,
               longitude: position.coords.longitude,
@@ -114,8 +125,17 @@ const FullScreenLocationPicker: React.FC<FullScreenLocationPickerProps> = ({ ini
             setIsLoading(false);
           },
           (error) => {
+            // Denied, unavailable or timed out: leave the map usable so the user can still
+            // click a spot instead of sitting behind the loading state.
             console.error('Error getting location:', error);
-            setIsLoading(false);
+            if (isMounted.current) setIsLoading(false);
+          },
+          // Without a timeout the browser can leave both callbacks unfired indefinitely
+          // (blocked permission prompt, no location provider), pinning the picker on 'Loading...'.
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 60000,
           }
         );
       } else {
@@ -237,9 +257,9 @@ const FullScreenLocationPicker: React.FC<FullScreenLocationPickerProps> = ({ ini
       {/* Map - Always rendered to keep Mapbox instance mounted */}
       <div ref={mapContainer} style={{ height: '100%', width: '100%' }} />
 
-      {/* Loading overlay */}
+      {/* Locating badge - must not cover the map or the close button, the map is already usable */}
       {isLoading ? (
-        <View style={styles.loadingOverlay}>
+        <View style={styles.loadingOverlay} pointerEvents="none">
           <View style={styles.loadingContainer}>
             <Text style={styles.loadingText}>{t('common.loading')}</Text>
           </View>
@@ -284,17 +304,21 @@ const styles = StyleSheet.create({
   },
   loadingOverlay: {
     position: 'absolute',
-    top: 0,
+    top: 16,
     left: 0,
     right: 0,
-    bottom: 0,
-    zIndex: 1000,
+    alignItems: 'center',
+    zIndex: 9,
   },
   loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
     backgroundColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
   loadingText: {
     color: '#6b7280',

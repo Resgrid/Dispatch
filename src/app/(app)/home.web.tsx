@@ -137,7 +137,6 @@ export default function DispatchConsoleWeb() {
   const setMapCenter = useDispatchConsoleStore((s) => s.setMapCenter);
 
   // Local state
-  const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString('en-US', { hour12: false }));
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [isAddNoteSheetOpen, setIsAddNoteSheetOpen] = useState(false);
   const [selectedPersonnelData, setSelectedPersonnelData] = useState<PersonnelInfoResultData | null>(null);
@@ -148,15 +147,6 @@ export default function DispatchConsoleWeb() {
   const prevPersonnelTimestamp = useRef(0);
   const prevUnitsTimestamp = useRef(0);
   const prevCallsTimestamp = useRef(0);
-
-  // Update time every second
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date().toLocaleTimeString('en-US', { hour12: false }));
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
 
   // Initialize data when component mounts
   useEffect(() => {
@@ -376,80 +366,89 @@ export default function DispatchConsoleWeb() {
   }, [calls, units, personnel]);
 
   // Handle PTT
-  const handlePTTPress = () => {
+  const handlePTTPress = useCallback(() => {
     setIsTransmitting(true);
     addActivityLogEntry({
       type: 'system',
       action: t('dispatch.ptt_start'),
       description: t('dispatch.transmitting_on', { channel: currentChannel }),
     });
-  };
+  }, [setIsTransmitting, addActivityLogEntry, t, currentChannel]);
 
-  const handlePTTRelease = () => {
+  const handlePTTRelease = useCallback(() => {
     setIsTransmitting(false);
     addActivityLogEntry({
       type: 'system',
       action: t('dispatch.ptt_end'),
       description: t('dispatch.transmission_ended'),
     });
-  };
+  }, [setIsTransmitting, addActivityLogEntry, t]);
 
   // Handle call selection - now toggles filter mode
-  const handleSelectCall = (callId: string) => {
-    toggleCallFilter(callId);
-    const call = calls.find((c) => c.CallId === callId);
-    if (call) {
-      addActivityLogEntry({
-        type: 'call',
-        action: isCallFilterActive && selectedCallId === callId ? t('dispatch.call_filter_cleared') : t('dispatch.call_filter_active'),
-        description: `#${call.Number} - ${call.Name || call.Nature}`,
-        metadata: { callId },
-      });
-    }
-  };
+  const handleSelectCall = useCallback(
+    (callId: string) => {
+      toggleCallFilter(callId);
+      const call = calls.find((c) => c.CallId === callId);
+      if (call) {
+        addActivityLogEntry({
+          type: 'call',
+          action: isCallFilterActive && selectedCallId === callId ? t('dispatch.call_filter_cleared') : t('dispatch.call_filter_active'),
+          description: `#${call.Number} - ${call.Name || call.Nature}`,
+          metadata: { callId },
+        });
+      }
+    },
+    [toggleCallFilter, calls, addActivityLogEntry, t, isCallFilterActive, selectedCallId]
+  );
 
   // Handle unit selection - toggle if already selected
-  const handleSelectUnit = (unitId: string, unit?: UnitInfoResultData) => {
-    const isAlreadySelected = selectedUnitId === unitId;
-    setSelectedUnitId(isAlreadySelected ? null : unitId);
-    // Find unit from array if not passed directly
-    const unitData = unit ?? units.find((u) => u.UnitId === unitId);
-    setSelectedUnitData(isAlreadySelected ? null : (unitData ?? null));
-    // Clear personnel selection when selecting a unit
-    if (!isAlreadySelected) {
-      setSelectedPersonnelId(null);
-      setSelectedPersonnelData(null);
-    }
-    const unitToLog = unitData;
-    if (unitToLog) {
-      addActivityLogEntry({
-        type: 'unit',
-        action: isAlreadySelected ? t('dispatch.unit_deselected') : t('dispatch.unit_selected'),
-        description: unitToLog.Name,
-        metadata: { unitId },
-      });
-    }
-  };
+  const handleSelectUnit = useCallback(
+    (unitId: string, unit?: UnitInfoResultData) => {
+      const isAlreadySelected = selectedUnitId === unitId;
+      setSelectedUnitId(isAlreadySelected ? null : unitId);
+      // Find unit from array if not passed directly
+      const unitData = unit ?? units.find((u) => u.UnitId === unitId);
+      setSelectedUnitData(isAlreadySelected ? null : (unitData ?? null));
+      // Clear personnel selection when selecting a unit
+      if (!isAlreadySelected) {
+        setSelectedPersonnelId(null);
+        setSelectedPersonnelData(null);
+      }
+      const unitToLog = unitData;
+      if (unitToLog) {
+        addActivityLogEntry({
+          type: 'unit',
+          action: isAlreadySelected ? t('dispatch.unit_deselected') : t('dispatch.unit_selected'),
+          description: unitToLog.Name,
+          metadata: { unitId },
+        });
+      }
+    },
+    [selectedUnitId, setSelectedUnitId, units, setSelectedPersonnelId, addActivityLogEntry, t]
+  );
 
   // Handle personnel selection - toggle if already selected
-  const handleSelectPersonnel = (personnelId: string, person?: PersonnelInfoResultData) => {
-    const isAlreadySelected = selectedPersonnelId === personnelId;
-    setSelectedPersonnelId(isAlreadySelected ? null : personnelId);
-    setSelectedPersonnelData(isAlreadySelected ? null : (person ?? null));
-    // Clear unit selection when selecting personnel
-    if (!isAlreadySelected) {
-      setSelectedUnitId(null);
-      setSelectedUnitData(null);
-    }
-    if (person) {
-      addActivityLogEntry({
-        type: 'personnel',
-        action: isAlreadySelected ? t('dispatch.personnel_deselected') : t('dispatch.personnel_selected'),
-        description: `${person.FirstName} ${person.LastName}`,
-        metadata: { personnelId },
-      });
-    }
-  };
+  const handleSelectPersonnel = useCallback(
+    (personnelId: string, person?: PersonnelInfoResultData) => {
+      const isAlreadySelected = selectedPersonnelId === personnelId;
+      setSelectedPersonnelId(isAlreadySelected ? null : personnelId);
+      setSelectedPersonnelData(isAlreadySelected ? null : (person ?? null));
+      // Clear unit selection when selecting personnel
+      if (!isAlreadySelected) {
+        setSelectedUnitId(null);
+        setSelectedUnitData(null);
+      }
+      if (person) {
+        addActivityLogEntry({
+          type: 'personnel',
+          action: isAlreadySelected ? t('dispatch.personnel_deselected') : t('dispatch.personnel_selected'),
+          description: `${person.FirstName} ${person.LastName}`,
+          metadata: { personnelId },
+        });
+      }
+    },
+    [selectedPersonnelId, setSelectedPersonnelId, setSelectedUnitId, addActivityLogEntry, t]
+  );
 
   // Handle status/staffing update completion - refresh personnel list
   const handleStatusUpdated = useCallback(() => {
@@ -466,61 +465,64 @@ export default function DispatchConsoleWeb() {
   }, [fetchUnits]);
 
   // Handle expanding map
-  const handleExpandMap = () => {
+  const handleExpandMap = useCallback(() => {
     router.push('/(app)/map' as Href);
-  };
+  }, []);
 
   // Handle clearing call filter
-  const handleClearCallFilter = () => {
+  const handleClearCallFilter = useCallback(() => {
     clearCallFilter();
     addActivityLogEntry({
       type: 'system',
       action: t('dispatch.call_filter_cleared'),
       description: t('dispatch.showing_all_data'),
     });
-  };
+  }, [clearCallFilter, addActivityLogEntry, t]);
 
   // Handle adding call note
-  const handleAddCallNote = async (note: string) => {
-    if (!selectedCallId || !note.trim() || !userId) return;
+  const handleAddCallNote = useCallback(
+    async (note: string) => {
+      if (!selectedCallId || !note.trim() || !userId) return;
 
-    setIsAddingNote(true);
-    try {
-      await saveCallNote(selectedCallId, userId, note, null, null);
+      setIsAddingNote(true);
+      try {
+        await saveCallNote(selectedCallId, userId, note, null, null);
 
-      // Refresh call notes
-      const notesResponse = await getCallNotes(selectedCallId);
-      if (notesResponse.Data) {
-        setCallNotes(notesResponse.Data);
+        // Refresh call notes
+        const notesResponse = await getCallNotes(selectedCallId);
+        if (notesResponse.Data) {
+          setCallNotes(notesResponse.Data);
+        }
+
+        addActivityLogEntry({
+          type: 'call',
+          action: t('dispatch.note_added'),
+          description: note.substring(0, 50) + (note.length > 50 ? '...' : ''),
+          metadata: { callId: selectedCallId },
+        });
+      } catch (error) {
+        console.error('Error adding call note:', error);
+      } finally {
+        setIsAddingNote(false);
       }
-
-      addActivityLogEntry({
-        type: 'call',
-        action: t('dispatch.note_added'),
-        description: note.substring(0, 50) + (note.length > 50 ? '...' : ''),
-        metadata: { callId: selectedCallId },
-      });
-    } catch (error) {
-      console.error('Error adding call note:', error);
-    } finally {
-      setIsAddingNote(false);
-    }
-  };
+    },
+    [selectedCallId, userId, setCallNotes, addActivityLogEntry, t]
+  );
 
   // Handle opening add note sheet
-  const handleOpenAddNoteSheet = () => {
+  const handleOpenAddNoteSheet = useCallback(() => {
     setIsAddNoteSheetOpen(true);
-  };
+  }, []);
 
   // Handle note added from bottom sheet
-  const handleNoteAdded = () => {
+  const handleNoteAdded = useCallback(() => {
     fetchNotes();
     addActivityLogEntry({
       type: 'system',
       action: t('dispatch.note_created'),
       description: t('dispatch.note_added'),
     });
-  };
+  }, [fetchNotes, addActivityLogEntry, t]);
 
   // Call action handlers for the actions panel
   const handleCreateCall = useCallback(() => {
@@ -546,32 +548,50 @@ export default function DispatchConsoleWeb() {
   }, [selectedCallId]);
 
   // Handle setting unit status for call
-  const handleSetUnitStatusForCall = (unitId: string) => {
-    const unit = units.find((u) => u.UnitId === unitId);
-    if (unit) {
-      addActivityLogEntry({
-        type: 'unit',
-        action: t('dispatch.unit_status_change'),
-        description: `${unit.Name}`,
-        metadata: { unitId, callId: selectedCallId ?? undefined },
-      });
-      // TODO: Implement status change modal or action
-    }
-  };
+  const handleSetUnitStatusForCall = useCallback(
+    (unitId: string) => {
+      const unit = units.find((u) => u.UnitId === unitId);
+      if (unit) {
+        addActivityLogEntry({
+          type: 'unit',
+          action: t('dispatch.unit_status_change'),
+          description: `${unit.Name}`,
+          metadata: { unitId, callId: selectedCallId ?? undefined },
+        });
+        // TODO: Implement status change modal or action
+      }
+    },
+    [units, addActivityLogEntry, t, selectedCallId]
+  );
 
   // Handle setting personnel status for call
-  const handleSetPersonnelStatusForCall = (personnelId: string) => {
-    const person = personnel.find((p) => p.UserId === personnelId);
-    if (person) {
-      addActivityLogEntry({
-        type: 'personnel',
-        action: t('dispatch.personnel_status_change'),
-        description: `${person.FirstName} ${person.LastName}`,
-        metadata: { personnelId, callId: selectedCallId ?? undefined },
-      });
-      // TODO: Implement status change modal or action
-    }
-  };
+  const handleSetPersonnelStatusForCall = useCallback(
+    (personnelId: string) => {
+      const person = personnel.find((p) => p.UserId === personnelId);
+      if (person) {
+        addActivityLogEntry({
+          type: 'personnel',
+          action: t('dispatch.personnel_status_change'),
+          description: `${person.FirstName} ${person.LastName}`,
+          metadata: { personnelId, callId: selectedCallId ?? undefined },
+        });
+        // TODO: Implement status change modal or action
+      }
+    },
+    [personnel, addActivityLogEntry, t, selectedCallId]
+  );
+
+  const handleWeatherAlertsPress = useCallback(() => {
+    router.push('/(app)/weather-alerts' as Href);
+  }, []);
+
+  const handleCloseAddNoteSheet = useCallback(() => {
+    setIsAddNoteSheetOpen(false);
+  }, []);
+
+  const handleCloseCallSheetClose = useCallback(() => {
+    setIsCloseCallSheetOpen(false);
+  }, []);
 
   // Determine layout based on screen size and orientation
   const renderLayout = () => {
@@ -976,7 +996,7 @@ export default function DispatchConsoleWeb() {
         weatherLongitude={mapCenterLongitude}
         extremeAlerts={extremeAlertCount}
         severeAlerts={severeAlertCount}
-        onWeatherAlertsPress={() => router.push('/(app)/weather-alerts' as Href)}
+        onWeatherAlertsPress={handleWeatherAlertsPress}
       />
 
       {/* Active Call Filter Banner */}
@@ -989,10 +1009,10 @@ export default function DispatchConsoleWeb() {
       <AudioStreamBottomSheet />
 
       {/* Add Note Bottom Sheet */}
-      <AddNoteBottomSheet isOpen={isAddNoteSheetOpen} onClose={() => setIsAddNoteSheetOpen(false)} onNoteAdded={handleNoteAdded} />
+      <AddNoteBottomSheet isOpen={isAddNoteSheetOpen} onClose={handleCloseAddNoteSheet} onNoteAdded={handleNoteAdded} />
 
       {/* Close Call Bottom Sheet */}
-      {selectedCallId && <CloseCallBottomSheet key={selectedCallId} isOpen={isCloseCallSheetOpen} onClose={() => setIsCloseCallSheetOpen(false)} callId={selectedCallId} />}
+      {selectedCallId && <CloseCallBottomSheet key={selectedCallId} isOpen={isCloseCallSheetOpen} onClose={handleCloseCallSheetClose} callId={selectedCallId} />}
     </View>
   );
 }

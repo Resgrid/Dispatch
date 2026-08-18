@@ -39,7 +39,7 @@ interface UnifiedMapViewProps {
  * Unified Map View component for iOS and Android using @rnmapbox/maps.
  * Supports pins, layers, and user location.
  */
-export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
+const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
   pins: externalPins,
   visibleLayers = [],
   autoFetchPins = false,
@@ -229,8 +229,9 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     }
   };
 
-  // Render map layers
-  const renderMapLayers = () => {
+  // Memoized: each entry allocates a fresh FeatureCollection, and handing ShapeSource a new
+  // `shape` object re-uploads the geometry to the native map even when nothing changed.
+  const mapLayerElements = useMemo(() => {
     return visibleLayers.map((layer) => {
       if (!layer.Data?.Features || !Array.isArray(layer.Data.Features) || layer.Data.Features.length === 0) {
         return null;
@@ -260,12 +261,12 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         </Mapbox.ShapeSource>
       );
     });
-  };
+  }, [visibleLayers]);
 
-  const handleMapReady = () => {
+  const handleMapReady = useCallback(() => {
     setIsMapReady(true);
     onMapReady?.();
-  };
+  }, [onMapReady]);
 
   // Initial camera position. Read the department center once: two calls are two store reads, and
   // the second could see a different config.
@@ -288,7 +289,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         <Mapbox.Camera ref={cameraRef} defaultSettings={{ centerCoordinate: initialCenter, zoomLevel: location.latitude && location.longitude ? 12 : departmentCenter.zoomLevel }} />
 
         {/* Render custom layers */}
-        {renderMapLayers()}
+        {mapLayerElements}
 
         {/* User location */}
         {showUserLocation ? <Mapbox.UserLocation visible animated /> : null}
@@ -299,6 +300,11 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     </View>
   );
 };
+
+// Memoized: every re-render rebuilds the layer shapes handed to the native map.
+export const UnifiedMapView = React.memo(UnifiedMapViewComponent);
+
+UnifiedMapView.displayName = 'UnifiedMapView';
 
 const styles = StyleSheet.create({
   container: {

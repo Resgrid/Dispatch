@@ -24,7 +24,7 @@ interface StatItemProps {
   onPress?: () => void;
 }
 
-const StatItem: React.FC<StatItemProps> = ({ icon, label, value, color, darkColor, bgClassName, bgColor, darkBgColor, onPress }) => {
+const StatItem: React.FC<StatItemProps> = React.memo(({ icon, label, value, color, darkColor, bgClassName, bgColor, darkBgColor, onPress }) => {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
   const displayColor = isDark ? darkColor : color;
@@ -45,7 +45,31 @@ const StatItem: React.FC<StatItemProps> = ({ icon, label, value, color, darkColo
       </HStack>
     </Pressable>
   );
-};
+});
+
+StatItem.displayName = 'StatItem';
+
+/**
+ * Ticking clock, isolated in its own leaf.
+ *
+ * Held in StatsHeader the 1s interval re-rendered every stat tile and the weather widget once a
+ * second; here only the <Text/> below re-renders.
+ */
+const LiveClock: React.FC = React.memo(() => {
+  const [currentTime, setCurrentTime] = React.useState(new Date().toLocaleTimeString('en-US', { hour12: false }));
+
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date().toLocaleTimeString('en-US', { hour12: false }));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  return <Text className="text-sm font-bold text-gray-800 dark:text-gray-100">{currentTime}</Text>;
+});
+
+LiveClock.displayName = 'LiveClock';
 
 interface StatsHeaderProps {
   activeCalls: number;
@@ -61,7 +85,7 @@ interface StatsHeaderProps {
   onWeatherAlertsPress?: () => void;
 }
 
-export const StatsHeader: React.FC<StatsHeaderProps> = ({
+const StatsHeaderComponent: React.FC<StatsHeaderProps> = ({
   activeCalls,
   pendingCalls,
   scheduledCalls,
@@ -77,15 +101,6 @@ export const StatsHeader: React.FC<StatsHeaderProps> = ({
   const { t } = useTranslation();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const [currentTime, setCurrentTime] = React.useState(new Date().toLocaleTimeString('en-US', { hour12: false }));
-
-  React.useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date().toLocaleTimeString('en-US', { hour12: false }));
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
 
   return (
     <Box className="border-b border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-900">
@@ -126,7 +141,7 @@ export const StatsHeader: React.FC<StatsHeaderProps> = ({
         <HStack className="flex-1 items-center justify-center rounded-lg bg-gray-100 p-2 dark:bg-gray-800" space="sm">
           <HStack className="items-center" space="xs">
             <Clock size={14} className="text-gray-600 dark:text-gray-300" />
-            <Text className="text-sm font-bold text-gray-800 dark:text-gray-100">{currentTime}</Text>
+            <LiveClock />
           </HStack>
           <View style={StyleSheet.flatten([styles.divider, { backgroundColor: isDark ? '#4b5563' : '#d1d5db' }])} />
           <WeatherWidget latitude={weatherLatitude} longitude={weatherLongitude} compact />
@@ -135,6 +150,10 @@ export const StatsHeader: React.FC<StatsHeaderProps> = ({
     </Box>
   );
 };
+
+export const StatsHeader = React.memo(StatsHeaderComponent);
+
+StatsHeader.displayName = 'StatsHeader';
 
 const styles = StyleSheet.create({
   iconContainer: {

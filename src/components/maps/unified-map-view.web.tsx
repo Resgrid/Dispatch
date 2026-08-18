@@ -1,7 +1,7 @@
 import { type Feature, type FeatureCollection, type GeoJsonProperties, type Geometry } from 'geojson';
 import mapboxgl from 'mapbox-gl';
 import { useColorScheme } from 'nativewind';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { getMapDataAndMarkers } from '@/api/mapping/mapping';
@@ -42,7 +42,7 @@ interface UnifiedMapViewProps {
  * Unified Map View component for Web using mapbox-gl-js.
  * Supports pins, layers, and user location.
  */
-export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
+const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
   pins: externalPins,
   visibleLayers = [],
   autoFetchPins = false,
@@ -63,6 +63,8 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
   const sourceIdsRef = useRef<string[]>([]);
   const [isMapReady, setIsMapReady] = useState(false);
   const [internalPins, setInternalPins] = useState<MapMakerInfoData[]>([]);
+  const visibleLayersRef = useRef(visibleLayers);
+  visibleLayersRef.current = visibleLayers;
 
   // Use external pins if provided, otherwise use internal pins
   const mapPins = externalPins ?? internalPins;
@@ -288,9 +290,15 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     });
   }, [mapPins, isMapReady, colorScheme]);
 
+  // Rebuilding a GeoJSON source makes Mapbox re-parse and re-tessellate the whole feature set,
+  // so the effect below must not fire on array identity alone — a caller that computes its layer
+  // array inline would otherwise pay that cost on every single render.
+  const layersSignature = useMemo(() => visibleLayers.map((layer) => `${layer.Id}:${layer.Color ?? ''}:${layer.Data?.Type ?? ''}:${layer.Data?.Features?.length ?? 0}`).join('|'), [visibleLayers]);
+
   // Update layers when visibility changes
   useEffect(() => {
     if (!map.current || !isMapReady) return;
+    const visibleLayers = visibleLayersRef.current;
 
     // Remove existing custom layers
     layerIdsRef.current.forEach((layerId) => {
@@ -375,7 +383,7 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
         });
       }
     });
-  }, [visibleLayers, isMapReady]);
+  }, [layersSignature, isMapReady]);
 
   return (
     <View style={StyleSheet.flatten([styles.container, style])} testID={testID}>
@@ -383,6 +391,11 @@ export const UnifiedMapView: React.FC<UnifiedMapViewProps> = ({
     </View>
   );
 };
+
+// Memoized: every re-render re-runs the pin and layer diff effects against a live Mapbox map.
+export const UnifiedMapView = React.memo(UnifiedMapViewComponent);
+
+UnifiedMapView.displayName = 'UnifiedMapView';
 
 const styles = StyleSheet.create({
   container: {
