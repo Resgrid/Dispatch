@@ -6,26 +6,72 @@ import { logger } from './logging';
 export interface RouterPushRetryOptions {
   maxAttempts?: number;
   retryDelayMs?: number;
+  /**
+   * Extra gate the push waits on, beyond the router itself being mounted. Deep links
+   * use it to hold until the session has hydrated — pushing a protected route before
+   * then just gets the app redirected straight back out by the auth guard.
+   */
+  waitUntil?: () => boolean;
 }
 
+let navigationReadyCheck: (() => boolean) | null = null;
+
 /**
- * Pushes an expo-router href, retrying when the router has not mounted yet
- * (cold-start deep links). Throws the last error once every attempt fails.
+ * Publishes the navigation container's real readiness, registered by the root layout.
+ *
+ * `router.push` does NOT throw when the root layout has not mounted yet: expo-router
+ * logs a warning and drops the navigation on the floor. Retrying inside a `catch` was
+ * therefore waiting on an error that never arrived, which is why a push-notification
+ * tap that cold-started the app silently landed on the home screen instead of the
+ * target route.
+ *
+ * Defaults to ready when nothing has registered, so callers outside the app tree (and
+ * tests) behave exactly as before.
+ */
+export const registerNavigationReadyCheck = (check: (() => boolean) | null): void => {
+  navigationReadyCheck = check;
+};
+
+export const isNavigationReady = (): boolean => navigationReadyCheck?.() ?? true;
+
+/**
+ * Pushes an expo-router href, waiting for the router (and any caller-supplied gate) to
+ * be ready. Throws once the retry budget is exhausted.
  */
 export const routerPushWithRetry = async (href: Href, options?: RouterPushRetryOptions): Promise<void> => {
   const maxAttempts = options?.maxAttempts ?? 1;
   const retryDelayMs = options?.retryDelayMs ?? 250;
+  const waitUntil = options?.waitUntil;
+
+  let lastError: unknown;
 
   for (let attempt = 1; ; attempt++) {
+    // Only push once the router can actually receive it — an early push is discarded
+    // without an error, so attempting regardless would burn the whole budget silently.
+    // A gate that throws counts as not-ready rather than aborting: the retry budget then
+    // surfaces one clear error instead of the navigation vanishing without explanation.
+    let ready: boolean;
     try {
-      router.push(href);
-      return;
+      ready = isNavigationReady() && (waitUntil?.() ?? true);
     } catch (error) {
-      if (attempt >= maxAttempts) {
-        throw error;
-      }
-      await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+      lastError = error;
+      ready = false;
     }
+
+    if (ready) {
+      try {
+        router.push(href);
+        return;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    if (attempt >= maxAttempts) {
+      throw lastError ?? new Error('Navigation never became ready; the push was dropped.');
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
   }
 };
 

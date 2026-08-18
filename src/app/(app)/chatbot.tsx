@@ -2,7 +2,6 @@ import { type Href, Redirect, Stack, useFocusEffect } from 'expo-router';
 import { RefreshCw, Send, Sparkles } from 'lucide-react-native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Platform } from 'react-native';
 
 import { copyToClipboard } from '@/components/chat/chat-utils';
 import { MessageActionsSheet } from '@/components/chat/message-actions-sheet';
@@ -14,7 +13,7 @@ import { FlatList } from '@/components/ui/flat-list';
 import { FocusAwareStatusBar } from '@/components/ui/focus-aware-status-bar';
 import { HStack } from '@/components/ui/hstack';
 import { Input, InputField } from '@/components/ui/input';
-import { KeyboardAvoidingView } from '@/components/ui/keyboard-avoiding-view';
+import { BottomAnchoredKeyboardView } from '@/components/ui/keyboard-avoiding-view';
 import { Pressable } from '@/components/ui/pressable';
 import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
@@ -118,7 +117,7 @@ export default function ChatbotScreen() {
         </Pressable>
       </HStack>
 
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
+      <BottomAnchoredKeyboardView>
         {inverted.length === 0 ? (
           <Center className="flex-1 px-8">
             <Sparkles size={48} color="#a78bfa" />
@@ -147,7 +146,7 @@ export default function ChatbotScreen() {
             <Send size={20} color="#ffffff" />
           </Pressable>
         </HStack>
-      </KeyboardAvoidingView>
+      </BottomAnchoredKeyboardView>
 
       {/* Restricted actions for assistant messages: copy, pin (moderator), flag. */}
       <MessageActionsSheet

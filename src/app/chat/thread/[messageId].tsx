@@ -1,7 +1,6 @@
 import { type Href, Redirect, Stack, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Platform } from 'react-native';
 
 import { getThread } from '@/api/chat/chat';
 import { buildLocationMetadata } from '@/components/chat/chat-utils';
@@ -10,7 +9,7 @@ import { MessageComposer } from '@/components/chat/message-composer';
 import { Box } from '@/components/ui/box';
 import { Divider } from '@/components/ui/divider';
 import { FlatList } from '@/components/ui/flat-list';
-import { KeyboardAvoidingView } from '@/components/ui/keyboard-avoiding-view';
+import { BottomAnchoredKeyboardView } from '@/components/ui/keyboard-avoiding-view';
 import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
@@ -116,7 +115,7 @@ export default function ThreadScreen() {
     <Box className="size-full flex-1 bg-background-0">
       <Stack.Screen options={{ title: t('chat.thread'), headerShown: true, headerBackTitle: '' }} />
 
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
+      <BottomAnchoredKeyboardView>
         {root ? (
           <VStack className="border-b border-outline-200 bg-background-50 py-2">
             <Text className="px-4 text-xs font-semibold uppercase text-typography-400">{t('chat.original_message')}</Text>
@@ -131,7 +130,7 @@ export default function ThreadScreen() {
         {/* Threads carry text and location only; omitting the image/GIF callbacks keeps
             those actions out of the composer instead of showing dead buttons. */}
         <MessageComposer onSendText={handleSendText} onSendLocation={handleSendLocation} onTyping={() => undefined} placeholder={t('chat.reply_placeholder')} allowUrgent={false} />
-      </KeyboardAvoidingView>
+      </BottomAnchoredKeyboardView>
     </Box>
   );
 }
