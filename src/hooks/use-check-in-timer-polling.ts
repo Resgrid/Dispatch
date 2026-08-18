@@ -55,6 +55,18 @@ function reconcile(): void {
   if (isReconciling) return;
 
   const store = useCheckInStore.getState();
+
+  // The call-detail screen outranks the console while it is mounted, and the store keeps a single
+  // interval — so starting ours here would `clearInterval` its poll and take the ownership with it.
+  // Everything else that lands in this function while the detail screen holds the store (a return
+  // to the foreground, the active-call set changing under a SignalR refresh) therefore has to leave
+  // empty-handed. Dropping the claim is enough: the hand-back arrives as an owner release on
+  // `handleOwnerChange`, which reconciles again over whatever the desired set has become by then.
+  if (store._pollingOwner === 'call-detail') {
+    runningKey = null;
+    return;
+  }
+
   const shouldPoll = subscribers.size > 0 && isForeground && desiredCallIds.length > 0;
   const nextKey = shouldPoll ? desiredCallIds.join(',') : null;
   const ownsInterval = store._pollingOwner === 'console' && store._pollingInterval !== null;

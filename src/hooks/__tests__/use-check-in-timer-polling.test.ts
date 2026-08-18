@@ -353,5 +353,82 @@ describe('useCheckInTimerPolling', () => {
       expect(mockStopPolling).not.toHaveBeenCalled();
       expect(mockState._pollingOwner).toBe('call-detail');
     });
+
+    it('does not take the interval back when the app returns to the foreground mid-visit', () => {
+      let emit: ((state: AppStateStatus) => void) | undefined;
+      const remove = jest.fn();
+      const addEventListener = jest.spyOn(AppState, 'addEventListener').mockImplementation(((_event: string, handler: (state: AppStateStatus) => void) => {
+        emit = handler;
+        return { remove } as unknown as ReturnType<typeof AppState.addEventListener>;
+      }) as typeof AppState.addEventListener);
+
+      renderHook(() => useCheckInTimerPolling(true));
+      callDetailTakesOver();
+
+      // The console stays mounted underneath the detail screen, so it still sees the app leave and
+      // come back. Resuming used to restart its own poll, which clears the detail screen's interval.
+      emit?.('background');
+      emit?.('active');
+
+      expect(mockStartPollingForCalls).toHaveBeenCalledTimes(1);
+      expect(mockStopPolling).not.toHaveBeenCalled();
+      expect(mockState._pollingOwner).toBe('call-detail');
+      expect(mockState._pollingInterval).toBe(FAKE_INTERVAL);
+
+      addEventListener.mockRestore();
+    });
+
+    it('does not take the interval back when the active calls change mid-visit', () => {
+      const { rerender } = renderHook(() => useCheckInTimerPolling(true));
+      callDetailTakesOver();
+
+      // A SignalR refresh adding a call widens the desired set, which is normally a restart.
+      setCalls([
+        { CallId: '1', State: 1 },
+        { CallId: '2', State: 1 },
+        { CallId: '3', State: 1 },
+      ]);
+      rerender(undefined);
+
+      expect(mockStartPollingForCalls).toHaveBeenCalledTimes(1);
+      expect(mockFetchTimerStatusesForCalls).toHaveBeenCalledTimes(1);
+      expect(mockState._pollingOwner).toBe('call-detail');
+      expect(mockState._pollingInterval).toBe(FAKE_INTERVAL);
+    });
+
+    it('reclaims over the set that changed while the call-detail screen held the interval', () => {
+      const { rerender } = renderHook(() => useCheckInTimerPolling(true));
+      callDetailTakesOver();
+
+      setCalls([
+        { CallId: '1', State: 1 },
+        { CallId: '2', State: 1 },
+        { CallId: '3', State: 1 },
+      ]);
+      rerender(undefined);
+      callDetailReleases();
+
+      // Deferring the restart must not lose it: the hand-back polls the widened set, not the stale one.
+      expect(mockStartPollingForCalls).toHaveBeenLastCalledWith([1, 2, 3], 30000);
+      expect(mockFetchTimerStatusesForCalls).toHaveBeenLastCalledWith([1, 2, 3]);
+      expect(mockState._pollingOwner).toBe('console');
+    });
+
+    it('does not take an interval the call-detail screen already owns when a consumer mounts', () => {
+      // Opening a call first and only then expanding a console panel: the takeover predates the
+      // owner subscription, so nothing told the hook to give up a claim it never made.
+      callDetailTakesOver();
+
+      renderHook(() => useCheckInTimerPolling(true));
+
+      expect(mockStartPollingForCalls).not.toHaveBeenCalled();
+      expect(mockFetchTimerStatusesForCalls).not.toHaveBeenCalled();
+      expect(mockState._pollingOwner).toBe('call-detail');
+
+      callDetailReleases();
+
+      expect(mockStartPollingForCalls).toHaveBeenCalledWith([1, 2], 30000);
+      expect(mockState._pollingOwner).toBe('console');
+    });
   });
 });
