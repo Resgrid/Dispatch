@@ -107,6 +107,16 @@ function sortByStatusSeverity(a: CheckInTimerStatusResultData, b: CheckInTimerSt
   return (STATUS_SEVERITY[a.Status] ?? 3) - (STATUS_SEVERITY[b.Status] ?? 3);
 }
 
+/**
+ * Who installed the current poll interval.
+ *
+ * The store keeps one interval, so the two entry points take it from each other: `startPolling`
+ * serves a single call on the call-detail screen, `startPollingForCalls` serves the dispatch
+ * console's whole active set. Recording the owner lets the console tell "the detail screen handed
+ * the interval back, reclaim it" apart from "the interval went away, leave it alone".
+ */
+export type CheckInPollingOwner = 'call-detail' | 'console';
+
 interface CheckInState {
   timerStatuses: CheckInTimerStatusResultData[];
   resolvedTimers: ResolvedCheckInTimerResultData[];
@@ -122,6 +132,7 @@ interface CheckInState {
 
   _pollingInterval: ReturnType<typeof setInterval> | null;
   _pollingCallIds: number[];
+  _pollingOwner: CheckInPollingOwner | null;
 
   fetchTimerStatuses: (callId: number) => Promise<void>;
   /**
@@ -154,6 +165,7 @@ export const useCheckInStore = create<CheckInState>((set, get) => ({
   checkInError: null,
   _pollingInterval: null,
   _pollingCallIds: [],
+  _pollingOwner: null,
 
   fetchTimerStatuses: async (callId: number) => {
     set({ isLoadingStatuses: true, statusError: null });
@@ -273,7 +285,7 @@ export const useCheckInStore = create<CheckInState>((set, get) => ({
     const interval = setInterval(() => {
       get().fetchTimerStatuses(callId);
     }, intervalMs);
-    set({ _pollingInterval: interval });
+    set({ _pollingInterval: interval, _pollingOwner: 'call-detail' });
   },
 
   startPollingForCalls: (callIds: number[], intervalMs: number = 30000) => {
@@ -282,21 +294,21 @@ export const useCheckInStore = create<CheckInState>((set, get) => ({
       clearInterval(existing);
     }
     if (callIds.length === 0) {
-      set({ _pollingInterval: null, _pollingCallIds: [] });
+      set({ _pollingInterval: null, _pollingCallIds: [], _pollingOwner: null });
       return;
     }
     set({ _pollingCallIds: callIds });
     const interval = setInterval(() => {
       get().fetchTimerStatusesForCalls(callIds, { silent: true });
     }, intervalMs);
-    set({ _pollingInterval: interval });
+    set({ _pollingInterval: interval, _pollingOwner: 'console' });
   },
 
   stopPolling: () => {
     const interval = get()._pollingInterval;
     if (interval) {
       clearInterval(interval);
-      set({ _pollingInterval: null, _pollingCallIds: [] });
+      set({ _pollingInterval: null, _pollingCallIds: [], _pollingOwner: null });
     }
   },
 
@@ -318,6 +330,7 @@ export const useCheckInStore = create<CheckInState>((set, get) => ({
       checkInError: null,
       _pollingInterval: null,
       _pollingCallIds: [],
+      _pollingOwner: null,
     });
   },
 }));

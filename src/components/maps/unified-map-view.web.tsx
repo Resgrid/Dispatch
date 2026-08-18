@@ -17,6 +17,15 @@ import { useLocationStore } from '@/stores/app/location-store';
 // Mapbox GL CSS needs to be injected for web
 const MAPBOX_GL_CSS_URL = 'https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.css';
 
+/** A visible layer flattened into the exact shape the Mapbox source/layer pair needs. */
+interface PreparedLayer {
+  sourceId: string;
+  layerId: string;
+  type: string;
+  color: string;
+  featureCollection: FeatureCollection;
+}
+
 interface UnifiedMapViewProps {
   /** Map pins to display */
   pins?: MapMakerInfoData[];
@@ -63,8 +72,7 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
   const sourceIdsRef = useRef<string[]>([]);
   const [isMapReady, setIsMapReady] = useState(false);
   const [internalPins, setInternalPins] = useState<MapMakerInfoData[]>([]);
-  const visibleLayersRef = useRef(visibleLayers);
-  visibleLayersRef.current = visibleLayers;
+  const preparedLayersRef = useRef<PreparedLayer[]>([]);
 
   // Use external pins if provided, otherwise use internal pins
   const mapPins = externalPins ?? internalPins;
@@ -290,15 +298,47 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
     });
   }, [mapPins, isMapReady, colorScheme]);
 
-  // Rebuilding a GeoJSON source makes Mapbox re-parse and re-tessellate the whole feature set,
-  // so the effect below must not fire on array identity alone — a caller that computes its layer
-  // array inline would otherwise pay that cost on every single render.
-  const layersSignature = useMemo(() => visibleLayers.map((layer) => `${layer.Id}:${layer.Color ?? ''}:${layer.Data?.Type ?? ''}:${layer.Data?.Features?.length ?? 0}`).join('|'), [visibleLayers]);
+  // Flattened once per `visibleLayers` change and reused by both the signature and the effect
+  // below, so serializing for the comparison costs no work the upload did not already do.
+  const preparedLayers = useMemo<PreparedLayer[]>(() => {
+    const prepared: PreparedLayer[] = [];
+
+    visibleLayers.forEach((layer) => {
+      if (!layer.Data?.Features || !Array.isArray(layer.Data.Features)) return;
+
+      const features = layer.Data.Features.flatMap((fc) => fc.features || []) as Feature<Geometry, GeoJsonProperties>[];
+      if (features.length === 0) return;
+
+      prepared.push({
+        sourceId: `custom-layer-source-${layer.Id}`,
+        layerId: `custom-layer-${layer.Id}`,
+        type: layer.Data.Type?.toLowerCase() || 'polygon',
+        color: layer.Color || '#3b82f6',
+        featureCollection: { type: 'FeatureCollection', features },
+      });
+    });
+
+    return prepared;
+  }, [visibleLayers]);
+
+  // Rebuilding a GeoJSON source makes Mapbox re-parse and re-tessellate the whole feature set, so
+  // the effect below must not fire on array identity alone — a caller that computes its layer array
+  // inline would otherwise pay that cost on every single render. The signature covers the feature
+  // geometry and properties too: a layer can be edited in place without its id, colour, type, or
+  // feature count changing, and keying on those alone would leave the map showing stale shapes.
+  const layersSignature = useMemo(() => preparedLayers.map((layer) => `${layer.layerId}:${layer.color}:${layer.type}:${JSON.stringify(layer.featureCollection)}`).join('|'), [preparedLayers]);
+
+  // Declared ahead of the layer effect so the ref is already current when that effect reads it.
+  // Assigning during render instead would let a render React discards hand stale — or never
+  // displayed — layer data to the map.
+  useEffect(() => {
+    preparedLayersRef.current = preparedLayers;
+  }, [preparedLayers]);
 
   // Update layers when visibility changes
   useEffect(() => {
     if (!map.current || !isMapReady) return;
-    const visibleLayers = visibleLayersRef.current;
+    const layers = preparedLayersRef.current;
 
     // Remove existing custom layers
     layerIdsRef.current.forEach((layerId) => {
@@ -315,28 +355,13 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
     sourceIdsRef.current = [];
 
     // Add visible layers
-    visibleLayers.forEach((layer) => {
-      if (!layer.Data?.Features || !Array.isArray(layer.Data.Features) || layer.Data.Features.length === 0) return;
-
-      const sourceId = `custom-layer-source-${layer.Id}`;
-      const layerId = `custom-layer-${layer.Id}`;
-
-      const featureCollection: FeatureCollection = {
-        type: 'FeatureCollection',
-        features: layer.Data.Features.flatMap((fc) => fc.features || []) as Feature<Geometry, GeoJsonProperties>[],
-      };
-
-      if (featureCollection.features.length === 0) return;
-
+    layers.forEach(({ sourceId, layerId, type, color, featureCollection }) => {
       try {
         map.current!.addSource(sourceId, {
           type: 'geojson',
           data: featureCollection,
         });
         sourceIdsRef.current.push(sourceId);
-
-        const type = layer.Data.Type?.toLowerCase() || 'polygon';
-        const color = layer.Color || '#3b82f6';
 
         if (type === 'linestring' || type === 'multilinestring') {
           map.current!.addLayer({
@@ -379,7 +404,7 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
       } catch (error) {
         logger.error({
           message: 'Failed to add map layer',
-          context: { error, layerId: layer.Id },
+          context: { error, layerId },
         });
       }
     });

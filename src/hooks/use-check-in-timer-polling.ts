@@ -2,8 +2,9 @@ import { useEffect, useMemo } from 'react';
 import { AppState, type AppStateStatus, Platform } from 'react-native';
 
 import { isCallActive } from '@/lib/utils';
+import useAuthStore from '@/stores/auth/store';
 import { useCallsStore } from '@/stores/calls/store';
-import { useCheckInStore } from '@/stores/checkIn/store';
+import { type CheckInPollingOwner, useCheckInStore } from '@/stores/checkIn/store';
 
 /**
  * Shared driver for the dispatch console's check-in timer poll.
@@ -19,7 +20,10 @@ import { useCheckInStore } from '@/stores/checkIn/store';
  *
  * The underlying store keeps a single interval (`_pollingInterval`), so a screen that drives its
  * own poll — the call-detail check-in tab via `startPolling` — still takes over while it is
- * mounted; the console panels re-establish theirs on return.
+ * mounted. The console sits underneath in the stack and stays mounted through that visit, so it
+ * watches `_pollingOwner` to notice both the takeover and the hand-back: the detail screen's
+ * cleanup stops (and then resets) the store, and without reclaiming afterwards the console would
+ * keep believing it was polling while no interval existed at all.
  */
 
 const POLL_INTERVAL_MS = 30000;
@@ -30,7 +34,9 @@ const subscribers = new Map<symbol, number[]>();
 let desiredCallIds: number[] = [];
 let runningKey: string | null = null;
 let isForeground = true;
+let isReconciling = false;
 let unbindForeground: (() => void) | null = null;
+let unsubscribeOwner: (() => void) | null = null;
 
 function isBackgroundState(state: AppStateStatus | null | undefined): boolean {
   return state === 'background' || state === 'inactive';
@@ -45,23 +51,65 @@ function recomputeDesired(): void {
 }
 
 function reconcile(): void {
+  // Our own stop/start pair moves `_pollingOwner`, which notifies the subscription below.
+  if (isReconciling) return;
+
   const store = useCheckInStore.getState();
   const shouldPoll = subscribers.size > 0 && isForeground && desiredCallIds.length > 0;
   const nextKey = shouldPoll ? desiredCallIds.join(',') : null;
+  const ownsInterval = store._pollingOwner === 'console' && store._pollingInterval !== null;
 
-  if (nextKey === runningKey) return;
+  // `runningKey` on its own is not proof the interval exists: the call-detail screen replaces it
+  // on the way in and clears it on the way out, so a cached key would let the console early-return
+  // forever with nothing actually polling.
+  if (nextKey === runningKey && (nextKey === null || ownsInterval)) return;
 
-  if (runningKey !== null) {
-    store.stopPolling();
+  isReconciling = true;
+  try {
+    // Only ever stop an interval that is ours — the call-detail screen's poll is not the console's
+    // to cancel.
+    if (runningKey !== null && ownsInterval) {
+      store.stopPolling();
+    }
+
+    runningKey = nextKey;
+    if (nextKey === null) return;
+
+    // Fetch up front so a resumed or newly-widened poll shows current data instead of waiting a
+    // full interval. Not silent: this is the round a spinner should be allowed to cover.
+    void store.fetchTimerStatusesForCalls(desiredCallIds);
+    store.startPollingForCalls(desiredCallIds, POLL_INTERVAL_MS);
+  } finally {
+    isReconciling = false;
+  }
+}
+
+function handleOwnerChange(owner: CheckInPollingOwner | null, previousOwner: CheckInPollingOwner | null): void {
+  if (owner === previousOwner) return;
+
+  if (owner === 'call-detail') {
+    // Preempted. Give up the claim so the next reconcile rebuilds instead of trusting a key whose
+    // interval now belongs to another screen — and stop nothing, that interval is not ours.
+    runningKey = null;
+    return;
   }
 
-  runningKey = nextKey;
-  if (nextKey === null) return;
+  // Only a release is worth acting on; someone else starting a poll is handled above.
+  if (owner !== null) return;
+  if (isReconciling) return;
 
-  // Fetch up front so a resumed or newly-widened poll shows current data instead of waiting a
-  // full interval. Not silent: this is the round a spinner should be allowed to cover.
-  void store.fetchTimerStatusesForCalls(desiredCallIds);
-  store.startPollingForCalls(desiredCallIds, POLL_INTERVAL_MS);
+  // Sign-out tears the poll down through this same path (see `teardownSignedInSession`). Reclaiming
+  // then would put the console back to polling against a session that no longer exists.
+  if (useAuthStore.getState().status !== 'signedIn') return;
+
+  reconcile();
+}
+
+function bindOwnerWatcher(): void {
+  if (unsubscribeOwner) return;
+  unsubscribeOwner = useCheckInStore.subscribe((state, previousState) => {
+    handleOwnerChange(state._pollingOwner, previousState._pollingOwner);
+  });
 }
 
 function bindForegroundWatcher(): void {
@@ -91,13 +139,22 @@ function bindForegroundWatcher(): void {
     isForeground = !isBackgroundState(nextState);
     reconcile();
   });
-  unbindForeground = () => subscription.remove();
+  // Optional call: `addEventListener` only started returning a subscription in newer React Native,
+  // and an unbind that throws would strand the watcher bound for the rest of the process.
+  unbindForeground = () => subscription?.remove();
 }
 
-function releaseForegroundWatcher(): void {
-  if (subscribers.size > 0 || !unbindForeground) return;
-  unbindForeground();
-  unbindForeground = null;
+function releaseWatchers(): void {
+  if (subscribers.size > 0) return;
+
+  if (unbindForeground) {
+    unbindForeground();
+    unbindForeground = null;
+  }
+  if (unsubscribeOwner) {
+    unsubscribeOwner();
+    unsubscribeOwner = null;
+  }
   isForeground = true;
 }
 
@@ -131,6 +188,7 @@ export function useCheckInTimerPolling(enabled: boolean): void {
 
     const token = Symbol('check-in-timer-polling');
     bindForegroundWatcher();
+    bindOwnerWatcher();
     subscribers.set(token, callIdsKey.split(',').map(Number));
     recomputeDesired();
     reconcile();
@@ -139,7 +197,7 @@ export function useCheckInTimerPolling(enabled: boolean): void {
       subscribers.delete(token);
       recomputeDesired();
       reconcile();
-      releaseForegroundWatcher();
+      releaseWatchers();
     };
   }, [enabled, callIdsKey]);
 }
@@ -156,5 +214,10 @@ export function resetCheckInTimerPolling(): void {
     unbindForeground();
     unbindForeground = null;
   }
+  if (unsubscribeOwner) {
+    unsubscribeOwner();
+    unsubscribeOwner = null;
+  }
   isForeground = true;
+  isReconciling = false;
 }

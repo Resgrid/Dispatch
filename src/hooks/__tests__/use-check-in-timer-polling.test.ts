@@ -2,9 +2,58 @@ import { renderHook } from '@testing-library/react-native';
 import { AppState, type AppStateStatus } from 'react-native';
 
 import { useCallsStore } from '@/stores/calls/store';
-import { useCheckInStore } from '@/stores/checkIn/store';
 
 import { resetCheckInTimerPolling, useCheckInTimerPolling } from '../use-check-in-timer-polling';
+
+/**
+ * The check-in store is faked rather than stubbed because the behaviour under test is about
+ * ownership handover: the call-detail screen and the console take the store's single interval from
+ * each other, and the hook reacts to `_pollingOwner` moving. A bag of jest.fn()s would never emit
+ * those transitions.
+ */
+const FAKE_INTERVAL = 1 as unknown as ReturnType<typeof setInterval>;
+
+type MockOwner = 'call-detail' | 'console' | null;
+type MockListener = (state: MockCheckInState, previousState: MockCheckInState) => void;
+
+interface MockCheckInState {
+  _pollingInterval: ReturnType<typeof setInterval> | null;
+  _pollingOwner: MockOwner;
+  fetchTimerStatusesForCalls: jest.Mock;
+  startPollingForCalls: jest.Mock;
+  startPolling: jest.Mock;
+  stopPolling: jest.Mock;
+  reset: jest.Mock;
+}
+
+const mockFetchTimerStatusesForCalls = jest.fn();
+const mockStartPollingForCalls = jest.fn();
+const mockStartPolling = jest.fn();
+const mockStopPolling = jest.fn();
+const mockReset = jest.fn();
+const mockListeners = new Set<MockListener>();
+
+let mockState: MockCheckInState;
+
+const mockSetState = (patch: Partial<MockCheckInState>) => {
+  const previousState = mockState;
+  mockState = { ...mockState, ...patch };
+  mockListeners.forEach((listener) => listener(mockState, previousState));
+};
+
+const mockBuildState = (): MockCheckInState => ({
+  _pollingInterval: null,
+  _pollingOwner: null,
+  fetchTimerStatusesForCalls: mockFetchTimerStatusesForCalls,
+  startPollingForCalls: mockStartPollingForCalls,
+  startPolling: mockStartPolling,
+  stopPolling: mockStopPolling,
+  reset: mockReset,
+});
+
+mockState = mockBuildState();
+
+let mockAuthStatus = 'signedIn';
 
 jest.mock('@/stores/calls/store', () => ({
   useCallsStore: jest.fn(),
@@ -12,8 +61,17 @@ jest.mock('@/stores/calls/store', () => ({
 
 jest.mock('@/stores/checkIn/store', () => ({
   useCheckInStore: {
-    getState: jest.fn(),
+    getState: () => mockState,
+    subscribe: (listener: MockListener) => {
+      mockListeners.add(listener);
+      return () => mockListeners.delete(listener);
+    },
   },
+}));
+
+jest.mock('@/stores/auth/store', () => ({
+  __esModule: true,
+  default: { getState: () => ({ status: mockAuthStatus }) },
 }));
 
 jest.mock('@/lib/utils', () => ({
@@ -21,22 +79,43 @@ jest.mock('@/lib/utils', () => ({
 }));
 
 const mockUseCallsStore = useCallsStore as unknown as jest.Mock;
-const mockGetState = (useCheckInStore as unknown as { getState: jest.Mock }).getState;
-
-const fetchTimerStatusesForCalls = jest.fn();
-const startPollingForCalls = jest.fn();
-const stopPolling = jest.fn();
 
 /** `state: 1` is active per the isCallActive mock above; anything else is not. */
 const setCalls = (calls: { CallId: string; State: number }[]) => {
   mockUseCallsStore.mockImplementation((selector: (s: unknown) => unknown) => selector({ calls }));
 };
 
+/** Stand-in for the call-detail check-in tab claiming the store's single interval. */
+const callDetailTakesOver = () => {
+  mockStartPolling();
+  mockSetState({ _pollingInterval: FAKE_INTERVAL, _pollingOwner: 'call-detail' });
+};
+
+/** Stand-in for that tab unmounting: it stops the poll and then resets the store. */
+const callDetailReleases = ({ withReset = true }: { withReset?: boolean } = {}) => {
+  mockStopPolling();
+  mockSetState({ _pollingInterval: null, _pollingOwner: null });
+  if (withReset) {
+    mockReset();
+    mockSetState({ _pollingInterval: null, _pollingOwner: null });
+  }
+};
+
 describe('useCheckInTimerPolling', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockListeners.clear();
+    mockState = mockBuildState();
+    mockAuthStatus = 'signedIn';
     resetCheckInTimerPolling();
-    mockGetState.mockReturnValue({ fetchTimerStatusesForCalls, startPollingForCalls, stopPolling });
+
+    mockStartPollingForCalls.mockImplementation(() => {
+      mockSetState({ _pollingInterval: FAKE_INTERVAL, _pollingOwner: 'console' });
+    });
+    mockStopPolling.mockImplementation(() => {
+      mockSetState({ _pollingInterval: null, _pollingOwner: null });
+    });
+
     setCalls([
       { CallId: '1', State: 1 },
       { CallId: '2', State: 1 },
@@ -45,20 +124,21 @@ describe('useCheckInTimerPolling', () => {
 
   afterEach(() => {
     resetCheckInTimerPolling();
+    mockListeners.clear();
   });
 
   it('starts a poll over the active call ids when enabled', () => {
     renderHook(() => useCheckInTimerPolling(true));
 
-    expect(fetchTimerStatusesForCalls).toHaveBeenCalledWith([1, 2]);
-    expect(startPollingForCalls).toHaveBeenCalledWith([1, 2], 30000);
+    expect(mockFetchTimerStatusesForCalls).toHaveBeenCalledWith([1, 2]);
+    expect(mockStartPollingForCalls).toHaveBeenCalledWith([1, 2], 30000);
   });
 
   it('does not poll when the consumer is disabled', () => {
     renderHook(() => useCheckInTimerPolling(false));
 
-    expect(startPollingForCalls).not.toHaveBeenCalled();
-    expect(fetchTimerStatusesForCalls).not.toHaveBeenCalled();
+    expect(mockStartPollingForCalls).not.toHaveBeenCalled();
+    expect(mockFetchTimerStatusesForCalls).not.toHaveBeenCalled();
   });
 
   it('excludes calls that are not active', () => {
@@ -70,7 +150,7 @@ describe('useCheckInTimerPolling', () => {
 
     renderHook(() => useCheckInTimerPolling(true));
 
-    expect(startPollingForCalls).toHaveBeenCalledWith([1, 3], 30000);
+    expect(mockStartPollingForCalls).toHaveBeenCalledWith([1, 3], 30000);
   });
 
   it('ignores call ids that are not numeric', () => {
@@ -81,7 +161,7 @@ describe('useCheckInTimerPolling', () => {
 
     renderHook(() => useCheckInTimerPolling(true));
 
-    expect(startPollingForCalls).toHaveBeenCalledWith([7], 30000);
+    expect(mockStartPollingForCalls).toHaveBeenCalledWith([7], 30000);
   });
 
   it('does not start a poll when no active call has a usable id', () => {
@@ -89,14 +169,14 @@ describe('useCheckInTimerPolling', () => {
 
     renderHook(() => useCheckInTimerPolling(true));
 
-    expect(startPollingForCalls).not.toHaveBeenCalled();
+    expect(mockStartPollingForCalls).not.toHaveBeenCalled();
   });
 
   it('runs a single interval for two consumers', () => {
     renderHook(() => useCheckInTimerPolling(true));
     renderHook(() => useCheckInTimerPolling(true));
 
-    expect(startPollingForCalls).toHaveBeenCalledTimes(1);
+    expect(mockStartPollingForCalls).toHaveBeenCalledTimes(1);
   });
 
   it('keeps polling while another consumer is still interested', () => {
@@ -105,8 +185,8 @@ describe('useCheckInTimerPolling', () => {
 
     first.unmount();
 
-    expect(stopPolling).not.toHaveBeenCalled();
-    expect(startPollingForCalls).toHaveBeenCalledTimes(1);
+    expect(mockStopPolling).not.toHaveBeenCalled();
+    expect(mockStartPollingForCalls).toHaveBeenCalledTimes(1);
   });
 
   it('stops polling once the last consumer goes away', () => {
@@ -114,7 +194,7 @@ describe('useCheckInTimerPolling', () => {
 
     only.unmount();
 
-    expect(stopPolling).toHaveBeenCalledTimes(1);
+    expect(mockStopPolling).toHaveBeenCalledTimes(1);
   });
 
   it('restarts over the widened set when the active calls change', () => {
@@ -127,8 +207,8 @@ describe('useCheckInTimerPolling', () => {
     ]);
     rerender(undefined);
 
-    expect(startPollingForCalls).toHaveBeenLastCalledWith([1, 2, 3], 30000);
-    expect(fetchTimerStatusesForCalls).toHaveBeenLastCalledWith([1, 2, 3]);
+    expect(mockStartPollingForCalls).toHaveBeenLastCalledWith([1, 2, 3], 30000);
+    expect(mockFetchTimerStatusesForCalls).toHaveBeenLastCalledWith([1, 2, 3]);
   });
 
   it('does not restart when the same calls arrive in a new array', () => {
@@ -140,8 +220,8 @@ describe('useCheckInTimerPolling', () => {
     ]);
     rerender(undefined);
 
-    expect(startPollingForCalls).toHaveBeenCalledTimes(1);
-    expect(stopPolling).not.toHaveBeenCalled();
+    expect(mockStartPollingForCalls).toHaveBeenCalledTimes(1);
+    expect(mockStopPolling).not.toHaveBeenCalled();
   });
 
   it('pauses in the background and refetches on return to the foreground', () => {
@@ -153,15 +233,15 @@ describe('useCheckInTimerPolling', () => {
     }) as typeof AppState.addEventListener);
 
     renderHook(() => useCheckInTimerPolling(true));
-    expect(startPollingForCalls).toHaveBeenCalledTimes(1);
+    expect(mockStartPollingForCalls).toHaveBeenCalledTimes(1);
 
     emit?.('background');
-    expect(stopPolling).toHaveBeenCalledTimes(1);
-    expect(startPollingForCalls).toHaveBeenCalledTimes(1);
+    expect(mockStopPolling).toHaveBeenCalledTimes(1);
+    expect(mockStartPollingForCalls).toHaveBeenCalledTimes(1);
 
     emit?.('active');
-    expect(startPollingForCalls).toHaveBeenCalledTimes(2);
-    expect(fetchTimerStatusesForCalls).toHaveBeenCalledTimes(2);
+    expect(mockStartPollingForCalls).toHaveBeenCalledTimes(2);
+    expect(mockFetchTimerStatusesForCalls).toHaveBeenCalledTimes(2);
 
     addEventListener.mockRestore();
   });
@@ -175,5 +255,103 @@ describe('useCheckInTimerPolling', () => {
 
     expect(remove).toHaveBeenCalledTimes(1);
     addEventListener.mockRestore();
+  });
+
+  it('unsubscribes from the store once the last consumer unmounts', () => {
+    const only = renderHook(() => useCheckInTimerPolling(true));
+    expect(mockListeners.size).toBe(1);
+
+    only.unmount();
+
+    expect(mockListeners.size).toBe(0);
+  });
+
+  describe('shared interval handover', () => {
+    it('yields the interval when the call-detail screen takes over', () => {
+      renderHook(() => useCheckInTimerPolling(true));
+      mockStopPolling.mockClear();
+
+      callDetailTakesOver();
+
+      // The detail screen's interval is not the console's to cancel.
+      expect(mockStopPolling).not.toHaveBeenCalled();
+      expect(mockState._pollingOwner).toBe('call-detail');
+    });
+
+    it('reclaims the interval when the call-detail screen releases it', () => {
+      renderHook(() => useCheckInTimerPolling(true));
+      callDetailTakesOver();
+      mockStartPollingForCalls.mockClear();
+      mockFetchTimerStatusesForCalls.mockClear();
+
+      callDetailReleases();
+
+      expect(mockStartPollingForCalls).toHaveBeenCalledWith([1, 2], 30000);
+      expect(mockFetchTimerStatusesForCalls).toHaveBeenCalledWith([1, 2]);
+      expect(mockState._pollingOwner).toBe('console');
+      expect(mockState._pollingInterval).toBe(FAKE_INTERVAL);
+    });
+
+    it('reclaims even though the release is followed by a store reset', () => {
+      renderHook(() => useCheckInTimerPolling(true));
+      callDetailTakesOver();
+
+      // `stopPolling()` then `reset()` — the detail tab's cleanup order. The reset clears the
+      // interval the console just took back, so the console has to notice a second time.
+      callDetailReleases({ withReset: true });
+
+      expect(mockState._pollingOwner).toBe('console');
+      expect(mockState._pollingInterval).toBe(FAKE_INTERVAL);
+    });
+
+    it('leaves the console polling after a takeover and release cycle with two consumers', () => {
+      renderHook(() => useCheckInTimerPolling(true));
+      renderHook(() => useCheckInTimerPolling(true));
+
+      callDetailTakesOver();
+      callDetailReleases();
+
+      expect(mockState._pollingOwner).toBe('console');
+      expect(mockStartPollingForCalls).toHaveBeenLastCalledWith([1, 2], 30000);
+    });
+
+    it('does not reclaim the interval after sign-out teardown', () => {
+      renderHook(() => useCheckInTimerPolling(true));
+      mockStartPollingForCalls.mockClear();
+      mockFetchTimerStatusesForCalls.mockClear();
+
+      // teardownSignedInSession() stops the poll through the same action the detail screen uses.
+      mockAuthStatus = 'signedOut';
+      mockStopPolling();
+      mockSetState({ _pollingInterval: null, _pollingOwner: null });
+
+      expect(mockStartPollingForCalls).not.toHaveBeenCalled();
+      expect(mockFetchTimerStatusesForCalls).not.toHaveBeenCalled();
+      expect(mockState._pollingOwner).toBeNull();
+      expect(mockState._pollingInterval).toBeNull();
+    });
+
+    it('does not reclaim the interval when the call-detail screen releases while signed out', () => {
+      renderHook(() => useCheckInTimerPolling(true));
+      callDetailTakesOver();
+      mockStartPollingForCalls.mockClear();
+
+      mockAuthStatus = 'signedOut';
+      callDetailReleases();
+
+      expect(mockStartPollingForCalls).not.toHaveBeenCalled();
+      expect(mockState._pollingOwner).toBeNull();
+    });
+
+    it('stops nothing on unmount when another screen owns the interval', () => {
+      const only = renderHook(() => useCheckInTimerPolling(true));
+      callDetailTakesOver();
+      mockStopPolling.mockClear();
+
+      only.unmount();
+
+      expect(mockStopPolling).not.toHaveBeenCalled();
+      expect(mockState._pollingOwner).toBe('call-detail');
+    });
   });
 });
