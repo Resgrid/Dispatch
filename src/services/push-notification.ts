@@ -12,7 +12,7 @@ import { storage } from '@/lib/storage';
 import { getDeviceUuid } from '@/lib/storage/app';
 import { electronNotificationService } from '@/services/electron-notification';
 import { useCoreStore } from '@/stores/app/core-store';
-import { usePushNotificationModalStore } from '@/stores/push-notification/store';
+import { parseNotificationData, usePushNotificationModalStore } from '@/stores/push-notification/store';
 import { securityStore } from '@/stores/security/store';
 
 // Define notification response types
@@ -23,12 +23,44 @@ export interface PushNotificationData {
 }
 
 /**
+ * Pulls the Resgrid eventCode (and the data record that carried it) out of a
+ * notification request. On Android the FCM data payload is surfaced as
+ * content.data, but on iOS expo-notifications only maps the APNs custom key
+ * "body" to content.data — Core sends eventCode as a top-level custom key (or
+ * nested under aps for FCM-relayed APNs), so content.data is empty there and we
+ * must fall back to the raw push payload exposed on the trigger.
+ */
+export function extractPushNotificationData(request: Notifications.NotificationRequest): { eventCode: string | undefined; data: Record<string, unknown> } {
+  const contentData = request.content.data;
+  if (contentData && typeof contentData === 'object' && typeof (contentData as Record<string, unknown>).eventCode === 'string') {
+    return { eventCode: (contentData as Record<string, unknown>).eventCode as string, data: contentData as Record<string, unknown> };
+  }
+
+  const trigger = request.trigger as { payload?: Record<string, unknown> } | null | undefined;
+  const payload = trigger && typeof trigger === 'object' ? trigger.payload : undefined;
+  if (payload && typeof payload === 'object') {
+    const candidates = [payload, payload.body, payload.aps];
+    for (const candidate of candidates) {
+      if (candidate && typeof candidate === 'object' && typeof (candidate as Record<string, unknown>).eventCode === 'string') {
+        return { eventCode: (candidate as Record<string, unknown>).eventCode as string, data: candidate as Record<string, unknown> };
+      }
+    }
+  }
+
+  return {
+    eventCode: undefined,
+    data: contentData && typeof contentData === 'object' ? (contentData as Record<string, unknown>) : {},
+  };
+}
+
+/**
  * Handles chat push deep-links. Chat notifications carry an eventCode of
  * "t:{channelId}" (direct message) or "g:{channelId}" (group/channel); both
- * navigate to the chat conversation route.
+ * navigate to the chat conversation route. Case-insensitive so the legacy
+ * uppercase prefixes deep-link too.
  */
 export function handleChatDeepLink(eventCode: string): boolean {
-  const match = /^([tg]):(.+)$/.exec(eventCode);
+  const match = /^([tg]):(.+)$/i.exec(eventCode);
   if (!match) return false;
   const channelId = match[2];
   if (/[/\\?#]/.test(channelId)) return false;
@@ -219,20 +251,21 @@ class PushNotificationService {
   }
 
   private handleNotificationReceived = (notification: Notifications.Notification): void => {
-    const data = notification.request.content.data;
+    // The extractor falls back to the raw trigger payload so iOS foreground
+    // notifications (where content.data is empty) still surface the modal.
+    const { eventCode, data } = extractPushNotificationData(notification.request);
 
     logger.info({
       message: 'Notification received',
       context: {
-        data,
+        eventCode,
       },
     });
 
     // Check if the notification has an eventCode and show modal
-    // eventCode must be a string to be valid
-    if (data?.eventCode && typeof data.eventCode === 'string') {
+    if (eventCode) {
       const notificationData = {
-        eventCode: data.eventCode as string,
+        eventCode,
         title: notification.request.content.title || undefined,
         body: notification.request.content.body || undefined,
         data,
@@ -262,7 +295,7 @@ class PushNotificationService {
 
       logger.info({
         message: 'App opened from notification (killed state)',
-        context: { data: response.notification.request.content.data },
+        context: { eventCode: extractPushNotificationData(response.notification.request).eventCode },
       });
 
       this.handleResponseOnce(response);
@@ -282,25 +315,44 @@ class PushNotificationService {
     this.lastHandledResponseId = identifier ?? this.lastHandledResponseId;
 
     const content = response.notification.request.content;
-    const data = content.data;
+    const { eventCode, data } = extractPushNotificationData(response.notification.request);
 
     logger.info({
       message: 'Notification response received',
       context: {
-        data,
+        eventCode,
       },
     });
 
-    // Deep-link chat notifications: eventCode "t:{channelId}" (DM) / "g:{channelId}" (group)
-    if (data?.eventCode && typeof data.eventCode === 'string') {
-      if (handleChatDeepLink(data.eventCode)) {
+    if (eventCode) {
+      // Deep-link chat notifications: eventCode "t:{channelId}" (DM) / "g:{channelId}" (group)
+      if (handleChatDeepLink(eventCode)) {
+        return;
+      }
+
+      // Deep-link call notifications straight to the call detail screen.
+      const parsed = parseNotificationData({ eventCode, data });
+      if (parsed.type === 'call' && parsed.id && !/[/\\?#]/.test(parsed.id)) {
+        void routerPushWithRetry(
+          { pathname: '/call/[id]', params: { id: parsed.id } },
+          {
+            maxAttempts: 40,
+            retryDelayMs: 250,
+            // On a cold start the session is still hydrating. Pushing a protected route before
+            // it settles gets the route replaced by the auth guard, which is indistinguishable
+            // from the tap doing nothing at all.
+            waitUntil: () => useAuthStore.getState().status === 'signedIn',
+          }
+        ).catch((error) => {
+          logger.error({ message: 'Failed to deep-link to call from push notification', context: { error, eventCode } });
+        });
         return;
       }
 
       // Every other type mirrors the foreground behaviour so the tap surfaces the
       // notification instead of opening the app to nothing.
       usePushNotificationModalStore.getState().showNotificationModal({
-        eventCode: data.eventCode,
+        eventCode,
         title: content.title || undefined,
         body: content.body || undefined,
         data,
