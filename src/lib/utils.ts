@@ -545,18 +545,29 @@ export function getTimeAgoUtc(time: any): string {
     return 'Unknown';
   }
 
+  // Legacy API values are zone-less UTC strings that new Date() parses as device-local time;
+  // those need "now" shifted by the same offset below. Strings carrying an explicit Z/±hh:mm
+  // designator parse correctly and must not be shifted.
+  let hasZone = false;
+
   switch (typeof time) {
     case 'number':
+      // Epoch milliseconds are an exact instant — never shift.
+      hasZone = true;
       break;
     case 'string':
+      hasZone = /(Z|[+-]\d{2}:?\d{2})$/i.test(time.trim());
       time = +new Date(time);
       break;
     case 'object':
-      if (time.constructor === Date) {
+      if (time instanceof Date) {
+        // A Date is an exact instant — never shift.
+        hasZone = true;
         time = time.getTime();
       }
       break;
     default:
+      hasZone = true;
       time = +new Date();
   }
 
@@ -584,7 +595,8 @@ export function getTimeAgoUtc(time: any): string {
     [5806080000, 'Last century', 'Next century'], // 60*60*24*7*4*12*100*2
     [58060800000, 'centuries', 2903040000], // 60*60*24*7*4*12*100*20, 60*60*24*7*4*12*100
   ];
-  let seconds = (Number(new Date(currentDate).getTime() + new Date(currentDate).getTimezoneOffset() * 60 * 1000) - time) / 1000,
+  const nowMs = hasZone ? currentDate.getTime() : currentDate.getTime() + currentDate.getTimezoneOffset() * 60 * 1000;
+  let seconds = (nowMs - time) / 1000,
     token = 'ago',
     listChoice = 1;
 

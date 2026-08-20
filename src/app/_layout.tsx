@@ -8,6 +8,7 @@ import { FloatingDevTools } from '@react-buoy/core';
 import { createNavigationContainerRef, DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import * as Sentry from '@sentry/react-native';
 import { isRunningInExpoGo } from 'expo';
+import { useFonts } from 'expo-font';
 import * as Notifications from 'expo-notifications';
 import { Stack, useNavigationContainerRef } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -138,6 +139,12 @@ LogBox.ignoreLogs([
 function RootLayout() {
   // Capture the NavigationContainer ref and register it with the integration.
   const ref = useNavigationContainerRef();
+
+  // Register the map-icons glyph font (POI map markers) on native and web.
+  // Non-blocking: map screens mount well after this resolves.
+  useFonts({
+    'map-icons': require('@assets/fonts/map-icons.ttf'),
+  });
 
   useEffect(() => {
     if (ref?.current) {
