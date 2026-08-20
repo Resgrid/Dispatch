@@ -126,7 +126,7 @@ export default function TabLayout() {
   const parentRef = useRef(null);
 
   // Initialize push notifications
-  //usePushNotifications();
+  usePushNotifications();
 
   // Initialize Mapbox - only on native platforms
   // On web, Mapbox GL JS is loaded separately and doesn't use this initialization

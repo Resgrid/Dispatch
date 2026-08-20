@@ -71,6 +71,9 @@ jest.mock('@/hooks/use-analytics', () => ({
 }));
 
 jest.mock('@/stores/push-notification/store', () => ({
+  // Keep the real isSafeRouteId so the tests exercise the same call id validation the
+  // deep-link handler uses, rather than a stub that always says yes.
+  ...jest.requireActual('@/stores/push-notification/store'),
   usePushNotificationModalStore: jest.fn(),
 }));
 
@@ -281,6 +284,32 @@ describe('PushNotificationModal', () => {
       id: '1234',
       eventCode: 'C:1234',
     });
+  });
+
+  // The call id comes from the push payload and is interpolated into the route path, so the same
+  // separator/query/fragment rejection the deep-link handler applies has to hold here too.
+  it.each(['../chat/9999', 'a\\b', 'a?x=1', 'a#fragment', ''])('should not offer the call button for unsafe call id %s', (id) => {
+    const hideNotificationModalMock = jest.fn();
+
+    (usePushNotificationModalStore as unknown as jest.Mock).mockReturnValue({
+      ...mockStore,
+      isOpen: true,
+      notification: {
+        type: 'call' as const,
+        id,
+        eventCode: `C:${id}`,
+        title: 'Emergency Call',
+        body: 'Structure fire',
+      },
+      hideNotificationModal: hideNotificationModalMock,
+    });
+
+    render(<PushNotificationModal />);
+
+    expect(screen.queryByText('View call')).toBeNull();
+    expect(router.push).not.toHaveBeenCalled();
+    expect(hideNotificationModalMock).not.toHaveBeenCalled();
+    expect(mockAnalytics.trackEvent).not.toHaveBeenCalledWith('push_notification_view_call_pressed', expect.any(Object));
   });
 
   it('should handle view call button press', async () => {

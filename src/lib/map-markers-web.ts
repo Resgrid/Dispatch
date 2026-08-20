@@ -6,12 +6,13 @@ import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersD
 type MapIconKey = keyof typeof MAP_ICONS;
 
 /**
- * Injects the map-icons @font-face CSS into the document head if not already present.
- * The map-icons font files are expected at /clib/mapMarkers/ on the server.
+ * Injects the shared .map-icon CSS class into the document head if not already present.
+ * The 'map-icons' font-face itself is registered by expo-font at app startup
+ * (see src/app/_layout.tsx) from the bundled assets/fonts/map-icons.ttf.
  */
 let mapIconsFontInjected = false;
 
-export const injectMapIconsFont = (baseUrl = '/clib/mapMarkers/'): void => {
+export const injectMapIconsFont = (): void => {
   if (mapIconsFontInjected || typeof document === 'undefined') return;
 
   const styleId = 'map-icons-font-face';
@@ -23,17 +24,6 @@ export const injectMapIconsFont = (baseUrl = '/clib/mapMarkers/'): void => {
   const style = document.createElement('style');
   style.id = styleId;
   style.textContent = `
-    @font-face {
-      font-family: 'map-icons';
-      src: url('${baseUrl}map-icons.eot');
-      src: url('${baseUrl}map-icons.eot#iefix') format('embedded-opentype'),
-           url('${baseUrl}map-icons.ttf') format('truetype'),
-           url('${baseUrl}map-icons.woff') format('woff'),
-           url('${baseUrl}map-icons.svg#map-icons') format('svg');
-      font-weight: normal;
-      font-style: normal;
-    }
-
     .map-icon {
       font-family: 'map-icons';
       speak: none;

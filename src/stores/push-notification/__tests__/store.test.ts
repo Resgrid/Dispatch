@@ -277,7 +277,7 @@ describe('usePushNotificationModalStore', () => {
       expect(parsed.eventCode).toBe('c:1234');
     });
 
-    it('should handle event code without colon', () => {
+    it('should parse legacy event code without colon (first char prefix)', () => {
       const store = usePushNotificationModalStore.getState();
       const parsed = store.parseNotification({
         eventCode: 'C1234',
@@ -285,9 +285,35 @@ describe('usePushNotificationModalStore', () => {
         body: 'Structure fire',
       });
 
-      expect(parsed.type).toBe('unknown');
-      expect(parsed.id).toBe('');
+      expect(parsed.type).toBe('call');
+      expect(parsed.id).toBe('1234');
       expect(parsed.eventCode).toBe('C1234');
+    });
+
+    it('should parse legacy message event code without colon', () => {
+      const store = usePushNotificationModalStore.getState();
+      const parsed = store.parseNotification({
+        eventCode: 'M5678',
+        title: 'New Message',
+        body: 'Message content',
+      });
+
+      expect(parsed.type).toBe('message');
+      expect(parsed.id).toBe('5678');
+      expect(parsed.eventCode).toBe('M5678');
+    });
+
+    it('should split on the first colon only so ids containing colons survive', () => {
+      const store = usePushNotificationModalStore.getState();
+      const parsed = store.parseNotification({
+        eventCode: 'g:abc:def',
+        title: 'Group Chat',
+        body: 'Group chat content',
+      });
+
+      expect(parsed.type).toBe('group-chat');
+      expect(parsed.id).toBe('abc:def');
+      expect(parsed.eventCode).toBe('g:abc:def');
     });
 
     it('should handle invalid event code format', () => {
