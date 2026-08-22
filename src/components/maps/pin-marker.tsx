@@ -1,7 +1,7 @@
 import type Mapbox from '@rnmapbox/maps';
 import { useColorScheme } from 'nativewind';
 import React, { useCallback } from 'react';
-import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { MAP_ICONS } from '@/constants/map-icons';
@@ -70,10 +70,8 @@ const PinMarker = React.memo<PinMarkerProps>(({ pin, size = 32, onPress }) => {
     elevation: 3,
   };
 
-  // On native, the map-icons font Unicode characters (PUA range) won't render
-  // without the font bundled. We show the character anyway — if the font is
-  // bundled with the app under the "map-icons" family name, it will render.
-  // Otherwise the system will show a fallback glyph or nothing.
+  // The map-icons glyph font is registered at app startup via expo-font
+  // (see src/app/_layout.tsx) from the bundled assets/fonts/map-icons.ttf.
   const poiIconTextStyle = {
     position: 'absolute' as const,
     top: POI_ICON_TOP_OFFSET,
@@ -82,7 +80,7 @@ const PinMarker = React.memo<PinMarkerProps>(({ pin, size = 32, onPress }) => {
     fontSize: POI_ICON_FONT_SIZE,
     lineHeight: POI_ICON_FONT_SIZE,
     color: '#ffffff',
-    fontFamily: Platform.OS === 'web' ? 'map-icons' : 'map-icons',
+    fontFamily: 'map-icons',
     includeFontPadding: false,
     textAlignVertical: 'center' as const,
   };

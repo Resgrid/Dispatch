@@ -197,14 +197,50 @@ describe('handleChatDeepLink', () => {
     ['g:9101', '9101'],
     ['T:channel-1', 'channel-1'],
     ['G:9101', '9101'],
-  ])('navigates with explicit route params for %s', (eventCode, channelId) => {
-    expect(handleChatDeepLink(eventCode)).toBe(true);
+  ])('navigates with explicit route params for %s', async (eventCode, channelId) => {
+    await expect(handleChatDeepLink(eventCode)).resolves.toBe(true);
     expect(mockRouterPushWithRetry).toHaveBeenCalledWith({ pathname: '/chat/[channelId]', params: { channelId } }, expect.objectContaining({ maxAttempts: 40, retryDelayMs: 250 }));
   });
 
-  it.each(['t:a/b', 't:a\\b', 'g:a?x=1', 'g:a#fragment', 'x:123', 't:', 'notacode', ':missingprefix'])('rejects invalid payload %s', (eventCode) => {
-    expect(handleChatDeepLink(eventCode)).toBe(false);
+  it.each(['t:a/b', 't:a\\b', 'g:a?x=1', 'g:a#fragment', 'x:123', 't:', 'notacode', ':missingprefix'])('rejects invalid payload %s', async (eventCode) => {
+    await expect(handleChatDeepLink(eventCode)).resolves.toBe(false);
     expect(mockRouterPushWithRetry).not.toHaveBeenCalled();
+  });
+
+  // Resolving false is what tells the tap handler to fall back to the notification modal
+  // instead of leaving the app on whatever screen it opened to.
+  it('resolves false when the navigation never lands', async () => {
+    mockRouterPushWithRetry.mockRejectedValueOnce(new Error('navigation never became ready'));
+
+    await expect(handleChatDeepLink('t:channel-1')).resolves.toBe(false);
+  });
+});
+
+describe('tap response falls back to the modal when a deep-link never lands', () => {
+  type ResponseRouter = { handleResponseOnce: (response: Notifications.NotificationResponse) => Promise<void> };
+  const routeResponse = (response: Notifications.NotificationResponse): Promise<void> => (pushNotificationService as unknown as ResponseRouter).handleResponseOnce(response);
+
+  it('shows the modal when the chat deep-link exhausts its retries', async () => {
+    mockRouterPushWithRetry.mockRejectedValueOnce(new Error('navigation never became ready'));
+
+    await routeResponse(createMockResponse({ title: 'Chat', body: 'Hello', data: { eventCode: 'g:9101' } }));
+
+    expect(mockShowNotificationModal).toHaveBeenCalledWith(expect.objectContaining({ eventCode: 'g:9101' }));
+  });
+
+  it('shows the modal when the call deep-link exhausts its retries', async () => {
+    mockRouterPushWithRetry.mockRejectedValueOnce(new Error('navigation never became ready'));
+
+    await routeResponse(createMockResponse({ title: 'Call', body: 'Structure fire', data: { eventCode: 'C:1234' } }));
+
+    expect(mockRouterPushWithRetry).toHaveBeenCalledWith({ pathname: '/call/[id]', params: { id: '1234' } }, expect.objectContaining({ maxAttempts: 40 }));
+    expect(mockShowNotificationModal).toHaveBeenCalledWith(expect.objectContaining({ eventCode: 'C:1234' }));
+  });
+
+  it('does not show the modal when the deep-link lands', async () => {
+    await routeResponse(createMockResponse({ title: 'Call', body: 'Structure fire', data: { eventCode: 'C:1234' } }));
+
+    expect(mockShowNotificationModal).not.toHaveBeenCalled();
   });
 });
 

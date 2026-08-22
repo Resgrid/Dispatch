@@ -38,6 +38,14 @@ const EVENT_CODE_PREFIXES: Record<string, NotificationType> = {
   g: 'group-chat',
 };
 
+/**
+ * Ids parsed out of a push event code are attacker-influenced and land straight in a route
+ * path, so anything that could steer the router elsewhere — a path separator, a query, a
+ * fragment — disqualifies the id. Shared by the deep-link handlers and the notification modal
+ * so a tap and a cold-start deep-link accept exactly the same ids.
+ */
+export const isSafeRouteId = (id: string): boolean => id.length > 0 && !/[/\\?#]/.test(id);
+
 export const parseNotificationData = (notificationData: PushNotificationData): ParsedNotification => {
   const eventCode = notificationData.eventCode || '';
   let type: NotificationType = 'unknown';
