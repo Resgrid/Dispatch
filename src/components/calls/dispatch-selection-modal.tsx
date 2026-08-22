@@ -1,4 +1,3 @@
-import { CheckIcon, SearchIcon, UsersIcon, X } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import React, { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -11,6 +10,7 @@ import { Button, ButtonText } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { HStack } from '@/components/ui/hstack';
 import { Input, InputField } from '@/components/ui/input';
+import { CheckIcon, SearchIcon, UsersIcon, X } from '@/components/ui/lucide-icons';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { type DispatchSelection, useDispatchStore } from '@/stores/dispatch/store';

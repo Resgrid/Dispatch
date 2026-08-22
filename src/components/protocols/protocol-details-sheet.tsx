@@ -1,9 +1,9 @@
-import { Calendar, Tag, X } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import React, { useEffect } from 'react';
 import { StyleSheet } from 'react-native';
 import WebView from 'react-native-webview';
 
+import { Calendar, Tag, X } from '@/components/ui/lucide-icons';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { formatDateForDisplay, parseDateISOString, stripHtmlTags } from '@/lib/utils';
 import { useProtocolsStore } from '@/stores/protocols/store';

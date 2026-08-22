@@ -1,8 +1,8 @@
-import { BuildingIcon, MailIcon, PhoneIcon, StarIcon, UserIcon } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { Avatar, AvatarImage } from '@/components/ui/avatar';
+import { BuildingIcon, MailIcon, PhoneIcon, StarIcon, UserIcon } from '@/components/ui/lucide-icons';
 import { type ContactResultData, ContactType } from '@/models/v4/contacts/contactResultData';
 
 interface ContactCardProps {

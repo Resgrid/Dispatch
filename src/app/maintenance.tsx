@@ -1,11 +1,11 @@
 import { type Href, useRouter } from 'expo-router';
-import { AlertCircle, Clock, Mail } from 'lucide-react-native';
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Image, ScrollView } from 'react-native';
 
 import { View } from '@/components/ui';
 import { FocusAwareStatusBar } from '@/components/ui';
+import { AlertCircle, Clock, Mail } from '@/components/ui/lucide-icons';
 import { Text } from '@/components/ui/text';
 import { Env } from '@/lib/env';
 import { logger } from '@/lib/logging';

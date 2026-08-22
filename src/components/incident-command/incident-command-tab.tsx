@@ -1,5 +1,4 @@
 import { type Href, useRouter } from 'expo-router';
-import { ExpandIcon, NetworkIcon } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -7,6 +6,7 @@ import { Loading } from '@/components/common/loading';
 import { Box } from '@/components/ui/box';
 import { Button, ButtonIcon, ButtonText } from '@/components/ui/button';
 import { HStack } from '@/components/ui/hstack';
+import { ExpandIcon, NetworkIcon } from '@/components/ui/lucide-icons';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useChatStore } from '@/stores/chat/store';

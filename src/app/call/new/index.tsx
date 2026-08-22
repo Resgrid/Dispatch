@@ -1,7 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as Location from 'expo-location';
 import { type Href, router, Stack } from 'expo-router';
-import { BookOpenIcon, ChevronDownIcon, ChevronUpIcon, FileTextIcon, LinkIcon, PlusIcon, SearchIcon, UserIcon } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -32,6 +31,7 @@ import { Card } from '@/components/ui/card';
 import { FocusAwareStatusBar } from '@/components/ui/focus-aware-status-bar';
 import { FormControl, FormControlError, FormControlLabel, FormControlLabelText } from '@/components/ui/form-control';
 import { Input, InputField } from '@/components/ui/input';
+import { BookOpenIcon, ChevronDownIcon, ChevronUpIcon, FileTextIcon, LinkIcon, PlusIcon, SearchIcon, UserIcon } from '@/components/ui/lucide-icons';
 import { Select, SelectBackdrop, SelectContent, SelectIcon, SelectInput, SelectItem, SelectPortal, SelectTrigger } from '@/components/ui/select';
 import { Text } from '@/components/ui/text';
 import { Textarea, TextareaInput } from '@/components/ui/textarea';
