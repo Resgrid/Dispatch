@@ -1,4 +1,3 @@
-import { AlertTriangle, CalendarClock, Clock, CloudLightning, Phone, Truck, User, Users } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -7,6 +6,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Box } from '@/components/ui/box';
 import { HStack } from '@/components/ui/hstack';
 import { Icon } from '@/components/ui/icon';
+import { AlertTriangle, CalendarClock, Clock, CloudLightning, Phone, Truck, User, Users } from '@/components/ui/lucide-icons';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 

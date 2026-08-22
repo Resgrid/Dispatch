@@ -23,7 +23,23 @@ const iconStyle = tva({
   },
 });
 
-const StyledUIIcon = styled(UIIcon, { className: 'style' });
+// The nativewind v4 -> v5 migration replaced a `cssInterop(UIIcon, ...)` call with a bare
+// `styled(UIIcon, { className: 'style' })`, dropping the `nativeStyleToProp` map. Without it the
+// class-derived color stays in `style`, where neither gluestack's PrimitiveIcon (it reads
+// `classNameColor`) nor react-native-svg (it reads the `color`/`stroke` props) ever looks — so
+// every `<Icon as={...} className="text-..." />` rendered with the icon's own default stroke.
+const StyledUIIcon = styled(UIIcon, {
+  className: {
+    target: 'style',
+    nativeStyleMapping: {
+      height: true,
+      width: true,
+      fill: true,
+      color: 'classNameColor',
+      stroke: true,
+    },
+  },
+});
 
 type IIConProps = IPrimitiveIcon & VariantProps<typeof iconStyle> & React.ComponentPropsWithoutRef<typeof UIIcon>;
 

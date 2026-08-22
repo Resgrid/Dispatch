@@ -1,12 +1,13 @@
 import { useNotifications } from '@novu/react-native';
-import { CheckCircle, ChevronRight, Circle, ExternalLink, MoreVertical, Trash2, X } from 'lucide-react-native';
+import { useColorScheme } from 'nativewind';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Appearance, Dimensions, Platform, Pressable, RefreshControl, SafeAreaView, StatusBar, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Animated, Dimensions, Platform, Pressable, RefreshControl, SafeAreaView, StatusBar, StyleSheet, View } from 'react-native';
 
 import { deleteMessage } from '@/api/novu/inbox';
 import { NotificationDetail } from '@/components/notifications/NotificationDetail';
 import { Button } from '@/components/ui/button';
 import { FlatList } from '@/components/ui/flat-list';
+import { CheckCircle, ChevronRight, Circle, ExternalLink, MoreVertical, Trash2, X } from '@/components/ui/lucide-icons';
 import { Modal, ModalBackdrop, ModalBody, ModalContent, ModalFooter, ModalHeader } from '@/components/ui/modal';
 import { Text } from '@/components/ui/text';
 import { useCoreStore } from '@/stores/app/core-store';
@@ -24,6 +25,7 @@ interface NotificationInboxProps {
 }
 
 export const NotificationInbox = ({ isOpen, onClose }: NotificationInboxProps) => {
+  const styles = useStyles();
   const activeUnitId = useCoreStore((state) => state.activeUnitId);
   const config = useCoreStore((state: any) => state.config);
   const { notifications, isLoading, fetchMore, hasMore, refetch } = useNotifications();
@@ -339,133 +341,138 @@ export const NotificationInbox = ({ isOpen, onClose }: NotificationInboxProps) =
   );
 };
 
-const styles = StyleSheet.create({
-  backdrop: {
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    zIndex: 999,
-  },
-  backdropPressable: {
-    width: '100%',
-    height: '100%',
-  },
-  sidebarContainer: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: SIDEBAR_WIDTH,
-    height: '100%',
-    backgroundColor: Appearance.getColorScheme() === 'dark' ? '#171717' : '#fff',
-    shadowColor: Appearance.getColorScheme() === 'dark' ? '#262626' : '#e5e5e5',
-    shadowOffset: {
-      width: -2,
-      height: 0,
+const createStyles = (isDark: boolean) =>
+  StyleSheet.create({
+    backdrop: {
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      zIndex: 999,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-    zIndex: 1000,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    paddingTop: Platform.OS === 'android' ? STATUS_BAR_HEIGHT + 16 : 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  actionButton: {
-    padding: 8,
-    marginRight: 8,
-  },
-  closeButton: {
-    padding: 8,
-  },
-  selectionHeader: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  selectionCount: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Appearance.getColorScheme() === 'dark' ? '#ffffff' : '#000000',
-  },
-  selectionActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  notificationItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: Appearance.getColorScheme() === 'dark' ? '#333333' : '#eee',
-    position: 'relative',
-  },
-  unreadNotificationItem: {
-    backgroundColor: Appearance.getColorScheme() === 'dark' ? '#262626' : '#f0f7ff',
-  },
-  selectedNotificationItem: {
-    backgroundColor: Appearance.getColorScheme() === 'dark' ? '#1e3a8a' : '#dbeafe',
-  },
-  unreadIndicator: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    width: 4,
-    height: '100%',
-    backgroundColor: Appearance.getColorScheme() === 'dark' ? '#60a5fa' : '#3b82f6',
-  },
-  selectionIndicator: {
-    marginRight: 12,
-  },
-  notificationContent: {
-    flex: 1,
-    marginRight: 8,
-  },
-  notificationBody: {
-    fontSize: 16,
-    marginBottom: 4,
-    color: Appearance.getColorScheme() === 'dark' ? '#e5e5e5' : '#333333',
-  },
-  unreadNotificationText: {
-    fontWeight: '600',
-    color: Appearance.getColorScheme() === 'dark' ? '#ffffff' : '#000000',
-  },
-  timestamp: {
-    fontSize: 12,
-    color: Appearance.getColorScheme() === 'dark' ? '#a3a3a3' : '#666',
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  footerLoader: {
-    padding: 16,
-    alignItems: 'center',
-  },
-});
+    backdropPressable: {
+      width: '100%',
+      height: '100%',
+    },
+    sidebarContainer: {
+      position: 'absolute',
+      top: 0,
+      right: 0,
+      width: SIDEBAR_WIDTH,
+      height: '100%',
+      backgroundColor: isDark ? '#171717' : '#fff',
+      shadowColor: isDark ? '#262626' : '#e5e5e5',
+      shadowOffset: {
+        width: -2,
+        height: 0,
+      },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
+      elevation: 5,
+      zIndex: 1000,
+    },
+    safeArea: {
+      flex: 1,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 16,
+      paddingTop: Platform.OS === 'android' ? STATUS_BAR_HEIGHT + 16 : 16,
+      borderBottomWidth: 1,
+      borderBottomColor: '#eee',
+    },
+    headerTitle: {
+      fontSize: 18,
+      fontWeight: 'bold',
+    },
+    headerActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    actionButton: {
+      padding: 8,
+      marginRight: 8,
+    },
+    closeButton: {
+      padding: 8,
+    },
+    selectionHeader: {
+      flex: 1,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    selectionCount: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: isDark ? '#ffffff' : '#000000',
+    },
+    selectionActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    notificationItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: isDark ? '#333333' : '#eee',
+      position: 'relative',
+    },
+    unreadNotificationItem: {
+      backgroundColor: isDark ? '#262626' : '#f0f7ff',
+    },
+    selectedNotificationItem: {
+      backgroundColor: isDark ? '#1e3a8a' : '#dbeafe',
+    },
+    unreadIndicator: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      width: 4,
+      height: '100%',
+      backgroundColor: isDark ? '#60a5fa' : '#3b82f6',
+    },
+    selectionIndicator: {
+      marginRight: 12,
+    },
+    notificationContent: {
+      flex: 1,
+      marginRight: 8,
+    },
+    notificationBody: {
+      fontSize: 16,
+      marginBottom: 4,
+      color: isDark ? '#e5e5e5' : '#333333',
+    },
+    unreadNotificationText: {
+      fontWeight: '600',
+      color: isDark ? '#ffffff' : '#000000',
+    },
+    timestamp: {
+      fontSize: 12,
+      color: isDark ? '#a3a3a3' : '#666',
+    },
+    actionButtons: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    emptyContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    footerLoader: {
+      padding: 16,
+      alignItems: 'center',
+    },
+  });
+const useStyles = () => {
+  const { colorScheme } = useColorScheme();
+  return React.useMemo(() => createStyles(colorScheme === 'dark'), [colorScheme]);
+};

@@ -1,7 +1,9 @@
 import { useNotifications } from '@novu/react-native';
-import { ArrowLeft, Calendar, ExternalLink, Trash2 } from 'lucide-react-native';
+import { useColorScheme } from 'nativewind';
 import React, { useEffect } from 'react';
-import { Animated, Appearance, Dimensions, Platform, Pressable, SafeAreaView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { Animated, Dimensions, Platform, Pressable, SafeAreaView, StatusBar, type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+
+import { ArrowLeft, Calendar, ExternalLink, Trash2 } from '@/components/ui/lucide-icons';
 
 // Define the interface directly in this file
 interface NotificationPayload {
@@ -28,6 +30,7 @@ const SIDEBAR_WIDTH = Math.min(width * 0.85, 400);
 const STATUS_BAR_HEIGHT = Platform.OS === 'ios' ? 44 : StatusBar.currentHeight || 0;
 
 export const NotificationDetail = ({ notification, onClose, onDelete, onNavigateToReference }: NotificationDetailProps) => {
+  const styles = useStyles();
   const { refetch } = useNotifications();
   const slideAnim = React.useRef(new Animated.Value(SIDEBAR_WIDTH)).current;
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
@@ -124,7 +127,7 @@ export const NotificationDetail = ({ notification, onClose, onDelete, onNavigate
             </View>
 
             {notification.type ? (
-              <View style={[styles.typeTag, getTypeTagStyle(notification.type)]}>
+              <View style={[styles.typeTag, getTypeTagStyle(notification.type, styles)]}>
                 <Text style={styles.typeTagText}>{notification.type}</Text>
               </View>
             ) : null}
@@ -176,7 +179,7 @@ const formatValue = (value: any): string => {
 };
 
 // Helper function to get tag style based on notification type
-const getTypeTagStyle = (type: string): any => {
+const getTypeTagStyle = (type: string, styles: ReturnType<typeof createStyles>): StyleProp<ViewStyle> => {
   const lowerType = type.toLowerCase();
 
   if (lowerType.includes('alert') || lowerType.includes('emergency')) {
@@ -192,172 +195,173 @@ const getTypeTagStyle = (type: string): any => {
   }
 };
 
-// Styles are computed once at module load, so resolve the color scheme a single
-// time here instead of calling Appearance.getColorScheme() in every style rule.
-const isDark = Appearance.getColorScheme() === 'dark';
-
-const styles = StyleSheet.create({
-  backdrop: {
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    zIndex: 9999,
-  },
-  backdropPressable: {
-    width: '100%',
-    height: '100%',
-  },
-  sidebarContainer: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: SIDEBAR_WIDTH,
-    height: '100%',
-    backgroundColor: isDark ? '#171717' : '#fff',
-    shadowColor: isDark ? '#262626' : '#e5e5e5',
-    shadowOffset: {
-      width: -2,
-      height: 0,
+const createStyles = (isDark: boolean) =>
+  StyleSheet.create({
+    backdrop: {
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      zIndex: 9999,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-    zIndex: 10000,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    paddingTop: Platform.OS === 'android' ? STATUS_BAR_HEIGHT + 16 : 16,
-    borderBottomWidth: 1,
-    borderBottomColor: isDark ? '#333333' : '#e5e5e5',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    flex: 1,
-    textAlign: 'center',
-    color: isDark ? '#f3f4f6' : '#111827',
-  },
-  backButton: {
-    padding: 8,
-  },
-  deleteButton: {
-    padding: 8,
-  },
-  content: {
-    padding: 20,
-  },
-  metadataContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  dateContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  dateText: {
-    fontSize: 14,
-    color: isDark ? '#9ca3af' : '#6b7280',
-    marginLeft: 6,
-  },
-  timeText: {
-    fontSize: 14,
-    color: isDark ? '#9ca3af' : '#6b7280',
-  },
-  typeTag: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 16,
-    marginBottom: 16,
-  },
-  typeTagText: {
-    fontSize: 12,
-    fontWeight: '500',
-    textTransform: 'uppercase',
-  },
-  typeTagDefault: {
-    backgroundColor: isDark ? '#374151' : '#e5e7eb',
-  },
-  typeTagInfo: {
-    backgroundColor: isDark ? '#1e40af' : '#dbeafe',
-  },
-  typeTagSuccess: {
-    backgroundColor: isDark ? '#065f46' : '#d1fae5',
-  },
-  typeTagWarning: {
-    backgroundColor: isDark ? '#92400e' : '#fef3c7',
-  },
-  typeTagAlert: {
-    backgroundColor: isDark ? '#991b1b' : '#fee2e2',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    color: isDark ? '#f3f4f6' : '#111827',
-  },
-  bodyContainer: {
-    backgroundColor: isDark ? '#262626' : '#f9fafb',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 20,
-  },
-  body: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: isDark ? '#e5e5e5' : '#374151',
-  },
-  metadataDetailsContainer: {
-    marginTop: 10,
-    padding: 16,
-    backgroundColor: isDark ? '#262626' : '#f9fafb',
-    borderRadius: 8,
-  },
-  metadataTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 10,
-    color: isDark ? '#f3f4f6' : '#111827',
-  },
-  metadataItem: {
-    flexDirection: 'row',
-    marginBottom: 6,
-  },
-  metadataKey: {
-    fontSize: 14,
-    fontWeight: '500',
-    marginRight: 8,
-    color: isDark ? '#9ca3af' : '#6b7280',
-  },
-  metadataValue: {
-    fontSize: 14,
-    flex: 1,
-    color: isDark ? '#e5e5e5' : '#111827',
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: isDark ? '#3b82f6' : '#2563eb',
-  },
-  referenceButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 24,
-    backgroundColor: isDark ? '#1e3a8a' : '#dbeafe',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: isDark ? '#3b82f6' : '#60a5fa',
-  },
-  referenceButtonIcon: {
-    marginRight: 8,
-    color: isDark ? '#3b82f6' : '#2563eb',
-  },
-});
+    backdropPressable: {
+      width: '100%',
+      height: '100%',
+    },
+    sidebarContainer: {
+      position: 'absolute',
+      top: 0,
+      right: 0,
+      width: SIDEBAR_WIDTH,
+      height: '100%',
+      backgroundColor: isDark ? '#171717' : '#fff',
+      shadowColor: isDark ? '#262626' : '#e5e5e5',
+      shadowOffset: {
+        width: -2,
+        height: 0,
+      },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
+      elevation: 5,
+      zIndex: 10000,
+    },
+    safeArea: {
+      flex: 1,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 16,
+      paddingTop: Platform.OS === 'android' ? STATUS_BAR_HEIGHT + 16 : 16,
+      borderBottomWidth: 1,
+      borderBottomColor: isDark ? '#333333' : '#e5e5e5',
+    },
+    headerTitle: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      flex: 1,
+      textAlign: 'center',
+      color: isDark ? '#f3f4f6' : '#111827',
+    },
+    backButton: {
+      padding: 8,
+    },
+    deleteButton: {
+      padding: 8,
+    },
+    content: {
+      padding: 20,
+    },
+    metadataContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    dateContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    dateText: {
+      fontSize: 14,
+      color: isDark ? '#9ca3af' : '#6b7280',
+      marginLeft: 6,
+    },
+    timeText: {
+      fontSize: 14,
+      color: isDark ? '#9ca3af' : '#6b7280',
+    },
+    typeTag: {
+      alignSelf: 'flex-start',
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 16,
+      marginBottom: 16,
+    },
+    typeTagText: {
+      fontSize: 12,
+      fontWeight: '500',
+      textTransform: 'uppercase',
+    },
+    typeTagDefault: {
+      backgroundColor: isDark ? '#374151' : '#e5e7eb',
+    },
+    typeTagInfo: {
+      backgroundColor: isDark ? '#1e40af' : '#dbeafe',
+    },
+    typeTagSuccess: {
+      backgroundColor: isDark ? '#065f46' : '#d1fae5',
+    },
+    typeTagWarning: {
+      backgroundColor: isDark ? '#92400e' : '#fef3c7',
+    },
+    typeTagAlert: {
+      backgroundColor: isDark ? '#991b1b' : '#fee2e2',
+    },
+    title: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      marginBottom: 12,
+      color: isDark ? '#f3f4f6' : '#111827',
+    },
+    bodyContainer: {
+      backgroundColor: isDark ? '#262626' : '#f9fafb',
+      padding: 16,
+      borderRadius: 8,
+      marginBottom: 20,
+    },
+    body: {
+      fontSize: 16,
+      lineHeight: 24,
+      color: isDark ? '#e5e5e5' : '#374151',
+    },
+    metadataDetailsContainer: {
+      marginTop: 10,
+      padding: 16,
+      backgroundColor: isDark ? '#262626' : '#f9fafb',
+      borderRadius: 8,
+    },
+    metadataTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      marginBottom: 10,
+      color: isDark ? '#f3f4f6' : '#111827',
+    },
+    metadataItem: {
+      flexDirection: 'row',
+      marginBottom: 6,
+    },
+    metadataKey: {
+      fontSize: 14,
+      fontWeight: '500',
+      marginRight: 8,
+      color: isDark ? '#9ca3af' : '#6b7280',
+    },
+    metadataValue: {
+      fontSize: 14,
+      flex: 1,
+      color: isDark ? '#e5e5e5' : '#111827',
+    },
+    buttonText: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: isDark ? '#3b82f6' : '#2563eb',
+    },
+    referenceButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 24,
+      backgroundColor: isDark ? '#1e3a8a' : '#dbeafe',
+      padding: 12,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: isDark ? '#3b82f6' : '#60a5fa',
+    },
+    referenceButtonIcon: {
+      marginRight: 8,
+      color: isDark ? '#3b82f6' : '#2563eb',
+    },
+  });
+const useStyles = () => {
+  const { colorScheme } = useColorScheme();
+  return React.useMemo(() => createStyles(colorScheme === 'dark'), [colorScheme]);
+};

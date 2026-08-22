@@ -1,3 +1,9 @@
+import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ScrollView, useWindowDimensions, View } from 'react-native';
+
+import { UdfFieldsRenderer } from '@/components/calls/udf-fields-renderer';
+import { Avatar, AvatarImage } from '@/components/ui/avatar';
 import {
   BuildingIcon,
   CalendarIcon,
@@ -15,13 +21,7 @@ import {
   TrashIcon,
   UserIcon,
   X,
-} from 'lucide-react-native';
-import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { ScrollView, useWindowDimensions, View } from 'react-native';
-
-import { UdfFieldsRenderer } from '@/components/calls/udf-fields-renderer';
-import { Avatar, AvatarImage } from '@/components/ui/avatar';
+} from '@/components/ui/lucide-icons';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { ContactType } from '@/models/v4/contacts/contactResultData';
 import { useContactsStore } from '@/stores/contacts/store';

@@ -1,12 +1,12 @@
 import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
 import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
-import { SearchIcon, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Keyboard, Platform, useWindowDimensions } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
+import { SearchIcon, X } from '@/components/ui/lucide-icons';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { useAuthStore } from '@/lib/auth';
 import { useCallDetailStore } from '@/stores/calls/detail-store';

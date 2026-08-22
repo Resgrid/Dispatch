@@ -1,4 +1,12 @@
 import { type Href, useRouter } from 'expo-router';
+import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Alert, Platform } from 'react-native';
+
+import { Box } from '@/components/ui/box';
+import { Button, ButtonIcon, ButtonText } from '@/components/ui/button';
+import { Heading } from '@/components/ui/heading';
+import { HStack } from '@/components/ui/hstack';
 import {
   CheckCircleIcon,
   ChevronDownIcon,
@@ -17,15 +25,7 @@ import {
   UserCogIcon,
   UserPlusIcon,
   XIcon,
-} from 'lucide-react-native';
-import React, { useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Alert, Platform } from 'react-native';
-
-import { Box } from '@/components/ui/box';
-import { Button, ButtonIcon, ButtonText } from '@/components/ui/button';
-import { Heading } from '@/components/ui/heading';
-import { HStack } from '@/components/ui/hstack';
+} from '@/components/ui/lucide-icons';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useDirectMessage } from '@/hooks/use-direct-message';

@@ -1,4 +1,3 @@
-import { CalendarClockIcon, EditIcon, MoreVerticalIcon, Trash2Icon, UserPlusIcon, XIcon } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -6,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable } from '@/components/ui/';
 import { Actionsheet, ActionsheetBackdrop, ActionsheetContent, ActionsheetDragIndicator, ActionsheetDragIndicatorWrapper, ActionsheetItem, ActionsheetItemText } from '@/components/ui/actionsheet';
 import { HStack } from '@/components/ui/hstack';
+import { CalendarClockIcon, EditIcon, MoreVerticalIcon, Trash2Icon, UserPlusIcon, XIcon } from '@/components/ui/lucide-icons';
 import { useAnalytics } from '@/hooks/use-analytics';
 
 interface CallDetailMenuProps {
