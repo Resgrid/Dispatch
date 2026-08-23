@@ -5,7 +5,9 @@ import React from 'react';
 import { ActivityIndicator } from 'react-native';
 
 const StyledActivityIndicator = styled(ActivityIndicator, {
-  className: { target: 'style', nativeStyleMapping: { color: true } },
+  // A prop path, not `true`: react-native-css calls `.split('.')` on the value, so a boolean
+  // crashes as soon as the className resolves to a colour.
+  className: { target: 'style', nativeStyleMapping: { color: 'color' } },
 });
 
 const spinnerStyle = tva({});

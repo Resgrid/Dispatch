@@ -31,12 +31,15 @@ const iconStyle = tva({
 const StyledUIIcon = styled(UIIcon, {
   className: {
     target: 'style',
+    // Values must be prop paths, never `true`: react-native-css resolves each one with
+    // `path.split('.')`, so a boolean throws "undefined is not a function" the moment the class
+    // actually produces that style key — which for the size variants is every render.
     nativeStyleMapping: {
-      height: true,
-      width: true,
-      fill: true,
+      height: 'height',
+      width: 'width',
+      fill: 'fill',
       color: 'classNameColor',
-      stroke: true,
+      stroke: 'stroke',
     },
   },
 });
