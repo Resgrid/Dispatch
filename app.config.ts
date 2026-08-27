@@ -50,7 +50,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       UIBackgroundModes: ['remote-notification', 'audio', 'bluetooth-central', 'voip'],
       ITSAppUsesNonExemptEncryption: false,
       UIViewControllerBasedStatusBarAppearance: false,
-      NSBluetoothAlwaysUsageDescription: 'Allow Resgrid Dispatch to connect to bluetooth devices for PTT.',
+      NSBluetoothAlwaysUsageDescription:
+        'Resgrid Dispatch uses Bluetooth to connect to wireless headsets and speaker-microphone accessories for Push-to-Talk audio. For example, when you pair a Bluetooth speaker-mic, pressing its talk button transmits your voice to your department audio channel.',
       LSApplicationQueriesSchemes: [Env.SCHEME, 'https', 'http'],
     },
     entitlements: {
@@ -215,10 +216,16 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-location',
       {
-        locationWhenInUsePermission: 'Allow Resgrid Dispatch to show current location on map.',
-        locationAlwaysAndWhenInUsePermission: 'Allow Resgrid Dispatch to use your location for department updates.',
-        locationAlwaysPermission: 'Resgrid Dispatch needs to track your location for department AVL.',
-        isIosBackgroundLocationEnabled: true,
+        locationWhenInUsePermission:
+          'Resgrid Dispatch uses your location while you use the app to show your position on the dispatch map, to center the map when you pick a location for a new call, and to share your location in chat. For example, when you create a new call, the location picker starts at your current position so you can quickly pin the incident address.',
+        // Always/background location authorization is never requested in this app
+        // (no requestBackgroundPermissionsAsync or background location task in src/);
+        // omit the Always purpose strings so no vague default is injected.
+        locationAlwaysAndWhenInUsePermission: false,
+        locationAlwaysPermission: false,
+        // No background location tracking on iOS — do not add 'location' to UIBackgroundModes
+        // (declaring an unused background mode risks App Store Guideline 2.5.4 rejection).
+        isIosBackgroundLocationEnabled: false,
         isAndroidBackgroundLocationEnabled: true,
         isAndroidForegroundServiceEnabled: true,
         taskManager: {
@@ -278,6 +285,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     [
+      'expo-image-picker',
+      {
+        photosPermission:
+          'Resgrid Dispatch uses your photo library so you can attach existing photos to calls and chat messages. For example, you can select a saved photo of an incident scene and attach it to an active call to share it with responders.',
+        cameraPermission:
+          'Resgrid Dispatch uses the camera to take photos that you attach to calls. For example, you can photograph an incident scene or document and attach the image to the active call for responders and other dispatchers to see.',
+      },
+    ],
+    [
       '@sentry/react-native/expo',
       {
         organization: 'sentry',
@@ -296,12 +312,21 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-audio',
       {
-        microphonePermission: 'Allow Resgrid Dispatch to access the microphone for audio input used in PTT and calls.',
+        microphonePermission:
+          'Resgrid Dispatch uses the microphone to capture your voice for Push-to-Talk and voice calls with your department. For example, when you press and hold the talk button in the dispatch console, your voice is transmitted live to responders on the audio channel.',
       },
     ],
     'react-native-ble-manager',
     '@livekit/react-native-expo-plugin',
-    '@config-plugins/react-native-webrtc',
+    [
+      '@config-plugins/react-native-webrtc',
+      {
+        // Set explicitly so the plugin's vague 'Allow $(PRODUCT_NAME) to access your camera'
+        // default can never end up in the built Info.plist.
+        cameraPermission:
+          'Resgrid Dispatch uses the camera to take photos that you attach to calls. For example, you can photograph an incident scene or document and attach the image to the active call for responders and other dispatchers to see.',
+      },
+    ],
     '@config-plugins/react-native-callkeep',
     'expo-web-browser',
     './customGradle.plugin.js',
