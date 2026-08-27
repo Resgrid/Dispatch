@@ -98,9 +98,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'android.permission.POST_NOTIFICATIONS',
       'android.permission.FOREGROUND_SERVICE',
       'android.permission.FOREGROUND_SERVICE_MICROPHONE',
-      'android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE',
-      'android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK',
     ],
+    // FOREGROUND_SERVICE_CONNECTED_DEVICE is blocked, not merely absent: Bluetooth PTT handsets
+    // route through the microphone FGS session, so the type is unused, and Play rejects any
+    // declared foreground-service type whose use case cannot be demonstrated in the app.
+    blockedPermissions: ['android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE'],
   },
   web: {
     favicon: './assets/favicon.png',
@@ -217,15 +219,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'expo-location',
       {
         locationWhenInUsePermission:
-          'Resgrid Dispatch uses your location while you use the app to show your position on the dispatch map, to center the map when you pick a location for a new call, and to share your location in chat. For example, when you create a new call, the location picker starts at your current position so you can quickly pin the incident address.',
-        // Always/background location authorization is never requested in this app
-        // (no requestBackgroundPermissionsAsync or background location task in src/);
-        // omit the Always purpose strings so no vague default is injected.
-        locationAlwaysAndWhenInUsePermission: false,
-        locationAlwaysPermission: false,
-        // No background location tracking on iOS — do not add 'location' to UIBackgroundModes
-        // (declaring an unused background mode risks App Store Guideline 2.5.4 rejection).
-        isIosBackgroundLocationEnabled: false,
+          'Resgrid Dispatch uses your location while you use the app to center the department map on you and to attach your coordinates when you dispatch or update a call. For example, when you create a call from the field, your location can be used as the incident address.',
+        locationAlwaysAndWhenInUsePermission:
+          'Resgrid Dispatch uses your location, including in the background, to keep the department map updated with your position. For example, while you are working a call away from the console, your location is periodically sent so other dispatchers and responders can see where you are, even when the app is not on screen.',
+        locationAlwaysPermission:
+          'Resgrid Dispatch uses your location in the background to keep the department map updated with your position. For example, while you are working a call away from the console, your location is periodically sent so other dispatchers and responders can see where you are, even when the app is not on screen.',
+        isIosBackgroundLocationEnabled: true,
         isAndroidBackgroundLocationEnabled: true,
         isAndroidForegroundServiceEnabled: true,
         taskManager: {
