@@ -1591,5 +1591,21 @@
       "all_in_rest_period": "alla i vilotid",
       "stations_exhausted": "inga fler stationer att söka"
     }
+  },
+  "data_protection": {
+    "step_up_title": "Bekräfta din identitet",
+    "step_up_body": "De här uppgifterna är skyddade. Ange den aktuella koden från din autentiseringsapp för att visa dem en begränsad tid.",
+    "step_up_placeholder": "6-siffrig kod",
+    "step_up_verify": "Bekräfta",
+    "step_up_invalid_code": "Koden är ogiltig eller har gått ut. Ange den aktuella koden från din autentiseringsapp.",
+    "step_up_not_enrolled": "Tvåfaktorsautentisering är inte konfigurerad för ditt konto. Konfigurera först en autentiseringsapp i kontots säkerhetsinställningar.",
+    "step_up_too_many_attempts": "För många försök. Vänta några minuter och försök igen.",
+    "step_up_failed": "Verifieringen misslyckades. Kontrollera din anslutning och försök igen.",
+    "step_up_unavailable": "Skyddade uppgifter är ännu inte tillgängliga på den här servern. Kontakta din administratör.",
+    "reveal": "Visa skyddad information",
+    "conceal": "Dölj igen",
+    "protected_value": "Skyddad",
+    "protected_notice": "En del uppgifter på den här skärmen är skyddade.",
+    "revealed_notice": "Skyddade uppgifter visas."
   }
 }

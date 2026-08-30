@@ -14,7 +14,7 @@ export interface OidcLoginResult {
   request: AuthSession.AuthRequest | null;
   response: AuthSession.AuthSessionResult | null;
   promptAsync: (options?: AuthSession.AuthRequestPromptOptions) => Promise<AuthSession.AuthSessionResult>;
-  exchangeCodeForResgridToken: () => Promise<AuthResponse | null>;
+  exchangeCodeForResgridToken: () => Promise<AuthResponse | 'mfa_required' | null>;
 }
 
 export function useOidcLogin(authority: string, clientId: string, username: string, departmentId?: number): OidcLoginResult {
@@ -35,7 +35,7 @@ export function useOidcLogin(authority: string, clientId: string, username: stri
     discovery
   );
 
-  async function exchangeCodeForResgridToken(): Promise<AuthResponse | null> {
+  async function exchangeCodeForResgridToken(): Promise<AuthResponse | 'mfa_required' | null> {
     if (response?.type !== 'success' || !request?.codeVerifier || !discovery) {
       logger.error({
         message: 'SSO OIDC: Cannot exchange code — missing response, code verifier, or discovery',
@@ -64,6 +64,12 @@ export function useOidcLogin(authority: string, clientId: string, username: stri
 
       // Step 2: Exchange the id_token for a Resgrid access token
       const result = await externalTokenRequest('oidc', idToken, username, departmentId);
+
+      if (result.mfaRequired) {
+        // The exchange is retained by the auth api; the caller prompts for the code and
+        // retries via retrySsoExchangeWithOtp.
+        return 'mfa_required';
+      }
 
       if (!result.successful || !result.authResponse) {
         logger.error({ message: 'SSO OIDC: External token exchange failed', context: { message: result.message } });

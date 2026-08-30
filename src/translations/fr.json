@@ -1591,5 +1591,21 @@
       "all_in_rest_period": "tous en période de repos",
       "stations_exhausted": "plus aucune caserne à explorer"
     }
+  },
+  "data_protection": {
+    "step_up_title": "Vérifiez votre identité",
+    "step_up_body": "Ces informations sont protégées. Saisissez le code actuel de votre application d'authentification pour les afficher pendant une durée limitée.",
+    "step_up_placeholder": "Code à 6 chiffres",
+    "step_up_verify": "Vérifier",
+    "step_up_invalid_code": "Ce code est invalide ou a expiré. Saisissez le code actuel de votre application d'authentification.",
+    "step_up_not_enrolled": "L'authentification à deux facteurs n'est pas configurée pour votre compte. Configurez d'abord une application d'authentification dans les paramètres de sécurité de votre compte.",
+    "step_up_too_many_attempts": "Trop de tentatives. Patientez quelques minutes et réessayez.",
+    "step_up_failed": "La vérification a échoué. Vérifiez votre connexion et réessayez.",
+    "step_up_unavailable": "Les données protégées ne sont pas encore disponibles sur ce serveur. Contactez votre administrateur.",
+    "reveal": "Afficher les informations protégées",
+    "conceal": "Masquer à nouveau",
+    "protected_value": "Protégé",
+    "protected_notice": "Certaines informations de cet écran sont protégées.",
+    "revealed_notice": "Les informations protégées sont visibles."
   }
 }

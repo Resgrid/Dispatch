@@ -113,6 +113,17 @@ const useAuthStore = create<AuthState>()(
 
             // Set up automatic token refresh
             scheduleTokenRefresh(response.authResponse.expires_in);
+          } else if (response.mfaRequired) {
+            // 2FA challenge: the login screen prompts for the authenticator code and calls
+            // login() again with otpCode. Credentials are never retained here.
+            logger.info({
+              message: 'Login requires two-factor verification',
+              context: { invalidOtp: !!response.invalidOtp },
+            });
+            set({
+              status: 'mfaRequired',
+              error: response.invalidOtp ? 'invalid_totp' : null,
+            });
           } else {
             logger.error({
               message: 'Login: API returned unsuccessful response',

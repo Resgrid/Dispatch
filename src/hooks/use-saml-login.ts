@@ -10,7 +10,7 @@ import { getItem, removeItem, setItem } from '@/lib/storage';
 
 export interface SamlLoginHook {
   startSamlLogin: () => Promise<void>;
-  handleSamlDeepLink: (url: string) => Promise<AuthResponse | null>;
+  handleSamlDeepLink: (url: string) => Promise<AuthResponse | 'mfa_required' | null>;
 }
 
 // CSRF protection for the SAML flow: a random RelayState nonce is generated when the
@@ -70,7 +70,7 @@ export function useSamlLogin(idpSsoUrl: string, username: string, departmentId?:
     }
   }
 
-  async function handleSamlDeepLink(url: string): Promise<AuthResponse | null> {
+  async function handleSamlDeepLink(url: string): Promise<AuthResponse | 'mfa_required' | null> {
     try {
       const parsed = Linking.parse(url);
       const samlResponse = parsed.queryParams?.saml_response as string | undefined;
@@ -100,6 +100,12 @@ export function useSamlLogin(idpSsoUrl: string, username: string, departmentId?:
       await savePendingState(null);
 
       const result = await externalTokenRequest('saml2', samlResponse, username, departmentId);
+
+      if (result.mfaRequired) {
+        // The exchange is retained by the auth api; the caller prompts for the code and
+        // retries via retrySsoExchangeWithOtp.
+        return 'mfa_required';
+      }
 
       if (!result.successful || !result.authResponse) {
         logger.error({ message: 'SSO SAML: External token exchange failed', context: { message: result.message } });

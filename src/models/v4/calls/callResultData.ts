@@ -46,4 +46,9 @@ export class CallResultData {
   public Protocols: unknown[] = [];
   public UdfValues: unknown[] = [];
   public CheckInTimersEnabled: boolean = false;
+  /**
+   * Catalog field ids the server withheld from this response (ADP plan 7.2). Empty for a
+   * department without the addon, and empty again once a grant reveals the record.
+   */
+  public RedactedFields: string[] = [];
 }

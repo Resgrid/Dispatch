@@ -1591,5 +1591,21 @@
       "all_in_rest_period": "all in rest period",
       "stations_exhausted": "no stations left to search"
     }
+  },
+  "data_protection": {
+    "step_up_title": "Verify your identity",
+    "step_up_body": "This information is protected. Enter the current code from your authenticator app to view it for a limited time.",
+    "step_up_placeholder": "6-digit code",
+    "step_up_verify": "Verify",
+    "step_up_invalid_code": "That code is invalid or has expired. Enter the current code from your authenticator app.",
+    "step_up_not_enrolled": "Two-factor authentication is not set up for your account. Enroll an authenticator app in your account security settings first.",
+    "step_up_too_many_attempts": "Too many attempts. Wait a few minutes and try again.",
+    "step_up_failed": "Verification failed. Check your connection and try again.",
+    "step_up_unavailable": "Protected data is not available on this server yet. Contact your administrator.",
+    "reveal": "Show protected information",
+    "conceal": "Hide again",
+    "protected_value": "Protected",
+    "protected_notice": "Some information on this screen is protected.",
+    "revealed_notice": "Protected information is visible."
   }
 }

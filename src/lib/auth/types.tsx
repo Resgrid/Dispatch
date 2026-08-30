@@ -6,6 +6,8 @@ export interface AuthTokens {
 export interface LoginCredentials {
   username: string;
   password: string;
+  /** Current authenticator (TOTP) code; required when the account has 2FA enabled. */
+  otpCode?: string;
 }
 
 export interface AuthResponse {
@@ -21,6 +23,10 @@ export interface LoginResponse {
   successful: boolean;
   message: string;
   authResponse: AuthResponse | null;
+  /** The server requires a TOTP code for this account (error mfa_required / invalid_totp). */
+  mfaRequired?: boolean;
+  /** A code was supplied but rejected (error invalid_totp). */
+  invalidOtp?: boolean;
 }
 export interface ProfileModel {
   sub: string;
@@ -52,7 +58,7 @@ export interface SsoConfig {
   departmentCode: string | null;
 }
 
-export type AuthStatus = 'idle' | 'signedIn' | 'signedOut' | 'loading' | 'error' | 'onboarding';
+export type AuthStatus = 'idle' | 'signedIn' | 'signedOut' | 'loading' | 'error' | 'onboarding' | 'mfaRequired';
 
 export interface AuthState {
   accessToken: string | null;

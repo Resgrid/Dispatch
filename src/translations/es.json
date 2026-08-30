@@ -1591,5 +1591,21 @@
       "all_in_rest_period": "todos en periodo de descanso",
       "stations_exhausted": "no quedan parques por buscar"
     }
+  },
+  "data_protection": {
+    "step_up_title": "Verifique su identidad",
+    "step_up_body": "Esta información está protegida. Introduzca el código actual de su aplicación de autenticación para verla durante un tiempo limitado.",
+    "step_up_placeholder": "Código de 6 dígitos",
+    "step_up_verify": "Verificar",
+    "step_up_invalid_code": "Ese código no es válido o ha caducado. Introduzca el código actual de su aplicación de autenticación.",
+    "step_up_not_enrolled": "Su cuenta no tiene configurada la autenticación en dos pasos. Configure primero una aplicación de autenticación en los ajustes de seguridad de su cuenta.",
+    "step_up_too_many_attempts": "Demasiados intentos. Espere unos minutos e inténtelo de nuevo.",
+    "step_up_failed": "La verificación ha fallado. Compruebe su conexión e inténtelo de nuevo.",
+    "step_up_unavailable": "Los datos protegidos aún no están disponibles en este servidor. Póngase en contacto con su administrador.",
+    "reveal": "Mostrar información protegida",
+    "conceal": "Ocultar de nuevo",
+    "protected_value": "Protegido",
+    "protected_notice": "Parte de la información de esta pantalla está protegida.",
+    "revealed_notice": "La información protegida está visible."
   }
 }

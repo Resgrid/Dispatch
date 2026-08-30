@@ -31,6 +31,8 @@ import { audioService } from '@/services/audio.service';
 import { pushNotificationService, usePushNotifications } from '@/services/push-notification';
 import { useAudioStreamStore } from '@/stores/app/audio-stream-store';
 import { useCoreStore } from '@/stores/app/core-store';
+import { StepUpPromptHost } from '@/components/data-protection/step-up-prompt-host';
+import { dataProtectionStore } from '@/stores/data-protection/store';
 import { useLiveKitStore } from '@/stores/app/livekit-store';
 import { useCallsStore } from '@/stores/calls/store';
 import { useChatStore } from '@/stores/chat/store';
@@ -216,7 +218,7 @@ export default function TabLayout() {
           context: { platform: Platform.OS },
         });
 
-        await featureFlagsStore.getState().fetchFlags();
+        await featureFlagsStore.getState().fetchFlags(), dataProtectionStore.getState().fetchCapabilities();
 
         logger.info({
           message: 'Feature flags fetched, connecting SignalR',
@@ -612,7 +614,14 @@ export default function TabLayout() {
     logger.info({
       message: 'Rendering app layout for web platform (Novu disabled)',
     });
-    return content;
+    // The app's single Advanced Data Protection prompt: any screen triggers it through the store,
+    // so no screen carries a modal of its own and two prompts can never stack.
+    return (
+      <>
+        <StepUpPromptHost />
+        {content}
+      </>
+    );
   }
 
   return (
@@ -621,6 +630,7 @@ export default function TabLayout() {
         <NovuProvider subscriberId={`${rights?.DepartmentCode}_User_${userId}`} applicationIdentifier={config.NovuApplicationId} backendUrl={config.NovuBackendApiUrl} socketUrl={config.NovuSocketUrl}>
           {/* NotificationInbox at the root level */}
           <NotificationInbox isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} />
+          <StepUpPromptHost />
           {content}
         </NovuProvider>
       ) : (

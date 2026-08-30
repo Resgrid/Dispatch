@@ -98,6 +98,8 @@ export const loginRequest = async (credentials: LoginCredentials): Promise<Login
       grant_type: 'password',
       username: credentials.username,
       password: credentials.password,
+      // Accounts with Resgrid 2FA enabled must supply the current authenticator code.
+      ...(credentials.otpCode ? { totp_code: credentials.otpCode.trim() } : {}),
       scope: Env.IS_MOBILE_APP ? 'openid profile offline_access mobile' : 'openid profile offline_access',
     });
 
@@ -137,6 +139,24 @@ export const loginRequest = async (credentials: LoginCredentials): Promise<Login
       };
     }
   } catch (error) {
+    // The OAuth error body distinguishes the 2FA challenge from a bad password. Neither the
+    // password nor any code is ever logged.
+    const oauthError = (error as { response?: { data?: { error?: string } } })?.response?.data?.error;
+    if (oauthError === 'mfa_required' || oauthError === 'invalid_totp') {
+      logger.info({
+        message: 'Login requires two-factor code',
+        context: { invalidOtp: oauthError === 'invalid_totp' },
+      });
+
+      return {
+        successful: false,
+        message: 'Two-factor authentication required',
+        authResponse: null,
+        mfaRequired: true,
+        invalidOtp: oauthError === 'invalid_totp',
+      };
+    }
+
     logger.error({
       message: 'Login API call failed with exception',
       context: { ...sanitizeAuthError(error), username: credentials.username },
@@ -151,7 +171,11 @@ export const loginRequest = async (credentials: LoginCredentials): Promise<Login
   }
 };
 
-export const externalTokenRequest = async (provider: 'oidc' | 'saml2', externalToken: string, username: string, departmentId?: number): Promise<LoginResponse> => {
+// Last SSO exchange that failed with a 2FA challenge, retained IN MEMORY ONLY so the OTP
+// prompt can retry the same IdP token with a code. Cleared on success and on any final failure.
+let pendingSsoMfaExchange: { provider: 'oidc' | 'saml2'; externalToken: string; username: string; departmentId?: number } | null = null;
+
+export const externalTokenRequest = async (provider: 'oidc' | 'saml2', externalToken: string, username: string, departmentId?: number, otpCode?: string): Promise<LoginResponse> => {
   const requestId = randomUUID();
   try {
     const data: Record<string, string> = {
@@ -165,6 +189,11 @@ export const externalTokenRequest = async (provider: 'oidc' | 'saml2', externalT
       data.department_id = String(departmentId);
     }
 
+    // Accounts with Resgrid 2FA enabled must supply the current authenticator code even via SSO.
+    if (otpCode) {
+      data.totp_code = otpCode.trim();
+    }
+
     logger.info({
       message: 'API: Sending SSO external token request',
       context: { provider, requestId },
@@ -174,11 +203,32 @@ export const externalTokenRequest = async (provider: 'oidc' | 'saml2', externalT
 
     if (response.status === 200) {
       logger.info({ message: 'SSO: External token exchange successful', context: { requestId } });
+      pendingSsoMfaExchange = null;
       return { successful: true, message: 'SSO login successful', authResponse: response.data };
     }
 
     return { successful: false, message: 'SSO login failed', authResponse: null };
   } catch (error) {
+    // The error body distinguishes the 2FA challenge from a real failure. Neither the IdP
+    // token nor any code is ever logged.
+    const oauthError = (error as { response?: { data?: { error?: string } } })?.response?.data?.error;
+    if (oauthError === 'mfa_required' || oauthError === 'invalid_totp') {
+      logger.info({
+        message: 'SSO login requires two-factor code',
+        context: { requestId, invalidOtp: oauthError === 'invalid_totp' },
+      });
+
+      pendingSsoMfaExchange = { provider, externalToken, username, departmentId };
+      return {
+        successful: false,
+        message: 'Two-factor authentication required',
+        authResponse: null,
+        mfaRequired: true,
+        invalidOtp: oauthError === 'invalid_totp',
+      };
+    }
+
+    pendingSsoMfaExchange = null;
     logger.error({ message: 'SSO: External token request failed', context: { ...sanitizeAuthError(error), requestId } });
     return {
       successful: false,
@@ -186,6 +236,16 @@ export const externalTokenRequest = async (provider: 'oidc' | 'saml2', externalT
       authResponse: null,
     };
   }
+};
+
+/** Retries the pending SSO exchange with the user's authenticator code (2FA challenge). */
+export const retrySsoExchangeWithOtp = async (otpCode: string): Promise<LoginResponse> => {
+  if (!pendingSsoMfaExchange) {
+    return { successful: false, message: 'No pending SSO sign-in to verify', authResponse: null };
+  }
+
+  const { provider, externalToken, username, departmentId } = pendingSsoMfaExchange;
+  return externalTokenRequest(provider, externalToken, username, departmentId, otpCode);
 };
 
 export const refreshTokenRequest = async (refreshToken: string): Promise<AuthResponse> => {
