@@ -75,12 +75,7 @@ export const StepUpModal: React.FC<StepUpModalProps> = ({ isOpen, onClose, onVer
         </ModalHeader>
         <ModalBody>
           <VStack space="md">
-            <Text size="sm">
-              {t(
-                'data_protection.step_up_body',
-                'This information is protected. Enter the current code from your authenticator app to view it for a limited time.'
-              )}
-            </Text>
+            <Text size="sm">{t('data_protection.step_up_body', 'This information is protected. Enter the current code from your authenticator app to view it for a limited time.')}</Text>
             <Input variant="outline" size="lg" isDisabled={isVerifying}>
               <InputField
                 testID="step-up-code-input"
@@ -93,10 +88,17 @@ export const StepUpModal: React.FC<StepUpModalProps> = ({ isOpen, onClose, onVer
                 autoComplete="one-time-code"
                 textContentType="oneTimeCode"
                 onSubmitEditing={handleVerify}
+                // A placeholder is not a label: it is announced once and then disappears the
+                // moment the member types, leaving the field unnamed for the rest of the entry.
+                accessibilityLabel={t('data_protection.step_up_placeholder', '6-digit code')}
+                accessibilityHint={t('data_protection.step_up_body')}
+                aria-label={t('data_protection.step_up_placeholder', '6-digit code')}
               />
             </Input>
             {errorText ? (
-              <Text size="sm" className="text-error-600" testID="step-up-error">
+              // Announced on appearance: the error arrives while focus is still in the field, so
+              // a screen reader would otherwise never reach it.
+              <Text size="sm" className="text-error-600" testID="step-up-error" accessibilityLiveRegion="polite" accessibilityRole="alert" role="alert">
                 {errorText}
               </Text>
             ) : null}

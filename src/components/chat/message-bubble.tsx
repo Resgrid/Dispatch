@@ -12,6 +12,7 @@ import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { ChatMessagePriority, type ChatMessageResultData, ChatMessageType } from '@/models/v4/chat';
+import useAuthStore from '@/stores/auth/store';
 
 import { formatShortTime, getPersonAvatarUrl, linkifySegments, parseGifMetadata, parseLocationMetadata } from './chat-utils';
 
@@ -29,6 +30,11 @@ interface MessageBubbleProps {
 
 export function MessageBubble({ message, isOwn, showSender, currentUserId, onLongPress, onToggleReaction, onOpenThread, onRetry, onPressImage }: MessageBubbleProps) {
   const { t } = useTranslation();
+
+  // getChatAttachmentImageSource() bakes the bearer into the source object, so the bubble has to
+  // re-render when the token rotates. Reading it from getState() alone leaves a mounted bubble
+  // holding the pre-refresh token, and the image request then 401s.
+  const accessToken = useAuthStore((state) => state.accessToken);
 
   // Realtime payloads omit empty collections; the store normalizes them, but messages
   // persisted before that normalization existed can still come back without them.
@@ -71,7 +77,7 @@ export function MessageBubble({ message, isOwn, showSender, currentUserId, onLon
       const localUri = message._localAttachmentUri;
       // Full source object (uri + Authorization header) travels with the press so the
       // full-screen preview stays authenticated — extracting only .uri drops the bearer.
-      const source = localUri ? { uri: localUri } : attachment ? getChatAttachmentImageSource(attachment.ChatAttachmentId) : undefined;
+      const source = localUri ? { uri: localUri } : attachment ? getChatAttachmentImageSource(attachment.ChatAttachmentId, accessToken) : undefined;
       if (!source?.uri) return <Text className={textTone}>{message.Body}</Text>;
       return (
         <Pressable onPress={() => onPressImage?.(source as { uri: string; headers?: Record<string, string> })}>

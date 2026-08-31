@@ -23,13 +23,12 @@ import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import WebView from 'react-native-webview';
 
-import { ProtectedRevealBar } from '@/components/data-protection/protected-reveal-bar';
-import { ProtectedText } from '@/components/data-protection/protected-text';
-import { isFieldRedacted, ProtectedFieldIds } from '@/lib/data-protection/redacted';
 import { VideoFeedsTab } from '@/components/callVideoFeeds/video-feeds-tab';
 import { CheckInTab } from '@/components/checkIn/check-in-tab';
 import { Loading } from '@/components/common/loading';
 import ZeroState from '@/components/common/zero-state';
+import { ProtectedRevealBar } from '@/components/data-protection/protected-reveal-bar';
+import { ProtectedText } from '@/components/data-protection/protected-text';
 import { IncidentCommandTab } from '@/components/incident-command/incident-command-tab';
 // Import a static map component instead of react-native-maps
 import StaticMap from '@/components/maps/static-map';
@@ -44,6 +43,7 @@ import { SharedTabs, type TabItem } from '@/components/ui/shared-tabs';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useAnalytics } from '@/hooks/use-analytics';
+import { isFieldRedacted, ProtectedFieldIds } from '@/lib/data-protection/redacted';
 import { buildAddResourcesUpdateRequest, EMPTY_DISPATCH_SELECTION } from '@/lib/dispatch-helpers';
 import { logger } from '@/lib/logging';
 import { openMapsWithDirections } from '@/lib/navigation';
@@ -646,7 +646,11 @@ export default function CallDetail() {
   const showDestinationMap = mapView === 'destination' && hasDestinationLocation;
   const mapLatitude = showDestinationMap ? call.DestinationLatitude : coordinates.latitude;
   const mapLongitude = showDestinationMap ? call.DestinationLongitude : coordinates.longitude;
-  const mapAddress = showDestinationMap ? call.DestinationAddress || call.DestinationName : call.Address;
+  // A withheld address must not leak through the map chrome. StaticMap prints `address` in its
+  // overlay AND its accessibility label, so the sentinel would surface there verbatim after being
+  // suppressed everywhere else on the screen. Destination fields are not in the protected catalog.
+  const isAddressRedacted = isFieldRedacted(call.RedactedFields, ProtectedFieldIds.callAddress, call.Address);
+  const mapAddress = showDestinationMap ? call.DestinationAddress || call.DestinationName : isAddressRedacted ? undefined : call.Address;
 
   return (
     <>

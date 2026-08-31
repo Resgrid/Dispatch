@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 
-import { dataProtectionStore, useStepUpExpiresAt } from '@/stores/data-protection/store';
+import { dataProtectionStore, useHasGrantToken, useStepUpExpiresAt } from '@/stores/data-protection/store';
 
 /**
  * The screen-facing half of an ADP reveal.
@@ -17,7 +17,12 @@ export const useProtectedReveal = (onRevealed?: () => void) => {
   const stepUpExpiresAt = useStepUpExpiresAt();
   const isRequesting = dataProtectionStore((state) => state.isRequestingGrant);
 
-  const isRevealed = stepUpExpiresAt != null && Date.now() < stepUpExpiresAt;
+  const hasGrantToken = useHasGrantToken();
+
+  // The token is part of the invariant, not just the expiry: without it the request goes out with
+  // no grant header and the value comes back redacted, so a "revealed" screen would show nothing
+  // new and reveal() would refuse to retry until the window lapsed.
+  const isRevealed = hasGrantToken && stepUpExpiresAt != null && Date.now() < stepUpExpiresAt;
 
   const reveal = useCallback(async () => {
     const store = dataProtectionStore.getState();

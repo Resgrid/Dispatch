@@ -65,10 +65,17 @@ export const LoginOtpModal: React.FC<LoginOtpModalProps> = ({ isOpen, isSubmitti
                 autoComplete="one-time-code"
                 textContentType="oneTimeCode"
                 onSubmitEditing={handleSubmit}
+                // A placeholder is not a label: it is announced once and then disappears the
+                // moment the member types, leaving the field unnamed for the rest of the entry.
+                accessibilityLabel={t('login.otp_placeholder', '6-digit code')}
+                accessibilityHint={t('login.otp_body', 'Your account has two-factor authentication enabled. Enter the current code from your authenticator app to finish signing in.')}
+                aria-label={t('login.otp_placeholder', '6-digit code')}
               />
             </Input>
             {invalidCode ? (
-              <Text size="sm" className="text-error-600" testID="login-otp-error">
+              // Announced on appearance: the rejection arrives while focus is still in the field,
+              // so a screen reader would otherwise never reach it.
+              <Text size="sm" className="text-error-600" testID="login-otp-error" accessibilityLiveRegion="polite" accessibilityRole="alert" role="alert">
                 {t('login.otp_invalid', 'That code is invalid or has expired. Enter the current code from your authenticator app.')}
               </Text>
             ) : null}

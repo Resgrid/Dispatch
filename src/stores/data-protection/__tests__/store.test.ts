@@ -72,7 +72,7 @@ describe('dataProtectionStore', () => {
   describe('verifyOtp', () => {
     it('activates the absolute window on success', async () => {
       const expires = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-      verifyStepUp.mockResolvedValue({ StepUpExpiresOnUtc: expires, StepUpWindowMinutes: 15 });
+      verifyStepUp.mockResolvedValue({ GrantToken: 'grant-token', StepUpExpiresOnUtc: expires, StepUpWindowMinutes: 15 });
 
       const ok = await dataProtectionStore.getState().verifyOtp('123456');
 
@@ -93,26 +93,43 @@ describe('dataProtectionStore', () => {
     });
 
     it('rejects an already-expired window from the server', async () => {
-      verifyStepUp.mockResolvedValue({ StepUpExpiresOnUtc: new Date(Date.now() - 1000).toISOString() });
+      verifyStepUp.mockResolvedValue({ GrantToken: 'grant-token', StepUpExpiresOnUtc: new Date(Date.now() - 1000).toISOString() });
 
       const ok = await dataProtectionStore.getState().verifyOtp('123456');
 
       expect(ok).toBe(false);
       expect(dataProtectionStore.getState().isStepUpActive()).toBe(false);
     });
+
+    it('rejects a verification response that carries no grant token', async () => {
+      // Accepting one would report the value as revealed while every request goes out without the
+      // grant header, so the data stays redacted with no error to explain it.
+      verifyStepUp.mockResolvedValue({ StepUpExpiresOnUtc: new Date(Date.now() + 15 * 60 * 1000).toISOString() });
+
+      const ok = await dataProtectionStore.getState().verifyOtp('123456');
+
+      expect(ok).toBe(false);
+      expect(dataProtectionStore.getState().lastError).toBe('unknown');
+      expect(dataProtectionStore.getState().isStepUpActive()).toBe(false);
+      expect(dataProtectionStore.getState().getGrantHeaders()).toEqual({});
+    });
   });
 
   describe('window lifecycle', () => {
     it('expires by wall clock — the window is absolute, never sliding', () => {
-      dataProtectionStore.setState({ stepUpExpiresAt: Date.now() - 1 });
+      dataProtectionStore.setState({ grantToken: 'grant-token', stepUpExpiresAt: Date.now() - 1 });
       expect(dataProtectionStore.getState().isStepUpActive()).toBe(false);
 
-      dataProtectionStore.setState({ stepUpExpiresAt: Date.now() + 60_000 });
+      dataProtectionStore.setState({ grantToken: 'grant-token', stepUpExpiresAt: Date.now() + 60_000 });
       expect(dataProtectionStore.getState().isStepUpActive()).toBe(true);
+
+      dataProtectionStore.setState({ grantToken: null, stepUpExpiresAt: Date.now() + 60_000 });
+      expect(dataProtectionStore.getState().isStepUpActive()).toBe(false);
+      expect(dataProtectionStore.getState().getGrantHeaders()).toEqual({});
     });
 
     it('clearStepUp drops the window immediately', () => {
-      dataProtectionStore.setState({ stepUpExpiresAt: Date.now() + 60_000 });
+      dataProtectionStore.setState({ grantToken: 'grant-token', stepUpExpiresAt: Date.now() + 60_000 });
       dataProtectionStore.getState().clearStepUp();
       expect(dataProtectionStore.getState().isStepUpActive()).toBe(false);
     });

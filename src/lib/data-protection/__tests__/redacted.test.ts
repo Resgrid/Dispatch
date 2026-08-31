@@ -16,10 +16,15 @@ describe('isFieldRedacted', () => {
     expect(isFieldRedacted([ProtectedFieldIds.callNotes], ProtectedFieldIds.callName, 'REDACTED')).toBe(false);
   });
 
-  it('falls back to the value when no list came with the payload', () => {
+  it('falls back to the value only when no list came with the payload', () => {
     expect(isFieldRedacted(undefined, ProtectedFieldIds.callName, REDACTION_VALUE)).toBe(true);
     expect(isFieldRedacted(null, ProtectedFieldIds.callName, 'Structure Fire')).toBe(false);
-    expect(isFieldRedacted([], ProtectedFieldIds.callName, REDACTION_VALUE)).toBe(true);
+  });
+
+  it('trusts an explicitly empty list over the sentinel', () => {
+    // [] is the server saying nothing was withheld. Sniffing the value anyway would re-mask a
+    // member who legitimately typed REDACTED, which is the false positive the list prevents.
+    expect(isFieldRedacted([], ProtectedFieldIds.callName, REDACTION_VALUE)).toBe(false);
   });
 
   it('matches field ids case-insensitively', () => {

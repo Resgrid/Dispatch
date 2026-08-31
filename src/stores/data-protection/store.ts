@@ -56,7 +56,7 @@ export interface DataProtectionState {
   ensureGrant: () => Promise<GrantOutcome>;
   /** Sends the TOTP code; true on success. */
   verifyOtp: (code: string) => Promise<boolean>;
-  /** True while an unexpired grant is held. Evaluate at the moment of use. */
+  /** True while an unexpired grant token is held. Evaluate at the moment of use. */
   isStepUpActive: () => boolean;
   /**
    * Headers for a request that needs to read protected values, or {} when no grant is held.
@@ -77,8 +77,7 @@ const parseErrorCode = (error: unknown): StepUpErrorCode => {
   return 'unknown';
 };
 
-const problemType = (error: unknown): string | undefined =>
-  (error as { response?: { data?: { type?: string } } })?.response?.data?.type;
+const problemType = (error: unknown): string | undefined => (error as { response?: { data?: { type?: string } } })?.response?.data?.type;
 
 export const dataProtectionStore = create<DataProtectionState>()((set, get) => ({
   capabilities: null,
@@ -151,12 +150,15 @@ export const dataProtectionStore = create<DataProtectionState>()((set, get) => (
     try {
       const result = await verifyStepUp(code.trim());
       const expiresAt = result?.StepUpExpiresOnUtc ? Date.parse(result.StepUpExpiresOnUtc) : NaN;
-      if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+      // A token-less response is a failure, not a grant. Accepting one would flip the UI to
+      // "revealed" while getGrantHeaders() still sends nothing, so every value stays REDACTED
+      // with no error to explain it — the same invariant ensureGrant() already enforces.
+      if (!result?.GrantToken || !Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
         set({ isVerifying: false, lastError: 'unknown' });
         return false;
       }
       set({
-        grantToken: result?.GrantToken ?? null,
+        grantToken: result.GrantToken,
         stepUpExpiresAt: expiresAt,
         isVerifying: false,
         lastError: null,
@@ -173,8 +175,10 @@ export const dataProtectionStore = create<DataProtectionState>()((set, get) => (
     }
   },
   isStepUpActive: () => {
-    const expiresAt = get().stepUpExpiresAt;
-    return expiresAt != null && Date.now() < expiresAt;
+    const { grantToken, stepUpExpiresAt } = get();
+    // Both halves are required. A future expiry with no token buys nothing: getGrantHeaders()
+    // would send no header, so the record comes back redacted while the UI claims otherwise.
+    return !!grantToken && stepUpExpiresAt != null && Date.now() < stepUpExpiresAt;
   },
   getGrantHeaders: () => {
     const state = get();
@@ -217,7 +221,6 @@ if (typeof useAuthStore?.subscribe === 'function') {
   logger.warn({ message: 'ADP grant store could not subscribe to auth changes; sign-out will not sweep the grant early.' });
 }
 
-
 // Every read through the shared API client carries the grant while one is held — see
 // setProtectedGrantProvider. Registered here rather than imported there, because the client is
 // what this store's own API layer is built on.
@@ -231,6 +234,12 @@ export const useIsProtectionEnabled = () => dataProtectionStore((state) => !!sta
  * gating a reveal must ALSO call isStepUpActive() at the moment of use.
  */
 export const useStepUpExpiresAt = () => dataProtectionStore((state) => state.stepUpExpiresAt);
+
+/**
+ * Reactive: whether a grant token is held at all. Paired with useStepUpExpiresAt by callers that
+ * render a reveal state, because an expiry alone does not make a grant usable.
+ */
+export const useHasGrantToken = () => dataProtectionStore((state) => !!state.grantToken);
 
 /** Headers helper for one-off calls outside a component. */
 export const getProtectedGrantHeaders = () => dataProtectionStore.getState().getGrantHeaders();

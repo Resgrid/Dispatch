@@ -1,9 +1,10 @@
 import axios, { type AxiosProgressEvent, type AxiosRequestConfig, type AxiosResponse } from 'axios';
 
 import { createApiEndpoint } from '@/api/common/client';
-import useAuthStore from '@/stores/auth/store';
+import { getBaseApiUrl } from '@/lib/storage/app';
 import { type CallFilesResult } from '@/models/v4/callFiles/callFilesResult';
 import { type SaveCallFileResult } from '@/models/v4/callFiles/saveCallFileResult';
+import useAuthStore from '@/stores/auth/store';
 
 // Event types for the download process
 export type DownloadEventType = 'start' | 'progress' | 'complete' | 'error';
@@ -30,6 +31,25 @@ const getCallFilesApi = createApiEndpoint('/CallFiles/GetFilesForCall');
 const saveCallFileApi = createApiEndpoint('/CallFiles/SaveCallFile');
 
 // Function to download a file with progress reporting
+/**
+ * Whether `url` points at the department's own Resgrid API.
+ *
+ * Attachment URLs arrive inside the server payload, and not all of them are ours: a department on
+ * external blob storage gets a pre-signed CDN link back. Those links carry their own credential in
+ * the query string and need no bearer, so sending one would hand this member's access token to a
+ * third-party host for nothing.
+ */
+const isApiOrigin = (url: string): boolean => {
+  try {
+    const target = new URL(url, getBaseApiUrl());
+    const api = new URL(getBaseApiUrl());
+    return target.origin === api.origin;
+  } catch {
+    // An unparseable URL is not a host we can vouch for.
+    return false;
+  }
+};
+
 export const getCallAttachmentFile = async (url: string, options: DownloadOptions = {}): Promise<Blob> => {
   const { onEvent, headers = {}, timeout = 30000 } = options;
 
@@ -39,9 +59,10 @@ export const getCallAttachmentFile = async (url: string, options: DownloadOption
       type: 'start',
     });
 
-    // Attach the signed-in bearer: authenticated file routes require it, and the anonymous
-    // signed-link route simply ignores it. Caller-supplied headers win on conflict.
-    const token = useAuthStore.getState().accessToken;
+    // Attach the signed-in bearer, but only for our own API origin: authenticated file routes
+    // require it, the anonymous signed-link route simply ignores it, and an external storage or
+    // CDN host must never see it. Caller-supplied headers win on conflict.
+    const token = isApiOrigin(url) ? useAuthStore.getState().accessToken : null;
     const config: AxiosRequestConfig = {
       responseType: 'blob',
       headers: {

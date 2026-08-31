@@ -58,7 +58,10 @@ export const ProtectedFieldIds = {
  * or an endpoint that does not carry one — the sentinel value is the fallback.
  */
 export const isFieldRedacted = (redactedFields: string[] | null | undefined, fieldId: string, value?: string | null): boolean => {
-  if (redactedFields && redactedFields.length > 0) {
+  // An empty list is a list: the server said "nothing was withheld from this record", and that is
+  // a stronger statement than the sentinel can make. Treating [] as absent would re-mask a member
+  // who legitimately typed REDACTED, which is the false positive the list exists to prevent.
+  if (redactedFields != null) {
     return redactedFields.some((field) => field?.toLowerCase() === fieldId.toLowerCase());
   }
 

@@ -2,9 +2,9 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { ProtectedText } from '@/components/data-protection/protected-text';
-import { isFieldRedacted, ProtectedFieldIds } from '@/lib/data-protection/redacted';
 import { Avatar, AvatarImage } from '@/components/ui/avatar';
 import { BuildingIcon, MailIcon, PhoneIcon, StarIcon, UserIcon } from '@/components/ui/lucide-icons';
+import { isFieldRedacted, ProtectedFieldIds } from '@/lib/data-protection/redacted';
 import { type ContactResultData, ContactType } from '@/models/v4/contacts/contactResultData';
 
 interface ContactCardProps {
@@ -41,7 +41,7 @@ export const ContactCard: React.FC<ContactCardProps> = ({ contact, onPress }) =>
             <AvatarImage source={{ uri: contact.ImageUrl }} alt={displayName} />
           ) : (
             <View className="size-full items-center justify-center bg-gray-100 dark:bg-gray-700">
-              {contact.ContactType === ContactType.Person ? <UserIcon size={24} color="#6B7280" /> : <BuildingIcon size={24} color="#6B7280" />}
+              {contact.ContactType === ContactType.Person ? <UserIcon size={24} className="text-typography-500" /> : <BuildingIcon size={24} className="text-typography-500" />}
             </View>
           )}
         </Avatar>
@@ -68,14 +68,14 @@ export const ContactCard: React.FC<ContactCardProps> = ({ contact, onPress }) =>
 
           {contact.Email ? (
             <View className="mt-1 flex-row items-center">
-              <MailIcon size={14} className="mr-1" color="#6B7280" />
+              <MailIcon size={14} className="mr-1 text-typography-500" />
               <ProtectedText value={contact.Email} fieldId={ProtectedFieldIds.contactEmail} redactedFields={contact.RedactedFields} size="sm" className="text-gray-600 dark:text-gray-300" />
             </View>
           ) : null}
 
           {contact.Phone ? (
             <View className="mt-1 flex-row items-center">
-              <PhoneIcon size={14} className="mr-1" color="#6B7280" />
+              <PhoneIcon size={14} className="mr-1 text-typography-500" />
               <ProtectedText value={contact.Phone} fieldId={ProtectedFieldIds.contactCellPhone} redactedFields={contact.RedactedFields} size="sm" className="text-gray-600 dark:text-gray-300" />
             </View>
           ) : null}

@@ -7,10 +7,10 @@ import { ScrollView } from 'react-native-gesture-handler';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 import { ProtectedText } from '@/components/data-protection/protected-text';
-import { isRedactedValue, ProtectedFieldIds } from '@/lib/data-protection/redacted';
 import { SearchIcon, X } from '@/components/ui/lucide-icons';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { useAuthStore } from '@/lib/auth';
+import { isRedactedValue, ProtectedFieldIds } from '@/lib/data-protection/redacted';
 import { useCallDetailStore } from '@/stores/calls/detail-store';
 
 import { Loading } from '../common/loading';

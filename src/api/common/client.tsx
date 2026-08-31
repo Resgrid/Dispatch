@@ -44,7 +44,6 @@ export class NoActiveSessionError extends Error {
   }
 }
 
-
 // Request interceptor for API calls
 axiosInstance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
