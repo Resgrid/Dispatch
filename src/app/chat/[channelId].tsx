@@ -53,7 +53,7 @@ export default function ChannelConversationScreen() {
   const [actionsMessage, setActionsMessage] = useState<ChatMessageResultData | null>(null);
   const [editMessage, setEditMessage] = useState<ChatMessageResultData | null>(null);
   const [editText, setEditText] = useState('');
-  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [imageSource, setImageSource] = useState<{ uri: string; headers?: Record<string, string> } | null>(null);
   const [presenceIds, setPresenceIds] = useState<Set<string>>(new Set());
   const [resolveAttempted, setResolveAttempted] = useState(false);
   const unsubscribeRef = useRef<(() => void) | null>(null);
@@ -241,7 +241,7 @@ export default function ChannelConversationScreen() {
         onToggleReaction={handleToggleReaction}
         onOpenThread={openThread}
         onRetry={(m) => m.ClientMessageId && useChatStore.getState().retryOutboxItem(m.ClientMessageId)}
-        onPressImage={setImageUri}
+        onPressImage={setImageSource}
       />
     ),
     [currentUserId, showSender, handleToggleReaction, openThread]
@@ -388,15 +388,15 @@ export default function ChannelConversationScreen() {
       </Actionsheet>
 
       {/* Full-screen image preview */}
-      <Actionsheet isOpen={imageUri !== null} onClose={() => setImageUri(null)} snapPoints={[80]}>
+      <Actionsheet isOpen={imageSource !== null} onClose={() => setImageSource(null)} snapPoints={[80]}>
         <ActionsheetBackdrop />
         <ActionsheetContent>
           <ActionsheetDragIndicatorWrapper>
             <ActionsheetDragIndicator />
           </ActionsheetDragIndicatorWrapper>
-          {imageUri ? (
+          {imageSource ? (
             <Center className="w-full p-2">
-              <Image source={{ uri: imageUri }} style={{ width: '100%', height: 400, borderRadius: 12 }} contentFit="contain" />
+              <Image source={imageSource} style={{ width: '100%', height: 400, borderRadius: 12 }} contentFit="contain" />
             </Center>
           ) : null}
         </ActionsheetContent>

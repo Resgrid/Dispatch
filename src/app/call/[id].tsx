@@ -27,6 +27,8 @@ import { VideoFeedsTab } from '@/components/callVideoFeeds/video-feeds-tab';
 import { CheckInTab } from '@/components/checkIn/check-in-tab';
 import { Loading } from '@/components/common/loading';
 import ZeroState from '@/components/common/zero-state';
+import { ProtectedRevealBar } from '@/components/data-protection/protected-reveal-bar';
+import { ProtectedText } from '@/components/data-protection/protected-text';
 import { IncidentCommandTab } from '@/components/incident-command/incident-command-tab';
 // Import a static map component instead of react-native-maps
 import StaticMap from '@/components/maps/static-map';
@@ -41,6 +43,7 @@ import { SharedTabs, type TabItem } from '@/components/ui/shared-tabs';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useAnalytics } from '@/hooks/use-analytics';
+import { isFieldRedacted, ProtectedFieldIds } from '@/lib/data-protection/redacted';
 import { buildAddResourcesUpdateRequest, EMPTY_DISPATCH_SELECTION } from '@/lib/dispatch-helpers';
 import { logger } from '@/lib/logging';
 import { openMapsWithDirections } from '@/lib/navigation';
@@ -387,7 +390,7 @@ export default function CallDetail() {
               </Box>
               <Box className="border-b border-outline-100 pb-2">
                 <Text className="text-sm text-gray-500">{t('call_detail.address')}</Text>
-                <Text className="font-medium">{call.Address}</Text>
+                <ProtectedText value={call.Address} fieldId={ProtectedFieldIds.callAddress} redactedFields={call.RedactedFields} className="font-medium" />
               </Box>
               {call.DestinationName ? (
                 <Box className="border-b border-outline-100 pb-2">
@@ -464,11 +467,11 @@ export default function CallDetail() {
               </Box>
               <Box className="border-b border-outline-100 pb-2">
                 <Text className="text-sm text-gray-500">{t('call_detail.contact_name')}</Text>
-                <Text className="font-medium">{call.ContactName}</Text>
+                <ProtectedText value={call.ContactName} fieldId={ProtectedFieldIds.callContactName} redactedFields={call.RedactedFields} className="font-medium" />
               </Box>
               <Box className="border-b border-outline-100 pb-2">
                 <Text className="text-sm text-gray-500">{t('call_detail.contact_info')}</Text>
-                <Text className="font-medium">{call.ContactInfo}</Text>
+                <ProtectedText value={call.ContactInfo} fieldId={ProtectedFieldIds.callContactNumber} redactedFields={call.RedactedFields} className="font-medium" />
               </Box>
             </VStack>
           </Box>
@@ -643,7 +646,11 @@ export default function CallDetail() {
   const showDestinationMap = mapView === 'destination' && hasDestinationLocation;
   const mapLatitude = showDestinationMap ? call.DestinationLatitude : coordinates.latitude;
   const mapLongitude = showDestinationMap ? call.DestinationLongitude : coordinates.longitude;
-  const mapAddress = showDestinationMap ? call.DestinationAddress || call.DestinationName : call.Address;
+  // A withheld address must not leak through the map chrome. StaticMap prints `address` in its
+  // overlay AND its accessibility label, so the sentinel would surface there verbatim after being
+  // suppressed everywhere else on the screen. Destination fields are not in the protected catalog.
+  const isAddressRedacted = isFieldRedacted(call.RedactedFields, ProtectedFieldIds.callAddress, call.Address);
+  const mapAddress = showDestinationMap ? call.DestinationAddress || call.DestinationName : isAddressRedacted ? undefined : call.Address;
 
   return (
     <>
@@ -656,11 +663,25 @@ export default function CallDetail() {
         }}
       />
       <ScrollView className="size-full w-full flex-1 bg-gray-50 dark:bg-gray-900" contentContainerStyle={{ paddingBottom: 16 }}>
+        {/*
+          Protected values (call name, nature, notes, address, contact details) arrive REDACTED and
+          only come back decrypted on a request carrying a grant, so revealing has to re-read the
+          call. Renders nothing for a department without the addon.
+        */}
+        <ProtectedRevealBar onRefresh={() => fetchCallDetail(callId)} />
+
         {/* Header */}
         <Box className="mx-4 mt-3 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
           <HStack className="mb-2 items-center justify-between">
             <Heading size="md">
-              {call.Name} ({call.Number})
+              {/* The call NUMBER is not cataloged, so it stays visible and the record stays findable. */}
+              {isFieldRedacted(call.RedactedFields, ProtectedFieldIds.callName, call.Name) ? (
+                <ProtectedText value={call.Name} fieldId={ProtectedFieldIds.callName} redactedFields={call.RedactedFields} />
+              ) : (
+                <>
+                  {call.Name} ({call.Number})
+                </>
+              )}
             </Heading>
             {/* Show "Set Active" button if this call is not the active call and there is an active unit */}
             {activeUnit && activeCall?.CallId !== call.CallId && (

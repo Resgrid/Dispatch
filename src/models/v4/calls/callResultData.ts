@@ -46,4 +46,13 @@ export class CallResultData {
   public Protocols: unknown[] = [];
   public UdfValues: unknown[] = [];
   public CheckInTimersEnabled: boolean = false;
+  /**
+   * Catalog field ids the server withheld from this response (ADP plan 7.2). Empty for a
+   * department without the addon, and empty again once a grant reveals the record.
+   *
+   * Left undefined rather than defaulted to `[]`: a server that never sends the list must stay
+   * distinguishable from one that sends an empty one, because isFieldRedacted() only falls back to
+   * sentinel-sniffing for the former.
+   */
+  public RedactedFields?: string[];
 }

@@ -1591,5 +1591,21 @@
       "all_in_rest_period": "alle in Ruhezeit",
       "stations_exhausted": "keine weiteren Wachen"
     }
+  },
+  "data_protection": {
+    "step_up_title": "Identität bestätigen",
+    "step_up_body": "Diese Angaben sind geschützt. Geben Sie den aktuellen Code aus Ihrer Authenticator-App ein, um sie für begrenzte Zeit zu sehen.",
+    "step_up_placeholder": "6-stelliger Code",
+    "step_up_verify": "Bestätigen",
+    "step_up_invalid_code": "Dieser Code ist ungültig oder abgelaufen. Geben Sie den aktuellen Code aus Ihrer Authenticator-App ein.",
+    "step_up_not_enrolled": "Für Ihr Konto ist keine Zwei-Faktor-Authentifizierung eingerichtet. Richten Sie zuerst eine Authenticator-App in den Sicherheitseinstellungen Ihres Kontos ein.",
+    "step_up_too_many_attempts": "Zu viele Versuche. Warten Sie einige Minuten und versuchen Sie es erneut.",
+    "step_up_failed": "Bestätigung fehlgeschlagen. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+    "step_up_unavailable": "Geschützte Daten sind auf diesem Server noch nicht verfügbar. Wenden Sie sich an Ihre Administration.",
+    "reveal": "Geschützte Informationen anzeigen",
+    "conceal": "Wieder ausblenden",
+    "protected_value": "Geschützt",
+    "protected_notice": "Einige Angaben auf diesem Bildschirm sind geschützt.",
+    "revealed_notice": "Geschützte Angaben sind sichtbar."
   }
 }

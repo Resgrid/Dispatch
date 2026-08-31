@@ -1,6 +1,7 @@
 import axios, { type AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
 
 import { performTokenRefresh } from '@/lib/auth/token-refresh';
+import { readProtectedGrantHeaders } from '@/lib/data-protection/grant-provider';
 import { logger } from '@/lib/logging';
 import { getBaseApiUrl } from '@/lib/storage/app';
 import useAuthStore from '@/stores/auth/store';
@@ -60,6 +61,21 @@ axiosInstance.interceptors.request.use(
     }
 
     config.headers.Authorization = `Bearer ${accessToken}`;
+
+    // Advanced Data Protection: while the member holds a live grant, every read through this
+    // instance carries it, so a protected value comes back decrypted instead of REDACTED.
+    //
+    // Attached centrally on purpose. The alternative - each screen remembering to add the header -
+    // is the failure mode that already shipped twice on the web side, and it fails SILENTLY: the
+    // page looks fine and simply shows placeholders. The grant only ever goes to Resgrid's own API
+    // (this instance's baseURL), is short-lived, and is bound to this member, department and policy
+    // epoch, so the server is the only thing that can act on it.
+    if (config.headers) {
+      for (const [name, value] of Object.entries(readProtectedGrantHeaders())) {
+        config.headers.set(name, value);
+      }
+    }
+
     return config;
   },
   (error: AxiosError) => {

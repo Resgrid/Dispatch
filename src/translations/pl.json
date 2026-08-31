@@ -1591,5 +1591,21 @@
       "all_in_rest_period": "wszyscy w okresie odpoczynku",
       "stations_exhausted": "brak kolejnych jednostek do sprawdzenia"
     }
+  },
+  "data_protection": {
+    "step_up_title": "Potwierdź swoją tożsamość",
+    "step_up_body": "Te informacje są chronione. Wprowadź aktualny kod z aplikacji uwierzytelniającej, aby zobaczyć je przez ograniczony czas.",
+    "step_up_placeholder": "Kod 6-cyfrowy",
+    "step_up_verify": "Potwierdź",
+    "step_up_invalid_code": "Ten kod jest nieprawidłowy lub wygasł. Wprowadź aktualny kod z aplikacji uwierzytelniającej.",
+    "step_up_not_enrolled": "Dla Twojego konta nie skonfigurowano uwierzytelniania dwuskładnikowego. Najpierw skonfiguruj aplikację uwierzytelniającą w ustawieniach bezpieczeństwa konta.",
+    "step_up_too_many_attempts": "Zbyt wiele prób. Odczekaj kilka minut i spróbuj ponownie.",
+    "step_up_failed": "Weryfikacja nie powiodła się. Sprawdź połączenie i spróbuj ponownie.",
+    "step_up_unavailable": "Chronione dane nie są jeszcze dostępne na tym serwerze. Skontaktuj się z administratorem.",
+    "reveal": "Pokaż chronione informacje",
+    "conceal": "Ukryj ponownie",
+    "protected_value": "Chronione",
+    "protected_notice": "Część informacji na tym ekranie jest chroniona.",
+    "revealed_notice": "Chronione informacje są widoczne."
   }
 }

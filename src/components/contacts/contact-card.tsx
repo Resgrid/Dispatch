@@ -1,8 +1,10 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 
+import { ProtectedText } from '@/components/data-protection/protected-text';
 import { Avatar, AvatarImage } from '@/components/ui/avatar';
 import { BuildingIcon, MailIcon, PhoneIcon, StarIcon, UserIcon } from '@/components/ui/lucide-icons';
+import { isFieldRedacted, ProtectedFieldIds } from '@/lib/data-protection/redacted';
 import { type ContactResultData, ContactType } from '@/models/v4/contacts/contactResultData';
 
 interface ContactCardProps {
@@ -39,28 +41,42 @@ export const ContactCard: React.FC<ContactCardProps> = ({ contact, onPress }) =>
             <AvatarImage source={{ uri: contact.ImageUrl }} alt={displayName} />
           ) : (
             <View className="size-full items-center justify-center bg-gray-100 dark:bg-gray-700">
-              {contact.ContactType === ContactType.Person ? <UserIcon size={24} color="#6B7280" /> : <BuildingIcon size={24} color="#6B7280" />}
+              {contact.ContactType === ContactType.Person ? <UserIcon size={24} className="text-typography-500" /> : <BuildingIcon size={24} className="text-typography-500" />}
             </View>
           )}
         </Avatar>
 
         <View className="flex-1">
           <View className="flex-row items-center">
-            <Text className="flex-1 text-lg font-semibold text-gray-900 dark:text-white">{displayName}</Text>
+            {/*
+              A contact's name is composed from first/last/company, so when those are withheld the
+              composed value reads "REDACTED REDACTED" — a name, apparently. The list now carries
+              per-row RedactedFields, so this asks the server's answer rather than sniffing the
+              value, and a member who types REDACTED into a name still sees it back.
+            */}
+            {isFieldRedacted(contact.RedactedFields, ProtectedFieldIds.contactFirstName, contact.FirstName) ||
+            isFieldRedacted(contact.RedactedFields, ProtectedFieldIds.contactLastName, contact.LastName) ||
+            isFieldRedacted(contact.RedactedFields, ProtectedFieldIds.contactCompanyName, contact.CompanyName) ? (
+              <View className="flex-1">
+                <ProtectedText value={undefined} fieldId={ProtectedFieldIds.contactLastName} redactedFields={[ProtectedFieldIds.contactLastName]} size="md" />
+              </View>
+            ) : (
+              <Text className="flex-1 text-lg font-semibold text-gray-900 dark:text-white">{displayName}</Text>
+            )}
             {contact.IsImportant ? <StarIcon size={16} color="#FFD700" /> : null}
           </View>
 
           {contact.Email ? (
             <View className="mt-1 flex-row items-center">
-              <MailIcon size={14} className="mr-1" color="#6B7280" />
-              <Text className="text-sm text-gray-600 dark:text-gray-300">{contact.Email}</Text>
+              <MailIcon size={14} className="mr-1 text-typography-500" />
+              <ProtectedText value={contact.Email} fieldId={ProtectedFieldIds.contactEmail} redactedFields={contact.RedactedFields} size="sm" className="text-gray-600 dark:text-gray-300" />
             </View>
           ) : null}
 
           {contact.Phone ? (
             <View className="mt-1 flex-row items-center">
-              <PhoneIcon size={14} className="mr-1" color="#6B7280" />
-              <Text className="text-sm text-gray-600 dark:text-gray-300">{contact.Phone}</Text>
+              <PhoneIcon size={14} className="mr-1 text-typography-500" />
+              <ProtectedText value={contact.Phone} fieldId={ProtectedFieldIds.contactCellPhone} redactedFields={contact.RedactedFields} size="sm" className="text-gray-600 dark:text-gray-300" />
             </View>
           ) : null}
         </View>

@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Platform, StyleSheet, Text as RNText, TouchableOpacity, View as RNView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { StepUpPromptHost } from '@/components/data-protection/step-up-prompt-host';
 import { DashboardViewToggles } from '@/components/dispatch-console';
 import { NotificationButton } from '@/components/notifications/NotificationButton';
 import { NotificationInbox } from '@/components/notifications/NotificationInbox';
@@ -35,6 +36,7 @@ import { useLiveKitStore } from '@/stores/app/livekit-store';
 import { useCallsStore } from '@/stores/calls/store';
 import { useChatStore } from '@/stores/chat/store';
 import { useCheckInStore } from '@/stores/checkIn/store';
+import { dataProtectionStore } from '@/stores/data-protection/store';
 import { FeatureFlagKeys, featureFlagsStore } from '@/stores/feature-flags/store';
 import useLockscreenStore from '@/stores/lockscreen/store';
 import { useRolesStore } from '@/stores/roles/store';
@@ -216,7 +218,7 @@ export default function TabLayout() {
           context: { platform: Platform.OS },
         });
 
-        await featureFlagsStore.getState().fetchFlags();
+        await featureFlagsStore.getState().fetchFlags(), dataProtectionStore.getState().fetchCapabilities();
 
         logger.info({
           message: 'Feature flags fetched, connecting SignalR',
@@ -612,7 +614,14 @@ export default function TabLayout() {
     logger.info({
       message: 'Rendering app layout for web platform (Novu disabled)',
     });
-    return content;
+    // The app's single Advanced Data Protection prompt: any screen triggers it through the store,
+    // so no screen carries a modal of its own and two prompts can never stack.
+    return (
+      <>
+        <StepUpPromptHost />
+        {content}
+      </>
+    );
   }
 
   return (
@@ -621,6 +630,7 @@ export default function TabLayout() {
         <NovuProvider subscriberId={`${rights?.DepartmentCode}_User_${userId}`} applicationIdentifier={config.NovuApplicationId} backendUrl={config.NovuBackendApiUrl} socketUrl={config.NovuSocketUrl}>
           {/* NotificationInbox at the root level */}
           <NotificationInbox isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} />
+          <StepUpPromptHost />
           {content}
         </NovuProvider>
       ) : (

@@ -11,6 +11,7 @@ import { Image, ScrollView } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import * as z from 'zod';
 
+import { LoginOtpModal } from '@/components/auth/login-otp-modal';
 import { View } from '@/components/ui';
 import { Button, ButtonSpinner, ButtonText } from '@/components/ui/button';
 import { FormControl, FormControlError, FormControlErrorIcon, FormControlErrorText, FormControlLabel, FormControlLabelText } from '@/components/ui/form-control';
@@ -19,6 +20,7 @@ import { Text } from '@/components/ui/text';
 import colors from '@/constants/colors';
 import { useOidcLogin } from '@/hooks/use-oidc-login';
 import { useSamlLogin } from '@/hooks/use-saml-login';
+import { retrySsoExchangeWithOtp } from '@/lib/auth/api';
 import type { AuthResponse, SsoConfig } from '@/lib/auth/types';
 import { logger } from '@/lib/logging';
 import { fetchSsoConfigForUser } from '@/services/sso-discovery';
@@ -37,10 +39,11 @@ interface OidcSignInSectionProps {
   onAuthStart: () => void;
   onAuthEnd: () => void;
   onTokenReceived: (authResponse: AuthResponse) => void;
+  onMfaRequired: () => void;
   onError: (msg: string) => void;
 }
 
-function OidcSignInSection({ authority, clientId, username, departmentId, isAuthenticating, onAuthStart, onAuthEnd, onTokenReceived, onError }: OidcSignInSectionProps) {
+function OidcSignInSection({ authority, clientId, username, departmentId, isAuthenticating, onAuthStart, onAuthEnd, onTokenReceived, onMfaRequired, onError }: OidcSignInSectionProps) {
   const { t } = useTranslation();
   const { request, response, promptAsync, exchangeCodeForResgridToken } = useOidcLogin(authority, clientId, username, departmentId);
 
@@ -51,7 +54,9 @@ function OidcSignInSection({ authority, clientId, username, departmentId, isAuth
         onAuthStart();
         try {
           const authResponse = await exchangeCodeForResgridToken();
-          if (!authResponse) {
+          if (authResponse === 'mfa_required') {
+            onMfaRequired();
+          } else if (!authResponse) {
             onError(t('sso.error_token_exchange'));
           } else {
             onTokenReceived(authResponse);
@@ -106,10 +111,11 @@ interface SamlSignInSectionProps {
   onAuthStart: () => void;
   onAuthEnd: () => void;
   onTokenReceived: (authResponse: AuthResponse) => void;
+  onMfaRequired: () => void;
   onError: (msg: string) => void;
 }
 
-function SamlSignInSection({ idpSsoUrl, username, departmentId, isAuthenticating, onAuthStart, onAuthEnd, onTokenReceived, onError }: SamlSignInSectionProps) {
+function SamlSignInSection({ idpSsoUrl, username, departmentId, isAuthenticating, onAuthStart, onAuthEnd, onTokenReceived, onMfaRequired, onError }: SamlSignInSectionProps) {
   const { t } = useTranslation();
   const { startSamlLogin, handleSamlDeepLink } = useSamlLogin(idpSsoUrl, username, departmentId);
 
@@ -120,7 +126,9 @@ function SamlSignInSection({ idpSsoUrl, username, departmentId, isAuthenticating
         onAuthStart();
         try {
           const authResponse = await handleSamlDeepLink(url);
-          if (!authResponse) {
+          if (authResponse === 'mfa_required') {
+            onMfaRequired();
+          } else if (!authResponse) {
             onError(t('sso.error_token_exchange'));
           } else {
             onTokenReceived(authResponse);
@@ -197,6 +205,9 @@ export default function SsoLoginScreen() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [resolvedUsername, setResolvedUsername] = useState('');
   const [resolvedDepartmentId, setResolvedDepartmentId] = useState<number | undefined>();
+  const [showOtpPrompt, setShowOtpPrompt] = useState(false);
+  const [otpInvalid, setOtpInvalid] = useState(false);
+  const [isOtpSubmitting, setIsOtpSubmitting] = useState(false);
 
   const loginWithSso = useAuthStore((s) => s.loginWithSso);
   const status = useAuthStore((s) => s.status);
@@ -226,6 +237,34 @@ export default function SsoLoginScreen() {
       }
     },
     [loginWithSso, t]
+  );
+
+  // 2FA challenge from the exchange: the retained IdP token is retried with the code.
+  const handleMfaRequired = useCallback(() => {
+    setOtpInvalid(false);
+    setShowOtpPrompt(true);
+  }, []);
+
+  const handleOtpSubmit = useCallback(
+    async (code: string) => {
+      setIsOtpSubmitting(true);
+      try {
+        const result = await retrySsoExchangeWithOtp(code);
+        if (result.successful && result.authResponse) {
+          setShowOtpPrompt(false);
+          setOtpInvalid(false);
+          await handleTokenReceived(result.authResponse);
+        } else if (result.mfaRequired) {
+          setOtpInvalid(true);
+        } else {
+          setShowOtpPrompt(false);
+          setAuthError(t('sso.error_generic'));
+        }
+      } finally {
+        setIsOtpSubmitting(false);
+      }
+    },
+    [handleTokenReceived, t]
   );
 
   const onLookup: SubmitHandler<SsoLookupFormType> = async (data) => {
@@ -387,6 +426,7 @@ export default function SsoLoginScreen() {
               }}
               onAuthEnd={() => setIsAuthenticating(false)}
               onTokenReceived={handleTokenReceived}
+              onMfaRequired={handleMfaRequired}
               onError={(msg) => {
                 setAuthError(msg);
                 setIsAuthenticating(false);
@@ -406,6 +446,7 @@ export default function SsoLoginScreen() {
               }}
               onAuthEnd={() => setIsAuthenticating(false)}
               onTokenReceived={handleTokenReceived}
+              onMfaRequired={handleMfaRequired}
               onError={(msg) => {
                 setAuthError(msg);
                 setIsAuthenticating(false);
@@ -426,6 +467,9 @@ export default function SsoLoginScreen() {
             <ChevronLeft size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} />
             <ButtonText className="ml-1">{t('sso.back_to_lookup')}</ButtonText>
           </Button>
+
+          {/* Two-factor challenge: SSO exchange answered mfa_required / invalid_totp */}
+          <LoginOtpModal isOpen={showOtpPrompt} isSubmitting={isOtpSubmitting} invalidCode={otpInvalid} onSubmit={handleOtpSubmit} onClose={() => setShowOtpPrompt(false)} />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

@@ -7,6 +7,7 @@ import { Loading } from '@/components/common/loading';
 import ZeroState from '@/components/common/zero-state';
 import { ContactCard } from '@/components/contacts/contact-card';
 import { ContactDetailsSheet } from '@/components/contacts/contact-details-sheet';
+import { ProtectedRevealBar } from '@/components/data-protection/protected-reveal-bar';
 import { FocusAwareStatusBar } from '@/components/ui';
 import { Box } from '@/components/ui/box';
 import { FlatList } from '@/components/ui/flat-list';
@@ -69,6 +70,13 @@ export default function Contacts() {
     <View className="flex-1 bg-gray-50 dark:bg-gray-900">
       <FocusAwareStatusBar />
       <Box className="flex-1 px-4 pt-4">
+        {/*
+          Contacts are heavily cataloged - names, phone numbers, email, government identifiers and
+          location. They arrive REDACTED and only come back decrypted on a request carrying a grant,
+          so revealing has to re-read the list. Renders nothing without the addon.
+        */}
+        <ProtectedRevealBar onRefresh={() => fetchContacts(true)} />
+
         <Input className="mb-4 rounded-lg bg-white dark:bg-gray-800" size="md" variant="outline">
           <InputSlot className="pl-3">
             <InputIcon as={Search} />

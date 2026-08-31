@@ -50,7 +50,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       UIBackgroundModes: ['remote-notification', 'audio', 'bluetooth-central', 'voip'],
       ITSAppUsesNonExemptEncryption: false,
       UIViewControllerBasedStatusBarAppearance: false,
-      NSBluetoothAlwaysUsageDescription: 'Allow Resgrid Dispatch to connect to bluetooth devices for PTT.',
+      NSBluetoothAlwaysUsageDescription:
+        'Resgrid Dispatch uses Bluetooth to connect to wireless headsets and speaker-microphone accessories for Push-to-Talk audio. For example, when you pair a Bluetooth speaker-mic, pressing its talk button transmits your voice to your department audio channel.',
       LSApplicationQueriesSchemes: [Env.SCHEME, 'https', 'http'],
     },
     entitlements: {
@@ -97,9 +98,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'android.permission.POST_NOTIFICATIONS',
       'android.permission.FOREGROUND_SERVICE',
       'android.permission.FOREGROUND_SERVICE_MICROPHONE',
-      'android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE',
-      'android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK',
     ],
+    // FOREGROUND_SERVICE_CONNECTED_DEVICE is blocked, not merely absent: Bluetooth PTT handsets
+    // route through the microphone FGS session, so the type is unused, and Play rejects any
+    // declared foreground-service type whose use case cannot be demonstrated in the app.
+    blockedPermissions: ['android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE'],
   },
   web: {
     favicon: './assets/favicon.png',
@@ -215,9 +218,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-location',
       {
-        locationWhenInUsePermission: 'Allow Resgrid Dispatch to show current location on map.',
-        locationAlwaysAndWhenInUsePermission: 'Allow Resgrid Dispatch to use your location for department updates.',
-        locationAlwaysPermission: 'Resgrid Dispatch needs to track your location for department AVL.',
+        locationWhenInUsePermission:
+          'Resgrid Dispatch uses your location while you use the app to center the department map on you and to attach your coordinates when you dispatch or update a call. For example, when you create a call from the field, your location can be used as the incident address.',
+        locationAlwaysAndWhenInUsePermission:
+          'Resgrid Dispatch uses your location, including in the background, to keep the department map updated with your position. For example, while you are working a call away from the console, your location is periodically sent so other dispatchers and responders can see where you are, even when the app is not on screen.',
+        locationAlwaysPermission:
+          'Resgrid Dispatch uses your location in the background to keep the department map updated with your position. For example, while you are working a call away from the console, your location is periodically sent so other dispatchers and responders can see where you are, even when the app is not on screen.',
         isIosBackgroundLocationEnabled: true,
         isAndroidBackgroundLocationEnabled: true,
         isAndroidForegroundServiceEnabled: true,
@@ -278,6 +284,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     [
+      'expo-image-picker',
+      {
+        photosPermission:
+          'Resgrid Dispatch uses your photo library so you can attach existing photos to calls and chat messages. For example, you can select a saved photo of an incident scene and attach it to an active call to share it with responders.',
+        cameraPermission:
+          'Resgrid Dispatch uses the camera to take photos that you attach to calls. For example, you can photograph an incident scene or document and attach the image to the active call for responders and other dispatchers to see.',
+      },
+    ],
+    [
       '@sentry/react-native/expo',
       {
         organization: 'sentry',
@@ -296,12 +311,21 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-audio',
       {
-        microphonePermission: 'Allow Resgrid Dispatch to access the microphone for audio input used in PTT and calls.',
+        microphonePermission:
+          'Resgrid Dispatch uses the microphone to capture your voice for Push-to-Talk and voice calls with your department. For example, when you press and hold the talk button in the dispatch console, your voice is transmitted live to responders on the audio channel.',
       },
     ],
     'react-native-ble-manager',
     '@livekit/react-native-expo-plugin',
-    '@config-plugins/react-native-webrtc',
+    [
+      '@config-plugins/react-native-webrtc',
+      {
+        // Set explicitly so the plugin's vague 'Allow $(PRODUCT_NAME) to access your camera'
+        // default can never end up in the built Info.plist.
+        cameraPermission:
+          'Resgrid Dispatch uses the camera to take photos that you attach to calls. For example, you can photograph an incident scene or document and attach the image to the active call for responders and other dispatchers to see.',
+      },
+    ],
     '@config-plugins/react-native-callkeep',
     'expo-web-browser',
     './customGradle.plugin.js',
