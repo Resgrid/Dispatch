@@ -1,6 +1,7 @@
 import DOMPurify from 'dompurify';
 import { type Href, Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import {
+  BuildingIcon,
   ClockIcon,
   EditIcon,
   FileTextIcon,
@@ -25,6 +26,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
+import { CallSiteInfoTabPanel } from '@/components/calls/call-site-info-tab-panel';
 import { VideoFeedsTab } from '@/components/callVideoFeeds/video-feeds-tab';
 import { CheckInTab } from '@/components/checkIn/check-in-tab';
 import { Loading } from '@/components/common/loading';
@@ -65,7 +67,7 @@ import { DispatchSelectionModal } from '../../components/calls/dispatch-selectio
 import { RescheduleCallSheet } from '../../components/calls/reschedule-call-sheet';
 import { StatusBottomSheet } from '../../components/status/status-bottom-sheet';
 
-type TabKey = 'info' | 'contact' | 'protocols' | 'dispatched' | 'timeline' | 'video' | 'checkin' | 'command';
+type TabKey = 'info' | 'contact' | 'protocols' | 'dispatched' | 'timeline' | 'video' | 'checkin' | 'command' | 'site';
 
 export default function CallDetailWeb() {
   const { id } = useLocalSearchParams();
@@ -247,6 +249,7 @@ export default function CallDetailWeb() {
       { key: 'timeline', title: t('call_detail.tabs.timeline'), icon: ClockIcon, badge: callExtraData?.Activity?.length || 0 },
       { key: 'video', title: t('call_detail.tabs.video'), icon: VideoIcon },
       { key: 'command', title: t('incident_command.tab_title'), icon: NetworkIcon },
+      { key: 'site', title: t('call_detail.tabs.site'), icon: BuildingIcon },
     ];
     if (call?.CheckInTimersEnabled) {
       baseTabs.push({
@@ -434,6 +437,12 @@ export default function CallDetailWeb() {
         return (
           <View style={styles.tabContent}>
             <IncidentCommandTab callId={call.CallId} showOpenFull />
+          </View>
+        );
+      case 'site':
+        return (
+          <View style={styles.tabContent}>
+            <CallSiteInfoTabPanel callId={call.CallId} />
           </View>
         );
     }

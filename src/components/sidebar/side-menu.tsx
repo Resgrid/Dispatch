@@ -1,5 +1,6 @@
 import { type Href, useRouter } from 'expo-router';
 import {
+  Briefcase,
   CalendarClock,
   CloudLightning,
   Contact,
@@ -23,7 +24,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { useIsChatEnabled } from '@/stores/feature-flags/store';
+import { useIsChatEnabled, useIsDeploymentsEnabled, useIsRecordsFieldEnabled } from '@/stores/feature-flags/store';
 
 interface SideMenuProps {
   onNavigate?: () => void;
@@ -58,6 +59,8 @@ const getMenuItems = (t: (key: string) => string): MenuItem[] => [
   { id: 'weather-alerts', label: t('menu.weatherAlerts'), icon: CloudLightning, route: '/weather-alerts' },
   { id: 'protocols', label: t('menu.protocols'), icon: FileText, route: '/protocols' },
   { id: 'contacts', label: t('menu.contacts'), icon: Contact, route: '/contacts' },
+  { id: 'records', label: t('tabs.records'), icon: FileText, route: '/records' },
+  { id: 'operations', label: t('operations.title'), icon: Briefcase, route: '/operations' },
   { id: 'chat', label: t('menu.chat'), icon: MessagesSquare, route: '/chat' },
   { id: 'assistant', label: t('menu.assistant'), icon: Sparkles, route: '/chatbot' },
   { id: 'settings', label: t('menu.settings'), icon: Settings, route: '/settings' },
@@ -96,8 +99,23 @@ function SideMenu({ onNavigate, colorScheme: propColorScheme }: SideMenuProps): 
   const { t } = useTranslation();
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const isChatEnabled = useIsChatEnabled();
+  const isRecordsEnabled = useIsRecordsFieldEnabled();
+  const isDeploymentsEnabled = useIsDeploymentsEnabled();
   // Chat and the assistant are gated by the Chat.System feature flag.
-  const menuItems = getMenuItems(t).filter((item) => (item.id === 'chat' || item.id === 'assistant' ? isChatEnabled : true));
+  // Chat.System off hides chat and the assistant; Field Records needs Records.System plus this app's
+  // own child flag. Both fail closed, so an entry stays hidden until the server confirms it.
+  const menuItems = getMenuItems(t).filter((item) => {
+    if (item.id === 'chat' || item.id === 'assistant') {
+      return isChatEnabled;
+    }
+    if (item.id === 'records') {
+      return isRecordsEnabled;
+    }
+    if (item.id === 'operations') {
+      return isDeploymentsEnabled;
+    }
+    return true;
+  });
 
   // Use prop if provided, otherwise default to light on web
   const isDark = propColorScheme === 'dark';

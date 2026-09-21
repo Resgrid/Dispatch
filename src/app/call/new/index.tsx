@@ -155,6 +155,8 @@ export default function NewCall() {
   const [udfValues, setUdfValues] = useState<UdfFieldValueInput[]>([]);
   const [selectedProtocols, setSelectedProtocols] = useState<SelectedProtocol[]>([]);
   const [linkedCall, setLinkedCall] = useState<{ callId: string; number: string; name: string } | null>(null);
+  // Contact picked from the picker; linked to the call as its primary contact (Contacts plan Phase A).
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [sectionsExpanded, setSectionsExpanded] = useState({
     templates: false,
     callName: true,
@@ -350,6 +352,9 @@ export default function NewCall() {
         dispatchUnits: data.dispatchSelection?.units,
         dispatchEveryone: data.dispatchSelection?.everyone,
         linkedCallId: linkedCall?.callId,
+        contactName: data.contactName,
+        contactInfo: data.contactInfo,
+        contactId: selectedContactId ?? undefined,
       });
 
       if (udfValues.length > 0 && response?.Id) {
@@ -441,6 +446,7 @@ export default function NewCall() {
     const info = contact.Email || String(contact.Phone || contact.Mobile || '');
     setValue('contactName', name);
     setValue('contactInfo', info);
+    setSelectedContactId(contact.ContactId);
   };
 
   const handleLinkedCallSelect = (call: CallResultData) => {

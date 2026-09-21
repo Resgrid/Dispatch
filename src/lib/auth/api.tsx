@@ -16,10 +16,24 @@ const sanitizeUrl = (url?: string): string | undefined => url?.split('?')[0];
 // config.data or response bodies for the token endpoints - they contain credentials.
 const sanitizeAuthError = (error: unknown): Record<string, unknown> => {
   if (error instanceof AxiosError) {
+    // Keep only known OAuth diagnostics. Arbitrary response text can contain secrets;
+    // OpenIddict's documentation ID identifies its validation error without that text.
+    const data = error.response?.data;
+    const oauthErrors = ['invalid_request', 'invalid_client', 'invalid_grant', 'unauthorized_client', 'unsupported_grant_type', 'invalid_scope', 'server_error', 'temporarily_unavailable'];
+    const oauthError = typeof data?.error === 'string' && oauthErrors.includes(data.error) ? data.error : undefined;
+    const oauthErrorId = typeof data?.error_uri === 'string' ? /^https:\/\/documentation\.openiddict\.com\/errors\/(ID\d+)\/?$/.exec(data.error_uri)?.[1] : undefined;
+    const knownDescriptions: Record<string, string> = {
+      'The refresh token is no longer valid.': 'refresh_token_no_longer_valid',
+      'The user is no longer allowed to sign in.': 'user_sign_in_not_allowed',
+    };
+    const rejectionReason = typeof data?.error_description === 'string' && Object.hasOwn(knownDescriptions, data.error_description) ? knownDescriptions[data.error_description] : undefined;
     return {
       message: error.message,
       status: error.response?.status,
       url: sanitizeUrl(error.config?.url),
+      ...(oauthError ? { oauthError } : {}),
+      ...(oauthErrorId ? { oauthErrorId } : {}),
+      ...(rejectionReason ? { rejectionReason } : {}),
     };
   }
   return { message: error instanceof Error ? error.message : String(error) };

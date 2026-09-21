@@ -1,5 +1,6 @@
 import { type Href, Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import {
+  BuildingIcon,
   ClockIcon,
   FileTextIcon,
   ImageIcon,
@@ -23,6 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import WebView from 'react-native-webview';
 
+import { CallSiteInfoTabPanel } from '@/components/calls/call-site-info-tab-panel';
 import { VideoFeedsTab } from '@/components/callVideoFeeds/video-feeds-tab';
 import { CheckInTab } from '@/components/checkIn/check-in-tab';
 import { Loading } from '@/components/common/loading';
@@ -32,6 +34,7 @@ import { ProtectedText } from '@/components/data-protection/protected-text';
 import { IncidentCommandTab } from '@/components/incident-command/incident-command-tab';
 // Import a static map component instead of react-native-maps
 import StaticMap from '@/components/maps/static-map';
+import { RecordsQuickCreate } from '@/components/records/records-quick-create';
 import { AlarmLevelBadge } from '@/components/runcards/alarm-level-badge';
 import { EscalateAlarmButton } from '@/components/runcards/escalate-alarm-button';
 import { FocusAwareStatusBar, SafeAreaView } from '@/components/ui';
@@ -410,6 +413,8 @@ export default function CallDetail() {
                   <Text className="font-medium">{call.DestinationAddress}</Text>
                 </Box>
               ) : null}
+              {/* Contextual create: the button hides itself unless the server offers something here. */}
+              <RecordsQuickCreate context={{ CallId: Number.parseInt(call.CallId, 10) }} className="self-start" />
               <Box className="border-b border-outline-100 pb-2">
                 <Text className="text-sm text-gray-500">{t('call_detail.note')}</Text>
                 <Box>
@@ -620,6 +625,14 @@ export default function CallDetail() {
       title: t('call_detail.tabs.video'),
       icon: <VideoIcon size={16} />,
       content: <VideoFeedsTab callId={call.CallId} canEdit={canUserCreateCalls ?? false} />,
+    });
+
+    // Site Info tab: pre-plans, hazards, alert notes and files of the contacts linked to the call.
+    tabs.push({
+      key: 'site',
+      title: t('call_detail.tabs.site'),
+      icon: <BuildingIcon size={16} />,
+      content: <CallSiteInfoTabPanel callId={call.CallId} />,
     });
 
     if (call?.CheckInTimersEnabled) {

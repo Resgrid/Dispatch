@@ -76,10 +76,18 @@ export function performTokenRefresh(): Promise<boolean> {
 
     try {
       const response = await refreshTokenRequest(refreshToken);
+      // A logout or a new login can replace the session while the request is in
+      // flight. Its result must never overwrite or sign out the newer session.
+      if (handlers.getRefreshToken() !== refreshToken) {
+        return false;
+      }
       handlers.applyAuthResponse(response);
       scheduleTokenRefresh(response.expires_in);
       return true;
     } catch (error) {
+      if (handlers.getRefreshToken() !== refreshToken) {
+        return false;
+      }
       // A refresh token the server no longer honours is how a session ends: the token
       // endpoint answers 400/401, the user goes back to the login screen, and nothing is
       // broken. Only the shapes that mean something is actually wrong - network loss,
@@ -93,6 +101,7 @@ export function performTokenRefresh(): Promise<boolean> {
         logger.error({ message: 'Token refresh failed', context });
       }
 
+      cancelScheduledTokenRefresh();
       handlers.onRefreshFailed();
       return false;
     }

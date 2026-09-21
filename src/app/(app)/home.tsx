@@ -628,7 +628,7 @@ export default function DispatchConsole() {
         <HStack className="flex-1" space="sm">
           {/* Left Column - Calls & Units */}
           <VStack className="flex-1" space="sm" style={styles.column}>
-            <ActiveCallsPanel selectedCallId={selectedCallId ?? undefined} onSelectCall={handleSelectCall} isFilterActive={isCallFilterActive} />
+            <ActiveCallsPanel selectedCallId={selectedCallId ?? undefined} onSelectCall={handleSelectCall} isFilterActive={isCallFilterActive} flexWeight={1} />
             <UnitsPanel
               units={units}
               isLoading={unitsLoading}
@@ -765,7 +765,7 @@ export default function DispatchConsole() {
         <HStack className="flex-1" space="sm">
           {/* Left Column */}
           <VStack className="flex-1" space="sm" style={styles.column}>
-            <ActiveCallsPanel selectedCallId={selectedCallId ?? undefined} onSelectCall={handleSelectCall} isFilterActive={isCallFilterActive} />
+            <ActiveCallsPanel selectedCallId={selectedCallId ?? undefined} onSelectCall={handleSelectCall} isFilterActive={isCallFilterActive} flexWeight={1} />
             <UnitsPanel
               units={units}
               isLoading={unitsLoading}
