@@ -401,6 +401,9 @@ export const useRecordsStore = create<RecordsState>()(
       },
 
       pushAllDrafts: async () => {
+        // Deliberately one at a time. Each push carries an idempotency key and the server compares
+        // row versions; sending a device's whole backlog in parallel would turn one bad connection
+        // into a burst of half-applied writes and conflicts that a person then has to untangle.
         for (const clientRecordId of Object.keys(get().pendingDrafts)) {
           const draft = get().pendingDrafts[clientRecordId];
           if (draft?.conflict) {

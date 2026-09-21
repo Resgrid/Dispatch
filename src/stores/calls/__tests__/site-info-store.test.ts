@@ -33,10 +33,12 @@ const makeSiteInfo = (callId: string): CallSiteInfoData => ({
 
 const deferred = <T>() => {
   let resolve!: (value: T) => void;
-  const promise = new Promise<T>((r) => {
-    resolve = r;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
   });
-  return { promise, resolve };
+  return { promise, resolve, reject };
 };
 
 describe('useSiteInfoStore', () => {
@@ -110,7 +112,7 @@ describe('useSiteInfoStore', () => {
     const firstFetch = useSiteInfoStore.getState().fetchSiteInfo('42');
     await useSiteInfoStore.getState().fetchSiteInfo('43');
 
-    first.resolve(Promise.reject(new Error('late failure')));
+    first.reject(new Error('late failure'));
     await firstFetch;
 
     expect(useSiteInfoStore.getState().error).toBeNull();

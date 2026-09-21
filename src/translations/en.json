@@ -631,6 +631,7 @@
     "zip": "Zip Code",
     "preplan": {
       "loading": "Loading pre-plan...",
+      "load_failed": "The pre-plan could not be loaded.",
       "none": "No pre-incident plan has been recorded for this contact.",
       "review_overdue": "The pre-plan review date has passed.",
       "tactical_summary": "Tactical summary",
@@ -673,6 +674,7 @@
     },
     "files": {
       "loading": "Loading files...",
+      "load_failed": "The files could not be loaded.",
       "empty": "No files have been attached to this contact.",
       "share_unavailable": "Sharing is not available on this device.",
       "download_failed": "The file could not be downloaded."
@@ -1126,6 +1128,8 @@
   "operations": {
     "all": "All",
     "back": "Back",
+    "previousDay": "Previous day",
+    "nextDay": "Next day",
     "disabled": "Deployments are not enabled for this department.",
     "entryType": {
       "0": "Deployment",

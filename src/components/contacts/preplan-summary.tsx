@@ -68,22 +68,30 @@ const Field: React.FC<FieldProps> = ({ label, value, fieldId, redactedFields, te
 interface SectionProps {
   title: string;
   icon: React.ReactNode;
+  /**
+   * Whether anything inside will actually render. Decided from the data by the caller: the children
+   * are elements, which are always truthy, and a Field only finds out it is empty while rendering,
+   * after the section has already drawn its box and title.
+   */
+  hasContent: boolean;
   children: React.ReactNode;
 }
 
-const Section: React.FC<SectionProps> = ({ title, icon, children }) => {
-  const rendered = React.Children.toArray(children).filter(Boolean);
-  if (rendered.length === 0) return null;
+const Section: React.FC<SectionProps> = ({ title, icon, hasContent, children }) => {
+  if (!hasContent) return null;
   return (
     <Box className="mb-3 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
       <HStack space="xs" className="mb-2 items-center">
         {icon}
         <Text className="text-sm font-semibold text-gray-900 dark:text-white">{title}</Text>
       </HStack>
-      <VStack>{rendered}</VStack>
+      <VStack>{children}</VStack>
     </Box>
   );
 };
+
+/** True when at least one of the values would render as a Field. */
+const anyValue = (...values: (string | null | undefined)[]): boolean => values.some(hasValue);
 
 interface HazardRowProps {
   hazard: ContactHazardData;
@@ -168,7 +176,7 @@ export const PreplanSummary: React.FC<PreplanSummaryProps> = ({ preplan, hazards
       ) : null}
 
       {hazardList.length > 0 ? (
-        <Section title={t('contacts.preplan.hazards')} icon={<AlertTriangleIcon size={16} color="#ef4444" />}>
+        <Section title={t('contacts.preplan.hazards')} icon={<AlertTriangleIcon size={16} color="#ef4444" />} hasContent>
           {hazardList.map((hazard) => (
             <HazardRow key={hazard.ContactPreplanHazardId} hazard={hazard} />
           ))}
@@ -177,7 +185,11 @@ export const PreplanSummary: React.FC<PreplanSummaryProps> = ({ preplan, hazards
 
       {preplan ? (
         <>
-          <Section title={t('contacts.preplan.access')} icon={<KeyRoundIcon size={16} color="#6366F1" />}>
+          <Section
+            title={t('contacts.preplan.access')}
+            icon={<KeyRoundIcon size={16} color="#6366F1" />}
+            hasContent={anyValue(preplan.KnoxBoxLocation, preplan.GateCode, preplan.AlarmPanelLocation, preplan.AlarmCompany, preplan.AlarmCompanyPhone, preplan.AccessNotes)}
+          >
             <Field label={t('contacts.preplan.knox_box')} value={preplan.KnoxBoxLocation} fieldId={PreplanFieldIds.knoxBox} redactedFields={redacted} />
             <Field label={t('contacts.preplan.gate_code')} value={preplan.GateCode} fieldId={PreplanFieldIds.gateCode} redactedFields={redacted} testID="preplan-gate-code" />
             <Field label={t('contacts.preplan.alarm_panel')} value={preplan.AlarmPanelLocation} fieldId={PreplanFieldIds.alarmPanel} redactedFields={redacted} />
@@ -186,7 +198,7 @@ export const PreplanSummary: React.FC<PreplanSummaryProps> = ({ preplan, hazards
             <Field label={t('contacts.preplan.access_notes')} value={preplan.AccessNotes} fieldId={PreplanFieldIds.accessNotes} redactedFields={redacted} />
           </Section>
 
-          <Section title={t('contacts.preplan.occupancy')} icon={<BuildingIcon size={16} color="#6366F1" />}>
+          <Section title={t('contacts.preplan.occupancy')} icon={<BuildingIcon size={16} color="#6366F1" />} hasContent>
             <Box className="mb-2">
               <Text className="text-xs text-gray-500 dark:text-gray-400">{t('contacts.preplan.construction')}</Text>
               <Text className="text-sm text-gray-900 dark:text-white">
@@ -211,14 +223,22 @@ export const PreplanSummary: React.FC<PreplanSummaryProps> = ({ preplan, hazards
             <Field label={t('contacts.preplan.occupancy_notes')} value={preplan.OccupancyNotes} fieldId={PreplanFieldIds.occupancyNotes} redactedFields={redacted} />
           </Section>
 
-          <Section title={t('contacts.preplan.utilities')} icon={<ZapIcon size={16} color="#6366F1" />}>
+          <Section
+            title={t('contacts.preplan.utilities')}
+            icon={<ZapIcon size={16} color="#6366F1" />}
+            hasContent={anyValue(preplan.GasShutoffLocation, preplan.ElectricShutoffLocation, preplan.WaterShutoffLocation, preplan.UtilityNotes)}
+          >
             <Field label={t('contacts.preplan.gas_shutoff')} value={preplan.GasShutoffLocation} fieldId={PreplanFieldIds.gasShutoff} redactedFields={redacted} />
             <Field label={t('contacts.preplan.electric_shutoff')} value={preplan.ElectricShutoffLocation} fieldId={PreplanFieldIds.electricShutoff} redactedFields={redacted} />
             <Field label={t('contacts.preplan.water_shutoff')} value={preplan.WaterShutoffLocation} fieldId={PreplanFieldIds.waterShutoff} redactedFields={redacted} />
             <Field label={t('contacts.preplan.utility_notes')} value={preplan.UtilityNotes} fieldId={PreplanFieldIds.utilityNotes} redactedFields={redacted} />
           </Section>
 
-          <Section title={t('contacts.preplan.water_supply')} icon={<DropletsIcon size={16} color="#6366F1" />}>
+          <Section
+            title={t('contacts.preplan.water_supply')}
+            icon={<DropletsIcon size={16} color="#6366F1" />}
+            hasContent={preplan.RequiredFireFlowGpm != null || anyValue(preplan.NearestHydrantLocation, preplan.WaterSupplyNotes)}
+          >
             <Field label={t('contacts.preplan.nearest_hydrant')} value={preplan.NearestHydrantLocation} fieldId={PreplanFieldIds.nearestHydrant} redactedFields={redacted} />
             {preplan.RequiredFireFlowGpm != null ? (
               <Box className="mb-2">
@@ -229,14 +249,18 @@ export const PreplanSummary: React.FC<PreplanSummaryProps> = ({ preplan, hazards
             <Field label={t('contacts.preplan.water_supply_notes')} value={preplan.WaterSupplyNotes} fieldId={PreplanFieldIds.waterSupplyNotes} redactedFields={redacted} />
           </Section>
 
-          <Section title={t('contacts.preplan.on_site_contacts')} icon={<PhoneIcon size={16} color="#6366F1" />}>
+          <Section
+            title={t('contacts.preplan.on_site_contacts')}
+            icon={<PhoneIcon size={16} color="#6366F1" />}
+            hasContent={anyValue(preplan.EmergencyContactName, preplan.EmergencyContactPhone, preplan.SecondaryContactName, preplan.SecondaryContactPhone)}
+          >
             <Field label={t('contacts.preplan.emergency_contact')} value={preplan.EmergencyContactName} fieldId={PreplanFieldIds.emergencyContactName} redactedFields={redacted} />
             <Field label={t('contacts.preplan.emergency_contact_phone')} value={preplan.EmergencyContactPhone} fieldId={PreplanFieldIds.emergencyContactPhone} redactedFields={redacted} />
             <Field label={t('contacts.preplan.secondary_contact')} value={preplan.SecondaryContactName} fieldId={PreplanFieldIds.secondaryContactName} redactedFields={redacted} />
             <Field label={t('contacts.preplan.secondary_contact_phone')} value={preplan.SecondaryContactPhone} fieldId={PreplanFieldIds.secondaryContactPhone} redactedFields={redacted} />
           </Section>
 
-          <Section title={t('contacts.preplan.general_hazards')} icon={<AlertTriangleIcon size={16} color="#6366F1" />}>
+          <Section title={t('contacts.preplan.general_hazards')} icon={<AlertTriangleIcon size={16} color="#6366F1" />} hasContent={hasValue(preplan.GeneralHazardNotes)}>
             <Field label={t('contacts.preplan.general_hazard_notes')} value={preplan.GeneralHazardNotes} fieldId={PreplanFieldIds.generalHazardNotes} redactedFields={redacted} />
           </Section>
 

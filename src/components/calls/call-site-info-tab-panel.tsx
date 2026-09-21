@@ -113,7 +113,11 @@ export const CallSiteInfoTabPanel: React.FC<CallSiteInfoTabPanelProps> = ({ call
       fetchSiteInfo(callId);
     }
     return () => {
-      reset();
+      // The store is shared. Only clear it when it still belongs to this call, so an unmounting
+      // panel cannot wipe a sibling that has already started loading another call.
+      if (useSiteInfoStore.getState().callId === callId) {
+        reset();
+      }
     };
   }, [callId, fetchSiteInfo, reset]);
 

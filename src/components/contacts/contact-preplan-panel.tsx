@@ -4,6 +4,7 @@ import { ScrollView } from 'react-native';
 
 import { PreplanSummary } from '@/components/contacts/preplan-summary';
 import { Box } from '@/components/ui/box';
+import { Button, ButtonText } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { useContactPreplanStore } from '@/stores/contacts/preplan-store';
@@ -21,6 +22,7 @@ export const ContactPreplanPanel: React.FC<ContactPreplanPanelProps> = ({ contac
   const { t } = useTranslation();
   const preplans = useContactPreplanStore((state) => state.preplans);
   const loadingPreplan = useContactPreplanStore((state) => state.loadingPreplan);
+  const preplanErrors = useContactPreplanStore((state) => state.preplanErrors);
   const fetchPreplan = useContactPreplanStore((state) => state.fetchPreplan);
   const grantToken = dataProtectionStore((state) => state.grantToken);
 
@@ -43,12 +45,31 @@ export const ContactPreplanPanel: React.FC<ContactPreplanPanelProps> = ({ contac
 
   const isLoading = !!loadingPreplan[contactId];
   const hasFetched = Object.prototype.hasOwnProperty.call(preplans, contactId);
+  const loadFailed = !!preplanErrors[contactId];
+
+  const handleRetry = React.useCallback(() => {
+    fetchPreplan(contactId, true);
+  }, [contactId, fetchPreplan]);
 
   if (isLoading && !hasFetched) {
     return (
       <Box className="flex-1 items-center justify-center py-8" testID="contact-preplan-loading">
         <Spinner size="large" className="mb-4" />
         <Text className="text-center text-gray-500 dark:text-gray-400">{t('contacts.preplan.loading')}</Text>
+      </Box>
+    );
+  }
+
+  // A failed read is not "no pre-plan": the data may well exist, so say it could not be loaded.
+  if (loadFailed && !hasFetched) {
+    return (
+      <Box className="flex-1 items-center justify-center py-8" testID="contact-preplan-error">
+        <Text className="mb-4 text-center text-gray-500 dark:text-gray-400" accessibilityRole="alert">
+          {t('contacts.preplan.load_failed')}
+        </Text>
+        <Button variant="outline" size="sm" onPress={handleRetry} testID="contact-preplan-retry">
+          <ButtonText>{t('common.retry')}</ButtonText>
+        </Button>
       </Box>
     );
   }

@@ -1,5 +1,5 @@
 import { EyeIcon, EyeOffIcon, ShieldIcon } from 'lucide-react-native';
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Button, ButtonIcon, ButtonText } from '@/components/ui/button';
@@ -7,6 +7,8 @@ import { HStack } from '@/components/ui/hstack';
 import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { useProtectedReveal } from '@/hooks/use-protected-reveal';
+import { logger } from '@/lib/logging';
+import useAuthStore from '@/stores/auth/store';
 import { useIsProtectionEnabled } from '@/stores/data-protection/store';
 
 interface ProtectedRevealBarProps {
@@ -34,18 +36,49 @@ export const ProtectedRevealBar: React.FC<ProtectedRevealBarProps> = ({ onRefres
   const { t } = useTranslation();
   const isProtectionEnabled = useIsProtectionEnabled();
 
+  // The re-read is fire-and-forget from the bar's point of view, but a failure is still a failure:
+  // after a conceal it means the plaintext is still on screen, so it is logged rather than dropped.
+  const refresh = useCallback(
+    (reason: 'revealed' | 'concealed' | 'expired') => {
+      Promise.resolve()
+        .then(() => onRefresh())
+        .catch((error: unknown) => {
+          logger.error({
+            message: 'Protected data refresh failed',
+            context: { op: 'protected_reveal_refresh', reason, testID: testID ?? 'protected-reveal-bar', error: error instanceof Error ? error.message : String(error) },
+          });
+        });
+    },
+    [onRefresh, testID]
+  );
+
   const handleRevealed = useCallback(() => {
-    void onRefresh();
-  }, [onRefresh]);
+    refresh('revealed');
+  }, [refresh]);
 
   const { isRevealed, isRequesting, reveal, conceal } = useProtectedReveal(handleRevealed);
 
+  const concealedManually = useRef(false);
   const handleConceal = useCallback(() => {
+    concealedManually.current = true;
     conceal();
     // Re-read without the grant so the plaintext leaves memory as well as the screen. Clearing the
     // grant alone would leave the values already rendered sitting there until the next navigation.
-    void onRefresh();
-  }, [conceal, onRefresh]);
+    refresh('concealed');
+  }, [conceal, refresh]);
+
+  // The window is absolute: when the store's expiry timer drops the grant while this screen sits
+  // open, isRevealed flips on its own and nothing else re-reads. The same re-read a manual conceal
+  // does happens here, so the plaintext leaves the screen at expiry too. A manual conceal already
+  // refreshed, so it is skipped; so is sign-out, where the screen is on its way out anyway.
+  const wasRevealed = useRef(isRevealed);
+  useEffect(() => {
+    if (wasRevealed.current && !isRevealed && !concealedManually.current && useAuthStore.getState().status === 'signedIn') {
+      refresh('expired');
+    }
+    concealedManually.current = false;
+    wasRevealed.current = isRevealed;
+  }, [isRevealed, refresh]);
 
   if (!isProtectionEnabled) {
     return null;

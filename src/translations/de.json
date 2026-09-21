@@ -631,6 +631,7 @@
     "zip": "Postleitzahl",
     "preplan": {
       "loading": "Einsatzplan wird geladen...",
+      "load_failed": "Der Einsatzplan konnte nicht geladen werden.",
       "none": "Für diesen Kontakt wurde kein Einsatzplan erfasst.",
       "review_overdue": "Das Überprüfungsdatum des Einsatzplans ist abgelaufen.",
       "tactical_summary": "Taktische Zusammenfassung",
@@ -673,6 +674,7 @@
     },
     "files": {
       "loading": "Dateien werden geladen...",
+      "load_failed": "Die Dateien konnten nicht geladen werden.",
       "empty": "An diesen Kontakt wurden keine Dateien angehängt.",
       "share_unavailable": "Teilen ist auf diesem Gerät nicht verfügbar.",
       "download_failed": "Die Datei konnte nicht heruntergeladen werden."
@@ -1126,6 +1128,8 @@
   "operations": {
     "all": "Alle",
     "back": "Zurück",
+    "previousDay": "Vorheriger Tag",
+    "nextDay": "Nächster Tag",
     "disabled": "Einsätze sind für diese Abteilung nicht aktiviert.",
     "entryType": {
       "0": "Einsatz",

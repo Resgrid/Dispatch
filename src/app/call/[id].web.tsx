@@ -194,32 +194,12 @@ export default function CallDetailWeb() {
     if (call) {
       trackEvent('call_detail_web_view_rendered', {
         callId: call.CallId || '',
-        callName: call.Name || '',
+        // The name is a protected field: only its presence is reported, never its value.
+        hasCallName: !!call.Name,
         hasCoordinates: !!(call.Latitude && call.Longitude),
       });
     }
   }, [trackEvent, call]);
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        router.back();
-      }
-      if (e.key === 'e' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        handleEditCall();
-      }
-      // Tab navigation with number keys
-      if (e.key >= '1' && e.key <= '7' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        const tabs: TabKey[] = ['info', 'contact', 'protocols', 'dispatched', 'timeline', 'video', 'checkin'];
-        const index = parseInt(e.key) - 1;
-        if (tabs[index]) setActiveTab(tabs[index]);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleEditCall, router, setActiveTab]);
 
   const handleRoute = async () => {
     if (!coordinates.latitude || !coordinates.longitude) {
@@ -261,6 +241,27 @@ export default function CallDetailWeb() {
     }
     return baseTabs;
   }, [t, callExtraData?.Activity?.length, call?.CheckInTimersEnabled, overdueCount, warningCount]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        router.back();
+      }
+      if (e.key === 'e' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        handleEditCall();
+      }
+      // Tab navigation with number keys, in the order the tabs are rendered, so a key can never
+      // land on a tab that is not on screen (the check-in tab is conditional).
+      if (e.key >= '1' && e.key <= '9' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const target = tabs[parseInt(e.key, 10) - 1];
+        if (target) setActiveTab(target.key);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleEditCall, router, setActiveTab, tabs]);
 
   if (isLoading) {
     return (
@@ -578,7 +579,7 @@ export default function CallDetailWeb() {
           {/* Keyboard Shortcuts Hint */}
           <View style={styles.shortcutHint}>
             <Text style={StyleSheet.flatten([styles.shortcutText, isDark ? styles.shortcutTextDark : styles.shortcutTextLight])}>
-              {t('call_detail.keyboard_shortcuts', 'Tip: Press 1-5 to switch tabs, Ctrl+E to edit, Escape to go back')}
+              {t('call_detail.keyboard_shortcuts', 'Tip: Press 1-9 to switch tabs, Ctrl+E to edit, Escape to go back')}
             </Text>
           </View>
         </ScrollView>

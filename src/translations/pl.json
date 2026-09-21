@@ -631,6 +631,7 @@
     "zip": "Kod pocztowy",
     "preplan": {
       "loading": "Ładowanie planu operacyjnego...",
+      "load_failed": "Nie udało się wczytać planu operacyjnego.",
       "none": "Dla tego kontaktu nie zapisano planu operacyjnego.",
       "review_overdue": "Termin przeglądu planu operacyjnego minął.",
       "tactical_summary": "Podsumowanie taktyczne",
@@ -673,6 +674,7 @@
     },
     "files": {
       "loading": "Ładowanie plików...",
+      "load_failed": "Nie udało się wczytać plików.",
       "empty": "Do tego kontaktu nie dołączono żadnych plików.",
       "share_unavailable": "Udostępnianie nie jest dostępne na tym urządzeniu.",
       "download_failed": "Nie udało się pobrać pliku."
@@ -1126,6 +1128,8 @@
   "operations": {
     "all": "Wszystkie",
     "back": "Wstecz",
+    "previousDay": "Poprzedni dzień",
+    "nextDay": "Następny dzień",
     "disabled": "Rozmieszczenia nie są włączone dla tego wydziału.",
     "entryType": {
       "0": "Rozmieszczenie",
@@ -1791,7 +1795,7 @@
     "loading": "Ładowanie rekordów…",
     "location_kept": "Zachowano lokalizację",
     "location_removed": "Usunięto lokalizację",
-    "needs_attention": "Wymaga Ciebie",
+    "needs_attention": "Wymaga Twojej uwagi",
     "new_record": "Nowy rekord",
     "no_assignments": "Nic nie jest Ci przypisane.",
     "no_attachments": "Brak załączników.",
@@ -1880,7 +1884,7 @@
     "fill_status_assigned": "Przydzielone",
     "fill_status_released": "Zwolnione",
     "fill_status_demobilized": "Zdemobilizowane",
-    "fill_status_returned": "Powrócono",
+    "fill_status_returned": "Zwrócone",
     "trainee": "Stażysta",
     "needed_on": "Potrzebne",
     "fills": "Żądania i obsady",

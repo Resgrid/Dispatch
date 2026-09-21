@@ -141,7 +141,13 @@ export const useChatSystemStatus = (): FeatureFlagStatus => useFeatureFlagStatus
 
 // Field Records is gated by the parent Records.System flag and this app's own child flag; both must
 // be on. Unknown resolves fail-closed, so the surface stays hidden until the server confirms it.
-export const useIsRecordsFieldEnabled = () => useFeatureFlag(FeatureFlagKeys.RecordsSystem) && useFeatureFlag(FeatureFlagKeys.RecordsFieldDispatch);
+export const useIsRecordsFieldEnabled = () => {
+  // Both hooks run unconditionally: `&&` would skip the second one whenever the parent is off,
+  // and the hook count changing between renders is a rules-of-hooks violation.
+  const system = useFeatureFlag(FeatureFlagKeys.RecordsSystem);
+  const field = useFeatureFlag(FeatureFlagKeys.RecordsFieldDispatch);
+  return system && field;
+};
 
 export const useRecordsFieldStatus = (): FeatureFlagStatus => {
   const parent = useFeatureFlagStatus(FeatureFlagKeys.RecordsSystem);

@@ -378,6 +378,12 @@ jest.mock('@/components/checkIn/check-in-tab', () => ({
   CheckInTab: () => <div data-testid="check-in-tab">Check In</div>,
 }));
 
+// Mock the site info tab: it pulls in expo-file-system/expo-sharing, which do not load under the
+// minimal expo-modules-core mock above.
+jest.mock('@/components/calls/call-site-info-tab-panel', () => ({
+  CallSiteInfoTabPanel: () => <div data-testid="site-info-tab">Site Info</div>,
+}));
+
 import CallDetail from '../../../app/call/[id]';
 
 describe('CallDetail', () => {

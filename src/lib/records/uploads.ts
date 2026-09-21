@@ -83,7 +83,9 @@ export const fileSize = async (fileUri: string): Promise<number> => {
  */
 const chunkOf = (base64: string, offsetBytes: number, chunkBytes: number): string => {
   const start = (offsetBytes / 3) * 4;
-  const length = (chunkBytes / 3) * 4;
+  // Only the final chunk can be short of a multiple of 3; its trailing 1 or 2 bytes still occupy a
+  // full padded 4-character group, and slice() would otherwise truncate the fraction and drop them.
+  const length = Math.ceil(chunkBytes / 3) * 4;
   return base64.slice(start, start + length);
 };
 

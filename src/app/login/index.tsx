@@ -46,6 +46,8 @@ export default function Login() {
         message: 'Login successful, redirecting to home',
       });
 
+      // The retained credentials have done their job; drop them before leaving the screen.
+      setPendingCredentials(null);
       // Use replace to prevent going back to login screen
       router.replace('/(app)' as any);
     }
@@ -86,7 +88,18 @@ export default function Login() {
     if (!pendingCredentials) {
       return;
     }
-    await login({ ...pendingCredentials, otpCode: code });
+    // The modal does not await this, so a rejection here would be unhandled. login() reports
+    // failures through status/error, but a throw from it must not escape either. The code is
+    // never logged.
+    try {
+      await login({ ...pendingCredentials, otpCode: code });
+    } catch (error) {
+      logger.error({
+        message: 'Login OTP retry failed with exception',
+        context: { error: error instanceof Error ? error.message : String(error) },
+      });
+      setIsErrorModalVisible(true);
+    }
   };
 
   return (
@@ -133,7 +146,11 @@ export default function Login() {
         isSubmitting={status === 'loading'}
         invalidCode={error === 'invalid_totp'}
         onSubmit={onOtpSubmit}
-        onClose={() => setOtpDismissed(true)}
+        onClose={() => {
+          // Dismissing the challenge abandons the attempt, so the password goes with it.
+          setOtpDismissed(true);
+          setPendingCredentials(null);
+        }}
       />
     </>
   );

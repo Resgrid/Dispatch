@@ -631,6 +631,7 @@
     "zip": "Code postal",
     "preplan": {
       "loading": "Chargement du plan d'intervention...",
+      "load_failed": "Le plan d’intervention n’a pas pu être chargé.",
       "none": "Aucun plan d'intervention n'a été enregistré pour ce contact.",
       "review_overdue": "La date de révision du plan d'intervention est dépassée.",
       "tactical_summary": "Résumé tactique",
@@ -673,6 +674,7 @@
     },
     "files": {
       "loading": "Chargement des fichiers...",
+      "load_failed": "Les fichiers n’ont pas pu être chargés.",
       "empty": "Aucun fichier n'est joint à ce contact.",
       "share_unavailable": "Le partage n'est pas disponible sur cet appareil.",
       "download_failed": "Le fichier n'a pas pu être téléchargé."
@@ -1126,6 +1128,8 @@
   "operations": {
     "all": "Tous",
     "back": "Retour",
+    "previousDay": "Jour précédent",
+    "nextDay": "Jour suivant",
     "disabled": "Les déploiements ne sont pas activés pour ce service.",
     "entryType": {
       "0": "Déploiement",
@@ -1838,7 +1842,7 @@
     "untitled": "Sans titre",
     "update_required": "Mise à jour de l'application requise",
     "deployments": "Déploiements",
-    "deployments_home_hint": "Ordres de ressources externes que votre service pourvoit",
+    "deployments_home_hint": "Demandes de ressources externes auxquelles votre service répond",
     "deployments_hint": "Le système de commande reste l'autorité. Les affectations sont avancées par un coordinateur sur le web ; rien ici n'en modifie une.",
     "no_deployments": "Aucun déploiement",
     "include_closed": "Afficher les déploiements clôturés",
@@ -1847,7 +1851,7 @@
     "reconciliation_count": "{{count}} à rapprocher",
     "connectors": "Connecteurs externes",
     "connectors_home_hint": "Flux des systèmes de commande et ce qui reste à rapprocher",
-    "connectors_hint": "Chaque connecteur lit un système de commande selon ses conditions, avec un identifiant chiffré et une limite de requêtes. L'autorité d'écriture est refusée.",
+    "connectors_hint": "Chaque connecteur lit un système de commande selon ses conditions, avec des informations d’identification chiffrées et une limite de requêtes. L'autorité d'écriture est refusée.",
     "manage_on_web": "Les connecteurs sont créés, modifiés et dotés de leurs identifiants sur le web.",
     "no_connectors": "Aucun connecteur",
     "connector_ready": "Prêt",

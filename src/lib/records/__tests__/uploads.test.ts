@@ -52,7 +52,18 @@ const pending = (overrides: Record<string, unknown> = {}) => ({
 });
 
 const session = (receivedBytes: number, chunkSize = 3) => ({
-  Data: { UploadId: 'session-1', RecordId: 'r1', FileName: 'photo.jpg', ContentType: 'image/jpeg', DeclaredSize: 9, ReceivedBytes: receivedBytes, ChunkSize: chunkSize, ChunkCount: 3, State: 1, ExpiresOn: '2026-09-07T00:00:00Z' },
+  Data: {
+    UploadId: 'session-1',
+    RecordId: 'r1',
+    FileName: 'photo.jpg',
+    ContentType: 'image/jpeg',
+    DeclaredSize: 9,
+    ReceivedBytes: receivedBytes,
+    ChunkSize: chunkSize,
+    ChunkCount: 3,
+    State: 1,
+    ExpiresOn: '2026-09-07T00:00:00Z',
+  },
 });
 
 describe('Record attachment uploads', () => {
@@ -73,8 +84,28 @@ describe('Record attachment uploads', () => {
     expect(outcome.ok).toBe(true);
     expect(outcome.attachment?.AttachmentId).toBe('a1');
     expect(api.uploadRecordChunk).toHaveBeenCalledTimes(3);
-    expect(api.uploadRecordChunk.mock.calls.map((call: unknown[]) => (call[0] as { Offset: number }).Offset)).toEqual([0, 3, 6]);
+    const offsets = api.uploadRecordChunk.mock.calls.map((call: unknown[]) => (call[0] as { Offset: number }).Offset);
+    expect(offsets).toEqual([0, 3, 6]);
     expect(progress).toEqual([0, 3, 6, 9]);
+  });
+
+  it('sends the whole padded group for a final chunk that is not a multiple of 3 bytes', async () => {
+    // 10 bytes: three full 3-byte chunks (4 base64 chars each) and a trailing single byte, which
+    // base64 pads to a full 4-character group ("AA==") that must reach the server intact.
+    const tenBytesBase64 = 'AAAAAAAAAAAAAA==';
+    fs.getInfoAsync.mockResolvedValue({ exists: true, size: 10 });
+    fs.readAsStringAsync.mockResolvedValue(tenBytesBase64);
+    api.beginRecordUpload.mockResolvedValue({ Data: { ...session(0).Data, DeclaredSize: 10, ChunkCount: 4 } });
+    api.uploadRecordChunk.mockResolvedValueOnce(session(3)).mockResolvedValueOnce(session(6)).mockResolvedValueOnce(session(9)).mockResolvedValueOnce(session(10));
+    api.completeRecordUpload.mockResolvedValue({ Data: { AttachmentId: 'a4' } });
+
+    const outcome = await runUpload(pending({ byteSize: 10 }) as never);
+
+    expect(outcome.ok).toBe(true);
+    const chunks: { Offset: number; Data: string }[] = api.uploadRecordChunk.mock.calls.map((call: unknown[]) => call[0] as { Offset: number; Data: string });
+    expect(chunks.map((chunk) => chunk.Offset)).toEqual([0, 3, 6, 9]);
+    expect(chunks.map((chunk) => chunk.Data)).toEqual(['AAAA', 'AAAA', 'AAAA', 'AA==']);
+    expect(chunks.map((chunk) => chunk.Data).join('')).toBe(tenBytesBase64);
   });
 
   it('resumes from the count the server reports, not the one the device remembers', async () => {

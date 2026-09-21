@@ -126,11 +126,11 @@ export default function OperationsDeploymentScreen() {
         ) : null}
         {deployment && (section === 'time' || section === 'usage') ? (
           <HStack className="items-center justify-between">
-            <Pressable onPress={() => changeDay(-1)} testID="operations-day-previous" accessibilityRole="button">
+            <Pressable onPress={() => changeDay(-1)} testID="operations-day-previous" accessibilityRole="button" accessibilityLabel={t('operations.previousDay')}>
               <ChevronLeft size={22} color="#2563eb" />
             </Pressable>
             <Text className="font-semibold">{dateKey}</Text>
-            <Pressable onPress={() => changeDay(1)} testID="operations-day-next" accessibilityRole="button">
+            <Pressable onPress={() => changeDay(1)} testID="operations-day-next" accessibilityRole="button" accessibilityLabel={t('operations.nextDay')}>
               <ChevronRight size={22} color="#2563eb" />
             </Pressable>
           </HStack>

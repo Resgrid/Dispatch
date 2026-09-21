@@ -620,7 +620,7 @@
     "tabs": {
       "details": "Detalles",
       "notes": "Notas",
-      "preplan": "Preplan",
+      "preplan": "Plan previo",
       "files": "Archivos"
     },
     "threads": "Threads",
@@ -630,9 +630,10 @@
     "website": "Sitio web",
     "zip": "Código postal",
     "preplan": {
-      "loading": "Cargando preplan...",
+      "loading": "Cargando plan previo al incidente...",
+      "load_failed": "No se pudo cargar el plan previo al incidente.",
       "none": "No se ha registrado un plan previo al incidente para este contacto.",
-      "review_overdue": "La fecha de revisión del preplan ha vencido.",
+      "review_overdue": "La fecha de revisión del plan previo al incidente ha vencido.",
       "tactical_summary": "Resumen táctico",
       "hazmat_on_site": "Materiales peligrosos en el sitio",
       "hazards": "Peligros del inmueble",
@@ -673,6 +674,7 @@
     },
     "files": {
       "loading": "Cargando archivos...",
+      "load_failed": "No se pudieron cargar los archivos.",
       "empty": "No se han adjuntado archivos a este contacto.",
       "share_unavailable": "Compartir no está disponible en este dispositivo.",
       "download_failed": "No se pudo descargar el archivo."
@@ -1126,6 +1128,8 @@
   "operations": {
     "all": "Todos",
     "back": "Atrás",
+    "previousDay": "Día anterior",
+    "nextDay": "Día siguiente",
     "disabled": "Los despliegues no están habilitados para este departamento.",
     "entryType": {
       "0": "Despliegue",
@@ -1777,7 +1781,7 @@
     "choose_file": "Elegir un archivo",
     "choose_photo": "Elegir una foto",
     "conflict_app_version": "Los registros no están habilitados para esta versión de la aplicación.",
-    "conflict_definition_retired": "Este formulario fue retirado. Iníciela de nuevo desde la lista actual.",
+    "conflict_definition_retired": "Este formulario fue retirado. Inícielo de nuevo desde la lista actual.",
     "conflict_etag": "Otra persona cambió este registro. Vuelva a cargarlo y aplique sus cambios de nuevo.",
     "conflict_permission": "Ya no tiene acceso a este registro.",
     "conflict_protected_data": "Este formulario necesita conexión activa y su acceso a datos protegidos.",
@@ -1868,7 +1872,7 @@
     "reconciliation_local_fill_missing_in_source": "La asignación existe localmente pero no en la fuente",
     "reconciliation_source_status_ahead": "El estado de la fuente va por delante de la asignación local",
     "reconciliation_source_status_behind": "El estado de la fuente va por detrás de la asignación local",
-    "deployment_status_open": "Abierta",
+    "deployment_status_open": "Abierto",
     "deployment_status_mobilized": "Movilizado",
     "deployment_status_released": "Liberado",
     "deployment_status_closed_out": "Cerrado",
@@ -1930,7 +1934,7 @@
     "loading": "Cargando información del sitio...",
     "load_failed": "No se pudo cargar la información del sitio.",
     "empty": "Sin información del sitio",
-    "empty_description": "Ninguno de los contactos vinculados a esta llamada tiene preplan, peligros, notas de alerta o archivos.",
+    "empty_description": "Ninguno de los contactos vinculados a esta llamada tiene plan previo al incidente, peligros, notas de alerta o archivos.",
     "primary_contact": "Contacto principal",
     "additional_contact": "Contacto adicional",
     "entrance": "Entrada",

@@ -22,6 +22,9 @@ export const useProtectedReveal = (onRevealed?: () => void) => {
   // The token is part of the invariant, not just the expiry: without it the request goes out with
   // no grant header and the value comes back redacted, so a "revealed" screen would show nothing
   // new and reveal() would refuse to retry until the window lapsed.
+  //
+  // Date.now() is read at render, so this alone would go stale on a screen that sits open past
+  // the window. The store's expiry timer drops the token at that moment, which re-renders here.
   const isRevealed = hasGrantToken && stepUpExpiresAt != null && Date.now() < stepUpExpiresAt;
 
   const reveal = useCallback(async () => {

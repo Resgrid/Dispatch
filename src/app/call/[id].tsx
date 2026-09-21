@@ -19,7 +19,7 @@ import {
   Volume2Icon,
 } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import WebView from 'react-native-webview';
@@ -166,6 +166,9 @@ export default function CallDetail() {
     ]);
   };
 
+  // Stable so ProtectedRevealBar's own callbacks (which list it as a dependency) do not churn.
+  const handleProtectedRefresh = useCallback(() => fetchCallDetail(callId), [fetchCallDetail, callId]);
+
   const handleSetActive = async () => {
     if (!call) return;
 
@@ -248,7 +251,9 @@ export default function CallDetail() {
     if (call) {
       trackEvent('call_detail_view_rendered', {
         callId: call.CallId || '',
-        callName: call.Name || '',
+        // The name is a protected field: after a reveal it is plaintext, and analytics is
+        // outside the grant-controlled path, so only its presence is reported.
+        hasCallName: !!call.Name,
         callNumber: call.Number || '',
         callPriority: call.Priority || 0,
         callType: call.Type || '',
@@ -417,14 +422,18 @@ export default function CallDetail() {
               <RecordsQuickCreate context={{ CallId: Number.parseInt(call.CallId, 10) }} className="self-start" />
               <Box className="border-b border-outline-100 pb-2">
                 <Text className="text-sm text-gray-500">{t('call_detail.note')}</Text>
-                <Box>
-                  <WebView
-                    style={[styles.container, { height: 200 }]}
-                    originWhitelist={['*']}
-                    scrollEnabled={false}
-                    showsVerticalScrollIndicator={false}
-                    source={{
-                      html: `
+                {/* A withheld value is the literal sentinel; it must not be handed to the WebView as HTML. */}
+                {isFieldRedacted(call.RedactedFields, ProtectedFieldIds.callNotes, call.Note) ? (
+                  <ProtectedText value={call.Note} fieldId={ProtectedFieldIds.callNotes} redactedFields={call.RedactedFields} />
+                ) : (
+                  <Box>
+                    <WebView
+                      style={[styles.container, { height: 200 }]}
+                      originWhitelist={['*']}
+                      scrollEnabled={false}
+                      showsVerticalScrollIndicator={false}
+                      source={{
+                        html: `
                                 <!DOCTYPE html>
                                 <html>
                                   <head>
@@ -446,10 +455,11 @@ export default function CallDetail() {
                                   <body>${sanitizeHtmlContent(call.Note ?? '')}</body>
                                 </html>
                               `,
-                    }}
-                    androidLayerType="software"
-                  />
-                </Box>
+                      }}
+                      androidLayerType="software"
+                    />
+                  </Box>
+                )}
               </Box>
             </VStack>
           </Box>
@@ -681,21 +691,22 @@ export default function CallDetail() {
           only come back decrypted on a request carrying a grant, so revealing has to re-read the
           call. Renders nothing for a department without the addon.
         */}
-        <ProtectedRevealBar onRefresh={() => fetchCallDetail(callId)} />
+        <ProtectedRevealBar onRefresh={handleProtectedRefresh} />
 
         {/* Header */}
         <Box className="mx-4 mt-3 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
           <HStack className="mb-2 items-center justify-between">
-            <Heading size="md">
-              {/* The call NUMBER is not cataloged, so it stays visible and the record stays findable. */}
-              {isFieldRedacted(call.RedactedFields, ProtectedFieldIds.callName, call.Name) ? (
+            {/* The call NUMBER is not cataloged, so it stays visible and the record stays findable. */}
+            {isFieldRedacted(call.RedactedFields, ProtectedFieldIds.callName, call.Name) ? (
+              <HStack space="xs" className="items-center">
                 <ProtectedText value={call.Name} fieldId={ProtectedFieldIds.callName} redactedFields={call.RedactedFields} />
-              ) : (
-                <>
-                  {call.Name} ({call.Number})
-                </>
-              )}
-            </Heading>
+                <Heading size="md">({call.Number})</Heading>
+              </HStack>
+            ) : (
+              <Heading size="md">
+                {call.Name} ({call.Number})
+              </Heading>
+            )}
             {/* Show "Set Active" button if this call is not the active call and there is an active unit */}
             {activeUnit && activeCall?.CallId !== call.CallId && (
               <Button variant="solid" size="sm" onPress={handleSetActive} disabled={isSettingActive} className={`${isSettingActive ? 'bg-primary-400 opacity-80' : 'bg-primary-500'} shadow-lg`}>
@@ -705,14 +716,17 @@ export default function CallDetail() {
             )}
           </HStack>
           <VStack className="space-y-1">
-            <Box style={{ height: 80 }}>
-              <WebView
-                style={[styles.container, { height: 80 }]}
-                originWhitelist={['*']}
-                scrollEnabled={false}
-                showsVerticalScrollIndicator={false}
-                source={{
-                  html: `
+            {isFieldRedacted(call.RedactedFields, ProtectedFieldIds.callNature, call.Nature) ? (
+              <ProtectedText value={call.Nature} fieldId={ProtectedFieldIds.callNature} redactedFields={call.RedactedFields} />
+            ) : (
+              <Box style={{ height: 80 }}>
+                <WebView
+                  style={[styles.container, { height: 80 }]}
+                  originWhitelist={['*']}
+                  scrollEnabled={false}
+                  showsVerticalScrollIndicator={false}
+                  source={{
+                    html: `
                                 <!DOCTYPE html>
                                 <html>
                                   <head>
@@ -734,10 +748,11 @@ export default function CallDetail() {
                                   <body>${sanitizeHtmlContent(call.Nature ?? '')}</body>
                                 </html>
                               `,
-                }}
-                androidLayerType="software"
-              />
-            </Box>
+                  }}
+                  androidLayerType="software"
+                />
+              </Box>
+            )}
           </VStack>
         </Box>
 

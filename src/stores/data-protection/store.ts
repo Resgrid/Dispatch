@@ -79,6 +79,42 @@ const parseErrorCode = (error: unknown): StepUpErrorCode => {
 
 const problemType = (error: unknown): string | undefined => (error as { response?: { data?: { type?: string } } })?.response?.data?.type;
 
+/** The HTTP status of a failed request, or undefined. Never the error itself: see fetchCapabilities. */
+const responseStatus = (error: unknown): number | undefined => (error as { response?: { status?: number } })?.response?.status;
+
+// Bumped by the sign-out sweep below. Every request captures it before awaiting and drops its
+// result when it has moved on, so a response that lands after sign-out cannot write a previous
+// session's capabilities or grant token back into memory for the next one to send.
+let sessionGeneration = 0;
+
+// The window is absolute, so its end is known the moment a grant is accepted. Clearing the token
+// on that timer is what turns an open screen back to "protected": without it, a screen that sat
+// open past expiry kept its last plaintext and its "Hide again" control, because nothing
+// re-rendered. Held here, not in a hook, so exactly one timer exists per grant.
+let expiryTimer: ReturnType<typeof setTimeout> | null = null;
+const MAX_TIMER_DELAY_MS = 0x7fffffff;
+
+const clearExpiryTimer = () => {
+  if (expiryTimer) {
+    clearTimeout(expiryTimer);
+    expiryTimer = null;
+  }
+};
+
+const scheduleExpiry = (expiresAt: number) => {
+  clearExpiryTimer();
+  expiryTimer = setTimeout(
+    () => {
+      expiryTimer = null;
+      // Only the grant this timer was set for. A newer one has its own timer.
+      if (dataProtectionStore.getState().stepUpExpiresAt === expiresAt) {
+        dataProtectionStore.setState({ stepUpExpiresAt: null, grantToken: null });
+      }
+    },
+    Math.min(Math.max(0, expiresAt - Date.now()), MAX_TIMER_DELAY_MS)
+  );
+};
+
 export const dataProtectionStore = create<DataProtectionState>()((set, get) => ({
   capabilities: null,
   isCapabilitiesLoaded: false,
@@ -88,11 +124,22 @@ export const dataProtectionStore = create<DataProtectionState>()((set, get) => (
   isRequestingGrant: false,
   isPromptOpen: false,
   lastError: null,
-  openPrompt: () => set({ isPromptOpen: true, lastError: null }),
+  openPrompt: () => {
+    // A reveal whose request outlived the session must not queue a prompt for the next sign-in.
+    const authStatus = useAuthStore?.getState?.()?.status;
+    if (authStatus != null && authStatus !== 'signedIn') {
+      return;
+    }
+    set({ isPromptOpen: true, lastError: null });
+  },
   closePrompt: () => set({ isPromptOpen: false }),
   fetchCapabilities: async () => {
+    const generation = sessionGeneration;
     try {
       const response = await getDataProtectionCapabilities();
+      if (generation !== sessionGeneration) {
+        return;
+      }
       const data = response?.Data;
       set({
         capabilities: data
@@ -106,11 +153,18 @@ export const dataProtectionStore = create<DataProtectionState>()((set, get) => (
         isCapabilitiesLoaded: true,
       });
     } catch (error) {
+      if (generation !== sessionGeneration) {
+        return;
+      }
       // Unknown capability state fails closed: consumers treat "no capabilities" as protected
       // when the server later marks fields redacted, and as unprotected for legacy departments.
+      //
+      // Only the status is logged. The raw Axios error carries the request config, and this
+      // request goes through the shared client, which attaches the grant header whenever one is
+      // held; the logger forwards context to Sentry unsanitized.
       logger.error({
         message: 'Failed to fetch data protection capabilities',
-        context: { error },
+        context: { status: responseStatus(error), errorType: problemType(error) },
       });
       set({ isCapabilitiesLoaded: true });
     }
@@ -121,8 +175,13 @@ export const dataProtectionStore = create<DataProtectionState>()((set, get) => (
     }
 
     set({ isRequestingGrant: true, lastError: null });
+    const generation = sessionGeneration;
     try {
       const result = await requestProtectedGrant();
+      if (generation !== sessionGeneration) {
+        // The sign-out sweep already reset the flags; this session's token is not kept.
+        return 'step_up_required';
+      }
       const expiresAt = result?.StepUpExpiresOnUtc ? Date.parse(result.StepUpExpiresOnUtc) : NaN;
 
       if (!result?.GrantToken || !Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
@@ -131,8 +190,12 @@ export const dataProtectionStore = create<DataProtectionState>()((set, get) => (
       }
 
       set({ grantToken: result.GrantToken, stepUpExpiresAt: expiresAt, isRequestingGrant: false, lastError: null });
+      scheduleExpiry(expiresAt);
       return 'granted';
     } catch (error) {
+      if (generation !== sessionGeneration) {
+        return 'step_up_required';
+      }
       set({ isRequestingGrant: false });
 
       const type = problemType(error);
@@ -147,8 +210,12 @@ export const dataProtectionStore = create<DataProtectionState>()((set, get) => (
   },
   verifyOtp: async (code: string) => {
     set({ isVerifying: true, lastError: null });
+    const generation = sessionGeneration;
     try {
       const result = await verifyStepUp(code.trim());
+      if (generation !== sessionGeneration) {
+        return false;
+      }
       const expiresAt = result?.StepUpExpiresOnUtc ? Date.parse(result.StepUpExpiresOnUtc) : NaN;
       // A token-less response is a failure, not a grant. Accepting one would flip the UI to
       // "revealed" while getGrantHeaders() still sends nothing, so every value stays REDACTED
@@ -163,8 +230,12 @@ export const dataProtectionStore = create<DataProtectionState>()((set, get) => (
         isVerifying: false,
         lastError: null,
       });
+      scheduleExpiry(expiresAt);
       return true;
     } catch (error) {
+      if (generation !== sessionGeneration) {
+        return false;
+      }
       // Never log the code; the error object carries only the HTTP problem envelope.
       logger.warn({
         message: 'ADP step-up verification failed',
@@ -192,7 +263,10 @@ export const dataProtectionStore = create<DataProtectionState>()((set, get) => (
     headers[GRANT_HEADER] = state.grantToken;
     return headers;
   },
-  clearStepUp: () => set({ stepUpExpiresAt: null, grantToken: null, lastError: null }),
+  clearStepUp: () => {
+    clearExpiryTimer();
+    set({ stepUpExpiresAt: null, grantToken: null, lastError: null });
+  },
 }));
 
 // The grant is memory-only and must never survive the session: drop everything the moment the
@@ -205,6 +279,8 @@ export const dataProtectionStore = create<DataProtectionState>()((set, get) => (
 if (typeof useAuthStore?.subscribe === 'function') {
   useAuthStore.subscribe((state: { status: string }, prevState: { status: string }) => {
     if (prevState.status === 'signedIn' && state.status !== 'signedIn') {
+      sessionGeneration += 1;
+      clearExpiryTimer();
       dataProtectionStore.setState({
         capabilities: null,
         isCapabilitiesLoaded: false,

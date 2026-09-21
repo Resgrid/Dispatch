@@ -631,6 +631,7 @@
     "zip": "CAP",
     "preplan": {
       "loading": "Caricamento piano preventivo...",
+      "load_failed": "Impossibile caricare il piano preventivo.",
       "none": "Nessun piano preventivo registrato per questo contatto.",
       "review_overdue": "La data di revisione del piano preventivo è scaduta.",
       "tactical_summary": "Riepilogo tattico",
@@ -673,6 +674,7 @@
     },
     "files": {
       "loading": "Caricamento file...",
+      "load_failed": "Impossibile caricare i file.",
       "empty": "Nessun file allegato a questo contatto.",
       "share_unavailable": "La condivisione non è disponibile su questo dispositivo.",
       "download_failed": "Impossibile scaricare il file."
@@ -1126,6 +1128,8 @@
   "operations": {
     "all": "Tutti",
     "back": "Indietro",
+    "previousDay": "Giorno precedente",
+    "nextDay": "Giorno successivo",
     "disabled": "I dispiegamenti non sono abilitati per questo dipartimento.",
     "entryType": {
       "0": "Dispiegamento",

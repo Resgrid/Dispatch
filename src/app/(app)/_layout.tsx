@@ -218,7 +218,9 @@ export default function TabLayout() {
           context: { platform: Platform.OS },
         });
 
-        await featureFlagsStore.getState().fetchFlags(), dataProtectionStore.getState().fetchCapabilities();
+        // Both must land before the shell finishes initializing: a comma here would await only
+        // the flags and leave the capability request racing the first protected screen.
+        await Promise.all([featureFlagsStore.getState().fetchFlags(), dataProtectionStore.getState().fetchCapabilities()]);
 
         logger.info({
           message: 'Feature flags fetched, connecting SignalR',

@@ -631,6 +631,7 @@
     "zip": "Postnummer",
     "preplan": {
       "loading": "Laddar insatsplan...",
+      "load_failed": "Insatsplanen kunde inte läsas in.",
       "none": "Ingen insatsplan har registrerats för denna kontakt.",
       "review_overdue": "Insatsplanens granskningsdatum har passerat.",
       "tactical_summary": "Taktisk sammanfattning",
@@ -673,6 +674,7 @@
     },
     "files": {
       "loading": "Laddar filer...",
+      "load_failed": "Filerna kunde inte läsas in.",
       "empty": "Inga filer har bifogats denna kontakt.",
       "share_unavailable": "Delning är inte tillgänglig på den här enheten.",
       "download_failed": "Filen kunde inte laddas ner."
@@ -1126,6 +1128,8 @@
   "operations": {
     "all": "Alla",
     "back": "Tillbaka",
+    "previousDay": "Föregående dag",
+    "nextDay": "Nästa dag",
     "disabled": "Insatser är inte aktiverade för den här avdelningen.",
     "entryType": {
       "0": "Insats",
@@ -1791,7 +1795,7 @@
     "loading": "Laddar poster…",
     "location_kept": "Plats behållen",
     "location_removed": "Plats borttagen",
-    "needs_attention": "Behöver dig",
+    "needs_attention": "Behöver din uppmärksamhet",
     "new_record": "Ny post",
     "no_assignments": "Inget är tilldelat dig.",
     "no_attachments": "Inga bilagor ännu.",
@@ -1839,7 +1843,7 @@
     "update_required": "Appuppdatering behövs",
     "deployments": "Insatser",
     "deployments_home_hint": "Externa resursbeställningar som din avdelning tillsätter",
-    "deployments_hint": "Beställningssystemet förblir auktoritativt. Tillsättningar flyttas av en samordnare på webben; inget här ändrar någon.",
+    "deployments_hint": "Beställningssystemet förblir auktoritativt. Tillsättningar flyttas av en samordnare på webben; inget här ändrar någon av dem.",
     "no_deployments": "Inga insatser",
     "include_closed": "Visa avslutade insatser",
     "hide_closed": "Dölj avslutade insatser",

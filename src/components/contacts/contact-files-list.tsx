@@ -24,6 +24,22 @@ const FileFieldIds = {
   fileName: 'contactattachments.filename',
 } as const;
 
+/**
+ * Reduces a server-supplied file name to one path segment. The name is written straight under the
+ * document directory, so a separator or a `..` segment in it would resolve outside that directory
+ * and could overwrite another of the app's files. Anything that is not a plain name falls back to
+ * an id-based one.
+ */
+export const safeFileName = (fileName: string | null | undefined, fallback: string): string => {
+  const lastSegment = (fileName ?? '').split(/[\\/]/).pop() ?? '';
+  // eslint-disable-next-line no-control-regex
+  const cleaned = lastSegment
+    .replace(/[\x00-\x1f<>:"|?*]/g, '')
+    .replace(/^\.+/, '')
+    .trim();
+  return cleaned.length > 0 ? cleaned : fallback;
+};
+
 const formatSize = (bytes: number): string => {
   if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   return `${Math.max(1, Math.round(bytes / 1024))} KB`;
@@ -55,7 +71,8 @@ export const ContactFilesList: React.FC<ContactFilesListProps> = ({ files, isLoa
 
       try {
         const base64 = await getContactFileBase64(file);
-        const fileName = (!isFieldRedacted(file.RedactedFields, FileFieldIds.fileName, file.FileName) && file.FileName) || `contact_file_${file.Id}`;
+        const fallbackName = `contact_file_${file.Id}`;
+        const fileName = safeFileName(isFieldRedacted(file.RedactedFields, FileFieldIds.fileName, file.FileName) ? null : file.FileName, fallbackName);
         const fileUri = `${FileSystem.documentDirectory}${fileName}`;
         await FileSystem.writeAsStringAsync(fileUri, base64, { encoding: FileSystem.EncodingType.Base64 });
 

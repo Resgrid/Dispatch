@@ -530,7 +530,8 @@ describe('CallDetail', () => {
     await waitFor(() => {
       expect(mockTrackEvent).toHaveBeenCalledWith('call_detail_view_rendered', {
         callId: 'test-call-id',
-        callName: 'Test Call',
+        // The name is a protected field: only its presence is reported, never its value.
+        hasCallName: true,
         callNumber: 'C2024001',
         callPriority: 2,
         callType: 'Emergency',
@@ -593,7 +594,7 @@ describe('CallDetail', () => {
     await waitFor(() => {
       expect(mockTrackEvent).toHaveBeenCalledWith('call_detail_view_rendered', {
         callId: '',
-        callName: '',
+        hasCallName: false,
         callNumber: '',
         callPriority: 0,
         callType: '',

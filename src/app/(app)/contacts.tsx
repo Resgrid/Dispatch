@@ -43,6 +43,9 @@ export default function Contacts() {
     }
   }, [fetchContacts]);
 
+  // Stable so ProtectedRevealBar's own callbacks (which list it as a dependency) do not churn.
+  const handleProtectedRefresh = React.useCallback(() => fetchContacts(true), [fetchContacts]);
+
   const filteredContacts = React.useMemo(() => {
     if (!searchQuery.trim()) return contacts;
 
@@ -75,7 +78,7 @@ export default function Contacts() {
           location. They arrive REDACTED and only come back decrypted on a request carrying a grant,
           so revealing has to re-read the list. Renders nothing without the addon.
         */}
-        <ProtectedRevealBar onRefresh={() => fetchContacts(true)} />
+        <ProtectedRevealBar onRefresh={handleProtectedRefresh} />
 
         <Input className="mb-4 rounded-lg bg-white dark:bg-gray-800" size="md" variant="outline">
           <InputSlot className="pl-3">

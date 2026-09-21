@@ -13,8 +13,9 @@ export const formatWhen = (timestamp: string | null | undefined, format = 'yyyy-
   }
   try {
     const parsed = parseDateISOString(timestamp);
-    // Older utils return an Invalid Date instead of throwing; either way the row shows nothing rather than NaN.
-    return Number.isNaN(parsed.getTime()) ? '' : formatDateForDisplay(parsed, format);
+    // parseDateISOString answers null for an unparsable value, and older utils returned an Invalid
+    // Date instead of throwing; either way the row shows nothing rather than NaN.
+    return parsed && !Number.isNaN(parsed.getTime()) ? formatDateForDisplay(parsed, format) : '';
   } catch {
     return '';
   }

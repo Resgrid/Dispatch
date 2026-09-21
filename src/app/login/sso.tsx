@@ -260,6 +260,13 @@ export default function SsoLoginScreen() {
           setShowOtpPrompt(false);
           setAuthError(t('sso.error_generic'));
         }
+      } catch (err) {
+        // The exchange reports failures as results, but the modal does not await this call, so a
+        // throw anywhere in the chain must be caught here rather than left unhandled. The code is
+        // never logged.
+        logger.error({ message: 'SSO: OTP retry failed', context: { message: err instanceof Error ? err.message : String(err) } });
+        setShowOtpPrompt(false);
+        setAuthError(t('sso.error_generic'));
       } finally {
         setIsOtpSubmitting(false);
       }
