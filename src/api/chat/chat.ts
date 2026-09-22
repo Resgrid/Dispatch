@@ -223,8 +223,11 @@ export const getChatAttachmentThumbnailUrl = (attachmentId: string): string => `
  * Image source (with bearer auth header) suitable for expo-image / RN Image
  * when rendering a chat attachment.
  */
-export const getChatAttachmentImageSource = (attachmentId: string) => {
-  const token = useAuthStore.getState().accessToken;
+export const getChatAttachmentImageSource = (attachmentId: string, accessToken?: string | null) => {
+  // `accessToken` lets a component pass the token it is subscribed to. Reading it from the store
+  // here is a one-shot snapshot, so a component that does not subscribe would keep rendering the
+  // pre-refresh bearer after a token rotation and the image request would 401.
+  const token = accessToken !== undefined ? accessToken : useAuthStore.getState().accessToken;
   return {
     uri: getChatAttachmentUrl(attachmentId),
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,

@@ -33,7 +33,9 @@ import { HStack } from '../ui/hstack';
 import { Pressable } from '../ui/pressable';
 import { Text } from '../ui/text';
 import { VStack } from '../ui/vstack';
+import { ContactFilesPanel } from './contact-files-panel';
 import { ContactNotesList } from './contact-notes-list';
+import { ContactPreplanPanel } from './contact-preplan-panel';
 
 interface SectionProps {
   title: string;
@@ -90,7 +92,7 @@ export const ContactDetailsSheet: React.FC = () => {
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
   const { contacts, selectedContactId, isDetailsOpen, closeDetails } = useContactsStore();
-  const [activeTab, setActiveTab] = useState<'details' | 'notes'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'notes' | 'preplan' | 'files'>('details');
 
   const selectedContact = React.useMemo(() => {
     if (!selectedContactId) return null;
@@ -217,6 +219,16 @@ export const ContactDetailsSheet: React.FC = () => {
                 {t('contacts.tabs.notes')}
               </Text>
             </Pressable>
+            <Pressable onPress={() => setActiveTab('preplan')} className={`flex-1 rounded-md ${isLandscape ? 'px-4 py-2' : 'px-3 py-1.5'} ${activeTab === 'preplan' ? 'bg-white shadow-xs dark:bg-gray-700' : ''}`}>
+              <Text className={`text-center font-medium ${isLandscape ? 'text-sm' : 'text-xs'} ${activeTab === 'preplan' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-400'}`}>
+                {t('contacts.tabs.preplan')}
+              </Text>
+            </Pressable>
+            <Pressable onPress={() => setActiveTab('files')} className={`flex-1 rounded-md ${isLandscape ? 'px-4 py-2' : 'px-3 py-1.5'} ${activeTab === 'files' ? 'bg-white shadow-xs dark:bg-gray-700' : ''}`}>
+              <Text className={`text-center font-medium ${isLandscape ? 'text-sm' : 'text-xs'} ${activeTab === 'files' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-400'}`}>
+                {t('contacts.tabs.files')}
+              </Text>
+            </Pressable>
           </HStack>
 
           {/* Tab Content */}
@@ -319,8 +331,12 @@ export const ContactDetailsSheet: React.FC = () => {
                 </Section>
               </VStack>
             </ScrollView>
-          ) : (
+          ) : activeTab === 'notes' ? (
             <ContactNotesList contactId={selectedContact.ContactId} />
+          ) : activeTab === 'preplan' ? (
+            <ContactPreplanPanel contactId={selectedContact.ContactId} />
+          ) : (
+            <ContactFilesPanel contactId={selectedContact.ContactId} />
           )}
         </Box>
       </ActionsheetContent>

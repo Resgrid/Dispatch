@@ -1,6 +1,7 @@
 import DOMPurify from 'dompurify';
 import { type Href, Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import {
+  BuildingIcon,
   ClockIcon,
   EditIcon,
   FileTextIcon,
@@ -25,6 +26,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
+import { CallSiteInfoTabPanel } from '@/components/calls/call-site-info-tab-panel';
 import { VideoFeedsTab } from '@/components/callVideoFeeds/video-feeds-tab';
 import { CheckInTab } from '@/components/checkIn/check-in-tab';
 import { Loading } from '@/components/common/loading';
@@ -65,7 +67,7 @@ import { DispatchSelectionModal } from '../../components/calls/dispatch-selectio
 import { RescheduleCallSheet } from '../../components/calls/reschedule-call-sheet';
 import { StatusBottomSheet } from '../../components/status/status-bottom-sheet';
 
-type TabKey = 'info' | 'contact' | 'protocols' | 'dispatched' | 'timeline' | 'video' | 'checkin' | 'command';
+type TabKey = 'info' | 'contact' | 'protocols' | 'dispatched' | 'timeline' | 'video' | 'checkin' | 'command' | 'site';
 
 export default function CallDetailWeb() {
   const { id } = useLocalSearchParams();
@@ -192,32 +194,12 @@ export default function CallDetailWeb() {
     if (call) {
       trackEvent('call_detail_web_view_rendered', {
         callId: call.CallId || '',
-        callName: call.Name || '',
+        // The name is a protected field: only its presence is reported, never its value.
+        hasCallName: !!call.Name,
         hasCoordinates: !!(call.Latitude && call.Longitude),
       });
     }
   }, [trackEvent, call]);
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        router.back();
-      }
-      if (e.key === 'e' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        handleEditCall();
-      }
-      // Tab navigation with number keys
-      if (e.key >= '1' && e.key <= '7' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        const tabs: TabKey[] = ['info', 'contact', 'protocols', 'dispatched', 'timeline', 'video', 'checkin'];
-        const index = parseInt(e.key) - 1;
-        if (tabs[index]) setActiveTab(tabs[index]);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleEditCall, router, setActiveTab]);
 
   const handleRoute = async () => {
     if (!coordinates.latitude || !coordinates.longitude) {
@@ -247,6 +229,7 @@ export default function CallDetailWeb() {
       { key: 'timeline', title: t('call_detail.tabs.timeline'), icon: ClockIcon, badge: callExtraData?.Activity?.length || 0 },
       { key: 'video', title: t('call_detail.tabs.video'), icon: VideoIcon },
       { key: 'command', title: t('incident_command.tab_title'), icon: NetworkIcon },
+      { key: 'site', title: t('call_detail.tabs.site'), icon: BuildingIcon },
     ];
     if (call?.CheckInTimersEnabled) {
       baseTabs.push({
@@ -258,6 +241,27 @@ export default function CallDetailWeb() {
     }
     return baseTabs;
   }, [t, callExtraData?.Activity?.length, call?.CheckInTimersEnabled, overdueCount, warningCount]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        router.back();
+      }
+      if (e.key === 'e' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        handleEditCall();
+      }
+      // Tab navigation with number keys, in the order the tabs are rendered, so a key can never
+      // land on a tab that is not on screen (the check-in tab is conditional).
+      if (e.key >= '1' && e.key <= '9' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const target = tabs[parseInt(e.key, 10) - 1];
+        if (target) setActiveTab(target.key);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleEditCall, router, setActiveTab, tabs]);
 
   if (isLoading) {
     return (
@@ -436,6 +440,12 @@ export default function CallDetailWeb() {
             <IncidentCommandTab callId={call.CallId} showOpenFull />
           </View>
         );
+      case 'site':
+        return (
+          <View style={styles.tabContent}>
+            <CallSiteInfoTabPanel callId={call.CallId} />
+          </View>
+        );
     }
   };
 
@@ -569,7 +579,7 @@ export default function CallDetailWeb() {
           {/* Keyboard Shortcuts Hint */}
           <View style={styles.shortcutHint}>
             <Text style={StyleSheet.flatten([styles.shortcutText, isDark ? styles.shortcutTextDark : styles.shortcutTextLight])}>
-              {t('call_detail.keyboard_shortcuts', 'Tip: Press 1-5 to switch tabs, Ctrl+E to edit, Escape to go back')}
+              {t('call_detail.keyboard_shortcuts', 'Tip: Press 1-9 to switch tabs, Ctrl+E to edit, Escape to go back')}
             </Text>
           </View>
         </ScrollView>

@@ -12,6 +12,7 @@ import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { ChatMessagePriority, type ChatMessageResultData, ChatMessageType } from '@/models/v4/chat';
+import useAuthStore from '@/stores/auth/store';
 
 import { formatShortTime, getPersonAvatarUrl, linkifySegments, parseGifMetadata, parseLocationMetadata } from './chat-utils';
 
@@ -24,11 +25,16 @@ interface MessageBubbleProps {
   onToggleReaction: (message: ChatMessageResultData, emoji: string, mine: boolean) => void;
   onOpenThread?: (message: ChatMessageResultData) => void;
   onRetry?: (message: ChatMessageResultData) => void;
-  onPressImage?: (uri: string) => void;
+  onPressImage?: (source: { uri: string; headers?: Record<string, string> }) => void;
 }
 
 export function MessageBubble({ message, isOwn, showSender, currentUserId, onLongPress, onToggleReaction, onOpenThread, onRetry, onPressImage }: MessageBubbleProps) {
   const { t } = useTranslation();
+
+  // getChatAttachmentImageSource() bakes the bearer into the source object, so the bubble has to
+  // re-render when the token rotates. Reading it from getState() alone leaves a mounted bubble
+  // holding the pre-refresh token, and the image request then 401s.
+  const accessToken = useAuthStore((state) => state.accessToken);
 
   // Realtime payloads omit empty collections; the store normalizes them, but messages
   // persisted before that normalization existed can still come back without them.
@@ -68,11 +74,13 @@ export function MessageBubble({ message, isOwn, showSender, currentUserId, onLon
 
     if (message.MessageType === ChatMessageType.Image) {
       const attachment = (message.Attachments ?? [])[0];
-      const uri = message._localAttachmentUri ?? (attachment ? getChatAttachmentImageSource(attachment.ChatAttachmentId).uri : undefined);
-      const source = attachment ? getChatAttachmentImageSource(attachment.ChatAttachmentId) : uri ? { uri } : undefined;
-      if (!source) return <Text className={textTone}>{message.Body}</Text>;
+      const localUri = message._localAttachmentUri;
+      // Full source object (uri + Authorization header) travels with the press so the
+      // full-screen preview stays authenticated — extracting only .uri drops the bearer.
+      const source = localUri ? { uri: localUri } : attachment ? getChatAttachmentImageSource(attachment.ChatAttachmentId, accessToken) : undefined;
+      if (!source?.uri) return <Text className={textTone}>{message.Body}</Text>;
       return (
-        <Pressable onPress={() => uri && onPressImage?.(uri)}>
+        <Pressable onPress={() => onPressImage?.(source as { uri: string; headers?: Record<string, string> })}>
           <Image source={source} style={{ width: 200, height: 200, borderRadius: 10 }} contentFit="cover" />
           {message.Body ? <Text className={`mt-1 ${textTone}`}>{message.Body}</Text> : null}
         </Pressable>

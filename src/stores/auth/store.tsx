@@ -113,6 +113,17 @@ const useAuthStore = create<AuthState>()(
 
             // Set up automatic token refresh
             scheduleTokenRefresh(response.authResponse.expires_in);
+          } else if (response.mfaRequired) {
+            // 2FA challenge: the login screen prompts for the authenticator code and calls
+            // login() again with otpCode. Credentials are never retained here.
+            logger.info({
+              message: 'Login requires two-factor verification',
+              context: { invalidOtp: !!response.invalidOtp },
+            });
+            set({
+              status: 'mfaRequired',
+              error: response.invalidOtp ? 'invalid_totp' : null,
+            });
           } else {
             logger.error({
               message: 'Login: API returned unsuccessful response',
@@ -143,8 +154,6 @@ const useAuthStore = create<AuthState>()(
         // Cancel any pending automatic refresh so the timer cannot fire after logout
         cancelScheduledTokenRefresh();
 
-        await clearPasswordVerificationHash();
-
         set({
           accessToken: null,
           refreshToken: null,
@@ -155,6 +164,17 @@ const useAuthStore = create<AuthState>()(
           userId: null,
           isFirstTime: true,
         });
+
+        // End the session synchronously so API requests and routing cannot keep using
+        // rejected credentials while storage cleanup is pending or unavailable.
+        try {
+          await clearPasswordVerificationHash();
+        } catch (error) {
+          logger.warn({
+            message: 'Failed to clear password verification hash on logout',
+            context: { error: error instanceof Error ? error.message : String(error) },
+          });
+        }
       },
 
       refreshAccessToken: async () => {
@@ -263,6 +283,7 @@ initTokenRefresh({
     useAuthStore.setState({
       accessToken: response.access_token,
       refreshToken: response.refresh_token,
+      refreshTokenExpiresOn: String(Date.now() + response.expires_in * 1000),
       status: 'signedIn',
       error: null,
     });
@@ -275,6 +296,23 @@ initTokenRefresh({
     }
   },
 });
+
+// Persist restores the credentials, but timers do not survive a reload. Register
+// after initTokenRefresh, including the synchronous MMKV hydration that already ran.
+const resumeTokenRefresh = (state: AuthState): void => {
+  if (state.status !== 'signedIn' || !state.refreshToken) {
+    cancelScheduledTokenRefresh();
+    return;
+  }
+  const expiresOn = Number(state.refreshTokenExpiresOn);
+  const remainingSeconds = Number.isFinite(expiresOn) ? Math.max(0, (expiresOn - Date.now()) / 1000) : 0;
+  scheduleTokenRefresh(remainingSeconds);
+};
+
+useAuthStore.persist.onFinishHydration(resumeTokenRefresh);
+if (useAuthStore.persist.hasHydrated()) {
+  resumeTokenRefresh(useAuthStore.getState());
+}
 
 // Keep the API cache scoped to whoever is signed in. Cache keys embed this identity, so stamping it
 // here means a second user on the same device can never be served the first user's cached rosters,

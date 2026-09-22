@@ -52,6 +52,10 @@ export interface CreateCallRequest {
   type?: string;
   contactName?: string;
   contactInfo?: string;
+  /** Primary Contact (premises/customer record) to link; the contact must belong to the department. */
+  contactId?: string | null;
+  /** Additional Contacts to link. On update, supplying either list replaces the existing links; omitting both leaves them alone. */
+  additionalContactIds?: string[];
   what3words?: string;
   plusCode?: string;
   dispatchUsers?: string[];
@@ -79,6 +83,10 @@ export interface UpdateCallRequest {
   type?: string;
   contactName?: string;
   contactInfo?: string;
+  /** Primary Contact (premises/customer record) to link; the contact must belong to the department. */
+  contactId?: string | null;
+  /** Additional Contacts to link. On update, supplying either list replaces the existing links; omitting both leaves them alone. */
+  additionalContactIds?: string[];
   what3words?: string;
   plusCode?: string;
   dispatchUsers?: string[];
@@ -138,6 +146,8 @@ export const createCall = async (callData: CreateCallRequest) => {
     Type: callData.type || '',
     ContactName: callData.contactName || '',
     ContactInfo: callData.contactInfo || '',
+    ...(callData.contactId !== undefined ? { ContactId: callData.contactId || '' } : {}),
+    ...(callData.additionalContactIds !== undefined ? { AdditionalContactIds: callData.additionalContactIds } : {}),
     What3Words: callData.what3words || '',
     PlusCode: callData.plusCode || '',
     DispatchList: dispatchList,
@@ -188,6 +198,8 @@ export const updateCall = async (callData: UpdateCallRequest) => {
     Type: callData.type || '',
     ContactName: callData.contactName || '',
     ContactInfo: callData.contactInfo || '',
+    ...(callData.contactId !== undefined ? { ContactId: callData.contactId || '' } : {}),
+    ...(callData.additionalContactIds !== undefined ? { AdditionalContactIds: callData.additionalContactIds } : {}),
     What3Words: callData.what3words || '',
     PlusCode: callData.plusCode || '',
     DispatchList: dispatchList,

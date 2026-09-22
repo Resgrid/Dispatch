@@ -1,5 +1,5 @@
 import type notifeeType from '@notifee/react-native';
-import type { AndroidImportance as AndroidImportanceType } from '@notifee/react-native';
+import type { AndroidForegroundServiceType as AndroidForegroundServiceTypeType, AndroidImportance as AndroidImportanceType } from '@notifee/react-native';
 import { getRecordingPermissionsAsync, requestRecordingPermissionsAsync } from 'expo-audio';
 import { Room, RoomEvent, Track } from 'livekit-client';
 import { Platform } from 'react-native';
@@ -8,12 +8,15 @@ import { create } from 'zustand';
 // Notifee is native-only - conditionally require it so web module evaluation doesn't crash
 let notifee: typeof notifeeType | null = null;
 let AndroidImportance: typeof AndroidImportanceType | null = null;
+let AndroidForegroundServiceType: typeof AndroidForegroundServiceTypeType | null = null;
 
 if (Platform.OS === 'android') {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   notifee = require('@notifee/react-native').default;
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   AndroidImportance = require('@notifee/react-native').AndroidImportance;
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  AndroidForegroundServiceType = require('@notifee/react-native').AndroidForegroundServiceType;
 }
 
 import { getCanConnectToVoiceSession, getDepartmentVoiceSettings } from '../../api/voice';
@@ -486,7 +489,7 @@ export const useLiveKitStore = create<LiveKitState>((set, get) => ({
   },
 
   startAndroidForegroundService: async () => {
-    if (Platform.OS !== 'android' || !notifee || !AndroidImportance) return;
+    if (Platform.OS !== 'android' || !notifee || !AndroidImportance || !AndroidForegroundServiceType) return;
 
     try {
       logger.debug({
@@ -517,6 +520,9 @@ export const useLiveKitStore = create<LiveKitState>((set, get) => ({
         android: {
           channelId: 'ptt-channel',
           asForegroundService: true,
+          // microphone only: keeps mic capture legal while backgrounded (Android 14+).
+          // Playback of remote audio needs no FGS type — any running FGS keeps the process alive.
+          foregroundServiceTypes: [AndroidForegroundServiceType.FOREGROUND_SERVICE_TYPE_MICROPHONE],
           smallIcon: 'ic_launcher',
         },
       });

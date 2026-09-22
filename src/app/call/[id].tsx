@@ -1,5 +1,6 @@
 import { type Href, Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import {
+  BuildingIcon,
   ClockIcon,
   FileTextIcon,
   ImageIcon,
@@ -18,18 +19,22 @@ import {
   Volume2Icon,
 } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import WebView from 'react-native-webview';
 
+import { CallSiteInfoTabPanel } from '@/components/calls/call-site-info-tab-panel';
 import { VideoFeedsTab } from '@/components/callVideoFeeds/video-feeds-tab';
 import { CheckInTab } from '@/components/checkIn/check-in-tab';
 import { Loading } from '@/components/common/loading';
 import ZeroState from '@/components/common/zero-state';
+import { ProtectedRevealBar } from '@/components/data-protection/protected-reveal-bar';
+import { ProtectedText } from '@/components/data-protection/protected-text';
 import { IncidentCommandTab } from '@/components/incident-command/incident-command-tab';
 // Import a static map component instead of react-native-maps
 import StaticMap from '@/components/maps/static-map';
+import { RecordsQuickCreate } from '@/components/records/records-quick-create';
 import { AlarmLevelBadge } from '@/components/runcards/alarm-level-badge';
 import { EscalateAlarmButton } from '@/components/runcards/escalate-alarm-button';
 import { FocusAwareStatusBar, SafeAreaView } from '@/components/ui';
@@ -41,6 +46,7 @@ import { SharedTabs, type TabItem } from '@/components/ui/shared-tabs';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useAnalytics } from '@/hooks/use-analytics';
+import { isFieldRedacted, ProtectedFieldIds } from '@/lib/data-protection/redacted';
 import { buildAddResourcesUpdateRequest, EMPTY_DISPATCH_SELECTION } from '@/lib/dispatch-helpers';
 import { logger } from '@/lib/logging';
 import { openMapsWithDirections } from '@/lib/navigation';
@@ -160,6 +166,9 @@ export default function CallDetail() {
     ]);
   };
 
+  // Stable so ProtectedRevealBar's own callbacks (which list it as a dependency) do not churn.
+  const handleProtectedRefresh = useCallback(() => fetchCallDetail(callId), [fetchCallDetail, callId]);
+
   const handleSetActive = async () => {
     if (!call) return;
 
@@ -242,7 +251,9 @@ export default function CallDetail() {
     if (call) {
       trackEvent('call_detail_view_rendered', {
         callId: call.CallId || '',
-        callName: call.Name || '',
+        // The name is a protected field: after a reveal it is plaintext, and analytics is
+        // outside the grant-controlled path, so only its presence is reported.
+        hasCallName: !!call.Name,
         callNumber: call.Number || '',
         callPriority: call.Priority || 0,
         callType: call.Type || '',
@@ -387,7 +398,7 @@ export default function CallDetail() {
               </Box>
               <Box className="border-b border-outline-100 pb-2">
                 <Text className="text-sm text-gray-500">{t('call_detail.address')}</Text>
-                <Text className="font-medium">{call.Address}</Text>
+                <ProtectedText value={call.Address} fieldId={ProtectedFieldIds.callAddress} redactedFields={call.RedactedFields} className="font-medium" />
               </Box>
               {call.DestinationName ? (
                 <Box className="border-b border-outline-100 pb-2">
@@ -407,16 +418,22 @@ export default function CallDetail() {
                   <Text className="font-medium">{call.DestinationAddress}</Text>
                 </Box>
               ) : null}
+              {/* Contextual create: the button hides itself unless the server offers something here. */}
+              <RecordsQuickCreate context={{ CallId: Number.parseInt(call.CallId, 10) }} className="self-start" />
               <Box className="border-b border-outline-100 pb-2">
                 <Text className="text-sm text-gray-500">{t('call_detail.note')}</Text>
-                <Box>
-                  <WebView
-                    style={[styles.container, { height: 200 }]}
-                    originWhitelist={['*']}
-                    scrollEnabled={false}
-                    showsVerticalScrollIndicator={false}
-                    source={{
-                      html: `
+                {/* A withheld value is the literal sentinel; it must not be handed to the WebView as HTML. */}
+                {isFieldRedacted(call.RedactedFields, ProtectedFieldIds.callNotes, call.Note) ? (
+                  <ProtectedText value={call.Note} fieldId={ProtectedFieldIds.callNotes} redactedFields={call.RedactedFields} />
+                ) : (
+                  <Box>
+                    <WebView
+                      style={[styles.container, { height: 200 }]}
+                      originWhitelist={['*']}
+                      scrollEnabled={false}
+                      showsVerticalScrollIndicator={false}
+                      source={{
+                        html: `
                                 <!DOCTYPE html>
                                 <html>
                                   <head>
@@ -438,10 +455,11 @@ export default function CallDetail() {
                                   <body>${sanitizeHtmlContent(call.Note ?? '')}</body>
                                 </html>
                               `,
-                    }}
-                    androidLayerType="software"
-                  />
-                </Box>
+                      }}
+                      androidLayerType="software"
+                    />
+                  </Box>
+                )}
               </Box>
             </VStack>
           </Box>
@@ -464,11 +482,11 @@ export default function CallDetail() {
               </Box>
               <Box className="border-b border-outline-100 pb-2">
                 <Text className="text-sm text-gray-500">{t('call_detail.contact_name')}</Text>
-                <Text className="font-medium">{call.ContactName}</Text>
+                <ProtectedText value={call.ContactName} fieldId={ProtectedFieldIds.callContactName} redactedFields={call.RedactedFields} className="font-medium" />
               </Box>
               <Box className="border-b border-outline-100 pb-2">
                 <Text className="text-sm text-gray-500">{t('call_detail.contact_info')}</Text>
-                <Text className="font-medium">{call.ContactInfo}</Text>
+                <ProtectedText value={call.ContactInfo} fieldId={ProtectedFieldIds.callContactNumber} redactedFields={call.RedactedFields} className="font-medium" />
               </Box>
             </VStack>
           </Box>
@@ -619,6 +637,14 @@ export default function CallDetail() {
       content: <VideoFeedsTab callId={call.CallId} canEdit={canUserCreateCalls ?? false} />,
     });
 
+    // Site Info tab: pre-plans, hazards, alert notes and files of the contacts linked to the call.
+    tabs.push({
+      key: 'site',
+      title: t('call_detail.tabs.site'),
+      icon: <BuildingIcon size={16} />,
+      content: <CallSiteInfoTabPanel callId={call.CallId} />,
+    });
+
     if (call?.CheckInTimersEnabled) {
       // Align with the check-in tab's own summary, which treats Red==Overdue, Yellow==Warning, and counts Critical.
       const overdueCount = timerStatuses.filter((s) => s.Status === CheckInTimerStatus.Overdue || s.Status === CheckInTimerStatus.Red).length;
@@ -643,7 +669,11 @@ export default function CallDetail() {
   const showDestinationMap = mapView === 'destination' && hasDestinationLocation;
   const mapLatitude = showDestinationMap ? call.DestinationLatitude : coordinates.latitude;
   const mapLongitude = showDestinationMap ? call.DestinationLongitude : coordinates.longitude;
-  const mapAddress = showDestinationMap ? call.DestinationAddress || call.DestinationName : call.Address;
+  // A withheld address must not leak through the map chrome. StaticMap prints `address` in its
+  // overlay AND its accessibility label, so the sentinel would surface there verbatim after being
+  // suppressed everywhere else on the screen. Destination fields are not in the protected catalog.
+  const isAddressRedacted = isFieldRedacted(call.RedactedFields, ProtectedFieldIds.callAddress, call.Address);
+  const mapAddress = showDestinationMap ? call.DestinationAddress || call.DestinationName : isAddressRedacted ? undefined : call.Address;
 
   return (
     <>
@@ -656,12 +686,27 @@ export default function CallDetail() {
         }}
       />
       <ScrollView className="size-full w-full flex-1 bg-gray-50 dark:bg-gray-900" contentContainerStyle={{ paddingBottom: 16 }}>
+        {/*
+          Protected values (call name, nature, notes, address, contact details) arrive REDACTED and
+          only come back decrypted on a request carrying a grant, so revealing has to re-read the
+          call. Renders nothing for a department without the addon.
+        */}
+        <ProtectedRevealBar onRefresh={handleProtectedRefresh} />
+
         {/* Header */}
         <Box className="mx-4 mt-3 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
           <HStack className="mb-2 items-center justify-between">
-            <Heading size="md">
-              {call.Name} ({call.Number})
-            </Heading>
+            {/* The call NUMBER is not cataloged, so it stays visible and the record stays findable. */}
+            {isFieldRedacted(call.RedactedFields, ProtectedFieldIds.callName, call.Name) ? (
+              <HStack space="xs" className="items-center">
+                <ProtectedText value={call.Name} fieldId={ProtectedFieldIds.callName} redactedFields={call.RedactedFields} />
+                <Heading size="md">({call.Number})</Heading>
+              </HStack>
+            ) : (
+              <Heading size="md">
+                {call.Name} ({call.Number})
+              </Heading>
+            )}
             {/* Show "Set Active" button if this call is not the active call and there is an active unit */}
             {activeUnit && activeCall?.CallId !== call.CallId && (
               <Button variant="solid" size="sm" onPress={handleSetActive} disabled={isSettingActive} className={`${isSettingActive ? 'bg-primary-400 opacity-80' : 'bg-primary-500'} shadow-lg`}>
@@ -671,14 +716,17 @@ export default function CallDetail() {
             )}
           </HStack>
           <VStack className="space-y-1">
-            <Box style={{ height: 80 }}>
-              <WebView
-                style={[styles.container, { height: 80 }]}
-                originWhitelist={['*']}
-                scrollEnabled={false}
-                showsVerticalScrollIndicator={false}
-                source={{
-                  html: `
+            {isFieldRedacted(call.RedactedFields, ProtectedFieldIds.callNature, call.Nature) ? (
+              <ProtectedText value={call.Nature} fieldId={ProtectedFieldIds.callNature} redactedFields={call.RedactedFields} />
+            ) : (
+              <Box style={{ height: 80 }}>
+                <WebView
+                  style={[styles.container, { height: 80 }]}
+                  originWhitelist={['*']}
+                  scrollEnabled={false}
+                  showsVerticalScrollIndicator={false}
+                  source={{
+                    html: `
                                 <!DOCTYPE html>
                                 <html>
                                   <head>
@@ -700,10 +748,11 @@ export default function CallDetail() {
                                   <body>${sanitizeHtmlContent(call.Nature ?? '')}</body>
                                 </html>
                               `,
-                }}
-                androidLayerType="software"
-              />
-            </Box>
+                  }}
+                  androidLayerType="software"
+                />
+              </Box>
+            )}
           </VStack>
         </Box>
 

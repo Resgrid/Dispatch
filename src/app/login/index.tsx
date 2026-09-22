@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { LoginFormProps } from '@/app/login/login-form';
+import { LoginOtpModal } from '@/components/auth/login-otp-modal';
 import { ServerUrlBottomSheet } from '@/components/settings/server-url-bottom-sheet';
 import { FocusAwareStatusBar } from '@/components/ui';
 import { Button, ButtonText } from '@/components/ui/button';
@@ -17,6 +18,10 @@ import { LoginForm } from './login-form';
 export default function Login() {
   const [isErrorModalVisible, setIsErrorModalVisible] = useState(false);
   const [showServerUrl, setShowServerUrl] = useState(false);
+  // Held only to resubmit with the TOTP code after an mfa_required challenge; memory-only,
+  // cleared on success/unmount with the rest of the component state. Never logged.
+  const [pendingCredentials, setPendingCredentials] = useState<{ username: string; password: string } | null>(null);
+  const [otpDismissed, setOtpDismissed] = useState(false);
   const { t } = useTranslation();
   const { trackEvent } = useAnalytics();
   const router = useRouter();
@@ -41,6 +46,8 @@ export default function Login() {
         message: 'Login successful, redirecting to home',
       });
 
+      // The retained credentials have done their job; drop them before leaving the screen.
+      setPendingCredentials(null);
       // Use replace to prevent going back to login screen
       router.replace('/(app)' as any);
     }
@@ -61,6 +68,8 @@ export default function Login() {
       message: 'Starting Login (button press)',
       context: { username: data.username },
     });
+    setPendingCredentials({ username: data.username, password: data.password });
+    setOtpDismissed(false);
     try {
       await login({ username: data.username, password: data.password });
       logger.info({
@@ -72,6 +81,24 @@ export default function Login() {
         message: 'Login call failed with exception',
         context: { error },
       });
+    }
+  };
+
+  const onOtpSubmit = async (code: string) => {
+    if (!pendingCredentials) {
+      return;
+    }
+    // The modal does not await this, so a rejection here would be unhandled. login() reports
+    // failures through status/error, but a throw from it must not escape either. The code is
+    // never logged.
+    try {
+      await login({ ...pendingCredentials, otpCode: code });
+    } catch (error) {
+      logger.error({
+        message: 'Login OTP retry failed with exception',
+        context: { error: error instanceof Error ? error.message : String(error) },
+      });
+      setIsErrorModalVisible(true);
     }
   };
 
@@ -112,6 +139,19 @@ export default function Login() {
       </Modal>
 
       <ServerUrlBottomSheet isOpen={showServerUrl} onClose={() => setShowServerUrl(false)} />
+
+      {/* Two-factor challenge: token endpoint answered mfa_required / invalid_totp */}
+      <LoginOtpModal
+        isOpen={status === 'mfaRequired' && !otpDismissed && pendingCredentials != null}
+        isSubmitting={status === 'loading'}
+        invalidCode={error === 'invalid_totp'}
+        onSubmit={onOtpSubmit}
+        onClose={() => {
+          // Dismissing the challenge abandons the attempt, so the password goes with it.
+          setOtpDismissed(true);
+          setPendingCredentials(null);
+        }}
+      />
     </>
   );
 }

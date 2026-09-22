@@ -49,6 +49,16 @@ export const AudioStreamBottomSheet = () => {
     return currentStream ? currentStream.Id : 'none';
   };
 
+  // The Select only tracks an option's label in internal state set when that option is pressed:
+  // it never maps `selectedValue` back to a label. So the trigger falls back to rendering the
+  // raw value -- the stream's GUID -- whenever the label state is missing (the Actionsheet
+  // unmounts its children on close, so every reopen starts empty) or stale (playback failing
+  // clears currentStream without a press). Driving SelectInput's value directly keeps the
+  // trigger in sync with the store in both cases.
+  const getCurrentStreamLabel = () => {
+    return currentStream ? (currentStream.Name ?? '') : t('audio_streams.none');
+  };
+
   const getDisplayText = () => {
     if (isLoading) {
       return t('audio_streams.loading_stream');
@@ -96,7 +106,7 @@ export const AudioStreamBottomSheet = () => {
             ) : (
               <Select selectedValue={getCurrentStreamValue()} onValueChange={handleStreamSelection} isDisabled={isLoading || isBuffering}>
                 <SelectTrigger>
-                  <SelectInput placeholder={t('audio_streams.select_placeholder')} />
+                  <SelectInput placeholder={t('audio_streams.select_placeholder')} value={getCurrentStreamLabel()} />
                   <SelectIcon />
                 </SelectTrigger>
                 <SelectPortal>

@@ -1,6 +1,7 @@
 import axios, { type AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
 
 import { performTokenRefresh } from '@/lib/auth/token-refresh';
+import { readProtectedGrantHeaders } from '@/lib/data-protection/grant-provider';
 import { logger } from '@/lib/logging';
 import { getBaseApiUrl } from '@/lib/storage/app';
 import useAuthStore from '@/stores/auth/store';
@@ -12,25 +13,6 @@ const axiosInstance: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
 });
-
-// Track if we're refreshing the token
-let isRefreshing = false;
-// Store pending requests
-let failedQueue: {
-  resolve: (value?: unknown) => void;
-  reject: (reason?: unknown) => void;
-}[] = [];
-
-const processQueue = (error: Error | null) => {
-  failedQueue.forEach((prom) => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve();
-    }
-  });
-  failedQueue = [];
-};
 
 /**
  * Raised instead of sending a request that has no session behind it. Callers can tell this
@@ -45,21 +27,48 @@ export class NoActiveSessionError extends Error {
 
 // Request interceptor for API calls
 axiosInstance.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
+  async (config: InternalAxiosRequestConfig) => {
     // Dynamically resolve baseURL to support custom server URLs
     // that may have been changed after app startup (e.g. via settings/login)
     config.baseURL = getBaseApiUrl();
 
-    const accessToken = useAuthStore.getState().accessToken;
+    const { accessToken: storedAccessToken, refreshTokenExpiresOn } = useAuthStore.getState();
     // Every endpoint reached through this instance is authenticated - the anonymous ones
     // (token grant, SSO discovery) use their own clients. Sending without a token is a
     // guaranteed 401 that then drags a refresh attempt and a logout behind it, which is
     // exactly what a screen unmounting after sign-out produces a burst of.
-    if (!accessToken) {
-      return Promise.reject(new NoActiveSessionError(config.url));
+    if (!storedAccessToken) {
+      throw new NoActiveSessionError(config.url);
     }
 
+    // This persisted field contains the ACCESS token expiry. A restored or suspended
+    // session must refresh before its startup requests all go out with an expired token.
+    if (refreshTokenExpiresOn && Number(refreshTokenExpiresOn) <= Date.now()) {
+      if (!(await performTokenRefresh())) {
+        throw new NoActiveSessionError(config.url);
+      }
+    }
+
+    const accessToken = useAuthStore.getState().accessToken;
+    if (!accessToken) {
+      throw new NoActiveSessionError(config.url);
+    }
     config.headers.Authorization = `Bearer ${accessToken}`;
+
+    // Advanced Data Protection: while the member holds a live grant, every read through this
+    // instance carries it, so a protected value comes back decrypted instead of REDACTED.
+    //
+    // Attached centrally on purpose. The alternative - each screen remembering to add the header -
+    // is the failure mode that already shipped twice on the web side, and it fails SILENTLY: the
+    // page looks fine and simply shows placeholders. The grant only ever goes to Resgrid's own API
+    // (this instance's baseURL), is short-lived, and is bound to this member, department and policy
+    // epoch, so the server is the only thing that can act on it.
+    if (config.headers) {
+      for (const [name, value] of Object.entries(readProtectedGrantHeaders())) {
+        config.headers.set(name, value);
+      }
+    }
+
     return config;
   },
   (error: AxiosError) => {
@@ -80,27 +89,17 @@ axiosInstance.interceptors.response.use(
       // Nothing to refresh with: a 401 that arrives after the session ended (or with no
       // refresh token to begin with) would otherwise start a refresh, fail it, and drive
       // another logout for every request still in flight.
-      const { refreshToken, status } = useAuthStore.getState();
+      const { accessToken, refreshToken, status } = useAuthStore.getState();
       if (!refreshToken || status === 'signedOut') {
         return Promise.reject(error);
       }
 
-      if (isRefreshing) {
-        // If refreshing, queue the request
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then(() => {
-            return axiosInstance(originalRequest);
-          })
-          .catch((err) => {
-            return Promise.reject(err);
-          });
-      }
-
-      // Add _retry property to request config type
+      // Every request gets at most one retry, including requests that wait for an
+      // existing refresh. A delayed 401 may belong to a token already replaced.
       (originalRequest as InternalAxiosRequestConfig & { _retry: boolean })._retry = true;
-      isRefreshing = true;
+      if (accessToken && originalRequest.headers.Authorization !== `Bearer ${accessToken}`) {
+        return axiosInstance(originalRequest);
+      }
 
       try {
         // Single-flight refresh shared with the auth store's refresh timer, so a
@@ -117,14 +116,10 @@ axiosInstance.interceptors.response.use(
           throw new Error('No access token available after refresh');
         }
 
-        // Update Authorization header
-        axiosInstance.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-
-        processQueue(null);
+        // The request interceptor reads the current token for each retry. The shared
+        // refresh promise coordinates callers without sharing their Error objects.
         return axiosInstance(originalRequest);
       } catch (refreshError) {
-        processQueue(refreshError as Error);
         // performTokenRefresh already reported why the refresh failed; this only records
         // which request was abandoned as a result.
         logger.warn({
@@ -132,8 +127,6 @@ axiosInstance.interceptors.response.use(
           context: { url: originalRequest.url?.split('?')[0], error: refreshError instanceof Error ? refreshError.message : String(refreshError) },
         });
         return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
       }
     }
 

@@ -61,4 +61,9 @@ export interface ContactResultData {
   EditedOn?: string;
   EditedByUserId?: string;
   EditedByUserName?: string;
+  /**
+   * Catalog field ids the server withheld from THIS contact (ADP plan 7.2). Per row, not a union
+   * across the list: a field withheld on one contact must not mark it on every other one.
+   */
+  RedactedFields?: string[];
 }
