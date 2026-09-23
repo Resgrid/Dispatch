@@ -24,6 +24,7 @@ import { usePersonnelActionsStore } from '@/stores/dispatch/personnel-actions-st
 import { useUnitActionsStore } from '@/stores/dispatch/unit-actions-store';
 import { useWeatherAlertsStore } from '@/stores/weatherAlerts/store';
 
+import { ActivityLinkLegend, ActivityLinkMarker } from '../calls/activity-link-marker';
 import { CheckInBottomSheet } from '../checkIn/check-in-bottom-sheet';
 import { CheckInTimerCard } from '../checkIn/check-in-timer-card';
 import { PanelHeader } from './panel-header';
@@ -188,6 +189,7 @@ const CallActivityItem: React.FC<{ activity: DispatchedEventResultData }> = Reac
               </Text>
             </Badge>
           ) : null}
+          <ActivityLinkMarker source={activity.DestinationSource} />
           {activity.Note ? (
             <Text className="flex-1 text-xs text-gray-600 dark:text-gray-400" numberOfLines={1}>
               {activity.Note}
@@ -332,6 +334,12 @@ const ActivityLogPanelComponent: React.FC<ActivityLogPanelProps> = ({
   // Track previous call selection to avoid unnecessary tab switches
   const prevSelectedCallIdRef = useRef<string | undefined>(undefined);
 
+  // Actions-panel open sessions — a "+" set-status-for-call open (with a call context) must surface the
+  // actions tab even when the unit/person was already selected and the selection itself did not change.
+  const unitActionsSessionId = useUnitActionsStore((s) => s.actionsSessionId);
+  const personnelActionsSessionId = usePersonnelActionsStore((s) => s.actionsSessionId);
+  const prevActionsSessionIdsRef = useRef({ unit: unitActionsSessionId, personnel: personnelActionsSessionId });
+
   // Reset to activity tab if check-ins tab is active but call filter is cleared
   useEffect(() => {
     if (!isCallFilterActive && activeTab === 'checkins') {
@@ -364,7 +372,11 @@ const ActivityLogPanelComponent: React.FC<ActivityLogPanelProps> = ({
       prevSelectedPersonnelIdRef.current = currentId;
 
       if (selectedPersonnel && currentId) {
-        openPersonnelActions(selectedPersonnel);
+        // Don't re-open (and wipe) a panel already opened for this person, e.g. by "+" with a call context
+        const personnelActions = usePersonnelActionsStore.getState();
+        if (!personnelActions.isActionsOpen || personnelActions.selectedPersonnel?.UserId !== currentId) {
+          openPersonnelActions(selectedPersonnel);
+        }
         setActiveTab('actions'); // Automatically switch to actions tab
       } else if (prevId && !currentId) {
         // Only close if we had a selection before and now we don't
@@ -383,7 +395,11 @@ const ActivityLogPanelComponent: React.FC<ActivityLogPanelProps> = ({
       prevSelectedUnitIdRef.current = currentId;
 
       if (selectedUnit && currentId) {
-        openUnitActions(selectedUnit);
+        // Don't re-open (and wipe) a panel already opened for this unit, e.g. by "+" with a call context
+        const unitActions = useUnitActionsStore.getState();
+        if (!unitActions.isActionsOpen || unitActions.selectedUnit?.UnitId !== currentId) {
+          openUnitActions(selectedUnit);
+        }
         setActiveTab('actions'); // Automatically switch to actions tab
       } else if (prevId && !currentId) {
         // Only close if we had a selection before and now we don't
@@ -391,6 +407,21 @@ const ActivityLogPanelComponent: React.FC<ActivityLogPanelProps> = ({
       }
     }
   }, [selectedUnit, selectedUnitId, openUnitActions, closeUnitActions]);
+
+  // Surface the actions panel when it is opened from an explicit call context ("+" set-status-for-call)
+  useEffect(() => {
+    const prev = prevActionsSessionIdsRef.current;
+    if (prev.unit === unitActionsSessionId && prev.personnel === personnelActionsSessionId) return;
+    prevActionsSessionIdsRef.current = { unit: unitActionsSessionId, personnel: personnelActionsSessionId };
+
+    const openedForCall = (prev.unit !== unitActionsSessionId && !!useUnitActionsStore.getState().callContext) || (prev.personnel !== personnelActionsSessionId && !!usePersonnelActionsStore.getState().callContext);
+    if (!openedForCall) return;
+
+    setActiveTab('actions');
+    if (isCollapsed) {
+      setCardCollapsed('activity-log', false);
+    }
+  }, [unitActionsSessionId, personnelActionsSessionId, isCollapsed, setCardCollapsed]);
 
   // Filter entries when call filter is active
   const filteredEntries = useMemo(
@@ -496,6 +527,7 @@ const ActivityLogPanelComponent: React.FC<ActivityLogPanelProps> = ({
           maxToRenderPerBatch={15}
           windowSize={7}
           removeClippedSubviews={Platform.OS !== 'web'}
+          ListFooterComponent={<ActivityLinkLegend activity={callActivity} />}
         />
       );
     }

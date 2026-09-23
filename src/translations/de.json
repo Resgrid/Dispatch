@@ -164,6 +164,12 @@
     "no_location_for_routing": "Keine Standortdaten für die Routenführung verfügbar",
     "no_protocols": "Keine Protokolle diesem Einsatz zugeordnet",
     "no_timeline": "Keine Zeitverlaufsereignisse verfügbar",
+    "activity_link": {
+      "auto_linked": "automatisch verknüpft",
+      "auto_linked_hint": "Ohne Einsatz gesendet; Resgrid hat den Status anhand des vorherigen Status oder der Disposition verknüpft.",
+      "inferred": "abgeleitet",
+      "inferred_hint": "Ohne Ziel gesetzt von einer zu diesem Einsatz disponierten Einheit oder Person während der Bearbeitung."
+    },
     "not_available": "k. A.",
     "not_found": "Einsatz nicht gefunden",
     "missing_call_id": "Einsatz-ID fehlt",
@@ -678,7 +684,13 @@
       "empty": "An diesen Kontakt wurden keine Dateien angehängt.",
       "share_unavailable": "Teilen ist auf diesem Gerät nicht verfügbar.",
       "download_failed": "Die Datei konnte nicht heruntergeladen werden."
-    }
+    },
+    "withheld": "{{count}} geschützte Angaben sind ausgeblendet.",
+    "categoryLabel": "Kategorie: {{name}}",
+    "physicalAddress": "Anschrift",
+    "mailingAddress": "Postanschrift",
+    "hasGeofence": "Für diesen Ort ist ein Geofence hinterlegt.",
+    "customFields": "Benutzerdefinierte Felder"
   },
   "dispatch": {
     "active_calls": "Aktive Einsätze",
@@ -1141,7 +1153,15 @@
       "disabled": "Diese Funktion ist für Ihre Abteilung deaktiviert.",
       "locked": "Geschützte Daten entsperren, um fortzufahren.",
       "retry": "Server nicht erreichbar. Bitte erneut versuchen.",
-      "validation": "Der Server hat die Änderung abgelehnt."
+      "validation": "Der Server hat die Änderung abgelehnt.",
+      "timereports_subject_covered": "Für diese Besatzung oder Person ist an diesem Tag bereits Zeit in einem anderen Bericht erfasst.",
+      "timereports_date_exists": "Für diese Besatzung oder Person gibt es an diesem Tag bereits einen Bericht.",
+      "timereports_scope_invalid": "Diese Besatzung oder Person ist in diesem Einsatz nicht aktiv.",
+      "timereports_locked": "Dieser Bericht kann nicht mehr geändert werden.",
+      "timereports_time_invalid": "Geben Sie Zeiten als HH:mm ein.",
+      "deployments_closed": "Dieser Einsatz ist abgeschlossen.",
+      "expenses_receipt_invalid": "Der Beleg konnte nicht gelesen werden.",
+      "deployments_attachment_too_large": "Der Beleg ist zu groß."
     },
     "financeMode": {
       "0": "Operativ",
@@ -1152,7 +1172,15 @@
       "end_before_start": "Die Endzeit muss nach der Startzeit liegen.",
       "missing_subject": "Wählen Sie, für wen oder was dieser Eintrag gilt.",
       "missing_time": "Start- und Endzeit eingeben.",
-      "overlap": "Dieser Eintrag überschneidet sich mit einem anderen für dieselbe Person oder Einheit."
+      "overlap": "Dieser Eintrag überschneidet sich mit einem anderen für dieselbe Person oder Einheit.",
+      "subject_outside_report_scope": "Dieser Eintrag betrifft jemanden außerhalb der Besatzung oder Person dieses Berichts.",
+      "subject_on_other_report": "Für diese Person oder Einheit ist am selben Tag bereits Zeit in einem anderen Bericht erfasst.",
+      "subject_not_on_roster": "Dieser Eintrag betrifft jemanden, der nicht in der Besetzung steht.",
+      "entries_overlap": "Zwei Einträge derselben Person oder Einheit überschneiden sich.",
+      "no_entries": "Fügen Sie mindestens einen Eintrag hinzu.",
+      "break_rule": "Für eine lange Schicht ist keine Pause erfasst.",
+      "long_travel": "Mehr Reisezeit als an einem Tag erlaubt; sie muss genehmigt werden.",
+      "outside_report_date": "Dieser Eintrag liegt außerhalb des Berichtsdatums."
     },
     "mars": {
       "counts": "{{errors}} Fehler · {{warnings}} Warnungen",
@@ -1201,7 +1229,7 @@
       "noReport": "Kein Zeitbericht für diesen Tag.",
       "notes": "Notizen",
       "remove": "Entfernen",
-      "report": "Bericht Nr. {{number}}",
+      "report": "Bericht #{{number}}",
       "save": "Einträge speichern",
       "start": "Zeitbericht beginnen",
       "subject": "Wer oder was",
@@ -1210,7 +1238,19 @@
       "to": "Bis",
       "total": "Gesamt {{hours}} h",
       "type": "Eintragsart",
-      "unpaidBreak": "Unbezahlte Pause (Min.)"
+      "unpaidBreak": "Unbezahlte Pause (Min.)",
+      "crewReport": "Besatzungszeitbericht #{{number}} · {{name}}",
+      "individualReport": "Zeitbericht #{{number}} · {{name}}",
+      "noCrewReport": "Kein Besatzungszeitbericht für {{name}} an diesem Tag.",
+      "coveredBy": "Diese Zeit steht an diesem Tag bereits in Bericht #{{number}}.",
+      "startCrew": "Besatzungszeitbericht beginnen",
+      "readOnly": "Sie können diesen Bericht ansehen, aber nicht ändern.",
+      "nextDay": "Endet am nächsten Tag",
+      "applyToCrew": "Auf Besatzung übertragen",
+      "approve": "Bericht genehmigen",
+      "dayReports": "Berichte an diesem Tag",
+      "awaitingApproval": "Wartet auf Genehmigung ({{count}})",
+      "notOnRoster": "Sie stehen nicht in der Besetzung oder Besatzung dieses Einsatzes."
     },
     "title": "Einsätze",
     "usage": {
@@ -1224,6 +1264,54 @@
       "startOdometer": "Kilometerstand Start",
       "title": "Nutzung",
       "unit": "Einheit"
+    },
+    "crewOf": "Besatzung von {{names}}",
+    "scope": {
+      "deployment": "Gesamter Einsatz",
+      "mine": "Meine Zeit",
+      "crew": "Besatzung: {{name}}",
+      "individual": "{{name}}"
+    },
+    "sign": {
+      "title": "Unterschriften",
+      "crewBossSigned": "Vom Besatzungsführer unterschrieben {{when}}",
+      "crewBossPending": "Noch nicht vom Besatzungsführer unterschrieben.",
+      "customerSigned": "Unterzeichner der Behörde: {{name}}",
+      "customerPending": "Keine Unterschrift der Behörde erfasst.",
+      "asCrewBoss": "Als Besatzungsführer unterschreiben",
+      "customerName": "Name des Unterzeichners der Behörde",
+      "recordCustomer": "Unterschrift der Behörde erfassen"
+    },
+    "expenses": {
+      "title": "Ausgaben",
+      "type": {
+        "0": "Verpflegungspauschale",
+        "1": "Unterkunft",
+        "2": "Private Unterkunft",
+        "3": "Fähre",
+        "4": "Kraftstoff",
+        "5": "Materialnachschub",
+        "6": "Sonstiges"
+      },
+      "typeLabel": "Ausgabenart",
+      "amount": "Betrag ({{currency}})",
+      "description": "Beschreibung",
+      "city": "Ort",
+      "takePhoto": "Foto aufnehmen",
+      "choosePhoto": "Foto auswählen",
+      "receiptAttached": "Belegfoto angehängt.",
+      "save": "Ausgabe hinzufügen",
+      "add": "Neue Ausgabe",
+      "noneToday": "Keine Ausgaben an diesem Tag.",
+      "otherDays": "Andere Tage",
+      "hasReceipt": "Beleg",
+      "remove": "Entfernen",
+      "removeTitle": "Ausgabe entfernen?",
+      "removeBody": "Die Ausgabe und ihr Beleg werden aus dem Einsatz entfernt.",
+      "cancel": "Abbrechen",
+      "saved": "Ausgabe gespeichert.",
+      "amountInvalid": "Geben Sie einen Betrag wie 42.50 ein.",
+      "photoDenied": "Erlauben Sie den Zugriff auf Kamera oder Fotos, um einen Beleg anzuhängen."
     }
   },
   "personnel": {
@@ -1940,5 +2028,12 @@
     "entrance": "Zugang",
     "alert_notes": "Warnhinweise",
     "files": "Objektdateien"
+  },
+  "notifications": {
+    "detail_title": "Benachrichtigung",
+    "additional_info": "Zusätzliche Informationen",
+    "view_call": "Einsatz anzeigen",
+    "view_chat": "Chat anzeigen",
+    "open_reference": "Öffnen"
   }
 }

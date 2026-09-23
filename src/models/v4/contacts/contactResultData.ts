@@ -66,4 +66,33 @@ export interface ContactResultData {
    * across the list: a field withheld on one contact must not mark it on every other one.
    */
   RedactedFields?: string[];
+  IsProtected?: boolean;
+  ProtectedReason?: string | null;
+  /** The contact category's name and color (both list rows and the detail read). */
+  CategoryName?: string | null;
+  CategoryColor?: string | null;
+  /** Resolved addresses (GetContactById only). */
+  PhysicalAddress?: ContactAddressData | null;
+  MailingAddress?: ContactAddressData | null;
+  /** Mobile-visible custom field values with their labels, in form order (GetContactById only). */
+  CustomFields?: ContactCustomFieldData[];
+}
+
+export interface ContactAddressData {
+  Address1?: string | null;
+  City?: string | null;
+  State?: string | null;
+  PostalCode?: string | null;
+  Country?: string | null;
+  /** One-line form for display and for a maps app. */
+  Formatted?: string | null;
+}
+
+export interface ContactCustomFieldData {
+  UdfFieldId: string;
+  Label: string;
+  Value: string;
+  FieldDataType: number;
+  GroupName?: string | null;
+  SortOrder: number;
 }

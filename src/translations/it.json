@@ -164,6 +164,12 @@
     "no_location_for_routing": "Nessun dato di posizione disponibile per il percorso",
     "no_protocols": "Nessun protocollo associato a questo intervento",
     "no_timeline": "Nessun evento nella cronologia disponibile",
+    "activity_link": {
+      "auto_linked": "collegato automaticamente",
+      "auto_linked_hint": "Inviato senza intervento; Resgrid lo ha collegato dallo stato precedente o dall'invio.",
+      "inferred": "dedotto",
+      "inferred_hint": "Impostato senza destinazione da un'unità o persona inviata a questo intervento mentre vi operava."
+    },
     "not_available": "N/D",
     "not_found": "Intervento non trovato",
     "missing_call_id": "ID intervento mancante",
@@ -678,7 +684,13 @@
       "empty": "Nessun file allegato a questo contatto.",
       "share_unavailable": "La condivisione non è disponibile su questo dispositivo.",
       "download_failed": "Impossibile scaricare il file."
-    }
+    },
+    "withheld": "{{count}} dettagli protetti sono nascosti.",
+    "categoryLabel": "Categoria: {{name}}",
+    "physicalAddress": "Indirizzo fisico",
+    "mailingAddress": "Indirizzo postale",
+    "hasGeofence": "Questo luogo ha un geofence mappato.",
+    "customFields": "Campi personalizzati"
   },
   "dispatch": {
     "active_calls": "Interventi attivi",
@@ -1141,7 +1153,15 @@
       "disabled": "Questa funzione è disattivata per il tuo dipartimento.",
       "locked": "Sblocca i dati protetti per continuare.",
       "retry": "Impossibile raggiungere il server. Riprova.",
-      "validation": "Il server ha rifiutato la modifica."
+      "validation": "Il server ha rifiutato la modifica.",
+      "timereports_subject_covered": "Questo equipaggio o questa persona ha già ore su un altro rapporto di questo giorno.",
+      "timereports_date_exists": "Esiste già un rapporto per questo equipaggio o persona in quel giorno.",
+      "timereports_scope_invalid": "Questo equipaggio o questa persona non è attivo in questo dispiegamento.",
+      "timereports_locked": "Questo rapporto non può più essere modificato.",
+      "timereports_time_invalid": "Inserisci gli orari come HH:mm.",
+      "deployments_closed": "Questo dispiegamento è chiuso.",
+      "expenses_receipt_invalid": "Impossibile leggere la ricevuta.",
+      "deployments_attachment_too_large": "La ricevuta è troppo grande."
     },
     "financeMode": {
       "0": "Operativo",
@@ -1152,7 +1172,15 @@
       "end_before_start": "L'ora di fine deve essere successiva a quella di inizio.",
       "missing_subject": "Scegli a chi o a cosa si riferisce questa voce.",
       "missing_time": "Inserisci un'ora di inizio e di fine.",
-      "overlap": "Questa voce si sovrappone a un'altra per la stessa persona o unità."
+      "overlap": "Questa voce si sovrappone a un'altra per la stessa persona o unità.",
+      "subject_outside_report_scope": "Questa voce riguarda qualcuno al di fuori dell'equipaggio o della persona di questo rapporto.",
+      "subject_on_other_report": "Questa persona o unità ha già ore su un altro rapporto dello stesso giorno.",
+      "subject_not_on_roster": "Questa voce riguarda qualcuno che non è nell'organico.",
+      "entries_overlap": "Due voci della stessa persona o unità si sovrappongono.",
+      "no_entries": "Aggiungi almeno una voce.",
+      "break_rule": "Un turno lungo non ha pause registrate.",
+      "long_travel": "Più viaggio di quanto consentito in un giorno; serve approvazione.",
+      "outside_report_date": "Questa voce è fuori dalla data del rapporto."
     },
     "mars": {
       "counts": "{{errors}} errori · {{warnings}} avvisi",
@@ -1201,7 +1229,7 @@
       "noReport": "Nessun rapporto orario per questo giorno.",
       "notes": "Note",
       "remove": "Rimuovi",
-      "report": "Rapporto n. {{number}}",
+      "report": "Rapporto #{{number}}",
       "save": "Salva voci",
       "start": "Avvia rapporto orario",
       "subject": "Chi o cosa",
@@ -1210,7 +1238,19 @@
       "to": "A",
       "total": "Totale {{hours}} h",
       "type": "Tipo di voce",
-      "unpaidBreak": "Pausa non retribuita (min)"
+      "unpaidBreak": "Pausa non retribuita (min)",
+      "crewReport": "Rapporto ore dell'equipaggio #{{number}} · {{name}}",
+      "individualReport": "Rapporto ore #{{number}} · {{name}}",
+      "noCrewReport": "Nessun rapporto dell'equipaggio per {{name}} in questo giorno.",
+      "coveredBy": "Queste ore sono già nel rapporto #{{number}} di questo giorno.",
+      "startCrew": "Avvia rapporto dell'equipaggio",
+      "readOnly": "Puoi vedere questo rapporto ma non modificarlo.",
+      "nextDay": "Termina il giorno dopo",
+      "applyToCrew": "Applica all'equipaggio",
+      "approve": "Approva rapporto",
+      "dayReports": "Rapporti di questo giorno",
+      "awaitingApproval": "In attesa di approvazione ({{count}})",
+      "notOnRoster": "Non sei nell'organico né in un equipaggio di questo dispiegamento."
     },
     "title": "Dispiegamenti",
     "usage": {
@@ -1224,6 +1264,54 @@
       "startOdometer": "Contachilometri iniziale",
       "title": "Utilizzo",
       "unit": "Unità"
+    },
+    "crewOf": "Equipaggio di {{names}}",
+    "scope": {
+      "deployment": "Intero dispiegamento",
+      "mine": "Il mio tempo",
+      "crew": "Equipaggio: {{name}}",
+      "individual": "{{name}}"
+    },
+    "sign": {
+      "title": "Firme",
+      "crewBossSigned": "Firmato dal capo equipaggio {{when}}",
+      "crewBossPending": "Non ancora firmato dal capo equipaggio.",
+      "customerSigned": "Firmatario dell'ente: {{name}}",
+      "customerPending": "Nessuna firma dell'ente registrata.",
+      "asCrewBoss": "Firma come capo equipaggio",
+      "customerName": "Nome del firmatario dell'ente",
+      "recordCustomer": "Registra la firma dell'ente"
+    },
+    "expenses": {
+      "title": "Spese",
+      "type": {
+        "0": "Diaria pasti",
+        "1": "Alloggio",
+        "2": "Alloggio privato",
+        "3": "Traghetto",
+        "4": "Carburante",
+        "5": "Reintegro materiali",
+        "6": "Altro"
+      },
+      "typeLabel": "Tipo di spesa",
+      "amount": "Importo ({{currency}})",
+      "description": "Descrizione",
+      "city": "Città",
+      "takePhoto": "Scatta foto",
+      "choosePhoto": "Scegli foto",
+      "receiptAttached": "Foto della ricevuta allegata.",
+      "save": "Aggiungi spesa",
+      "add": "Nuova spesa",
+      "noneToday": "Nessuna spesa in questo giorno.",
+      "otherDays": "Altri giorni",
+      "hasReceipt": "ricevuta",
+      "remove": "Rimuovi",
+      "removeTitle": "Rimuovere la spesa?",
+      "removeBody": "La spesa e la sua ricevuta vengono rimosse dal dispiegamento.",
+      "cancel": "Annulla",
+      "saved": "Spesa salvata.",
+      "amountInvalid": "Inserisci un importo come 42.50.",
+      "photoDenied": "Consenti l'accesso alla fotocamera o alle foto per allegare una ricevuta."
     }
   },
   "personnel": {
@@ -1940,5 +2028,12 @@
     "entrance": "Ingresso",
     "alert_notes": "Note di allerta",
     "files": "File del sito"
+  },
+  "notifications": {
+    "detail_title": "Notifica",
+    "additional_info": "Informazioni aggiuntive",
+    "view_call": "Visualizza intervento",
+    "view_chat": "Visualizza chat",
+    "open_reference": "Apri"
   }
 }

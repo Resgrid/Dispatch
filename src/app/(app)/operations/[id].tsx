@@ -4,7 +4,9 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView } from 'react-native';
 
+import { ExpensesPanel } from '@/components/operations/expenses-panel';
 import { MarsPanel } from '@/components/operations/mars-panel';
+import { AwaitingApproval, DayReports, ScopePicker, useScopeLabel } from '@/components/operations/scope-picker';
 import { TimeReportEditor } from '@/components/operations/time-report-editor';
 import { UsageForm } from '@/components/operations/usage-form';
 import { Button, ButtonText } from '@/components/ui/button';
@@ -14,31 +16,46 @@ import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { operationsCapabilities } from '@/lib/operations/capabilities';
-import { localDateKey, rosterSubjects } from '@/lib/operations/time';
-import { DeploymentFinanceMode } from '@/models/v4/operations';
+import {
+  availableScopes,
+  canWriteSubject,
+  coveringReport,
+  dateOf,
+  defaultScope,
+  localDateKey,
+  reportScope,
+  reportsOnDate,
+  scopeKey,
+  scopeName,
+  scopeSubjects,
+  shiftDateKey,
+  subjectNames,
+  type TimeScope,
+} from '@/lib/operations/time';
+import { DeploymentFinanceMode, TimeReportStatus } from '@/models/v4/operations';
 import useAuthStore from '@/stores/auth/store';
 import { useDeploymentsStatus } from '@/stores/feature-flags/store';
 import { useOperationsStore } from '@/stores/operations/store';
 
-type Section = 'time' | 'usage' | 'mars';
+type Section = 'time' | 'expenses' | 'usage' | 'mars';
 
-const shiftDay = (dateKey: string, days: number) => {
-  const [y, m, d] = dateKey.split('-').map(Number);
-  return localDateKey(new Date(y, m - 1, d + days));
-};
-
-// One deployment: the daily time report for a chosen day, resource usage readings and the MARS F-42
-// state. What the person may edit follows the server's access answer and this app's capabilities.
+// One deployment: the crew or individual time report for a chosen day, expenses, resource usage readings and
+// the MARS F-42 state. What the person may open and write comes from the server's TimeAccess (their roster row,
+// the deployed units they crew) and this app's capabilities; approvers get the submitted queue.
 export default function OperationsDeploymentScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const flagStatus = useDeploymentsStatus();
   const userId = useAuthStore((state) => state.userId);
-  const { access, costAccess, marsAccess, deployment, report, entries, dirty, issues, warnings, usage, marsItems, validation, busy, error } = useOperationsStore();
+  const { costAccess, marsAccess, deployment, reports, scope, report, entries, dirty, issues, warnings, expenses, usage, marsItems, validation, busy, error } = useOperationsStore();
   const [dateKey, setDateKey] = useState(localDateKey());
   const dateRef = useRef(dateKey);
   const [section, setSection] = useState<Section>('time');
+  const activeUnitId = operationsCapabilities.useActiveUnitId();
+  const activeUnitRef = useRef(activeUnitId);
+  activeUnitRef.current = activeUnitId;
+  const scopeLabel = useScopeLabel();
 
   useFocusEffect(
     useCallback(() => {
@@ -48,32 +65,57 @@ export default function OperationsDeploymentScreen() {
         if (!store.access) await store.loadAccess();
         if (!useOperationsStore.getState().access?.Enabled) return;
         await useOperationsStore.getState().open(id);
-        await useOperationsStore.getState().openReport(dateRef.current, false);
-        await Promise.all([useOperationsStore.getState().loadUsage(), useOperationsStore.getState().loadMars()]);
+        const opened = useOperationsStore.getState().deployment;
+        if (opened) useOperationsStore.getState().setScope(defaultScope(opened, activeUnitRef.current), dateRef.current);
+        await Promise.all([useOperationsStore.getState().loadExpenses(), useOperationsStore.getState().loadUsage(), useOperationsStore.getState().loadMars()]);
       })();
       return () => useOperationsStore.getState().close();
     }, [flagStatus, id])
   );
 
-  const activeUnitId = operationsCapabilities.useActiveUnitId();
-  const subjects = useMemo(() => (deployment ? rosterSubjects(deployment, { userId: userId ?? null, activeUnitId, manager: !!access?.CanManage }) : []), [deployment, userId, activeUnitId, access?.CanManage]);
-  const canEditTime = operationsCapabilities.editTime && !!access?.Enabled && subjects.length > 0;
+  const access = deployment?.TimeAccess ?? null;
+  const scopes = useMemo(() => (deployment ? availableScopes(deployment) : []), [deployment]);
+  const names = useMemo(() => (deployment ? subjectNames(deployment) : {}), [deployment]);
+  // The picker offers the subjects of the open report's own scope (a manager may open any report on the day).
+  const openScope: TimeScope | null = report ? reportScope(report) : scope;
+  const subjects = useMemo(() => (deployment ? scopeSubjects(deployment, openScope) : []), [deployment, openScope]);
+  const dayReports = useMemo(() => reportsOnDate(reports, dateKey), [reports, dateKey]);
+  const awaiting = useMemo(() => reports.filter((candidate) => candidate.Status === TimeReportStatus.Submitted).sort((a, b) => a.ReportDate.localeCompare(b.ReportDate)), [reports]);
+  const canApprove = operationsCapabilities.approveTime && !!access?.CanApprove;
+  const supervises = !!access?.CanManage || canApprove;
+  const covered = useMemo(() => {
+    if (report || !scope) return null;
+    const subject = scope.kind === 'crew' ? scope.unitId : scope.kind === 'individual' ? scope.personnelId : null;
+    return subject ? coveringReport(reports, dateKey, subject) : null;
+  }, [report, scope, reports, dateKey]);
+  const canCreate = operationsCapabilities.editTime && !!scope && (scope.kind !== 'deployment' || !!access?.CanManage);
+  const writable = useCallback((subjectId: string) => !!deployment && canWriteSubject(deployment, subjectId), [deployment]);
   const showUsage = operationsCapabilities.recordUsage && !!costAccess?.Enabled && !!costAccess.CanRecordUsage;
+  const showExpenses = operationsCapabilities.recordExpenses && (access?.CanManage || (access?.WritableSubjectIds.length ?? 0) > 0);
   const showMars = !!marsAccess?.Enabled && deployment?.FinanceMode === DeploymentFinanceMode.CostRecovery;
-  const canDraftF42 = operationsCapabilities.draftF42 && showMars && (!!marsAccess?.CanManage || subjects.length > 0);
+  const canDraftF42 = operationsCapabilities.draftF42 && showMars && (!!marsAccess?.CanManage || (access?.WritableSubjectIds.length ?? 0) > 0);
   const usageUnits = useMemo(() => {
     if (!deployment) return [];
     const units = deployment.Units.filter((unit) => unit.IsActive);
-    if (access?.CanManage || !activeUnitId) return units;
-    const mine = units.filter((unit) => String(unit.UnitId) === activeUnitId);
-    return mine.length > 0 ? mine : units;
-  }, [deployment, access?.CanManage, activeUnitId]);
+    if (access?.CanManage) return units;
+    const crewed = units.filter((unit) => access?.CrewUnitIds.includes(unit.Id));
+    const mine = activeUnitId ? crewed.filter((unit) => String(unit.UnitId) === activeUnitId) : [];
+    return mine.length > 0 ? mine : crewed;
+  }, [deployment, access, activeUnitId]);
 
   const changeDay = (days: number) => {
-    const next = shiftDay(dateKey, days);
+    const next = shiftDateKey(dateKey, days);
     dateRef.current = next;
     setDateKey(next);
-    void useOperationsStore.getState().openReport(next, false);
+    useOperationsStore.getState().setScope(useOperationsStore.getState().scope, next);
+  };
+
+  const openReport = (target: { Id: string; ReportDate: string }) => {
+    const day = dateOf(target.ReportDate);
+    dateRef.current = day;
+    setDateKey(day);
+    setSection('time');
+    useOperationsStore.getState().selectReport(target.Id);
   };
 
   if (flagStatus === 'disabled') return <Redirect href={operationsCapabilities.homeRoute} />;
@@ -105,13 +147,27 @@ export default function OperationsDeploymentScreen() {
             <Text className="text-typography-500">
               {t('operations.roster', { units: deployment.Units.filter((unit) => unit.IsActive).length, personnel: deployment.Personnel.filter((person) => person.IsActive).length })}
             </Text>
+            {access && access.CrewUnitIds.length > 0 ? (
+              <Text className="text-typography-500">
+                {t('operations.crewOf', {
+                  names: access.CrewUnitIds.map((unitId) => scopeName(deployment, { kind: 'crew', unitId }))
+                    .filter(Boolean)
+                    .join(', '),
+                })}
+              </Text>
+            ) : null}
           </VStack>
         ) : null}
         {deployment ? (
-          <HStack space="sm">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
             <Button variant={section === 'time' ? 'solid' : 'outline'} size="sm" onPress={() => setSection('time')} testID="operations-section-time">
               <ButtonText>{t('operations.time.title')}</ButtonText>
             </Button>
+            {showExpenses ? (
+              <Button variant={section === 'expenses' ? 'solid' : 'outline'} size="sm" onPress={() => setSection('expenses')} testID="operations-section-expenses">
+                <ButtonText>{t('operations.expenses.title')}</ButtonText>
+              </Button>
+            ) : null}
             {showUsage ? (
               <Button variant={section === 'usage' ? 'solid' : 'outline'} size="sm" onPress={() => setSection('usage')} testID="operations-section-usage">
                 <ButtonText>{t('operations.usage.title')}</ButtonText>
@@ -122,9 +178,9 @@ export default function OperationsDeploymentScreen() {
                 <ButtonText>{t('operations.mars.title')}</ButtonText>
               </Button>
             ) : null}
-          </HStack>
+          </ScrollView>
         ) : null}
-        {deployment && (section === 'time' || section === 'usage') ? (
+        {deployment && section !== 'mars' ? (
           <HStack className="items-center justify-between">
             <Pressable onPress={() => changeDay(-1)} testID="operations-day-previous" accessibilityRole="button" accessibilityLabel={t('operations.previousDay')}>
               <ChevronLeft size={22} color="#2563eb" />
@@ -136,20 +192,51 @@ export default function OperationsDeploymentScreen() {
           </HStack>
         ) : null}
         {deployment && section === 'time' ? (
-          <TimeReportEditor
+          <VStack space="md">
+            {canApprove ? <AwaitingApproval deployment={deployment} reports={awaiting} onOpen={openReport} /> : null}
+            <ScopePicker deployment={deployment} scopes={scopes} current={scope} onPick={(next) => useOperationsStore.getState().setScope(next, dateKey)} />
+            {supervises ? <DayReports deployment={deployment} reports={dayReports} openId={report?.Id ?? null} onOpen={openReport} /> : null}
+            {scopes.length === 0 && !supervises ? <Text className="text-typography-500">{t('operations.time.notOnRoster')}</Text> : null}
+            {scope || report ? (
+              <TimeReportEditor
+                key={`${scopeKey(openScope)}:${dateKey}:${report?.Id ?? 'none'}`}
+                dateKey={dateKey}
+                report={report}
+                entries={entries}
+                subjects={subjects}
+                names={names}
+                scopeLabel={openScope ? scopeName(deployment, openScope) || scopeLabel(deployment, openScope) : ''}
+                isCrew={openScope?.kind === 'crew'}
+                coveredBy={covered}
+                issues={issues}
+                warnings={warnings}
+                canCreate={canCreate}
+                canApprove={canApprove}
+                canWrite={writable}
+                dirty={dirty}
+                busy={busy}
+                onStart={() => void useOperationsStore.getState().openReport(dateKey, true)}
+                onChange={(next) => useOperationsStore.getState().setEntries(next)}
+                onSave={() => void useOperationsStore.getState().save()}
+                onSubmit={() => void useOperationsStore.getState().submit()}
+                onSign={(crewBoss, customer) => void useOperationsStore.getState().sign(crewBoss, customer)}
+                onApprove={() => report && void useOperationsStore.getState().approve(report.Id)}
+              />
+            ) : null}
+          </VStack>
+        ) : null}
+        {deployment && section === 'expenses' && showExpenses ? (
+          <ExpensesPanel
             dateKey={dateKey}
-            report={report}
-            entries={entries}
-            subjects={subjects}
-            issues={issues}
-            warnings={warnings}
-            canEdit={canEditTime}
-            dirty={dirty}
+            currency={deployment.Currency}
+            expenses={expenses}
+            reportId={report?.CanAct && report.Status === TimeReportStatus.Draft ? report.Id : null}
+            userId={userId ?? null}
+            canManage={!!access?.CanManage}
+            canAdd={deployment.Status <= 3}
             busy={busy}
-            onStart={() => void useOperationsStore.getState().openReport(dateKey, true)}
-            onChange={(next) => useOperationsStore.getState().setEntries(next)}
-            onSave={() => void useOperationsStore.getState().save()}
-            onSubmit={() => void useOperationsStore.getState().submit()}
+            onAdd={(input) => useOperationsStore.getState().addExpense(input)}
+            onRemove={(expenseId) => useOperationsStore.getState().removeExpense(expenseId)}
           />
         ) : null}
         {deployment && section === 'usage' && showUsage ? (

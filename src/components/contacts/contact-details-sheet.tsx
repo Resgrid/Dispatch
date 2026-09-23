@@ -23,6 +23,7 @@ import {
   X,
 } from '@/components/ui/lucide-icons';
 import { useAnalytics } from '@/hooks/use-analytics';
+import { htmlToText, withoutRedacted } from '@/lib/contacts/format';
 import { ContactType } from '@/models/v4/contacts/contactResultData';
 import { useContactsStore } from '@/stores/contacts/store';
 
@@ -33,6 +34,7 @@ import { HStack } from '../ui/hstack';
 import { Pressable } from '../ui/pressable';
 import { Text } from '../ui/text';
 import { VStack } from '../ui/vstack';
+import { ContactDetailsExtra } from './contact-details-extra';
 import { ContactFilesPanel } from './contact-files-panel';
 import { ContactNotesList } from './contact-notes-list';
 import { ContactPreplanPanel } from './contact-preplan-panel';
@@ -91,13 +93,17 @@ export const ContactDetailsSheet: React.FC = () => {
   const { trackEvent } = useAnalytics();
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
-  const { contacts, selectedContactId, isDetailsOpen, closeDetails } = useContactsStore();
+  const { contacts, selectedContactId, selectedContactDetails, isDetailsOpen, closeDetails } = useContactsStore();
   const [activeTab, setActiveTab] = useState<'details' | 'notes' | 'preplan' | 'files'>('details');
 
   const selectedContact = React.useMemo(() => {
     if (!selectedContactId) return null;
-    return contacts.find((contact) => contact.ContactId === selectedContactId);
-  }, [contacts, selectedContactId]);
+    // Prefer the full GetContactById record — the list payload is slim (no address, custom fields or
+    // category) — and fall back to the list row while it loads. Withheld values are removed so the
+    // sheet never shows the REDACTED sentinel as data or offers to dial it.
+    const record = selectedContactDetails?.ContactId === selectedContactId ? selectedContactDetails : contacts.find((contact) => contact.ContactId === selectedContactId);
+    return record ? withoutRedacted(record) : null;
+  }, [contacts, selectedContactId, selectedContactDetails]);
 
   // Track when contact details sheet is opened/rendered
   React.useEffect(() => {
@@ -203,7 +209,9 @@ export const ContactDetailsSheet: React.FC = () => {
               </HStack>
               <Text className="text-sm text-gray-500 dark:text-gray-400">{selectedContact.ContactType === ContactType.Person ? t('contacts.person') : t('contacts.company')}</Text>
               {selectedContact.OtherName ? <Text className="text-sm text-gray-600 dark:text-gray-300">({selectedContact.OtherName})</Text> : null}
-              {selectedContact.Category?.Name ? <Text className="text-sm text-primary-600 dark:text-primary-400">{selectedContact.Category.Name}</Text> : null}
+              {selectedContact.CategoryName || selectedContact.Category?.Name ? (
+                <Text className="text-sm text-primary-600 dark:text-primary-400">{selectedContact.CategoryName || selectedContact.Category?.Name}</Text>
+              ) : null}
             </VStack>
           </VStack>
 
@@ -235,6 +243,7 @@ export const ContactDetailsSheet: React.FC = () => {
           {activeTab === 'details' ? (
             <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
               <VStack space="lg" className="flex-1">
+                <ContactDetailsExtra contact={selectedContact} showCustomFields={false} />
                 {/* Contact Information Section */}
                 {hasContactInfo ? (
                   <Section title={t('contacts.contactInformation')} icon={<PhoneIcon size={16} color="#6366F1" />}>
@@ -302,9 +311,9 @@ export const ContactDetailsSheet: React.FC = () => {
                 {hasAdditionalInfo ? (
                   <Section title={t('contacts.additionalInformation')} icon={<SettingsIcon size={16} color="#6366F1" />} defaultExpanded={false}>
                     <VStack space="xs">
-                      <ContactField label={t('contacts.description')} value={selectedContact.Description} />
-                      <ContactField label={t('contacts.notes')} value={selectedContact.Notes} />
-                      <ContactField label={t('contacts.otherInfo')} value={selectedContact.OtherInfo} />
+                      <ContactField label={t('contacts.description')} value={htmlToText(selectedContact.Description)} />
+                      <ContactField label={t('contacts.notes')} value={htmlToText(selectedContact.Notes)} />
+                      <ContactField label={t('contacts.otherInfo')} value={htmlToText(selectedContact.OtherInfo)} />
                     </VStack>
                   </Section>
                 ) : null}

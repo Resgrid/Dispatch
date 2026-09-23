@@ -1,5 +1,5 @@
 import { Building2, Check, ChevronDown, ChevronRight, ChevronUp, MapPinned, Phone, Send, Truck, X } from 'lucide-react-native';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
@@ -13,7 +13,7 @@ import { Icon } from '@/components/ui/icon';
 import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
-import { type DestinationTab, getDefaultDestinationTab, getDestinationCapabilities } from '@/lib/destination-helpers';
+import { type DestinationTab, getDefaultDestinationTab, getEffectiveDestinationType, getStatusDestinationCapabilities, resolveDefaultDestinationCall } from '@/lib/destination-helpers';
 import { getPoiSelectionLabel } from '@/lib/poi-display';
 import { resolveUnitStatusOptions } from '@/lib/unit-status-helpers';
 import { invertColor, isCallActive } from '@/lib/utils';
@@ -23,6 +23,7 @@ import { type PoiResultData } from '@/models/v4/mapping/poiResultData';
 import { type StatusesResultData } from '@/models/v4/statuses/statusesResultData';
 import { type UnitInfoResultData } from '@/models/v4/units/unitInfoResultData';
 import { useCallsStore } from '@/stores/calls/store';
+import { useDispatchConsoleStore } from '@/stores/dispatch/dispatch-console-store';
 import { useUnitActionsStore } from '@/stores/dispatch/unit-actions-store';
 import { useUnitsStore } from '@/stores/units/store';
 
@@ -124,9 +125,19 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
   // Local state for selected status (to fix synchronization issues)
   const [localSelectedStatus, setLocalSelectedStatus] = useState<StatusesResultData | null>(null);
 
+  // The console's selected call — a default destination when the unit's own destination is not an active call
+  const selectedCallId = useDispatchConsoleStore((state) => state.selectedCallId);
+
+  // Whether the per-unit options (stations/POIs) have finished loading for the given unit
+  const [optionsLoadedForUnitId, setOptionsLoadedForUnitId] = useState<string | null>(null);
+
   // Store state
   const {
     selectedUnit: storeSelectedUnit,
+    callContext,
+    actionsSessionId,
+    destinationInitializedSessionId,
+    markDestinationInitialized,
     selectedStatus: storeSelectedStatus,
     statusDestinationType,
     statusSelectedCall,
@@ -178,6 +189,8 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
   useEffect(() => {
     if (!selectedUnit) return;
 
+    let cancelled = false;
+
     const loadOptions = async () => {
       setIsLoadingOptions(true);
       try {
@@ -188,6 +201,8 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
           await useUnitsStore.getState().fetchUnits();
           groups = useUnitsStore.getState().unitStatuses;
         }
+        // A newer unit was selected while this load was in flight — don't overwrite its options.
+        if (cancelled) return;
         const serverStatuses = (unitStatusData?.Data?.Statuses as unknown as StatusesResultData[]) || [];
         setAvailableStatuses(resolveUnitStatusOptions(selectedUnit, groups, serverStatuses));
         setAvailableCalls(unitStatusData?.Data?.Calls || []);
@@ -196,77 +211,82 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
       } catch (error) {
         console.error('Failed to load unit action options:', error);
       } finally {
-        setIsLoadingOptions(false);
+        if (!cancelled) {
+          setIsLoadingOptions(false);
+          setOptionsLoadedForUnitId(selectedUnit.UnitId);
+        }
       }
     };
 
-    if (selectedUnit) {
-      loadOptions();
-    }
+    loadOptions();
+
+    return () => {
+      cancelled = true;
+    };
   }, [selectedUnit, setAvailableStatuses, setAvailableCalls, setAvailableStations, setAvailablePois, setIsLoadingOptions]);
+
+  // Active calls for destination selection and default-destination resolution
+  const activeCalls = useMemo(() => {
+    return calls.filter((c) => isCallActive(c.State));
+  }, [calls]);
 
   // Update available calls from calls store
   useEffect(() => {
-    const activeCalls = calls.filter((c) => isCallActive(c.State));
     setAvailableCalls(activeCalls);
-  }, [calls, setAvailableCalls]);
+  }, [activeCalls, setAvailableCalls]);
 
-  // Track the last unit ID we initialized destination for
-  const lastInitializedUnitIdRef = useRef<string | null>(null);
-
-  // Initialize destination from selected unit's current destination (only once per unit)
+  // Apply the default destination once per open of the actions panel (openActions starts a new session:
+  // a unit selection, a re-selection or a "+" set-status-for-call). A successful submit does not start a
+  // new session, so the destination stays sticky for follow-up statuses of the same unit. The applied
+  // session lives in the store so remounting the panel (e.g. switching tabs) does not re-apply it.
   useEffect(() => {
-    if (!selectedUnit) {
-      lastInitializedUnitIdRef.current = null;
+    if (!selectedUnit) return;
+    // Wait until the store has been opened for this unit (the parent opens it after selection changes).
+    if (storeSelectedUnit?.UnitId !== selectedUnit.UnitId) return;
+    if (destinationInitializedSessionId === actionsSessionId) return;
+
+    // (a) explicit call context, (b) the unit's current destination if it is an active call, (c) the console's selected call
+    const defaultCall = resolveDefaultDestinationCall({
+      callContext,
+      currentDestinationId: selectedUnit.CurrentDestinationId,
+      selectedCallId,
+      activeCalls,
+    });
+    if (defaultCall) {
+      setStatusSelectedCall(defaultCall);
+      markDestinationInitialized(actionsSessionId);
       return;
     }
 
-    // Only initialize once per unit - skip if we already initialized for this unit
-    if (lastInitializedUnitIdRef.current === selectedUnit.UnitId) {
-      return;
-    }
-
-    // If no destination set, just mark as initialized
-    if (!selectedUnit.CurrentDestinationId) {
-      lastInitializedUnitIdRef.current = selectedUnit.UnitId;
-      return;
-    }
+    // Stations and POIs come from the per-unit options load; wait for it before settling on a default.
+    if (optionsLoadedForUnitId !== selectedUnit.UnitId) return;
 
     const destinationId = selectedUnit.CurrentDestinationId;
+    const matchingStation = destinationId ? availableStations.find((s) => s.GroupId === destinationId) : undefined;
+    const matchingPoi = destinationId && !matchingStation ? availablePois.find((poi) => poi.PoiId.toString() === destinationId) : undefined;
 
-    // Check if the destination is a call (check available calls)
-    const matchingCall = calls.find((c) => c.CallId === destinationId);
-    if (matchingCall) {
-      setStatusDestinationType('call');
-      setStatusSelectedCall(matchingCall);
-      setStatusSelectedStation(null);
-      lastInitializedUnitIdRef.current = selectedUnit.UnitId;
-      return;
-    }
-
-    // Check if the destination is a station (check available stations)
-    const matchingStation = availableStations.find((s) => s.GroupId === destinationId);
     if (matchingStation) {
-      setStatusDestinationType('station');
       setStatusSelectedStation(matchingStation);
-      setStatusSelectedCall(null);
-      lastInitializedUnitIdRef.current = selectedUnit.UnitId;
-      return;
-    }
-
-    const matchingPoi = availablePois.find((poi) => poi.PoiId.toString() === destinationId);
-    if (matchingPoi) {
-      setStatusDestinationType('poi');
+    } else if (matchingPoi) {
       setStatusSelectedPoi(matchingPoi);
-      lastInitializedUnitIdRef.current = selectedUnit.UnitId;
-      return;
     }
-
-    // If we couldn't match but have data loaded, mark as initialized anyway
-    if (calls.length > 0 || availableStations.length > 0 || availablePois.length > 0) {
-      lastInitializedUnitIdRef.current = selectedUnit.UnitId;
-    }
-  }, [selectedUnit, calls, availableStations, availablePois, setStatusDestinationType, setStatusSelectedCall, setStatusSelectedStation, setStatusSelectedPoi]);
+    markDestinationInitialized(actionsSessionId);
+  }, [
+    selectedUnit,
+    storeSelectedUnit,
+    callContext,
+    actionsSessionId,
+    destinationInitializedSessionId,
+    selectedCallId,
+    activeCalls,
+    optionsLoadedForUnitId,
+    availableStations,
+    availablePois,
+    markDestinationInitialized,
+    setStatusSelectedCall,
+    setStatusSelectedStation,
+    setStatusSelectedPoi,
+  ]);
 
   const handleSubmitStatus = useCallback(async () => {
     // Pass current unit and status directly to avoid state sync issues
@@ -280,24 +300,41 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
     }
   }, [storeSubmitStatus, selectedUnit, localSelectedStatus, onStatusUpdated]);
 
+  // An explicit call context ("+" set-status-for-call) may carry its call with any status
+  const hasCallContext = !!callContext;
+
+  const destinationSelection = useMemo(
+    () => ({
+      selectedDestinationType: statusDestinationType,
+      selectedCall: statusSelectedCall,
+      selectedStation: statusSelectedStation,
+      selectedPoi: statusSelectedPoi,
+    }),
+    [statusDestinationType, statusSelectedCall, statusSelectedStation, statusSelectedPoi]
+  );
+
+  // The destination that will actually be sent with the selected status (a destination the status
+  // does not support is dropped), so the panel shows exactly what will be saved.
+  const effectiveDestinationType = useMemo(() => getEffectiveDestinationType(destinationSelection, selectedStatus?.Detail, hasCallContext), [destinationSelection, selectedStatus, hasCallContext]);
+
   // Get destination display text
   const getDestinationDisplay = useMemo(() => {
-    if (statusDestinationType === 'call' && statusSelectedCall) {
+    if (effectiveDestinationType === 'call' && statusSelectedCall) {
       return `#${statusSelectedCall.Number} - ${statusSelectedCall.Name}`;
     }
-    if (statusDestinationType === 'station' && statusSelectedStation) {
+    if (effectiveDestinationType === 'station' && statusSelectedStation) {
       return statusSelectedStation.Name;
     }
-    if (statusDestinationType === 'poi' && statusSelectedPoi) {
+    if (effectiveDestinationType === 'poi' && statusSelectedPoi) {
       return getPoiSelectionLabel(statusSelectedPoi);
     }
     return t('dispatch.unit_actions_panel.no_destination');
-  }, [statusDestinationType, statusSelectedCall, statusSelectedStation, statusSelectedPoi, t]);
+  }, [effectiveDestinationType, statusSelectedCall, statusSelectedStation, statusSelectedPoi, t]);
 
   // Check destination type allowed based on Detail
   const destinationConfig = useMemo(() => {
-    return getDestinationCapabilities(selectedStatus?.Detail);
-  }, [selectedStatus]);
+    return getStatusDestinationCapabilities(selectedStatus?.Detail, hasCallContext);
+  }, [selectedStatus, hasCallContext]);
 
   // Check note requirement based on Note field
   // Note: 0 = No note, 1 = Optional, 2 = Required
@@ -317,16 +354,11 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
     return true;
   }, [selectedStatus, statusNote]);
 
-  // Active calls for destination selection
-  const activeCalls = useMemo(() => {
-    return calls.filter((c) => isCallActive(c.State));
-  }, [calls]);
-
   useEffect(() => {
     if (selectedStatus) {
-      setDestinationTab(getDefaultDestinationTab(selectedStatus.Detail));
+      setDestinationTab(hasCallContext ? 'calls' : getDefaultDestinationTab(selectedStatus.Detail));
     }
-  }, [selectedStatus]);
+  }, [selectedStatus, hasCallContext]);
 
   // Refresh calls when destination sheet opens
   useEffect(() => {
@@ -339,8 +371,10 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
   const handleStatusSelect = (status: StatusesResultData) => {
     setSelectedStatus(status);
     setIsStatusSheetOpen(false);
-    // If status requires destination, open destination sheet
-    if (getDestinationCapabilities(status.Detail).supportsDestination) {
+    // If the status takes a destination and none applies yet, open the destination sheet. A preset or
+    // sticky destination the status supports (e.g. the call) is kept and shown instead.
+    const supportsDestination = getStatusDestinationCapabilities(status.Detail, hasCallContext).supportsDestination;
+    if (supportsDestination && getEffectiveDestinationType(destinationSelection, status.Detail, hasCallContext) === 'none') {
       setTimeout(() => setIsDestinationSheetOpen(true), 300);
     }
   };
@@ -348,10 +382,8 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
   // Handle destination selection
   const handleDestinationSelect = (type: 'none' | 'call' | 'station' | 'poi', item?: CallResultData | GroupResultData | PoiResultData) => {
     if (type === 'none') {
+      // Clears the call, station and POI selections too
       setStatusDestinationType('none');
-      setStatusSelectedCall(null);
-      setStatusSelectedStation(null);
-      setStatusSelectedPoi(null);
     } else if (type === 'call' && item) {
       setStatusSelectedCall(item as CallResultData);
     } else if (type === 'station' && item) {
@@ -424,7 +456,7 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
               <Pressable onPress={() => setIsDestinationSheetOpen(true)}>
                 <HStack className="items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-800">
                   <HStack className="flex-1 items-center" space="sm">
-                    <Icon as={statusDestinationType === 'call' ? Phone : statusDestinationType === 'poi' ? MapPinned : Building2} size="sm" className="text-amber-500" />
+                    <Icon as={effectiveDestinationType === 'call' ? Phone : effectiveDestinationType === 'poi' ? MapPinned : Building2} size="sm" className="text-amber-500" />
                     <VStack className="flex-1">
                       <Text className="text-xs text-gray-500 dark:text-gray-400">{t('dispatch.unit_actions_panel.destination')}</Text>
                       <Text className="text-sm font-medium text-gray-800 dark:text-gray-100" numberOfLines={1}>
@@ -506,7 +538,7 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
             <Text className="text-lg font-semibold text-gray-800 dark:text-gray-100">{t('dispatch.unit_actions_panel.destination')}</Text>
 
             {/* No Destination Option */}
-            <DestinationSheetOption type="none" isSelected={statusDestinationType === 'none'} onSelect={() => handleDestinationSelect('none')} label={t('dispatch.unit_actions_panel.no_destination')} />
+            <DestinationSheetOption type="none" isSelected={effectiveDestinationType === 'none'} onSelect={() => handleDestinationSelect('none')} label={t('dispatch.unit_actions_panel.no_destination')} />
 
             {/* Tabs for Calls and Stations */}
             {destinationConfig.showCalls || destinationConfig.showStations || destinationConfig.showPois ? (
@@ -546,7 +578,7 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
                             key={call.CallId}
                             type="call"
                             item={call}
-                            isSelected={statusDestinationType === 'call' && statusSelectedCall?.CallId === call.CallId}
+                            isSelected={effectiveDestinationType === 'call' && statusSelectedCall?.CallId === call.CallId}
                             onSelect={() => handleDestinationSelect('call', call)}
                           />
                         ))
@@ -565,7 +597,7 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
                             key={station.GroupId}
                             type="station"
                             item={station}
-                            isSelected={statusDestinationType === 'station' && statusSelectedStation?.GroupId === station.GroupId}
+                            isSelected={effectiveDestinationType === 'station' && statusSelectedStation?.GroupId === station.GroupId}
                             onSelect={() => handleDestinationSelect('station', station)}
                           />
                         ))
@@ -583,7 +615,7 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
                             key={poi.PoiId}
                             type="poi"
                             item={poi}
-                            isSelected={statusDestinationType === 'poi' && statusSelectedPoi?.PoiId === poi.PoiId}
+                            isSelected={effectiveDestinationType === 'poi' && statusSelectedPoi?.PoiId === poi.PoiId}
                             onSelect={() => handleDestinationSelect('poi', poi)}
                           />
                         ))

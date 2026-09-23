@@ -91,7 +91,7 @@ export default function RecordsScreen() {
 
   // The flag is authoritative and resolves fail-closed; an unknown state waits rather than redirecting.
   if (flagStatus === 'disabled') {
-    return <Redirect href="/(app)/home" />;
+    return <Redirect href="/" />;
   }
 
   return (

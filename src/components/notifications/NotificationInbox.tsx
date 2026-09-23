@@ -1,4 +1,5 @@
 import { useNotifications } from '@novu/react-native';
+import { router } from 'expo-router';
 import { useColorScheme } from 'nativewind';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Dimensions, Platform, Pressable, RefreshControl, SafeAreaView, StatusBar, StyleSheet, View } from 'react-native';
@@ -10,6 +11,8 @@ import { FlatList } from '@/components/ui/flat-list';
 import { CheckCircle, ChevronRight, Circle, ExternalLink, MoreVertical, Trash2, X } from '@/components/ui/lucide-icons';
 import { Modal, ModalBackdrop, ModalBody, ModalContent, ModalFooter, ModalHeader } from '@/components/ui/modal';
 import { Text } from '@/components/ui/text';
+import { useAuthStore } from '@/lib/auth';
+import { referenceFromEventCode, referenceHref } from '@/lib/notifications/inbox-reference';
 import { useCoreStore } from '@/stores/app/core-store';
 import { useToastStore } from '@/stores/toast/store';
 import { type NotificationPayload } from '@/types/notification';
@@ -24,9 +27,42 @@ interface NotificationInboxProps {
   onClose: () => void;
 }
 
+/** The notification item shape returned by Novu's useNotifications hook. */
+type NovuNotification = NonNullable<ReturnType<typeof useNotifications>['notifications']>[number];
+
+const REFERENCE_TYPES = ['call', 'message', 'status', 'note', 'chat', 'other'] as const;
+
+const asString = (value: unknown): string | undefined => (typeof value === 'string' ? value : undefined);
+
+const asReferenceType = (value: unknown): NotificationPayload['referenceType'] => REFERENCE_TYPES.find((candidate) => candidate === value);
+
+/**
+ * Maps a Novu inbox item (@novu/js v3: subject, isRead, data). The v2 names this inbox used to read
+ * (title, read, payload) are undefined or, for `read`, a method, so every row looked read, had no title
+ * and never carried a reference. The Novu bridge puts the push event code in `data`, from which the call
+ * or chat the notification is about is derived; the code itself is routing, not "Additional Information".
+ */
+export const mapNovuNotification = (item: NovuNotification): NotificationPayload => {
+  const data = item.data;
+  const reference = referenceFromEventCode(data?.eventCode);
+
+  return {
+    id: item.id,
+    title: item.subject,
+    body: item.body,
+    createdAt: item.createdAt,
+    read: item.isRead,
+    type: asString(data?.type),
+    referenceId: reference?.referenceId ?? asString(data?.referenceId),
+    referenceType: reference?.referenceType ?? asReferenceType(data?.referenceType),
+    metadata: data ? Object.fromEntries(Object.entries(data).filter(([key]) => key !== 'eventCode')) : undefined,
+  };
+};
+
 export const NotificationInbox = ({ isOpen, onClose }: NotificationInboxProps) => {
   const styles = useStyles();
-  const activeUnitId = useCoreStore((state) => state.activeUnitId);
+  // The inbox is the dispatcher's own ({code}_User_{id}, the NovuProvider subscriber), not a unit's.
+  const userId = useAuthStore((state) => state.userId);
   const config = useCoreStore((state: any) => state.config);
   const { notifications, isLoading, fetchMore, hasMore, refetch } = useNotifications();
   const showToast = useToastStore((state) => state.showToast);
@@ -155,23 +191,15 @@ export const NotificationInbox = ({ isOpen, onClose }: NotificationInboxProps) =
   );
 
   const handleNavigateToReference = (referenceType: string, referenceId: string) => {
-    // TODO: Implement navigation based on reference type
-    console.log('Navigate to:', referenceType, referenceId);
+    const href = referenceHref(referenceType, referenceId);
+    setSelectedNotification(null);
     onClose();
+    if (href) router.push(href);
   };
 
-  const renderItem = ({ item }: { item: any }) => {
-    const notification: NotificationPayload = {
-      id: item.id,
-      title: item.title,
-      body: item.body,
-      createdAt: item.createdAt,
-      read: item.read,
-      type: item.type,
-      referenceId: item.payload?.referenceId,
-      referenceType: item.payload?.referenceType,
-      metadata: item.payload?.metadata,
-    };
+  const renderItem = ({ item }: { item: NovuNotification }) => {
+    const notification = mapNovuNotification(item);
+    const unread = !notification.read;
 
     const isSelected = selectedNotificationIds.has(notification.id);
 
@@ -184,9 +212,9 @@ export const NotificationInbox = ({ isOpen, onClose }: NotificationInboxProps) =
             toggleNotificationSelection(notification.id);
           }
         }}
-        style={[styles.notificationItem, !item.read ? styles.unreadNotificationItem : {}, isSelected ? styles.selectedNotificationItem : {}]}
+        style={[styles.notificationItem, unread ? styles.unreadNotificationItem : {}, isSelected ? styles.selectedNotificationItem : {}]}
       >
-        {!item.read ? <View style={styles.unreadIndicator} /> : null}
+        {unread ? <View style={styles.unreadIndicator} /> : null}
 
         {isSelectionMode ? (
           <View style={styles.selectionIndicator}>
@@ -195,7 +223,7 @@ export const NotificationInbox = ({ isOpen, onClose }: NotificationInboxProps) =
         ) : null}
 
         <View style={styles.notificationContent}>
-          <Text style={[styles.notificationBody, !item.read ? styles.unreadNotificationText : {}]}>{notification.body}</Text>
+          <Text style={[styles.notificationBody, unread ? styles.unreadNotificationText : {}]}>{notification.body}</Text>
           <Text style={styles.timestamp}>
             {new Date(notification.createdAt).toLocaleDateString()} {new Date(notification.createdAt).toLocaleTimeString()}
           </Text>
@@ -204,7 +232,7 @@ export const NotificationInbox = ({ isOpen, onClose }: NotificationInboxProps) =
         {!isSelectionMode ? (
           notification.referenceType && notification.referenceId ? (
             <View style={styles.actionButtons}>
-              <Button onPress={() => handleNavigateToReference(notification.referenceType!, notification.referenceId!)} variant="outline" className="size-8 p-0">
+              <Button onPress={() => handleNavigateToReference(notification.referenceType!, notification.referenceId!)} variant="outline" className="size-8 p-0" testID={`notification-reference-${notification.id}`}>
                 <ExternalLink size={24} className="text-primary-500 dark:text-primary-400" strokeWidth={2} />
               </Button>
               <ChevronRight size={24} className="ml-2 text-gray-400" strokeWidth={2} />
@@ -238,7 +266,7 @@ export const NotificationInbox = ({ isOpen, onClose }: NotificationInboxProps) =
   }
 
   // Additional safety check to prevent rendering overlay without proper config
-  if (!activeUnitId || !config || !config.NovuApplicationId || !config.NovuBackendApiUrl || !config.NovuSocketUrl) {
+  if (!userId || !config || !config.NovuApplicationId || !config.NovuBackendApiUrl || !config.NovuSocketUrl) {
     return null;
   }
 
@@ -293,7 +321,7 @@ export const NotificationInbox = ({ isOpen, onClose }: NotificationInboxProps) =
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="large" color="#2196F3" />
                 </View>
-              ) : !activeUnitId || !config ? (
+              ) : !userId || !config ? (
                 <View style={styles.loadingContainer}>
                   <Text>Unable to load notifications</Text>
                 </View>

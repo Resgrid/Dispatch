@@ -28,6 +28,7 @@ import { FocusAwareStatusBar } from '@/components/ui/focus-aware-status-bar';
 import { HStack } from '@/components/ui/hstack';
 import { VStack } from '@/components/ui/vstack';
 import { useAnalytics } from '@/hooks/use-analytics';
+import { useSetStatusForCall } from '@/hooks/use-set-status-for-call';
 import { logger } from '@/lib/logging';
 import { isCallActive, isCallPending, isCallScheduled } from '@/lib/utils';
 import { type PersonnelInfoResultData } from '@/models/v4/personnel/personnelInfoResultData';
@@ -547,39 +548,16 @@ export default function DispatchConsoleWeb() {
     }
   }, [selectedCallId]);
 
-  // Handle setting unit status for call
-  const handleSetUnitStatusForCall = useCallback(
-    (unitId: string) => {
-      const unit = units.find((u) => u.UnitId === unitId);
-      if (unit) {
-        addActivityLogEntry({
-          type: 'unit',
-          action: t('dispatch.unit_status_change'),
-          description: `${unit.Name}`,
-          metadata: { unitId, callId: selectedCallId ?? undefined },
-        });
-        // TODO: Implement status change modal or action
-      }
-    },
-    [units, addActivityLogEntry, t, selectedCallId]
-  );
-
-  // Handle setting personnel status for call
-  const handleSetPersonnelStatusForCall = useCallback(
-    (personnelId: string) => {
-      const person = personnel.find((p) => p.UserId === personnelId);
-      if (person) {
-        addActivityLogEntry({
-          type: 'personnel',
-          action: t('dispatch.personnel_status_change'),
-          description: `${person.FirstName} ${person.LastName}`,
-          metadata: { personnelId, callId: selectedCallId ?? undefined },
-        });
-        // TODO: Implement status change modal or action
-      }
-    },
-    [personnel, addActivityLogEntry, t, selectedCallId]
-  );
+  // "+" set-status-for-call: open the unit/personnel actions panel with the destination preset to the
+  // selected call; the status is saved through the panel's normal submit path.
+  const { handleSetUnitStatusForCall, handleSetPersonnelStatusForCall } = useSetStatusForCall({
+    calls,
+    units,
+    personnel,
+    selectedCallId,
+    setSelectedUnitData,
+    setSelectedPersonnelData,
+  });
 
   const handleWeatherAlertsPress = useCallback(() => {
     router.push('/(app)/weather-alerts' as Href);

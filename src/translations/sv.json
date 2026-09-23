@@ -164,6 +164,12 @@
     "no_location_for_routing": "Ingen platsdata tillgänglig för vägbeskrivning",
     "no_protocols": "Inga protokoll kopplade till detta ärende",
     "no_timeline": "Inga tidslinjehändelser tillgängliga",
+    "activity_link": {
+      "auto_linked": "autolänkad",
+      "auto_linked_hint": "Skickad utan ärende; Resgrid länkade den från föregående status eller utlarmningen.",
+      "inferred": "härledd",
+      "inferred_hint": "Satt utan destination av en enhet eller person som larmats ut till detta ärende under arbetet med det."
+    },
     "not_available": "Ej tillgänglig",
     "not_found": "Ärende hittades inte",
     "missing_call_id": "Ärende-ID saknas",
@@ -678,7 +684,13 @@
       "empty": "Inga filer har bifogats denna kontakt.",
       "share_unavailable": "Delning är inte tillgänglig på den här enheten.",
       "download_failed": "Filen kunde inte laddas ner."
-    }
+    },
+    "withheld": "{{count}} skyddade uppgifter är dolda.",
+    "categoryLabel": "Kategori: {{name}}",
+    "physicalAddress": "Besöksadress",
+    "mailingAddress": "Postadress",
+    "hasGeofence": "Platsen har ett inritat geostaket.",
+    "customFields": "Anpassade fält"
   },
   "dispatch": {
     "active_calls": "Aktiva ärenden",
@@ -1141,7 +1153,15 @@
       "disabled": "Funktionen är avstängd för din avdelning.",
       "locked": "Lås upp skyddade data för att fortsätta.",
       "retry": "Kunde inte nå servern. Försök igen.",
-      "validation": "Servern avvisade ändringen."
+      "validation": "Servern avvisade ändringen.",
+      "timereports_subject_covered": "Den besättningen eller personen har redan tid i en annan rapport denna dag.",
+      "timereports_date_exists": "Det finns redan en rapport för den besättningen eller personen den dagen.",
+      "timereports_scope_invalid": "Den besättningen eller personen är inte aktiv i denna insats.",
+      "timereports_locked": "Rapporten kan inte längre ändras.",
+      "timereports_time_invalid": "Ange tider som HH:mm.",
+      "deployments_closed": "Insatsen är avslutad.",
+      "expenses_receipt_invalid": "Kvittot kunde inte läsas.",
+      "deployments_attachment_too_large": "Kvittot är för stort."
     },
     "financeMode": {
       "0": "Operativ",
@@ -1152,7 +1172,15 @@
       "end_before_start": "Sluttiden måste vara efter starttiden.",
       "missing_subject": "Välj vem eller vad posten gäller.",
       "missing_time": "Ange start- och sluttid.",
-      "overlap": "Posten överlappar en annan för samma person eller enhet."
+      "overlap": "Posten överlappar en annan för samma person eller enhet.",
+      "subject_outside_report_scope": "Posten gäller någon utanför rapportens besättning eller person.",
+      "subject_on_other_report": "Den här personen eller enheten har redan tid i en annan rapport samma dag.",
+      "subject_not_on_roster": "Posten gäller någon som inte finns i bemanningen.",
+      "entries_overlap": "Två poster för samma person eller enhet överlappar.",
+      "no_entries": "Lägg till minst en post.",
+      "break_rule": "Ett långt pass saknar registrerad rast.",
+      "long_travel": "Mer resa än tillåtet på en dag; kräver godkännande.",
+      "outside_report_date": "Posten ligger utanför rapportens datum."
     },
     "mars": {
       "counts": "{{errors}} fel · {{warnings}} varningar",
@@ -1201,7 +1229,7 @@
       "noReport": "Ingen tidrapport för den här dagen.",
       "notes": "Anteckningar",
       "remove": "Ta bort",
-      "report": "Rapport nr {{number}}",
+      "report": "Rapport #{{number}}",
       "save": "Spara poster",
       "start": "Starta tidrapport",
       "subject": "Vem eller vad",
@@ -1210,7 +1238,19 @@
       "to": "Till",
       "total": "Totalt {{hours}} h",
       "type": "Posttyp",
-      "unpaidBreak": "Obetald rast (min)"
+      "unpaidBreak": "Obetald rast (min)",
+      "crewReport": "Besättningens tidrapport #{{number}} · {{name}}",
+      "individualReport": "Tidrapport #{{number}} · {{name}}",
+      "noCrewReport": "Ingen tidrapport för besättningen {{name}} denna dag.",
+      "coveredBy": "Den här tiden finns redan i rapport #{{number}} för denna dag.",
+      "startCrew": "Starta besättningens tidrapport",
+      "readOnly": "Du kan se rapporten men inte ändra den.",
+      "nextDay": "Slutar nästa dag",
+      "applyToCrew": "Använd för besättningen",
+      "approve": "Godkänn rapport",
+      "dayReports": "Rapporter denna dag",
+      "awaitingApproval": "Väntar på godkännande ({{count}})",
+      "notOnRoster": "Du finns inte i bemanningen eller någon besättning i denna insats."
     },
     "title": "Insatser",
     "usage": {
@@ -1224,6 +1264,54 @@
       "startOdometer": "Mätarställning start",
       "title": "Användning",
       "unit": "Enhet"
+    },
+    "crewOf": "Besättning på {{names}}",
+    "scope": {
+      "deployment": "Hela insatsen",
+      "mine": "Min tid",
+      "crew": "Besättning: {{name}}",
+      "individual": "{{name}}"
+    },
+    "sign": {
+      "title": "Underskrifter",
+      "crewBossSigned": "Signerad av besättningschefen {{when}}",
+      "crewBossPending": "Ännu inte signerad av besättningschefen.",
+      "customerSigned": "Myndighetens undertecknare: {{name}}",
+      "customerPending": "Ingen underskrift från myndigheten registrerad.",
+      "asCrewBoss": "Signera som besättningschef",
+      "customerName": "Myndighetens undertecknares namn",
+      "recordCustomer": "Registrera myndighetens underskrift"
+    },
+    "expenses": {
+      "title": "Utlägg",
+      "type": {
+        "0": "Traktamente måltider",
+        "1": "Logi",
+        "2": "Privat logi",
+        "3": "Färja",
+        "4": "Bränsle",
+        "5": "Materialpåfyllning",
+        "6": "Övrigt"
+      },
+      "typeLabel": "Typ av utlägg",
+      "amount": "Belopp ({{currency}})",
+      "description": "Beskrivning",
+      "city": "Ort",
+      "takePhoto": "Ta foto",
+      "choosePhoto": "Välj foto",
+      "receiptAttached": "Kvittofoto bifogat.",
+      "save": "Lägg till utlägg",
+      "add": "Nytt utlägg",
+      "noneToday": "Inga utlägg denna dag.",
+      "otherDays": "Andra dagar",
+      "hasReceipt": "kvitto",
+      "remove": "Ta bort",
+      "removeTitle": "Ta bort utlägget?",
+      "removeBody": "Utlägget och dess kvitto tas bort från insatsen.",
+      "cancel": "Avbryt",
+      "saved": "Utlägget sparades.",
+      "amountInvalid": "Ange ett belopp som 42.50.",
+      "photoDenied": "Tillåt åtkomst till kamera eller bilder för att bifoga ett kvitto."
     }
   },
   "personnel": {
@@ -1940,5 +2028,12 @@
     "entrance": "Entré",
     "alert_notes": "Varningsanteckningar",
     "files": "Objektfiler"
+  },
+  "notifications": {
+    "detail_title": "Avisering",
+    "additional_info": "Ytterligare information",
+    "view_call": "Visa ärende",
+    "view_chat": "Visa chatt",
+    "open_reference": "Öppna"
   }
 }

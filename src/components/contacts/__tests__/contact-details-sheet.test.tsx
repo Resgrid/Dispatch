@@ -1,3 +1,4 @@
+jest.mock('../contact-details-extra', () => ({ ContactDetailsExtra: () => null }));
 import { render, fireEvent } from '@testing-library/react-native';
 import React from 'react';
 

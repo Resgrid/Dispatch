@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 import { saveUnitStatus } from '@/api/units/unitStatuses';
-import { DestinationEntityType, type DestinationSelectionType } from '@/lib/destination-helpers';
+import { type DestinationSelectionType, getStatusDestinationPayload } from '@/lib/destination-helpers';
 import { type CallResultData } from '@/models/v4/calls/callResultData';
 import { type GroupResultData } from '@/models/v4/groups/groupsResultData';
 import { type PoiResultData } from '@/models/v4/mapping/poiResultData';
@@ -11,12 +11,28 @@ import { SaveUnitStatusInput } from '@/models/v4/unitStatus/saveUnitStatusInput'
 
 export type DestinationType = DestinationSelectionType;
 
+export interface OpenUnitActionsOptions {
+  /**
+   * Explicit call context (the dashboard "+" set-status-for-call action). The destination is preset
+   * to this call and it is sent with the status even when the status's Detail does not list calls.
+   */
+  callContext?: CallResultData | null;
+}
+
 interface UnitActionsState {
   // Panel visibility
   isActionsOpen: boolean;
 
   // Selected unit
   selectedUnit: UnitInfoResultData | null;
+
+  // Explicit call context the panel was opened from (null for a plain unit selection)
+  callContext: CallResultData | null;
+
+  // Incremented on every openActions so the panel re-initialises its default destination per open
+  actionsSessionId: number;
+  // The session whose default destination has been applied (kept here so a remount does not re-apply it)
+  destinationInitializedSessionId: number | null;
 
   // Status action state
   selectedStatus: StatusesResultData | null;
@@ -38,8 +54,9 @@ interface UnitActionsState {
   statusError: string | null;
 
   // Actions
-  openActions: (unit: UnitInfoResultData) => void;
+  openActions: (unit: UnitInfoResultData, options?: OpenUnitActionsOptions) => void;
   closeActions: () => void;
+  markDestinationInitialized: (sessionId: number) => void;
 
   // Status actions
   setSelectedStatus: (status: StatusesResultData | null) => void;
@@ -65,6 +82,9 @@ interface UnitActionsState {
 const initialState = {
   isActionsOpen: false,
   selectedUnit: null,
+  callContext: null,
+  actionsSessionId: 0,
+  destinationInitializedSessionId: null,
   selectedStatus: null,
   statusDestinationType: 'none' as DestinationType,
   statusSelectedCall: null,
@@ -83,27 +103,33 @@ const initialState = {
 export const useUnitActionsStore = create<UnitActionsState>((set, get) => ({
   ...initialState,
 
-  openActions: (unit) => {
-    set({
+  openActions: (unit, options) => {
+    const callContext = options?.callContext ?? null;
+    set((state) => ({
       isActionsOpen: true,
       selectedUnit: unit,
-      // Reset form states when opening for new unit
+      callContext,
+      actionsSessionId: state.actionsSessionId + 1,
+      // Reset form states when opening for new unit; an explicit call context presets the destination
       selectedStatus: null,
-      statusDestinationType: 'none',
-      statusSelectedCall: null,
+      statusDestinationType: callContext ? 'call' : 'none',
+      statusSelectedCall: callContext,
       statusSelectedStation: null,
       statusSelectedPoi: null,
       statusNote: '',
       statusError: null,
-    });
+    }));
   },
 
   closeActions: () => {
     set({
       isActionsOpen: false,
       selectedUnit: null,
+      callContext: null,
     });
   },
+
+  markDestinationInitialized: (sessionId) => set({ destinationInitializedSessionId: sessionId }),
 
   // Status actions
   setSelectedStatus: (status) => set({ selectedStatus: status, statusError: null }),
@@ -158,7 +184,7 @@ export const useUnitActionsStore = create<UnitActionsState>((set, get) => ({
     const storeState = get();
     const selectedUnit = overrides?.unit ?? storeState.selectedUnit;
     const selectedStatus = overrides?.status ?? storeState.selectedStatus;
-    const { statusDestinationType, statusSelectedCall, statusSelectedStation, statusSelectedPoi, statusNote } = storeState;
+    const { statusDestinationType, statusSelectedCall, statusSelectedStation, statusSelectedPoi, statusNote, callContext } = storeState;
 
     if (!selectedUnit || !selectedStatus) {
       set({ statusError: 'Please select a status' });
@@ -169,19 +195,17 @@ export const useUnitActionsStore = create<UnitActionsState>((set, get) => ({
 
     try {
       const date = new Date();
-      let respondingTo = '';
-      let respondingToType: number | null = null;
-
-      if (statusDestinationType === 'call' && statusSelectedCall) {
-        respondingTo = statusSelectedCall.CallId;
-        respondingToType = DestinationEntityType.Call;
-      } else if (statusDestinationType === 'station' && statusSelectedStation) {
-        respondingTo = statusSelectedStation.GroupId;
-        respondingToType = DestinationEntityType.Station;
-      } else if (statusDestinationType === 'poi' && statusSelectedPoi) {
-        respondingTo = statusSelectedPoi.PoiId.toString();
-        respondingToType = DestinationEntityType.Poi;
-      }
+      // Only send a destination the chosen status supports (an explicit call context always may carry its call)
+      const { respondingTo, respondingToType } = getStatusDestinationPayload(
+        {
+          selectedDestinationType: statusDestinationType,
+          selectedCall: statusSelectedCall,
+          selectedStation: statusSelectedStation,
+          selectedPoi: statusSelectedPoi,
+        },
+        selectedStatus.Detail,
+        !!callContext
+      );
 
       const input = new SaveUnitStatusInput();
       input.Id = selectedUnit.UnitId;
@@ -204,14 +228,11 @@ export const useUnitActionsStore = create<UnitActionsState>((set, get) => ({
 
       await saveUnitStatus(input);
 
-      // Reset the status form after successful submission
+      // Reset the status and note after a successful submission. The destination stays sticky so a
+      // follow-up status for the same unit (e.g. Responding -> On Scene) keeps the same call.
       set({
         isSubmittingStatus: false,
         selectedStatus: null,
-        statusDestinationType: 'none',
-        statusSelectedCall: null,
-        statusSelectedStation: null,
-        statusSelectedPoi: null,
         statusNote: '',
       });
 

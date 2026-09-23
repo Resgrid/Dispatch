@@ -28,6 +28,7 @@ import { FocusAwareStatusBar } from '@/components/ui/focus-aware-status-bar';
 import { HStack } from '@/components/ui/hstack';
 import { VStack } from '@/components/ui/vstack';
 import { useAnalytics } from '@/hooks/use-analytics';
+import { useSetStatusForCall } from '@/hooks/use-set-status-for-call';
 import { logger } from '@/lib/logging';
 import { isCallActive, isCallPending, isCallScheduled } from '@/lib/utils';
 import { type PersonnelInfoResultData } from '@/models/v4/personnel/personnelInfoResultData';
@@ -462,28 +463,16 @@ export default function DispatchConsole() {
     });
   };
 
-  // Handle setting unit status for a call
-  const handleSetUnitStatusForCall = (unitId: string, unitName: string) => {
-    // This could open a status selection modal or navigate to unit status screen
-    addActivityLogEntry({
-      type: 'unit',
-      action: t('dispatch.unit_status_change'),
-      description: unitName,
-      metadata: { unitId, callId: selectedCallId ?? undefined },
-    });
-    // For now, we'll log the event - in a full implementation, this would open a status picker
-  };
-
-  // Handle setting personnel status for a call
-  const handleSetPersonnelStatusForCall = (personnelId: string, personnelName: string) => {
-    addActivityLogEntry({
-      type: 'personnel',
-      action: t('dispatch.personnel_status_change'),
-      description: personnelName,
-      metadata: { personnelId, callId: selectedCallId ?? undefined },
-    });
-    // For now, we'll log the event - in a full implementation, this would open a status picker
-  };
+  // "+" set-status-for-call: open the unit/personnel actions panel with the destination preset to the
+  // selected call; the status is saved through the panel's normal submit path.
+  const { handleSetUnitStatusForCall, handleSetPersonnelStatusForCall } = useSetStatusForCall({
+    calls,
+    units,
+    personnel,
+    selectedCallId,
+    setSelectedUnitData,
+    setSelectedPersonnelData,
+  });
 
   // Get selected call for filter banner
   const selectedCall = useMemo(() => {
