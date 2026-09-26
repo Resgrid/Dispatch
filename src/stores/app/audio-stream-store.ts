@@ -121,7 +121,15 @@ export const useAudioStreamStore = create<AudioStreamState>((set, get) => ({
       sound.volume = 1.0;
       sound.muted = false;
 
+      // Active before any status can arrive, so the listener can tell this player's events from a superseded one's.
+      set({ soundObject: sound, currentStream: stream });
+
       sound.addListener('playbackStatusUpdate', (status: AudioStatus) => {
+        // A stopped or replaced player can still emit a late status; only the active player may touch the state.
+        if (get().soundObject !== sound) {
+          return;
+        }
+
         if (status.error) {
           // Handle error state
           logger.error({
@@ -185,14 +193,17 @@ export const useAudioStreamStore = create<AudioStreamState>((set, get) => ({
       // Start playing
       sound.play();
 
+      // An error status reported while starting has already released this player.
+      if (get().soundObject !== sound) {
+        return;
+      }
+
       logger.info({
         message: 'Audio stream started successfully',
         context: { streamName: stream.Name },
       });
 
       set({
-        soundObject: sound,
-        currentStream: stream,
         isPlaying: true,
         isLoading: false,
         isBuffering: false,

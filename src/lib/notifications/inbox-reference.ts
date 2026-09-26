@@ -30,3 +30,6 @@ export const referenceHref = (referenceType: string, referenceId: string): Href 
   if (referenceType === 'chat') return { pathname: '/chat/[channelId]', params: { channelId: referenceId } };
   return null;
 };
+
+/** Whether a notification's reference opens a screen in this app, so a link to it is worth showing. */
+export const hasReferenceRoute = (referenceType: string | undefined, referenceId: string | undefined): boolean => !!referenceType && !!referenceId && referenceHref(referenceType, referenceId) !== null;

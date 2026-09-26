@@ -196,19 +196,26 @@ export const useOperationsStore = create<OperationsState>()((set, get) => {
       const { deployment, scope } = get();
       if (!deployment) return;
       let report = reportForScope(get().reports, dateKey, scope);
+      let issues: TimeReportIssue[] = [];
+      let warnings: TimeReportIssue[] = [];
       if (!report && create && scope && operationsCapabilities.editTime) {
-        await settle(async () => {
-          const response = await newTimeReport(deployment.Id, dateKey, {
+        const response = await settle(() =>
+          newTimeReport(deployment.Id, dateKey, {
             deploymentUnitId: scope.kind === 'crew' ? scope.unitId : null,
             deploymentPersonnelId: scope.kind === 'individual' ? scope.personnelId : null,
-          });
+          })
+        );
+        issues = response?.Errors ?? [];
+        warnings = response?.Warnings ?? [];
+        // A refused create answers with its reasons and no report: nothing joins the day list, and the reasons show.
+        if (response?.Data && issues.length === 0) {
           report = response.Data;
-          set({ reports: [...get().reports, report] });
-        });
+          set({ reports: [...get().reports, response.Data] });
+        }
       }
       // The scope can change while the create is in flight; only the report that still matches it opens.
       if (scopeKey(get().scope) !== scopeKey(scope)) return;
-      set({ report, entries: copyEntries(report), dirty: false, issues: [], warnings: [] });
+      set({ report, entries: copyEntries(report), dirty: false, issues, warnings });
     },
     selectReport: (reportId) => {
       const report = get().reports.find((candidate) => candidate.Id === reportId) ?? null;

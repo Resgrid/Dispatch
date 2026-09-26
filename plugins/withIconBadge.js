@@ -49,6 +49,13 @@ function getIconTargets(config) {
   ].filter((target) => typeof target.source === 'string');
 }
 
+// A config this plugin already ran on points at its own output; badging that again would stack a second
+// badge on the icon and delete the first render.
+function isBadgeOutput(projectRoot, source) {
+  const relative = path.relative(path.resolve(projectRoot, OUTPUT_DIR), path.resolve(projectRoot, source));
+  return relative.length > 0 && !relative.startsWith('..') && !path.isAbsolute(relative);
+}
+
 function getOutputPath(projectRoot, target, badges) {
   const hash = crypto
     .createHash('sha256')
@@ -94,7 +101,9 @@ const withIconBadge = (config, { enabled = true, badges = [] } = {}) => {
   }
 
   const projectRoot = config._internal?.projectRoot ?? process.cwd();
-  const targets = getIconTargets(config).map((target) => ({ ...target, output: getOutputPath(projectRoot, target, badges) }));
+  const targets = getIconTargets(config)
+    .filter((target) => !isBadgeOutput(projectRoot, target.source))
+    .map((target) => ({ ...target, output: getOutputPath(projectRoot, target, badges) }));
   const pending = targets.filter((target) => !fs.existsSync(path.resolve(projectRoot, target.output)));
 
   if (pending.length > 0) {

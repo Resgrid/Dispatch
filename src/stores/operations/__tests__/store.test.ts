@@ -129,6 +129,20 @@ it('opens the crew report for the scope on demand, refuses invalid entries local
   expect(useOperationsStore.getState().report?.Status).toBe(2);
 });
 
+it('shows why a create was refused instead of adding an empty report to the day', async () => {
+  await useOperationsStore.getState().open('dep-1');
+  useOperationsStore.getState().setScope({ kind: 'crew', unitId: 'du-1' }, '2026-09-19');
+  server.newTimeReport.mockResolvedValue(answer(null, [{ Code: 'deployment_closed' }], [{ Code: 'late_entry' }]));
+
+  await useOperationsStore.getState().openReport('2026-09-19', true);
+
+  const state = useOperationsStore.getState();
+  expect(state.reports).toEqual([]);
+  expect(state.report).toBeNull();
+  expect(state.issues).toEqual([{ Code: 'deployment_closed' }]);
+  expect(state.warnings).toEqual([{ Code: 'late_entry' }]);
+});
+
 it('keeps validation refusals from the server on the report and switches scope without leaking entries', async () => {
   server.getTimeReports.mockResolvedValue([report(0, [{ Id: 'e-1', SubjectType: 0, DeploymentPersonnelId: 'dp-1', EntryType: 0, StartLocal: '2026-09-19T08:00', EndLocal: '2026-09-19T18:00' }])] as never);
   await useOperationsStore.getState().open('dep-1');

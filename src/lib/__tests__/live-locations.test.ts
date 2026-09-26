@@ -186,6 +186,16 @@ describe('applyLiveLocations', () => {
     expect(result.unknownPinIds).toEqual([]);
   });
 
+  it('moves the bare-id unit and personnel pins of a server from before pin ids were prefixed', () => {
+    const legacyPins = [makePin({ Id: '12', Type: 1 }), makePin({ Id: GUID, Type: 3 })];
+    const live: LiveLocations = { u12: makeLocation({ latitude: 3, longitude: 4 }), [`p${GUID.toLowerCase()}`]: makeLocation({ pinId: `p${GUID.toLowerCase()}`, latitude: 5, longitude: 6 }) };
+    const result = applyLiveLocations(legacyPins, live);
+
+    expect(result.pins[0]).toMatchObject({ Id: '12', Latitude: 3, Longitude: 4 });
+    expect(result.pins[1]).toMatchObject({ Id: GUID, Latitude: 5, Longitude: 6 });
+    expect(result.unknownPinIds).toEqual([]);
+  });
+
   it('never adds pins and reports pushes for pins it does not have', () => {
     const live: LiveLocations = { u99: makeLocation({ pinId: 'u99' }) };
     const result = applyLiveLocations(pins, live);

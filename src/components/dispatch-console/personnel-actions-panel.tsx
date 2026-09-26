@@ -1,5 +1,5 @@
 import { Building2, Check, ChevronDown, ChevronRight, ChevronUp, MapPinned, Phone, Send, User, X, Zap } from 'lucide-react-native';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
@@ -116,6 +116,14 @@ export const PersonnelActionsPanel: React.FC<PersonnelActionsPanelProps> = ({ pe
   const [isStatusSheetOpen, setIsStatusSheetOpen] = useState(false);
   const [isStaffingSheetOpen, setIsStaffingSheetOpen] = useState(false);
   const [isDestinationSheetOpen, setIsDestinationSheetOpen] = useState(false);
+  // The destination sheet opens a beat after the status sheet closes; a pending open dies with the panel.
+  const destinationSheetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (destinationSheetTimerRef.current) clearTimeout(destinationSheetTimerRef.current);
+    },
+    []
+  );
   const [destinationTab, setDestinationTab] = useState<DestinationTab>('calls');
   const [isAdditionalFieldsExpanded, setIsAdditionalFieldsExpanded] = useState(false);
 
@@ -126,8 +134,8 @@ export const PersonnelActionsPanel: React.FC<PersonnelActionsPanelProps> = ({ pe
   // The console's selected call — a default destination when the person's own destination is not an active call
   const selectedCallId = useDispatchConsoleStore((state) => state.selectedCallId);
 
-  // Whether the destination options (stations/POIs) have finished loading
-  const [areOptionsLoaded, setAreOptionsLoaded] = useState(false);
+  // Whether the destination options (stations/POIs) have finished loading for the given person
+  const [optionsLoadedForUserId, setOptionsLoadedForUserId] = useState<string | null>(null);
 
   // Store state
   const {
@@ -207,6 +215,8 @@ export const PersonnelActionsPanel: React.FC<PersonnelActionsPanelProps> = ({ pe
 
   // Load options when panel opens
   useEffect(() => {
+    if (!selectedPersonnel) return;
+
     let cancelled = false;
 
     const loadOptions = async () => {
@@ -234,14 +244,12 @@ export const PersonnelActionsPanel: React.FC<PersonnelActionsPanelProps> = ({ pe
       } finally {
         if (!cancelled) {
           setIsLoadingOptions(false);
-          setAreOptionsLoaded(true);
+          setOptionsLoadedForUserId(selectedPersonnel.UserId);
         }
       }
     };
 
-    if (selectedPersonnel) {
-      loadOptions();
-    }
+    loadOptions();
 
     return () => {
       cancelled = true;
@@ -282,7 +290,7 @@ export const PersonnelActionsPanel: React.FC<PersonnelActionsPanelProps> = ({ pe
     }
 
     // Stations and POIs come from the options load; wait for it before settling on a default.
-    if (!areOptionsLoaded) return;
+    if (optionsLoadedForUserId !== selectedPersonnel.UserId) return;
 
     const destinationId = selectedPersonnel.StatusDestinationId;
     const matchingStation = destinationId ? availableStations.find((s) => s.GroupId === destinationId) : undefined;
@@ -302,7 +310,7 @@ export const PersonnelActionsPanel: React.FC<PersonnelActionsPanelProps> = ({ pe
     destinationInitializedSessionId,
     selectedCallId,
     activeCalls,
-    areOptionsLoaded,
+    optionsLoadedForUserId,
     availableStations,
     availablePois,
     markDestinationInitialized,
@@ -425,7 +433,11 @@ export const PersonnelActionsPanel: React.FC<PersonnelActionsPanelProps> = ({ pe
     // sticky destination the status supports (e.g. the call) is kept and shown instead.
     const supportsDestination = getStatusDestinationCapabilities(status.Detail, hasCallContext).supportsDestination;
     if (supportsDestination && getEffectiveDestinationType(destinationSelection, status.Detail, hasCallContext) === 'none') {
-      setTimeout(() => setIsDestinationSheetOpen(true), 300);
+      if (destinationSheetTimerRef.current) clearTimeout(destinationSheetTimerRef.current);
+      destinationSheetTimerRef.current = setTimeout(() => {
+        destinationSheetTimerRef.current = null;
+        setIsDestinationSheetOpen(true);
+      }, 300);
     }
   };
 

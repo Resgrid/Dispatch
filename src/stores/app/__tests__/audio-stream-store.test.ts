@@ -328,6 +328,39 @@ describe('AudioStreamStore', () => {
       }
     });
 
+    it('should ignore a late status from a player that has been replaced', async () => {
+      await useAudioStreamStore.getState().playStream(mockStream);
+      const staleListener = getStatusListener();
+
+      const nextSound = { ...mockSoundObject, play: jest.fn(), pause: jest.fn(), remove: jest.fn(), addListener: jest.fn(() => ({ remove: jest.fn() })) };
+      mockCreateAudioPlayer.mockReturnValue(nextSound);
+      const nextStream = { ...mockStream, Id: '2', Name: 'Next Stream' };
+      await useAudioStreamStore.getState().playStream(nextStream);
+
+      staleListener({ playing: false, isBuffering: true, didJustFinish: false, error: 'Source error' });
+
+      const state = useAudioStreamStore.getState();
+      expect(state.soundObject).toBe(nextSound);
+      expect(state.currentStream).toBe(nextStream);
+      expect(state.isPlaying).toBe(true);
+      expect(state.isBuffering).toBe(false);
+      expect(nextSound.remove).not.toHaveBeenCalled();
+    });
+
+    it('should not mark a player as playing when it reported an error while starting', async () => {
+      mockSoundObject.play.mockImplementation(() => {
+        getStatusListener()({ playing: false, isBuffering: false, didJustFinish: false, error: 'Source error' });
+      });
+
+      await useAudioStreamStore.getState().playStream(mockStream);
+
+      const state = useAudioStreamStore.getState();
+      expect(state.soundObject).toBeNull();
+      expect(state.currentStream).toBeNull();
+      expect(state.isPlaying).toBe(false);
+      expect(state.isLoading).toBe(false);
+    });
+
     it('should not reconnect once the stream has been stopped', async () => {
       jest.useFakeTimers();
       try {

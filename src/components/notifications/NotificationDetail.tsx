@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Animated, Dimensions, Platform, Pressable, SafeAreaView, StatusBar, type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { ArrowLeft, Calendar, ExternalLink, Trash2 } from '@/components/ui/lucide-icons';
+import { hasReferenceRoute } from '@/lib/notifications/inbox-reference';
 
 // Define the interface directly in this file
 interface NotificationPayload {
@@ -152,7 +153,7 @@ export const NotificationDetail = ({ notification, onClose, onDelete, onNavigate
               </View>
             ) : null}
 
-            {notification.referenceType && notification.referenceId ? (
+            {hasReferenceRoute(notification.referenceType, notification.referenceId) ? (
               <Pressable onPress={handleNavigateToReference} style={styles.referenceButton} testID="notification-detail-reference">
                 <ExternalLink size={18} style={styles.referenceButtonIcon} />
                 <Text style={styles.buttonText}>

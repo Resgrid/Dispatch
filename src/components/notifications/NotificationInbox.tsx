@@ -12,7 +12,7 @@ import { CheckCircle, ChevronRight, Circle, ExternalLink, MoreVertical, Trash2, 
 import { Modal, ModalBackdrop, ModalBody, ModalContent, ModalFooter, ModalHeader } from '@/components/ui/modal';
 import { Text } from '@/components/ui/text';
 import { useAuthStore } from '@/lib/auth';
-import { referenceFromEventCode, referenceHref } from '@/lib/notifications/inbox-reference';
+import { hasReferenceRoute, referenceFromEventCode, referenceHref } from '@/lib/notifications/inbox-reference';
 import { useCoreStore } from '@/stores/app/core-store';
 import { useToastStore } from '@/stores/toast/store';
 import { type NotificationPayload } from '@/types/notification';
@@ -192,9 +192,11 @@ export const NotificationInbox = ({ isOpen, onClose }: NotificationInboxProps) =
 
   const handleNavigateToReference = (referenceType: string, referenceId: string) => {
     const href = referenceHref(referenceType, referenceId);
+    // Nothing to open: stay in the inbox rather than closing onto the screen the dispatcher was already on.
+    if (!href) return;
     setSelectedNotification(null);
     onClose();
-    if (href) router.push(href);
+    router.push(href);
   };
 
   const renderItem = ({ item }: { item: NovuNotification }) => {
@@ -230,7 +232,7 @@ export const NotificationInbox = ({ isOpen, onClose }: NotificationInboxProps) =
         </View>
 
         {!isSelectionMode ? (
-          notification.referenceType && notification.referenceId ? (
+          hasReferenceRoute(notification.referenceType, notification.referenceId) ? (
             <View style={styles.actionButtons}>
               <Button onPress={() => handleNavigateToReference(notification.referenceType!, notification.referenceId!)} variant="outline" className="size-8 p-0" testID={`notification-reference-${notification.id}`}>
                 <ExternalLink size={24} className="text-primary-500 dark:text-primary-400" strokeWidth={2} />

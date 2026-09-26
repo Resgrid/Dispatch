@@ -177,6 +177,31 @@ describe('ServerUrlBottomSheet', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it('restores the previous url when signing out of the old server fails, so a retry signs out again', async () => {
+    const onClose = jest.fn();
+    const onUrlChanged = jest.fn().mockRejectedValueOnce(new Error('sign out failed')).mockResolvedValue(undefined);
+    let savedUrl = 'https://api.resgrid.com/api/v4';
+    mockGetUrl.mockImplementation(async () => savedUrl);
+    mockSetUrl.mockImplementation(async (url: string) => {
+      savedUrl = url;
+    });
+    renderSheet({ onClose, onUrlChanged });
+    await screen.findByTestId('select-item-EU-Central');
+
+    act(() => mockOnValueChange?.('EU-Central'));
+    fireEvent.press(screen.getByText('common.save'));
+
+    await waitFor(() => expect(mockSetUrl).toHaveBeenLastCalledWith('https://api.resgrid.com/api/v4'));
+    expect(mockSetUrl).toHaveBeenCalledWith('https://api-eu-central.resgrid.com/api/v4');
+    expect(await screen.findByText('sign out failed')).toBeTruthy();
+    expect(onClose).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByText('common.save'));
+
+    await waitFor(() => expect(onUrlChanged).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+  });
+
   it('does not report a change when the same server is saved again', async () => {
     const onClose = jest.fn();
     const onUrlChanged = jest.fn();

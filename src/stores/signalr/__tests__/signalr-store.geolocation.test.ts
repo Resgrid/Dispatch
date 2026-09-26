@@ -218,6 +218,31 @@ describe('useSignalRStore geolocation hub', () => {
       expect(useSignalRStore.getState().isGeolocationHubConnected).toBe(false);
     });
 
+    it('gives a repair of a session that gave up a fresh retry budget while the transport stays open', async () => {
+      jest.useFakeTimers();
+      mockService.invoke.mockRejectedValue(new Error('not connected'));
+
+      await connect();
+      for (let retry = 0; retry < 3; retry += 1) {
+        await act(async () => {
+          jest.advanceTimersByTime(5000);
+          await flush();
+        });
+      }
+      expect(joinCalls()).toHaveLength(3);
+
+      // The socket never dropped, so the repair finds the hub already open and no new connection announces itself.
+      mockService.connectToHubWithEventingUrl.mockResolvedValue(undefined);
+      await connect();
+      expect(joinCalls()).toHaveLength(4);
+
+      await act(async () => {
+        jest.advanceTimersByTime(5000);
+        await flush();
+      });
+      expect(joinCalls()).toHaveLength(5);
+    });
+
     it('does not retry a join for a connection that has since dropped', async () => {
       jest.useFakeTimers();
       mockService.invoke.mockRejectedValue(new Error('not connected'));

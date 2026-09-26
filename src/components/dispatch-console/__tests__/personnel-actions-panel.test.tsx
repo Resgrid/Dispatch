@@ -137,6 +137,27 @@ describe('PersonnelActionsPanel destination defaults', () => {
     await waitFor(() => expect(selectedCallInStore()).toBe('B'));
   });
 
+  it("waits for the next person's options before settling on their station", async () => {
+    // The first person's load fails, so their panel finishes loading with no stations at all.
+    (getAllGroups as jest.Mock).mockRejectedValueOnce(new Error('offline')).mockResolvedValue({ Data: [{ GroupId: 'g-5', Name: 'Station 5', GroupType: 'Station' }] });
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const first = person('p1');
+    const second = person('p2', 'g-5');
+    act(() => {
+      usePersonnelActionsStore.getState().openActions(first);
+    });
+    const view = render(<PersonnelActionsPanel personnel={first} />);
+    await waitFor(() => expect(usePersonnelActionsStore.getState().destinationInitializedSessionId).toBe(usePersonnelActionsStore.getState().actionsSessionId));
+
+    view.rerender(<PersonnelActionsPanel personnel={second} />);
+    act(() => {
+      usePersonnelActionsStore.getState().openActions(second);
+    });
+
+    await waitFor(() => expect(usePersonnelActionsStore.getState().statusSelectedStation?.GroupId).toBe('g-5'));
+    consoleError.mockRestore();
+  });
+
   it('does not send a leftover call with a status that does not support calls', async () => {
     const target = person('p1', 'A');
     act(() => {

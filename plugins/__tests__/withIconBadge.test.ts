@@ -85,6 +85,17 @@ describe('withIconBadge', () => {
     expect(second.android.adaptiveIcon.foregroundImage).toBe(first.android.adaptiveIcon.foregroundImage);
   });
 
+  it('does not badge its own output again when applied twice to the same config', () => {
+    const config = applyPlugin(createConfig(), { badges });
+    const badgedPaths = [config.icon, config.ios.icon as string, config.android.adaptiveIcon.foregroundImage];
+
+    applyPlugin(config, { badges });
+
+    expect(mockExecFileSync).toHaveBeenCalledTimes(1);
+    expect([config.icon, config.ios.icon, config.android.adaptiveIcon.foregroundImage]).toEqual(badgedPaths);
+    badgedPaths.forEach((iconPath) => expect(fs.existsSync(path.join(projectRoot, iconPath))).toBe(true));
+  });
+
   it('re-renders and removes the stale icons when a badge changes', () => {
     const first = applyPlugin(createConfig(), { badges });
     const second = applyPlugin(createConfig(), { badges: [{ ...badges[0], text: 'staging' }] });

@@ -1,7 +1,8 @@
 import { getMapIconWebUrl, MAP_ICONS } from '@/constants/map-icons';
 import { isPoiMarker } from '@/lib/destination-helpers';
-import { getMapMarkerColor, getPoiMarkerIconChar, getPoiMarkerShapePath, resolveMapMarkerIconKey } from '@/lib/map-markers';
+import { getMapMarkerColor, getMapPinSummary, getPoiMarkerIconChar, getPoiMarkerShapePath, resolveMapMarkerIconKey } from '@/lib/map-markers';
 import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersData';
+import { escapeHtml } from '@/utils/html-entities';
 
 type MapIconKey = keyof typeof MAP_ICONS;
 
@@ -109,6 +110,22 @@ const createPoiMarkerElement = (pin: MapMakerInfoData): HTMLElement => {
   wrapper.appendChild(iconSpan);
 
   return wrapper;
+};
+
+/**
+ * The Mapbox popup markup for a pin. The title and summary are server text shown as text (as the native
+ * pin sheet does), so they are escaped: `Popup.setHTML` parses its string, and markup in a pin field would
+ * otherwise run in the dispatcher's browser.
+ */
+export const buildMapPinPopupHtml = (pin: MapMakerInfoData): string => {
+  const summary = getMapPinSummary(pin);
+  return `<div style="padding: 8px;">
+      <h3 style="margin: 0 0 8px 0; font-weight: 600;">${escapeHtml(String(pin.Title ?? ''))}</h3>
+      ${summary ? `<p style="margin: 0 0 8px 0; font-size: 12px;">${escapeHtml(String(summary))}</p>` : ''}
+      <p style="margin: 0; font-size: 11px; color: #666;">
+        ${pin.Latitude.toFixed(6)}, ${pin.Longitude.toFixed(6)}
+      </p>
+    </div>`;
 };
 
 /**

@@ -80,7 +80,7 @@ jest.mock('@/stores/signalr/signalr-store', () => {
 });
 
 jest.mock('@/api/mapping/mapping', () => ({ getMapDataAndMarkers: jest.fn() }));
-jest.mock('@/lib/map-markers-web', () => ({ createMapMarkerElement: jest.fn(() => ({})) }));
+jest.mock('@/lib/map-markers-web', () => ({ buildMapPinPopupHtml: jest.fn(() => '<div></div>'), createMapMarkerElement: jest.fn(() => ({})) }));
 jest.mock('@/lib/map-center', () => ({ getDepartmentMapCenter: () => ({ latitude: 39, longitude: -119, zoomLevel: 9 }) }));
 jest.mock('@/lib/env', () => ({ Env: { MAPBOX_PUBKEY: 'pk.test' } }));
 jest.mock('@/lib/logging', () => ({ logger: { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() } }));

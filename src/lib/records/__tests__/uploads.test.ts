@@ -1,4 +1,6 @@
-import { runUpload } from '@/lib/records/uploads';
+import { createHash } from 'crypto';
+
+import { hashFile, runUpload } from '@/lib/records/uploads';
 
 // Shared conformance suite for resumable attachment upload (RMS plan RMS-1D). Identical in all four
 // app repositories: the server owns the session, so every adapter must resume from the server's own
@@ -22,8 +24,10 @@ jest.mock('expo-file-system/legacy', () => ({
 
 jest.mock('expo-crypto', () => ({
   CryptoDigestAlgorithm: { SHA256: 'SHA-256' },
-  CryptoEncoding: { HEX: 'hex' },
-  digestStringAsync: jest.fn(),
+  digest: jest.fn(async (_algorithm: string, data: Uint8Array) => {
+    const digest = jest.requireActual<typeof import('crypto')>('crypto').createHash('sha256').update(data).digest();
+    return digest.buffer.slice(digest.byteOffset, digest.byteOffset + digest.byteLength);
+  }),
 }));
 
 jest.mock('@/lib/logging', () => ({
@@ -106,6 +110,43 @@ describe('Record attachment uploads', () => {
     expect(chunks.map((chunk) => chunk.Offset)).toEqual([0, 3, 6, 9]);
     expect(chunks.map((chunk) => chunk.Data)).toEqual(['AAAA', 'AAAA', 'AAAA', 'AA==']);
     expect(chunks.map((chunk) => chunk.Data).join('')).toBe(tenBytesBase64);
+  });
+
+  it('cuts chunks at the server chunk size even when it is not a multiple of 3', async () => {
+    // The server declares 512 KiB, which is not a multiple of 3; it refuses any chunk that is not exactly
+    // that size except the last, so the chunks are cut from the bytes, not from the base64 text.
+    const bytes = Buffer.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    fs.getInfoAsync.mockResolvedValue({ exists: true, size: 10 });
+    fs.readAsStringAsync.mockResolvedValue(bytes.toString('base64'));
+    api.beginRecordUpload.mockResolvedValue(session(0, 4));
+    api.uploadRecordChunk.mockResolvedValueOnce(session(4, 4)).mockResolvedValueOnce(session(8, 4)).mockResolvedValueOnce(session(10, 4));
+    api.completeRecordUpload.mockResolvedValue({ Data: { AttachmentId: 'a5' } });
+
+    const outcome = await runUpload(pending({ byteSize: 10 }) as never);
+
+    expect(outcome.ok).toBe(true);
+    const chunks: { Offset: number; Data: string }[] = api.uploadRecordChunk.mock.calls.map((call: unknown[]) => call[0] as { Offset: number; Data: string });
+    expect(chunks.map((chunk) => chunk.Offset)).toEqual([0, 4, 8]);
+    expect(chunks.map((chunk) => Buffer.from(chunk.Data, 'base64').length)).toEqual([4, 4, 2]);
+    expect(Buffer.concat(chunks.map((chunk) => Buffer.from(chunk.Data, 'base64')))).toEqual(bytes);
+  });
+
+  it('fails instead of resending forever when the server count does not advance', async () => {
+    api.beginRecordUpload.mockResolvedValue(session(0));
+    api.uploadRecordChunk.mockResolvedValueOnce(session(3)).mockResolvedValue(session(3));
+
+    const outcome = await runUpload(pending() as never);
+
+    expect(outcome).toMatchObject({ ok: false, code: 'chunk_stalled', sentBytes: 3, uploadId: 'session-1' });
+    expect(api.uploadRecordChunk).toHaveBeenCalledTimes(2);
+    expect(api.completeRecordUpload).not.toHaveBeenCalled();
+  });
+
+  it('hashes the decoded file bytes, the same bytes the server assembles', async () => {
+    const bytes = Buffer.from('synthetic attachment bytes');
+    fs.readAsStringAsync.mockResolvedValue(bytes.toString('base64'));
+
+    await expect(hashFile('file:///photo.jpg')).resolves.toBe(createHash('sha256').update(bytes).digest('hex'));
   });
 
   it('resumes from the count the server reports, not the one the device remembers', async () => {

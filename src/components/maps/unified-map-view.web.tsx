@@ -9,8 +9,8 @@ import { useMapLiveLocations } from '@/hooks/use-map-live-locations';
 import { Env } from '@/lib/env';
 import { logger } from '@/lib/logging';
 import { getDepartmentMapCenter } from '@/lib/map-center';
-import { getMapPinSummary, hasValidMapCoordinates } from '@/lib/map-markers';
-import { createMapMarkerElement } from '@/lib/map-markers-web';
+import { hasValidMapCoordinates } from '@/lib/map-markers';
+import { buildMapPinPopupHtml, createMapMarkerElement } from '@/lib/map-markers-web';
 import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersData';
 import { type GetMapLayersData } from '@/models/v4/mapping/getMapLayersResultData';
 import { useLocationStore } from '@/stores/app/location-store';
@@ -273,15 +273,6 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
     const theme = colorScheme === 'dark' ? 'dark' : 'light';
     const seenPinIds = new Set<string>();
 
-    const buildPopupHtml = (pin: MapMakerInfoData) =>
-      `<div style="padding: 8px;">
-        <h3 style="margin: 0 0 8px 0; font-weight: 600;">${pin.Title}</h3>
-        ${getMapPinSummary(pin) ? `<p style="margin: 0 0 8px 0; font-size: 12px;">${getMapPinSummary(pin)}</p>` : ''}
-        <p style="margin: 0; font-size: 11px; color: #666;">
-          ${pin.Latitude.toFixed(6)}, ${pin.Longitude.toFixed(6)}
-        </p>
-      </div>`;
-
     mapPins.forEach((pin) => {
       if (!hasValidMapCoordinates(pin)) return;
       seenPinIds.add(pin.Id);
@@ -304,7 +295,7 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
 
         if (meta && meta.signature === signature) {
           if (moved) {
-            existing.getPopup()?.setHTML(buildPopupHtml(pin));
+            existing.getPopup()?.setHTML(buildMapPinPopupHtml(pin));
           }
           markerMetaRef.current.set(pin.Id, { signature, latitude: pin.Latitude, longitude: pin.Longitude, pin });
           return;
@@ -322,7 +313,7 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
       });
 
       // Create popup
-      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(buildPopupHtml(pin));
+      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(buildMapPinPopupHtml(pin));
 
       const marker = new mapboxgl.Marker({ element: el }).setLngLat([pin.Longitude, pin.Latitude]).setPopup(popup).addTo(map.current!);
 

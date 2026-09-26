@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer';
 import * as Crypto from 'expo-crypto';
 import * as FileSystem from 'expo-file-system/legacy';
 
@@ -65,10 +66,14 @@ const problemMessage = (error: unknown): string => {
   return response?.data?.title ?? (error instanceof Error ? error.message : 'Upload failed');
 };
 
-/** SHA-256 of the file, hex lower-case, computed without holding the whole file as a string twice. */
+/**
+ * SHA-256 of the file's bytes, hex lower-case. The server hashes the assembled binary, so the digest is
+ * taken over the decoded bytes; hashing the base64 text would never match and every upload would fail.
+ */
 export const hashFile = async (fileUri: string): Promise<string> => {
   const base64 = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.Base64 });
-  return (await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, base64, { encoding: Crypto.CryptoEncoding.HEX })).toLowerCase();
+  const digest = await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, Buffer.from(base64, 'base64'));
+  return Buffer.from(digest).toString('hex');
 };
 
 export const fileSize = async (fileUri: string): Promise<number> => {
@@ -77,22 +82,11 @@ export const fileSize = async (fileUri: string): Promise<number> => {
 };
 
 /**
- * The server hashes the assembled bytes, so the hash we declare has to be of the same bytes. Reading
- * base64 once and slicing it keeps the chunk boundaries aligned: base64 encodes 3 bytes as 4 chars,
- * so a chunk size that is a multiple of 3 slices cleanly without re-encoding anything.
+ * The server hashes the assembled bytes and accepts a chunk only at an offset that is a multiple of its
+ * own chunk size (only the last chunk may be shorter). Chunks are therefore cut from the decoded bytes at
+ * exactly that size and each one is encoded on its own, whatever the size is modulo 3.
  */
-const chunkOf = (base64: string, offsetBytes: number, chunkBytes: number): string => {
-  const start = (offsetBytes / 3) * 4;
-  // Only the final chunk can be short of a multiple of 3; its trailing 1 or 2 bytes still occupy a
-  // full padded 4-character group, and slice() would otherwise truncate the fraction and drop them.
-  const length = Math.ceil(chunkBytes / 3) * 4;
-  return base64.slice(start, start + length);
-};
-
-const alignChunkSize = (chunkSize: number): number => {
-  const safe = Math.max(3, Math.min(chunkSize || 0, 3 * 1024 * 1024));
-  return safe - (safe % 3);
-};
+const chunkOf = (bytes: Buffer, offsetBytes: number, chunkBytes: number): string => bytes.subarray(offsetBytes, offsetBytes + chunkBytes).toString('base64');
 
 export interface UploadOptions {
   onProgress?: (progress: UploadProgress) => void;
@@ -146,8 +140,8 @@ export const runUpload = async (pending: PendingUpload, options: UploadOptions =
       return { ok: false, code: 'no_session', message: 'The server did not open an upload.', uploadId: null };
     }
 
-    const chunkSize = alignChunkSize(session.ChunkSize);
-    const base64 = await FileSystem.readAsStringAsync(pending.fileUri, { encoding: FileSystem.EncodingType.Base64 });
+    const chunkSize = session.ChunkSize > 0 ? session.ChunkSize : pending.byteSize;
+    const bytes = Buffer.from(await FileSystem.readAsStringAsync(pending.fileUri, { encoding: FileSystem.EncodingType.Base64 }), 'base64');
     // The server's count is authoritative: it is the only thing that knows what actually arrived.
     let sent = session.ReceivedBytes ?? 0;
     options.onProgress?.({ sentBytes: sent, totalBytes: pending.byteSize });
@@ -157,10 +151,14 @@ export const runUpload = async (pending: PendingUpload, options: UploadOptions =
         return { ok: false, code: 'cancelled', sentBytes: sent, uploadId: session.UploadId };
       }
       const size = Math.min(chunkSize, pending.byteSize - sent);
-      const data = chunkOf(base64, sent, size);
+      const data = chunkOf(bytes, sent, size);
       const updated = (await uploadRecordChunk({ UploadId: session.UploadId, Offset: sent, Data: data }, options.signal))?.Data;
       if (!updated) {
         return { ok: false, code: 'chunk_failed', sentBytes: sent, uploadId: session.UploadId };
+      }
+      // A count that did not move means the chunk was not taken; sending it again would loop forever.
+      if (!(updated.ReceivedBytes > sent)) {
+        return { ok: false, code: 'chunk_stalled', sentBytes: sent, uploadId: session.UploadId };
       }
       // Trust the server's new count rather than adding locally, so a partially accepted chunk
       // cannot leave the client and the server disagreeing about where the file is.

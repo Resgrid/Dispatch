@@ -133,7 +133,14 @@ export function ServerUrlBottomSheet({ isOpen, onClose, onUrlChanged }: ServerUr
       });
 
       if (onUrlChanged && !isSameServerUrl(previousUrl, apiUrl)) {
-        await onUrlChanged();
+        try {
+          await onUrlChanged();
+        } catch (error) {
+          // The session still belongs to the previous server. Put its URL back so a retry sees the change
+          // and signs out again, instead of finding the new URL already saved and closing.
+          await setUrl(previousUrl);
+          throw error;
+        }
       }
 
       onClose();

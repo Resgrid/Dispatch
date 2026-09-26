@@ -1042,6 +1042,9 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
 
       if (geolocationConnectionGeneration === generationBeforeConnect) {
         // The service already had this hub open, so no new connection announced itself; join explicitly.
+        // It gets a fresh retry budget: after an earlier join gave up, the spent one would allow no retries.
+        stopGeolocationJoinRetry();
+        geolocationJoinAttempts = 0;
         await joinGeolocationGroup();
       } else if (geolocationJoinOperation) {
         // The new connection's lifecycle handler started the join; finish together with it.

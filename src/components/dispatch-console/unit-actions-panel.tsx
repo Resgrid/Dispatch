@@ -1,5 +1,5 @@
 import { Building2, Check, ChevronDown, ChevronRight, ChevronUp, MapPinned, Phone, Send, Truck, X } from 'lucide-react-native';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
@@ -119,6 +119,14 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
   // Local state for action sheets
   const [isStatusSheetOpen, setIsStatusSheetOpen] = useState(false);
   const [isDestinationSheetOpen, setIsDestinationSheetOpen] = useState(false);
+  // The destination sheet opens a beat after the status sheet closes; a pending open dies with the panel.
+  const destinationSheetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (destinationSheetTimerRef.current) clearTimeout(destinationSheetTimerRef.current);
+    },
+    []
+  );
   const [isAdditionalFieldsExpanded, setIsAdditionalFieldsExpanded] = useState(false);
   const [destinationTab, setDestinationTab] = useState<DestinationTab>('calls');
 
@@ -375,7 +383,11 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
     // sticky destination the status supports (e.g. the call) is kept and shown instead.
     const supportsDestination = getStatusDestinationCapabilities(status.Detail, hasCallContext).supportsDestination;
     if (supportsDestination && getEffectiveDestinationType(destinationSelection, status.Detail, hasCallContext) === 'none') {
-      setTimeout(() => setIsDestinationSheetOpen(true), 300);
+      if (destinationSheetTimerRef.current) clearTimeout(destinationSheetTimerRef.current);
+      destinationSheetTimerRef.current = setTimeout(() => {
+        destinationSheetTimerRef.current = null;
+        setIsDestinationSheetOpen(true);
+      }, 300);
     }
   };
 

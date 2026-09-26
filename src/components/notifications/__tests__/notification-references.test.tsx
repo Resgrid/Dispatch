@@ -76,6 +76,15 @@ describe('NotificationInbox', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it('offers no link for a reference type this app cannot open', () => {
+    withItems([item({ referenceType: 'note', referenceId: '55' }, 'note-1')]);
+
+    render(<NotificationInbox isOpen onClose={jest.fn()} />);
+
+    expect(screen.getByText('Engine 6 respond')).toBeTruthy();
+    expect(screen.queryByTestId('notification-reference-note-1')).toBeNull();
+  });
+
   it('opens the chat conversation', () => {
     withItems([item({ eventCode: 't:9a2b' }, 'chat-1')]);
 
@@ -92,7 +101,6 @@ describe('NotificationDetail reference button', () => {
   it.each([
     ['call', 'View Call'],
     ['chat', 'View Chat'],
-    ['note', 'Open'],
   ])('labels a %s reference as %s', (referenceType, label) => {
     withItems([]);
     const onNavigateToReference = jest.fn();
@@ -102,5 +110,13 @@ describe('NotificationDetail reference button', () => {
     expect(screen.getByText('Notification')).toBeTruthy();
     fireEvent.press(screen.getByTestId('notification-detail-reference'));
     expect(onNavigateToReference).toHaveBeenCalledWith(referenceType, 'ref-1');
+  });
+
+  it('offers no link for a reference this app has no screen for', () => {
+    withItems([]);
+    render(<NotificationDetail notification={{ ...base, referenceType: 'note', referenceId: 'ref-1' }} onClose={jest.fn()} onDelete={jest.fn()} onNavigateToReference={jest.fn()} />);
+
+    expect(screen.getByText('Notification')).toBeTruthy();
+    expect(screen.queryByTestId('notification-detail-reference')).toBeNull();
   });
 });

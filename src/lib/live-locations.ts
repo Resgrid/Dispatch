@@ -1,6 +1,7 @@
 import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersData';
 
 import { MapMarkerEntityType } from './destination-helpers';
+import { getPinEntityId } from './map-pin-ids';
 
 /**
  * The latest realtime position the geolocation hub pushed for one map entity.
@@ -133,17 +134,14 @@ export const upsertLiveLocation = (current: LiveLocations, update: LiveLocation)
   return { ...current, [update.pinId]: update };
 };
 
-/** Only unit and personnel pins track a live position; the id prefix must agree with the pin type. */
+/**
+ * Only unit and personnel pins track a live position. Pushes always carry the type-prefixed id, while a server
+ * from before pin ids were prefixed sends the bare id, so the key is rebuilt from the entity id and the pin type.
+ */
 const getLivePinKey = (pin: MapMakerInfoData): string | null => {
   if (typeof pin.Id !== 'string' || pin.Id.length === 0) return null;
-  const key = toLivePinKey(pin.Id);
-  if (pin.Type === MapMarkerEntityType.Unit) {
-    return key.startsWith(UNIT_PIN_PREFIX) ? key : null;
-  }
-  if (pin.Type === MapMarkerEntityType.Personnel) {
-    return key.startsWith(PERSONNEL_PIN_PREFIX) ? key : null;
-  }
-  return null;
+  const prefix = pin.Type === MapMarkerEntityType.Unit ? UNIT_PIN_PREFIX : pin.Type === MapMarkerEntityType.Personnel ? PERSONNEL_PIN_PREFIX : null;
+  return prefix ? toLivePinKey(`${prefix}${getPinEntityId(pin)}`) : null;
 };
 
 export interface ApplyLiveLocationsOptions {

@@ -107,7 +107,12 @@ export const ContactFilesList: React.FC<ContactFilesListProps> = ({ files, isLoa
         }
       } catch (error) {
         logger.error({ message: 'Failed to download contact file', context: { error, fileId: file.Id } });
-        Alert.alert(t('contacts.files.download_failed'));
+        if (Platform.OS === 'web') {
+          // React Native Web's Alert.alert does nothing, so the browser reports the failure itself.
+          window.alert(t('contacts.files.download_failed'));
+        } else {
+          Alert.alert(t('contacts.files.download_failed'));
+        }
       } finally {
         setDownloading((prev) => {
           const next = { ...prev };
