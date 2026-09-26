@@ -9,7 +9,14 @@ import { useSignalRStore } from '@/stores/signalr/signalr-store';
 // Debounce delay in milliseconds to prevent rapid consecutive API calls
 const DEBOUNCE_DELAY = 1000;
 
-export const useMapSignalRUpdates = (onMarkersUpdate: (markers: MapMakerInfoData[]) => void, onPoiLayersUpdate?: (poiLayers: PoiLayerData[]) => void) => {
+/**
+ * Refetches the map's markers (debounced) whenever the update hub reports a change.
+ *
+ * `onMarkersUpdate` receives the fetched markers and the time the request started, so realtime positions received
+ * while it was in flight can be re-applied on top. The returned `requestRefresh` runs the same fetch on demand
+ * (e.g. for a pin the realtime feed knows about but the map does not).
+ */
+export const useMapSignalRUpdates = (onMarkersUpdate: (markers: MapMakerInfoData[], fetchStartedAt: number) => void, onPoiLayersUpdate?: (poiLayers: PoiLayerData[]) => void) => {
   const lastProcessedTimestamp = useRef<number>(0);
   const isUpdating = useRef<boolean>(false);
   const pendingTimestamp = useRef<number | null>(null);
@@ -47,6 +54,7 @@ export const useMapSignalRUpdates = (onMarkersUpdate: (markers: MapMakerInfoData
           context: { timestamp: timestampToProcess },
         });
 
+        const fetchStartedAt = Date.now();
         const mapDataAndMarkers = await getMapDataAndMarkers(abortController.current.signal);
 
         // Check if request was aborted
@@ -67,7 +75,7 @@ export const useMapSignalRUpdates = (onMarkersUpdate: (markers: MapMakerInfoData
             },
           });
 
-          onMarkersUpdate(mapDataAndMarkers.Data.MapMakerInfos);
+          onMarkersUpdate(mapDataAndMarkers.Data.MapMakerInfos, fetchStartedAt);
 
           if (onPoiLayersUpdate) {
             onPoiLayersUpdate(mapDataAndMarkers.Data.PoiLayers ?? []);
@@ -166,4 +174,16 @@ export const useMapSignalRUpdates = (onMarkersUpdate: (markers: MapMakerInfoData
       }
     };
   }, []);
+
+  // Stable across renders: callers hold on to it from timers and store subscriptions.
+  const fetchAndUpdateMarkersRef = useRef(fetchAndUpdateMarkers);
+  useEffect(() => {
+    fetchAndUpdateMarkersRef.current = fetchAndUpdateMarkers;
+  }, [fetchAndUpdateMarkers]);
+
+  const requestRefresh = useCallback(() => {
+    void fetchAndUpdateMarkersRef.current();
+  }, []);
+
+  return { requestRefresh };
 };

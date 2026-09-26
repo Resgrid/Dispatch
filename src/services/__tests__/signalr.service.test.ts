@@ -532,6 +532,43 @@ describe('SignalRService', () => {
     });
   });
 
+  describe('message logging', () => {
+    it('does not log location pushes or any message payload', async () => {
+      const unitListener = jest.fn();
+      signalRService.on('onUnitLocationUpdated', unitListener);
+
+      try {
+        await signalRService.connectToHubWithEventingUrl({
+          name: 'loggingHub',
+          eventingUrl: 'https://api.example.com/',
+          hubName: 'eventingHub',
+          methods: ['onUnitLocationUpdated', 'onPersonnelLocationUpdated', 'callsUpdated'],
+        });
+
+        const handlerFor = (method: string) => mockConnection.on.mock.calls.find((call) => call[0] === method)?.[1] as (...args: unknown[]) => void;
+        const unitPush = { departmentId: 7, unitId: '12', latitude: 47.6062123, longitude: -122.3321456, recordId: 'r1', timestamp: '2026-09-25T14:03:11Z' };
+        const personPush = { departmentId: 7, userId: 'user-1', latitude: 47.6062123, longitude: -122.3321456, recordId: 'r2', timestamp: '2026-09-25T14:03:12Z' };
+
+        handlerFor('onUnitLocationUpdated')(unitPush);
+        handlerFor('onPersonnelLocationUpdated')(personPush);
+        handlerFor('callsUpdated')({ body: 'private call notes' });
+
+        const logged = JSON.stringify([mockLogger.debug, mockLogger.info, mockLogger.warn, mockLogger.error].flatMap((log) => log.mock.calls));
+        expect(logged).not.toContain('47.6062123');
+        expect(logged).not.toContain('-122.3321456');
+        expect(logged).not.toContain('private call notes');
+        expect(logged).not.toMatch(/Received on(Unit|Personnel)LocationUpdated/);
+        expect(mockLogger.debug).toHaveBeenCalledWith({ message: 'Received callsUpdated message from hub: loggingHub', context: { method: 'callsUpdated' } });
+
+        // Logging less must not deliver less.
+        expect(unitListener).toHaveBeenCalledWith(unitPush);
+      } finally {
+        signalRService.off('onUnitLocationUpdated', unitListener);
+        await signalRService.disconnectFromHub('loggingHub');
+      }
+    });
+  });
+
   describe('hub availability and reconnecting state', () => {
     const mockConfig: SignalRHubConnectConfig = {
       name: 'testHub',

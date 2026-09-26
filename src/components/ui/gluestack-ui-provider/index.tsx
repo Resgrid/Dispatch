@@ -10,7 +10,7 @@ export function GluestackUIProvider({ mode = 'light', ...props }: { mode?: ModeT
   // Both the tokens (--color-*) and the `dark:` variant flip through the prefers-color-scheme media
   // query, which react-native-css drives from Appearance — hence the override below.
   useLayoutEffect(() => {
-    Appearance.setColorScheme(mode === 'system' ? null : mode);
+    Appearance.setColorScheme(mode === 'system' ? 'unspecified' : mode);
   }, [mode]);
 
   // This View deliberately carries NO className. It wraps the entire app, and react-native-css wraps

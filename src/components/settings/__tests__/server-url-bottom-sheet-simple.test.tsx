@@ -29,6 +29,8 @@ jest.mock('react-hook-form', () => ({
     control: {},
     handleSubmit: jest.fn(),
     setValue: jest.fn(),
+    setError: jest.fn(),
+    clearErrors: jest.fn(),
     formState: { errors: {} },
   }),
   Controller: ({ render }: any) => render({ field: { onChange: jest.fn(), value: '' } }),
@@ -42,7 +44,7 @@ jest.mock('@/stores/app/server-url-store', () => ({
 }));
 
 jest.mock('@/lib/env', () => ({ Env: { API_VERSION: 'v4' } }));
-jest.mock('@/lib/logging', () => ({ logger: { info: jest.fn(), error: jest.fn() } }));
+jest.mock('@/lib/logging', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
 jest.mock('@/api/config', () => ({
   getSystemConfig: jest.fn().mockResolvedValue({ Data: { Locations: [] } }),
 }));

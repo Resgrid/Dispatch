@@ -41,6 +41,10 @@ jest.mock('expo-router', () => ({
   Stack: {
     Screen: ({ children, ...props }: any) => <div {...props}>{children}</div>,
   },
+  useFocusEffect: jest.fn((callback: () => void) => {
+    const React = require('react');
+    React.useEffect(callback, []);
+  }),
 }));
 
 // Mock expo-constants
@@ -172,13 +176,6 @@ jest.mock('nativewind', () => ({
 }));
 
 // Mock navigation hook
-jest.mock('@react-navigation/native', () => ({
-  useFocusEffect: jest.fn((callback: () => void) => {
-    const React = require('react');
-    React.useEffect(callback, []);
-  }),
-}));
-
 // Mock components
 jest.mock('@/components/common/loading', () => ({
   Loading: () => <div data-testid="loading">Loading...</div>,

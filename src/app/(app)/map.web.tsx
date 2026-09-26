@@ -11,12 +11,13 @@ import { FocusAwareStatusBar } from '@/components/ui/focus-aware-status-bar';
 import { useActiveMapLayers } from '@/hooks/use-active-map-layers';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { MapLayerType, useMapLayers } from '@/hooks/use-map-layers';
+import { useMapLiveLocations } from '@/hooks/use-map-live-locations';
 import { Env } from '@/lib/env';
 import { logger } from '@/lib/logging';
 import { getDepartmentMapCenter } from '@/lib/map-center';
 import { getMapPinSummary, hasValidMapCoordinates } from '@/lib/map-markers';
 import { createMapMarkerElement } from '@/lib/map-markers-web';
-import { createDefaultVisiblePoiLayerIds, filterMapPinsByPoiLayers, getPoiMapLayerId } from '@/lib/poi-map-layers';
+import { createDefaultVisiblePoiLayerIds, filterMapPinsByPoiLayers, getPoiMapLayerId, mergeVisiblePoiLayerIds } from '@/lib/poi-map-layers';
 import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersData';
 import { type GetMapLayersData } from '@/models/v4/mapping/getMapLayersResultData';
 import { type PoiLayerData } from '@/models/v4/mapping/poiLayerData';
@@ -31,7 +32,9 @@ export default function MapWeb() {
   const { colorScheme } = useColorScheme();
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
-  const markersRef = useRef<mapboxgl.Marker[]>([]);
+  // Live markers by pin id, so a moved pin is repositioned in place instead of every marker being rebuilt.
+  const markersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
+  const markerMetaRef = useRef<Map<string, { pin: MapMakerInfoData; signature: string }>>(new Map());
   const layerIdsRef = useRef<string[]>([]);
   const sourceIdsRef = useRef<string[]>([]);
   const activeSourceIdsRef = useRef<string[]>([]);
@@ -53,10 +56,20 @@ export default function MapWeb() {
   // Custom-map region layers (RE1-T105) rendered on top of the legacy vector layers.
   const { activeLayers } = useActiveMapLayers();
 
+  // The POI layers last synced from map data; null until the first load. A background refetch must keep the
+  // user's layer toggles, so only the first load applies defaults.
+  const syncedPoiLayersRef = useRef<PoiLayerData[] | null>(null);
   const syncPoiLayers = useCallback((nextPoiLayers: PoiLayerData[]) => {
+    const previousPoiLayers = syncedPoiLayersRef.current;
+    syncedPoiLayersRef.current = nextPoiLayers;
     setPoiLayers(nextPoiLayers);
-    setVisiblePoiLayerIds(createDefaultVisiblePoiLayerIds(nextPoiLayers));
+    setVisiblePoiLayerIds((currentLayerIds) => (previousPoiLayers === null ? createDefaultVisiblePoiLayerIds(nextPoiLayers) : mergeVisiblePoiLayerIds(currentLayerIds, previousPoiLayers, nextPoiLayers)));
   }, []);
+
+  // Realtime unit/personnel positions from the geolocation hub; its refetch requests reuse fetchMapData below.
+  const requestPinsRefreshRef = useRef<(() => void) | null>(null);
+  const requestPinsRefresh = useCallback(() => requestPinsRefreshRef.current?.(), []);
+  const { applyToFetchedPins } = useMapLiveLocations({ pins: mapPins, setPins: setMapPins, requestRefresh: requestPinsRefresh });
 
   const togglePoiLayer = useCallback((layerId: string) => {
     setVisiblePoiLayerIds((currentLayerIds) => {
@@ -146,10 +159,14 @@ export default function MapWeb() {
       });
     });
 
+    const markers = markersRef.current;
+    const markerMeta = markerMetaRef.current;
+
     return () => {
       // Clean up markers
-      markersRef.current.forEach((marker) => marker.remove());
-      markersRef.current = [];
+      markers.forEach((marker) => marker.remove());
+      markers.clear();
+      markerMeta.clear();
 
       map.current?.remove();
       map.current = null;
@@ -184,17 +201,29 @@ export default function MapWeb() {
     }, [fetchLayers])
   );
 
-  // Fetch map data and markers on mount
-  useEffect(() => {
+  // Fetches map data and markers: once on mount, and again in the background when the realtime location feed
+  // asks for it. Only the first successful load may move the camera; a refresh never touches the user's view.
+  const fetchAbortRef = useRef<AbortController | null>(null);
+  const hasCenteredOnDataRef = useRef(false);
+  const fetchMapData = useCallback(async () => {
+    fetchAbortRef.current?.abort();
     const abortController = new AbortController();
+    fetchAbortRef.current = abortController;
 
-    const fetchMapDataAndMarkers = async () => {
-      try {
-        const mapDataAndMarkers = await getMapDataAndMarkers(abortController.signal);
+    try {
+      const fetchStartedAt = Date.now();
+      const mapDataAndMarkers = await getMapDataAndMarkers(abortController.signal);
 
-        if (mapDataAndMarkers && mapDataAndMarkers.Data) {
-          setMapPins(mapDataAndMarkers.Data.MapMakerInfos);
-          syncPoiLayers(mapDataAndMarkers.Data.PoiLayers ?? []);
+      if (abortController.signal.aborted) {
+        return;
+      }
+
+      if (mapDataAndMarkers && mapDataAndMarkers.Data) {
+        setMapPins(applyToFetchedPins(mapDataAndMarkers.Data.MapMakerInfos, fetchStartedAt));
+        syncPoiLayers(mapDataAndMarkers.Data.PoiLayers ?? []);
+
+        if (!hasCenteredOnDataRef.current) {
+          hasCenteredOnDataRef.current = true;
 
           // Center map on the data center if provided
           if (mapDataAndMarkers.Data.CenterLat && mapDataAndMarkers.Data.CenterLon && map.current) {
@@ -211,58 +240,103 @@ export default function MapWeb() {
             }
           }
         }
-      } catch (error) {
-        // Don't log aborted requests as errors
-        if (error instanceof Error && (error.name === 'AbortError' || error.message === 'canceled')) {
-          logger.debug({
-            message: 'Map data fetch was aborted during component unmount',
-          });
-          return;
-        }
-
-        logger.error({
-          message: 'Failed to fetch initial map data and markers',
-          context: { error },
-        });
       }
-    };
+    } catch (error) {
+      // Don't log aborted requests as errors
+      if (error instanceof Error && (error.name === 'AbortError' || error.message === 'canceled')) {
+        logger.debug({
+          message: 'Map data fetch was aborted',
+        });
+        return;
+      }
 
-    fetchMapDataAndMarkers();
+      logger.error({
+        message: 'Failed to fetch map data and markers',
+        context: { error },
+      });
+    } finally {
+      if (fetchAbortRef.current === abortController) {
+        fetchAbortRef.current = null;
+      }
+    }
+  }, [applyToFetchedPins, syncPoiLayers]);
 
-    return () => {
-      abortController.abort();
-    };
-  }, [syncPoiLayers]);
-
-  // Update markers when mapPins change
   useEffect(() => {
-    if (!map.current || !isMapReady) return;
+    requestPinsRefreshRef.current = () => {
+      void fetchMapData();
+    };
+  }, [fetchMapData]);
 
-    // Remove existing markers
-    markersRef.current.forEach((marker) => marker.remove());
-    markersRef.current = [];
+  // Fetch map data and markers on mount
+  useEffect(() => {
+    void fetchMapData();
 
-    // Add new markers
-    visibleMapPins.forEach((pin) => {
-      if (!hasValidMapCoordinates(pin)) return;
+    // Abort the request if the component unmounts
+    return () => {
+      fetchAbortRef.current?.abort();
+      fetchAbortRef.current = null;
+    };
+  }, [fetchMapData]);
 
-      // Create custom marker element using shared utility
-      const el = createMapMarkerElement(pin, colorScheme === 'dark' ? 'dark' : 'light');
+  // Reconcile markers with the visible pins: create new ones, move moved ones in place, rebuild only those whose
+  // appearance changed, and remove the rest. The camera is never touched here.
+  useEffect(() => {
+    const instance = map.current;
+    if (!instance || !isMapReady) return;
 
-      // Create popup
-      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(
-        `<div style="padding: 8px;">
+    const theme = colorScheme === 'dark' ? 'dark' : 'light';
+    const seenPinIds = new Set<string>();
+
+    const buildPopupHtml = (pin: MapMakerInfoData) =>
+      `<div style="padding: 8px;">
           <h3 style="margin: 0 0 8px 0; font-weight: 600;">${pin.Title}</h3>
           ${getMapPinSummary(pin) ? `<p style="margin: 0 0 8px 0; font-size: 12px;">${getMapPinSummary(pin)}</p>` : ''}
           <p style="margin: 0; font-size: 11px; color: #666;">
             ${pin.Latitude.toFixed(6)}, ${pin.Longitude.toFixed(6)}
           </p>
-        </div>`
-      );
+        </div>`;
 
-      const marker = new mapboxgl.Marker({ element: el }).setLngLat([pin.Longitude, pin.Latitude]).setPopup(popup).addTo(map.current!);
+    visibleMapPins.forEach((pin) => {
+      if (!hasValidMapCoordinates(pin)) return;
+      seenPinIds.add(pin.Id);
 
-      markersRef.current.push(marker);
+      const existing = markersRef.current.get(pin.Id);
+      const meta = markerMetaRef.current.get(pin.Id);
+      // Pins that did not change keep their object identity, so most markers are skipped outright.
+      if (existing && meta && meta.pin === pin && meta.signature.startsWith(`${theme}:`)) return;
+
+      const signature = `${theme}:${pin.Title}:${pin.Type}:${pin.PoiTypeId}:${pin.LayerId}:${pin.ImagePath}:${pin.PoiImage}:${pin.Marker}:${pin.Color}:${pin.Address}:${pin.Note}:${pin.PoiTypeName}:${pin.InfoWindowContent}`;
+
+      if (existing && meta && meta.signature === signature) {
+        if (meta.pin.Latitude !== pin.Latitude || meta.pin.Longitude !== pin.Longitude) {
+          existing.setLngLat([pin.Longitude, pin.Latitude]);
+          existing.getPopup()?.setHTML(buildPopupHtml(pin));
+        }
+        markerMetaRef.current.set(pin.Id, { pin, signature });
+        return;
+      }
+
+      existing?.remove();
+
+      // Create custom marker element using shared utility
+      const el = createMapMarkerElement(pin, theme);
+
+      // Create popup
+      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(buildPopupHtml(pin));
+
+      const marker = new mapboxgl.Marker({ element: el }).setLngLat([pin.Longitude, pin.Latitude]).setPopup(popup).addTo(instance);
+
+      markersRef.current.set(pin.Id, marker);
+      markerMetaRef.current.set(pin.Id, { pin, signature });
+    });
+
+    // Remove markers whose pins are gone or hidden
+    markersRef.current.forEach((marker, pinId) => {
+      if (!seenPinIds.has(pinId)) {
+        marker.remove();
+        markersRef.current.delete(pinId);
+        markerMetaRef.current.delete(pinId);
+      }
     });
   }, [visibleMapPins, isMapReady, colorScheme]);
 

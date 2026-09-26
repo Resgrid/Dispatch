@@ -110,7 +110,7 @@ export const ContactDetailsExtra: React.FC<ContactDetailsExtraProps> = ({ contac
           {customFields.map((field) => (
             <VStack key={field.UdfFieldId} space="xs" className="py-1 pl-6">
               <Text className="text-sm text-gray-500 dark:text-gray-400">{field.GroupName ? `${field.GroupName} · ${field.Label}` : field.Label}</Text>
-              <Text className="text-base text-gray-900 dark:text-white">{field.Value}</Text>
+              <Text className="text-base text-gray-900 dark:text-white">{field.DisplayValue || field.Value}</Text>
             </VStack>
           ))}
         </VStack>

@@ -1,5 +1,4 @@
-import { useFocusEffect } from '@react-navigation/native';
-import { type Href, router } from 'expo-router';
+import { type Href, router, useFocusEffect } from 'expo-router';
 import { useColorScheme } from 'nativewind';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';

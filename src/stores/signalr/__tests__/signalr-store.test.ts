@@ -134,6 +134,8 @@ describe('useSignalRStore', () => {
       expect(result.current.lastGeolocationMessage).toBeNull();
       expect(result.current.lastUpdateTimestamp).toBe(0);
       expect(result.current.lastGeolocationTimestamp).toBe(0);
+      expect(result.current.liveLocations).toEqual({});
+      expect(result.current.lastGeolocationJoinTimestamp).toBe(0);
       expect(result.current.error).toBeNull();
     });
   });
@@ -257,22 +259,26 @@ describe('useSignalRStore', () => {
         await result.current.disconnectGeolocationHub();
       });
 
-      // Note: The current implementation doesn't actually call disconnectFromHub for geolocation
-      // It just sets the state - this is by design as geolocation hub may have different lifecycle
+      expect(signalRService.disconnectFromHub).toHaveBeenCalledWith('geolocationHub');
       expect(result.current.isGeolocationHubConnected).toBe(false);
       expect(result.current.lastGeolocationMessage).toBeNull();
     });
 
-    it('should handle disconnect and set state correctly', async () => {
+    it('should clear the connected flag even when the disconnect fails', async () => {
+      const disconnectError = new Error('Disconnect failed');
+      (signalRService.disconnectFromHub as jest.Mock).mockRejectedValue(disconnectError);
+      act(() => {
+        useSignalRStore.setState({ isGeolocationHubConnected: true });
+      });
+
       const { result } = renderHook(() => useSignalRStore());
 
       await act(async () => {
         await result.current.disconnectGeolocationHub();
       });
 
-      // The geolocation hub disconnect is simpler - just sets state
       expect(result.current.isGeolocationHubConnected).toBe(false);
-      expect(result.current.lastGeolocationMessage).toBeNull();
+      expect(result.current.error).toEqual(disconnectError);
     });
   });
 });

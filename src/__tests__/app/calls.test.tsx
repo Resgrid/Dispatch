@@ -25,6 +25,11 @@ jest.mock('expo-router', () => ({
   router: {
     push: jest.fn(),
   },
+  useFocusEffect: jest.fn((callback: () => void) => {
+    const React = require('react');
+    React.useEffect(callback, []);
+  }),
+  useIsFocused: jest.fn(() => true),
 }));
 
 // Mock storage
@@ -205,14 +210,6 @@ jest.mock('@/components/ui/focus-aware-status-bar', () => ({
 }));
 
 // Mock useFocusEffect and useIsFocused
-jest.mock('@react-navigation/native', () => ({
-  useFocusEffect: jest.fn((callback: () => void) => {
-    const React = require('react');
-    React.useEffect(callback, []);
-  }),
-  useIsFocused: jest.fn(() => true),
-}));
-
 import CallsScreen from '../../app/(app)/calls';
 
 describe('CallsScreen', () => {

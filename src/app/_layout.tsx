@@ -5,12 +5,11 @@ import '../lib/i18n';
 import { Env } from '@env';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { FloatingDevTools } from '@react-buoy/core';
-import { createNavigationContainerRef, DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import * as Sentry from '@sentry/react-native';
 import { isRunningInExpoGo } from 'expo';
 import { useFonts } from 'expo-font';
 import * as Notifications from 'expo-notifications';
-import { Stack, useNavigationContainerRef } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider, useNavigationContainerRef } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import React, { useEffect } from 'react';
 import { LogBox, Platform, useColorScheme } from 'react-native';
@@ -33,7 +32,6 @@ import { uuidv4 } from '@/lib/utils';
 import { appInitializationService } from '@/services/app-initialization.service';
 
 export { ErrorBoundary } from 'expo-router';
-export const navigationRef = createNavigationContainerRef();
 
 export const unstable_settings = {
   initialRouteName: '(app)',

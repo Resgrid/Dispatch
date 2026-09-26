@@ -1,5 +1,4 @@
-import { useFocusEffect } from '@react-navigation/native';
-import { type Href, router } from 'expo-router';
+import { type Href, router, useFocusEffect } from 'expo-router';
 import { ChevronDownIcon, MapPinned, Search, X } from 'lucide-react-native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

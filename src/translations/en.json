@@ -316,6 +316,7 @@
     "selected": "selected",
     "title": "Calls",
     "type": "Type",
+    "udf_suggestions": "Suggestions",
     "units": "Units",
     "users": "Users",
     "viewNotes": "Notes",

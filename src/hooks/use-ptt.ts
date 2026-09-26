@@ -1,4 +1,4 @@
-import { Audio } from 'expo-av';
+import { setAudioModeAsync } from 'expo-audio';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, type AppStateStatus, Platform } from 'react-native';
 
@@ -155,12 +155,12 @@ export function usePTT(options: UsePTTOptions = {}): UsePTTReturn {
     }
 
     try {
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        staysActiveInBackground: true,
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: true,
-        playThroughEarpieceAndroid: false,
+      await setAudioModeAsync({
+        allowsRecording: true,
+        shouldPlayInBackground: true,
+        playsInSilentMode: true,
+        shouldRouteThroughEarpiece: false,
+        interruptionMode: Platform.OS === 'android' ? 'duckOthers' : 'mixWithOthers',
       });
 
       logger.debug({ message: 'PTT: Audio mode configured successfully' });

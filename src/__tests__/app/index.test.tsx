@@ -14,7 +14,10 @@ jest.mock('react-native-safe-area-context', () => ({
 jest.mock('@/hooks/use-app-lifecycle');
 jest.mock('@/stores/app/location-store');
 jest.mock('@/hooks/use-map-signalr-updates', () => ({
-  useMapSignalRUpdates: jest.fn(),
+  useMapSignalRUpdates: jest.fn(() => ({ requestRefresh: jest.fn() })),
+}));
+jest.mock('@/hooks/use-map-live-locations', () => ({
+  useMapLiveLocations: jest.fn(() => ({ applyToFetchedPins: (pins: unknown[]) => pins })),
 }));
 jest.mock('@/hooks/use-map-layers', () => ({
   useMapLayers: jest.fn(() => ({
@@ -29,15 +32,6 @@ jest.mock('@/hooks/use-map-layers', () => ({
     getVisibleLayerData: jest.fn(() => []),
   })),
   MapLayerType: { ALL: 'ALL' },
-}));
-jest.mock('@react-navigation/native', () => ({
-  useIsFocused: jest.fn(() => true),
-  useNavigation: jest.fn(() => ({
-    navigate: jest.fn(),
-    push: jest.fn(),
-    replace: jest.fn(),
-    goBack: jest.fn(),
-  })),
 }));
 jest.mock('@/api/mapping/mapping', () => ({
   getMapDataAndMarkers: jest.fn().mockResolvedValue({
@@ -71,6 +65,13 @@ jest.mock('expo-router', () => ({
   useFocusEffect: jest.fn(() => {
     // Don't call the callback to prevent infinite loops in tests
   }),
+  useIsFocused: jest.fn(() => true),
+  useNavigation: jest.fn(() => ({
+    navigate: jest.fn(),
+    push: jest.fn(),
+    replace: jest.fn(),
+    goBack: jest.fn(),
+  })),
 }));
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({

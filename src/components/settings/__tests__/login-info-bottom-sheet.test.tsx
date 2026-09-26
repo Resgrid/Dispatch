@@ -215,7 +215,7 @@ describe('LoginInfoBottomSheet', () => {
   it('calls onClose when cancel button is pressed', () => {
     render(<LoginInfoBottomSheet {...defaultProps} />);
 
-    const cancelButton = screen.getByText('common.cancel').parent;
+    const cancelButton = screen.getByText('common.cancel').parent!;
     fireEvent.press(cancelButton);
 
     expect(mockOnClose).toHaveBeenCalled();

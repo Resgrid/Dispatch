@@ -9,12 +9,11 @@ import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeInRight, FadeInUp, FadeOut, FadeOutLeft } from 'react-native-reanimated';
 import * as z from 'zod';
 
-import { getSystemConfig } from '@/api/config';
 import { Text } from '@/components/ui/text';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { useAuth } from '@/lib/auth';
 import { logger } from '@/lib/logging';
-import { buildApiUrl, CUSTOM_SERVER_VALUE, toBaseUrl, URL_PATTERN } from '@/lib/server-url';
+import { buildApiUrl, CUSTOM_SERVER_VALUE, findLocationByUrl, loadServerLocations, toBaseUrl, URL_PATTERN } from '@/lib/server-url';
 import { type ResgridSystemLocation } from '@/models/v4/configs/getSystemConfigResultData';
 import { useServerUrlStore } from '@/stores/app/server-url-store';
 
@@ -209,15 +208,8 @@ export default function LoginWeb() {
         // can match it against a hosted site or show it for editing in the custom field.
         const currentUrl = await getUrl();
         const currentBaseUrl = toBaseUrl(currentUrl);
-
-        let fetchedLocations: ResgridSystemLocation[] = [];
-        try {
-          const result = await getSystemConfig();
-          fetchedLocations = result?.Data?.Locations ?? [];
-        } catch (err) {
-          // Best-effort: on failure the user can still enter a custom URL manually.
-          logger.error({ message: 'Failed to load Resgrid hosted sites', context: { error: err } });
-        }
+        // Always includes the Resgrid hosted sites, even if the current server can't be reached.
+        const fetchedLocations = await loadServerLocations();
 
         if (isCancelled) {
           return;
@@ -227,7 +219,7 @@ export default function LoginWeb() {
 
         // Preselect the hosted site whose API URL matches the persisted URL; otherwise fall
         // back to the Custom option and show the persisted URL so the user can edit it.
-        const matchedLocation = fetchedLocations.find((location) => toBaseUrl(location.ApiUrl) === currentBaseUrl);
+        const matchedLocation = findLocationByUrl(fetchedLocations, currentUrl);
         if (matchedLocation) {
           setSelectedServer(matchedLocation.Name);
           setServerUrlValue('url', toBaseUrl(matchedLocation.ApiUrl));
@@ -546,7 +538,7 @@ export default function LoginWeb() {
                 >
                   {serverLocations.map((location) => (
                     <option key={location.Name} value={location.Name}>
-                      {location.DisplayName || location.Name}
+                      {location.Name}
                     </option>
                   ))}
                   <option value={CUSTOM_SERVER_VALUE}>{t('settings.custom')}</option>

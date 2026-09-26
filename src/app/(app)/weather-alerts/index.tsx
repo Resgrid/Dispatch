@@ -1,5 +1,4 @@
-import { useFocusEffect } from '@react-navigation/native';
-import { type Href, router } from 'expo-router';
+import { type Href, router, useFocusEffect } from 'expo-router';
 import { SettingsIcon } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import React, { useCallback, useMemo, useState } from 'react';

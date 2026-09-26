@@ -11,24 +11,21 @@ jest.mock('@/lib/logging', () => ({
   },
 }));
 
-jest.mock('expo-av', () => ({
-  Audio: {
-    setAudioModeAsync: jest.fn(),
-    Sound: {
-      createAsync: jest.fn(),
-    },
-  },
+jest.mock('expo-audio', () => ({
+  setAudioModeAsync: jest.fn(),
+  createAudioPlayer: jest.fn(),
 }));
 
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { Audio } from 'expo-av';
+import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { getDepartmentAudioStreams } from '@/api/voice';
 import { logger } from '@/lib/logging';
 import { type DepartmentAudioResultStreamData } from '@/models/v4/voice/departmentAudioResultStreamData';
 import { useAudioStreamStore } from '../audio-stream-store';
 
 const mockGetDepartmentAudioStreams = getDepartmentAudioStreams as jest.MockedFunction<typeof getDepartmentAudioStreams>;
-const mockAudio = Audio as jest.Mocked<typeof Audio>;
+const mockSetAudioModeAsync = setAudioModeAsync as jest.MockedFunction<typeof setAudioModeAsync>;
+const mockCreateAudioPlayer = createAudioPlayer as jest.MockedFunction<typeof createAudioPlayer>;
 const mockLogger = logger as jest.Mocked<typeof logger>;
 
 describe('AudioStreamStore', () => {
@@ -40,11 +37,21 @@ describe('AudioStreamStore', () => {
   };
 
   const mockSoundObject = {
-    playAsync: jest.fn(() => Promise.resolve()),
-    pauseAsync: jest.fn(() => Promise.resolve()),
-    unloadAsync: jest.fn(() => Promise.resolve()),
-    replayAsync: jest.fn(() => Promise.resolve()),
+    play: jest.fn(),
+    pause: jest.fn(),
+    remove: jest.fn(),
+    replace: jest.fn(),
+    addListener: jest.fn(),
+    loop: false,
+    volume: 1,
+    muted: false,
   } as any;
+
+  // Returns the playbackStatusUpdate listener the store registered on the player
+  const getStatusListener = () => {
+    const call = mockSoundObject.addListener.mock.calls.find(([event]: [string]) => event === 'playbackStatusUpdate');
+    return call[1] as (status: Record<string, unknown>) => void;
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -62,16 +69,15 @@ describe('AudioStreamStore', () => {
     });
 
     // Reset mock implementations
-    mockSoundObject.playAsync.mockImplementation(() => Promise.resolve());
-    mockSoundObject.pauseAsync.mockImplementation(() => Promise.resolve());
-    mockSoundObject.unloadAsync.mockImplementation(() => Promise.resolve());
-    mockSoundObject.replayAsync.mockImplementation(() => Promise.resolve());
+    mockSoundObject.play.mockImplementation(() => undefined);
+    mockSoundObject.pause.mockImplementation(() => undefined);
+    mockSoundObject.remove.mockImplementation(() => undefined);
+    mockSoundObject.replace.mockImplementation(() => undefined);
+    mockSoundObject.addListener.mockImplementation(() => ({ remove: jest.fn() }));
 
-    // Mock Audio methods
-    mockAudio.setAudioModeAsync.mockResolvedValue(undefined);
-    mockAudio.Sound.createAsync.mockResolvedValue({
-      sound: mockSoundObject,
-    } as any);
+    // Mock expo-audio functions
+    mockSetAudioModeAsync.mockResolvedValue(undefined);
+    (mockCreateAudioPlayer as jest.MockedFunction<any>).mockReturnValue(mockSoundObject);
   });
 
   describe('initial state', () => {
@@ -211,27 +217,24 @@ describe('AudioStreamStore', () => {
       expect(state.isLoading).toBe(false);
       expect(state.isBuffering).toBe(false);
       
-      expect(mockAudio.setAudioModeAsync).toHaveBeenCalledWith({
-        allowsRecordingIOS: false,
-        staysActiveInBackground: true,
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: true,
-        playThroughEarpieceAndroid: false,
+      expect(mockSetAudioModeAsync).toHaveBeenCalledWith({
+        allowsRecording: false,
+        shouldPlayInBackground: true,
+        playsInSilentMode: true,
+        shouldRouteThroughEarpiece: false,
+        interruptionMode: 'mixWithOthers',
       });
       
-      expect(mockAudio.Sound.createAsync).toHaveBeenCalledWith(
+      expect(mockCreateAudioPlayer).toHaveBeenCalledWith(
         { uri: mockStream.Url },
         {
-          shouldPlay: false,
-          isLooping: false,
-          volume: 1.0,
-          isMuted: false,
-          progressUpdateIntervalMillis: 1000,
-        },
-        expect.any(Function)
+          updateInterval: 1000,
+          keepAudioSessionActive: true,
+        }
       );
+      expect(mockSoundObject.addListener).toHaveBeenCalledWith('playbackStatusUpdate', expect.any(Function));
       
-      expect(mockSoundObject.playAsync).toHaveBeenCalled();
+      expect(mockSoundObject.play).toHaveBeenCalled();
       
       expect(mockLogger.debug).toHaveBeenCalledWith({
         message: 'Starting audio stream',
@@ -256,13 +259,15 @@ describe('AudioStreamStore', () => {
       
       await useAudioStreamStore.getState().playStream(newStream);
       
-      expect(mockSoundObject.pauseAsync).toHaveBeenCalled();
-      expect(mockSoundObject.unloadAsync).toHaveBeenCalled();
+      expect(mockSoundObject.pause).toHaveBeenCalled();
+      expect(mockSoundObject.remove).toHaveBeenCalled();
     });
 
     it('should handle play stream error', async () => {
       const mockError = new Error('Play failed');
-      mockAudio.Sound.createAsync.mockRejectedValue(mockError);
+      mockCreateAudioPlayer.mockImplementation(() => {
+        throw mockError;
+      });
       
       await useAudioStreamStore.getState().playStream(mockStream);
       
@@ -277,6 +282,65 @@ describe('AudioStreamStore', () => {
         message: 'Failed to play audio stream',
         context: { error: mockError, streamName: mockStream.Name },
       });
+    });
+  });
+
+  describe('playback status updates', () => {
+    it('should tear down the player when playback reports an error', async () => {
+      await useAudioStreamStore.getState().playStream(mockStream);
+
+      getStatusListener()({ playing: false, isBuffering: false, didJustFinish: false, error: 'Source error' });
+
+      const state = useAudioStreamStore.getState();
+      expect(mockSoundObject.remove).toHaveBeenCalled();
+      expect(state.soundObject).toBeNull();
+      expect(state.currentStream).toBeNull();
+      expect(state.isPlaying).toBe(false);
+      expect(mockLogger.error).toHaveBeenCalledWith({
+        message: 'Audio playback error',
+        context: { error: 'Source error', streamName: mockStream.Name },
+      });
+    });
+
+    it('should mirror playing and buffering state from the player', async () => {
+      await useAudioStreamStore.getState().playStream(mockStream);
+
+      getStatusListener()({ playing: false, isBuffering: true, didJustFinish: false, error: null });
+
+      const state = useAudioStreamStore.getState();
+      expect(state.isPlaying).toBe(false);
+      expect(state.isBuffering).toBe(true);
+    });
+
+    it('should reconnect a live stream that finishes by re-pointing the player at its source', async () => {
+      jest.useFakeTimers();
+      try {
+        await useAudioStreamStore.getState().playStream(mockStream);
+        mockSoundObject.play.mockClear();
+
+        getStatusListener()({ playing: false, isBuffering: false, didJustFinish: true, error: null });
+        jest.advanceTimersByTime(1000);
+
+        expect(mockSoundObject.replace).toHaveBeenCalledWith({ uri: mockStream.Url });
+        expect(mockSoundObject.play).toHaveBeenCalled();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('should not reconnect once the stream has been stopped', async () => {
+      jest.useFakeTimers();
+      try {
+        await useAudioStreamStore.getState().playStream(mockStream);
+
+        getStatusListener()({ playing: false, isBuffering: false, didJustFinish: true, error: null });
+        await useAudioStreamStore.getState().stopStream();
+        jest.advanceTimersByTime(1000);
+
+        expect(mockSoundObject.replace).not.toHaveBeenCalled();
+      } finally {
+        jest.useRealTimers();
+      }
     });
   });
 
@@ -298,8 +362,8 @@ describe('AudioStreamStore', () => {
       expect(state.isLoading).toBe(false);
       expect(state.isBuffering).toBe(false);
       
-      expect(mockSoundObject.pauseAsync).toHaveBeenCalled();
-      expect(mockSoundObject.unloadAsync).toHaveBeenCalled();
+      expect(mockSoundObject.pause).toHaveBeenCalled();
+      expect(mockSoundObject.remove).toHaveBeenCalled();
       
       expect(mockLogger.info).toHaveBeenCalledWith({
         message: 'Audio stream stopped',
@@ -309,7 +373,9 @@ describe('AudioStreamStore', () => {
 
     it('should handle stop stream error', async () => {
       const mockError = new Error('Stop failed');
-      mockSoundObject.pauseAsync.mockRejectedValue(mockError);
+      mockSoundObject.pause.mockImplementation(() => {
+        throw mockError;
+      });
       
       useAudioStreamStore.setState({
         soundObject: mockSoundObject,
@@ -339,8 +405,8 @@ describe('AudioStreamStore', () => {
       expect(state.currentStream).toBeNull();
       expect(state.isPlaying).toBe(false);
       
-      expect(mockSoundObject.pauseAsync).not.toHaveBeenCalled();
-      expect(mockSoundObject.unloadAsync).not.toHaveBeenCalled();
+      expect(mockSoundObject.pause).not.toHaveBeenCalled();
+      expect(mockSoundObject.remove).not.toHaveBeenCalled();
     });
   });
 
@@ -359,8 +425,8 @@ describe('AudioStreamStore', () => {
       expect(state.currentStream).toBeNull();
       expect(state.isPlaying).toBe(false);
       
-      expect(mockSoundObject.pauseAsync).toHaveBeenCalled();
-      expect(mockSoundObject.unloadAsync).toHaveBeenCalled();
+      expect(mockSoundObject.pause).toHaveBeenCalled();
+      expect(mockSoundObject.remove).toHaveBeenCalled();
       
       expect(mockLogger.debug).toHaveBeenCalledWith({
         message: 'Audio stream store cleaned up',
@@ -369,7 +435,9 @@ describe('AudioStreamStore', () => {
 
     it('should handle cleanup error', async () => {
       const mockError = new Error('Cleanup failed');
-      mockSoundObject.pauseAsync.mockRejectedValue(mockError);
+      mockSoundObject.pause.mockImplementation(() => {
+        throw mockError;
+      });
       
       useAudioStreamStore.setState({
         soundObject: mockSoundObject,

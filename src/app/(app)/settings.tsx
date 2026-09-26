@@ -49,6 +49,15 @@ export default function Settings() {
     await login({ username: data.username, password: data.password });
   };
 
+  // The current session's tokens were issued by the previous server, so switching servers
+  // signs the user out to log in again against the new one.
+  const handleServerUrlChanged = React.useCallback(async () => {
+    logger.info({
+      message: 'Server URL changed, signing out',
+    });
+    await signOut();
+  }, [signOut]);
+
   useEffect(() => {
     if (status === 'signedIn' && isAuthenticated) {
       logger.info({
@@ -117,7 +126,7 @@ export default function Settings() {
       </ScrollView>
 
       <LoginInfoBottomSheet isOpen={showLoginInfo} onClose={() => setShowLoginInfo(false)} onSubmit={handleLoginInfoSubmit} />
-      <ServerUrlBottomSheet isOpen={showServerUrl} onClose={() => setShowServerUrl(false)} />
+      <ServerUrlBottomSheet isOpen={showServerUrl} onClose={() => setShowServerUrl(false)} onUrlChanged={handleServerUrlChanged} />
     </Box>
   );
 }

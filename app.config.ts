@@ -34,7 +34,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   orientation: 'default',
   icon: './assets/icon.png',
   userInterfaceStyle: 'automatic',
-  newArchEnabled: true,
   updates: {
     fallbackToCacheTimeout: 0,
   },
@@ -212,7 +211,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       '@rnmapbox/maps',
       {
-        RNMapboxMapsVersion: '11.8.0',
+        // Keep in step with the `mapbox` field of the installed @rnmapbox/maps — the JS
+        // bindings are generated against a specific native SDK, and pinning an older one
+        // makes style props the bindings emit (symbolZOffset and friends) trap natively.
+        RNMapboxMapsVersion: '11.23.1',
       },
     ],
     [
@@ -224,6 +226,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           'Resgrid Dispatch uses your location, including in the background, to keep the department map updated with your position. For example, while you are working a call away from the console, your location is periodically sent so other dispatchers and responders can see where you are, even when the app is not on screen.',
         locationAlwaysPermission:
           'Resgrid Dispatch uses your location in the background to keep the department map updated with your position. For example, while you are working a call away from the console, your location is periodically sent so other dispatchers and responders can see where you are, even when the app is not on screen.',
+        // Required even though getMotionActivityAsync() is never called: expo-location links
+        // CoreMotion (MotionActivityPermissionRequester), and App Store static analysis rejects
+        // the binary with ITMS-90683 whenever the framework is referenced and the string is absent.
+        motionUsagePermission:
+          'Resgrid Dispatch uses motion data to improve the accuracy of the location shown on the department map. For example, while you are driving to an incident, motion data helps distinguish travel from a stop so other dispatchers and responders see an accurate position.',
         isIosBackgroundLocationEnabled: true,
         isAndroidBackgroundLocationEnabled: true,
         isAndroidForegroundServiceEnabled: true,
@@ -257,10 +264,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         android: {
           extraProguardRules: '-keep class expo.modules.location.** { *; }',
           extraMavenRepos: ['../../node_modules/@notifee/react-native/android/libs'],
-          targetSdkVersion: 35,
+          targetSdkVersion: 36,
         },
         ios: {
           deploymentTarget: '18.1',
+          // Apps built with the iOS 27 SDK must adopt the UIKit scene life cycle or they are
+          // killed at launch. Remove once on SDK 58, whose template adopts it by default.
+          enableSceneSupport: true,
         },
       },
     ],
@@ -304,7 +314,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'expo-navigation-bar',
       {
         position: 'relative',
-        visibility: 'hidden',
+        hidden: true,
         behavior: 'inset-touch',
       },
     ],
@@ -328,9 +338,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     '@config-plugins/react-native-callkeep',
     'expo-web-browser',
+    'expo-image',
+    'expo-sharing',
+    'expo-status-bar',
     './customGradle.plugin.js',
     './customManifest.plugin.js',
-    ['app-icon-badge', appIconBadgeConfig],
+    './plugins/withResourceBundleDeploymentTarget.js',
+    ['./plugins/withIconBadge.js', appIconBadgeConfig],
   ],
   extra: {
     ...ClientEnv,

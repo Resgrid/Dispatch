@@ -91,7 +91,10 @@ export interface ContactAddressData {
 export interface ContactCustomFieldData {
   UdfFieldId: string;
   Label: string;
+  /** The stored value; for option fields this is the option key. */
   Value: string;
+  /** What to show: option keys resolved to labels, booleans as Yes/No. Older servers do not send it. */
+  DisplayValue?: string | null;
   FieldDataType: number;
   GroupName?: string | null;
   SortOrder: number;

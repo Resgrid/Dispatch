@@ -144,8 +144,9 @@ jest.mock('@/stores/toast/store', () => ({
   }),
 }));
 
+// Pin ids and types as the Core map API sends them (calls are Type 0 with a `c` prefix).
 const mockCallPin = {
-  Id: '123',
+  Id: 'c123',
   Title: 'Medical Emergency',
   Latitude: 40.7128,
   Longitude: -74.0060,
@@ -165,12 +166,12 @@ const mockCallPin = {
 };
 
 const mockUnitPin = {
-  Id: '456',
+  Id: 'u456',
   Title: 'Engine 1',
   Latitude: 40.7580,
   Longitude: -73.9855,
   ImagePath: 'engine_available',
-  Type: 2,
+  Type: 1,
   InfoWindowContent: 'Engine 1 available',
   Color: '#00ff00',
   zIndex: 1,
@@ -380,6 +381,29 @@ describe('Pin Actions Integration Tests', () => {
 
       expect(mockRouter.push).toHaveBeenCalledWith('/call/123');
       expect(mockOnClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('should navigate with a legacy unprefixed call pin id unchanged', () => {
+      render(<PinDetailModal pin={{ ...mockCallPin, Id: '123' }} isOpen={true} onClose={mockOnClose} onSetAsCurrentCall={mockOnSetAsCurrentCall} />);
+
+      fireEvent.press(screen.getByText('map.view_call_details'));
+
+      expect(mockRouter.push).toHaveBeenCalledWith('/call/123');
+    });
+
+    it('should open POI details with the bare POI id', () => {
+      render(
+        <PinDetailModal
+          pin={{ ...mockUnitPin, Id: 'poi9', Type: 4, ImagePath: 'map-icon-hospital', PoiTypeId: 3, Title: 'Hospital' }}
+          isOpen={true}
+          onClose={mockOnClose}
+          onSetAsCurrentCall={mockOnSetAsCurrentCall}
+        />
+      );
+
+      fireEvent.press(screen.getByText('map.view_poi_details'));
+
+      expect(mockRouter.push).toHaveBeenCalledWith('/poi/9');
     });
 
     it('should not show call details button for non-call pins', () => {
