@@ -148,9 +148,10 @@ export default function NewRecordScreen() {
 
       setIsBusy(true);
       try {
-        // Staged first so an interrupted send leaves the work on the device rather than losing it.
+        // Staged first so an interrupted send leaves the work on the device rather than losing it. A
+        // definition that seals values is not staged, so the draft is handed to the send directly.
         stageDraft(draft);
-        const result = await pushDraft(draftId);
+        const result = await pushDraft(draftId, draft);
         if (result.ok && result.recordId) {
           discardDraft(draftId);
           router.replace(`/records/${result.recordId}`);

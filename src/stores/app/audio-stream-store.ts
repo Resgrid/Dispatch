@@ -1,4 +1,5 @@
-import { Audio, type AVPlaybackSource, type AVPlaybackStatus } from 'expo-av';
+import { type AudioPlayer, type AudioStatus, createAudioPlayer, setAudioModeAsync } from 'expo-audio';
+import { Platform } from 'react-native';
 import { create } from 'zustand';
 
 import { getDepartmentAudioStreams } from '@/api/voice';
@@ -22,7 +23,7 @@ interface AudioStreamState {
 
   // Current stream
   currentStream: DepartmentAudioResultStreamData | null;
-  soundObject: Audio.Sound | null;
+  soundObject: AudioPlayer | null;
   isPlaying: boolean;
   isLoading: boolean;
   isBuffering: boolean;
@@ -102,79 +103,100 @@ export const useAudioStreamStore = create<AudioStreamState>((set, get) => ({
       });
 
       // Configure audio mode for streaming
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        staysActiveInBackground: true,
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: true,
-        playThroughEarpieceAndroid: false,
+      await setAudioModeAsync({
+        allowsRecording: false,
+        shouldPlayInBackground: true,
+        playsInSilentMode: true,
+        shouldRouteThroughEarpiece: false,
+        interruptionMode: Platform.OS === 'android' ? 'duckOthers' : 'mixWithOthers',
       });
 
-      // Create new sound object
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: stream.Url } as AVPlaybackSource,
-        {
-          shouldPlay: false,
-          isLooping: false,
-          volume: 1.0,
-          isMuted: false,
-          progressUpdateIntervalMillis: 1000,
-        },
-        (status: AVPlaybackStatus) => {
-          if (status.isLoaded) {
-            const { isPlaying, isBuffering } = get();
+      // Create new player
+      const source = { uri: stream.Url };
+      const sound = createAudioPlayer(source, {
+        updateInterval: 1000,
+        keepAudioSessionActive: true,
+      });
+      sound.loop = false;
+      sound.volume = 1.0;
+      sound.muted = false;
 
-            if (status.isPlaying !== isPlaying) {
-              set({ isPlaying: status.isPlaying });
-            }
+      // Active before any status can arrive, so the listener can tell this player's events from a superseded one's.
+      set({ soundObject: sound, currentStream: stream });
 
-            if (status.isBuffering !== isBuffering) {
-              set({ isBuffering: status.isBuffering });
-            }
+      sound.addListener('playbackStatusUpdate', (status: AudioStatus) => {
+        // A stopped or replaced player can still emit a late status; only the active player may touch the state.
+        if (get().soundObject !== sound) {
+          return;
+        }
 
-            // Handle stream ended/error scenarios
-            if (status.didJustFinish) {
-              logger.info({
-                message: 'Audio stream finished',
-                context: { streamName: stream.Name },
-              });
+        if (status.error) {
+          // Handle error state
+          logger.error({
+            message: 'Audio playback error',
+            context: { error: status.error, streamName: stream.Name },
+          });
+          try {
+            sound.remove();
+          } catch {
+            // The player may already have been released.
+          }
+          set({
+            soundObject: null,
+            currentStream: null,
+            isPlaying: false,
+            isLoading: false,
+            isBuffering: false,
+          });
+          return;
+        }
 
-              // For live streams, try to reconnect
-              const { currentStream } = get();
-              if (currentStream?.Id === stream.Id) {
-                clearReplayTimeout();
-                replayTimeout = setTimeout(async () => {
-                  replayTimeout = null;
-                  try {
-                    await sound.replayAsync();
-                  } catch (replayError) {
-                    logger.error({
-                      message: 'Failed to restart audio stream',
-                      context: { error: replayError, streamName: stream.Name },
-                    });
-                  }
-                }, 1000);
+        const { isPlaying, isBuffering } = get();
+
+        if (status.playing !== isPlaying) {
+          set({ isPlaying: status.playing });
+        }
+
+        if (status.isBuffering !== isBuffering) {
+          set({ isBuffering: status.isBuffering });
+        }
+
+        // Handle stream ended scenarios
+        if (status.didJustFinish) {
+          logger.info({
+            message: 'Audio stream finished',
+            context: { streamName: stream.Name },
+          });
+
+          // For live streams, try to reconnect
+          const { currentStream } = get();
+          if (currentStream?.Id === stream.Id) {
+            clearReplayTimeout();
+            replayTimeout = setTimeout(() => {
+              replayTimeout = null;
+              try {
+                // Re-point the player at the source rather than seeking: a live stream has
+                // nothing buffered to seek back into, so only a fresh connection resumes it.
+                sound.replace(source);
+                sound.play();
+              } catch (replayError) {
+                logger.error({
+                  message: 'Failed to restart audio stream',
+                  context: { error: replayError, streamName: stream.Name },
+                });
               }
-            }
-          } else {
-            // Handle error state
-            logger.error({
-              message: 'Audio playback error',
-              context: { error: 'Failed to load audio', streamName: stream.Name },
-            });
-            set({
-              soundObject: null,
-              currentStream: null,
-              isPlaying: false,
-              isLoading: false,
-              isBuffering: false,
-            });
+            }, 1000);
           }
         }
-      );
+      });
 
       // Start playing
-      await sound.playAsync();
+      sound.play();
+
+      // An error status reported while starting has already released this player.
+      if (get().soundObject !== sound) {
+        return;
+      }
 
       logger.info({
         message: 'Audio stream started successfully',
@@ -182,8 +204,6 @@ export const useAudioStreamStore = create<AudioStreamState>((set, get) => ({
       });
 
       set({
-        soundObject: sound,
-        currentStream: stream,
         isPlaying: true,
         isLoading: false,
         isBuffering: false,
@@ -211,8 +231,8 @@ export const useAudioStreamStore = create<AudioStreamState>((set, get) => ({
       const { soundObject, currentStream } = get();
 
       if (soundObject) {
-        await soundObject.pauseAsync();
-        await soundObject.unloadAsync();
+        soundObject.pause();
+        soundObject.remove();
 
         logger.info({
           message: 'Audio stream stopped',

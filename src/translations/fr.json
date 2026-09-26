@@ -164,6 +164,12 @@
     "no_location_for_routing": "Aucune donnée de localisation disponible pour le routage",
     "no_protocols": "Aucun protocole associé à cet appel",
     "no_timeline": "Aucun événement chronologique disponible",
+    "activity_link": {
+      "auto_linked": "lié automatiquement",
+      "auto_linked_hint": "Envoyé sans appel ; Resgrid l'a lié à partir du statut précédent ou de la répartition.",
+      "inferred": "déduit",
+      "inferred_hint": "Défini sans destination par une unité ou une personne dépêchée sur cet appel pendant son intervention."
+    },
     "not_available": "N/D",
     "not_found": "Appel introuvable",
     "missing_call_id": "L'identifiant de l'appel est manquant",
@@ -310,6 +316,7 @@
     "selected": "sélectionné",
     "title": "Appels",
     "type": "Type",
+    "udf_suggestions": "Suggestions",
     "units": "Unités",
     "users": "Utilisateurs",
     "viewNotes": "Notes",
@@ -678,7 +685,13 @@
       "empty": "Aucun fichier n'est joint à ce contact.",
       "share_unavailable": "Le partage n'est pas disponible sur cet appareil.",
       "download_failed": "Le fichier n'a pas pu être téléchargé."
-    }
+    },
+    "withheld": "{{count}} informations protégées sont masquées.",
+    "categoryLabel": "Catégorie : {{name}}",
+    "physicalAddress": "Adresse physique",
+    "mailingAddress": "Adresse postale",
+    "hasGeofence": "Ce lieu a un géorepérage cartographié.",
+    "customFields": "Champs personnalisés"
   },
   "dispatch": {
     "active_calls": "Appels actifs",
@@ -1141,7 +1154,15 @@
       "disabled": "Cette fonction est désactivée pour votre service.",
       "locked": "Déverrouillez les données protégées pour continuer.",
       "retry": "Serveur injoignable. Réessayez.",
-      "validation": "Le serveur a refusé la modification."
+      "validation": "Le serveur a refusé la modification.",
+      "timereports_subject_covered": "Cet équipage ou cette personne a déjà du temps sur un autre rapport ce jour-là.",
+      "timereports_date_exists": "Un rapport existe déjà pour cet équipage ou cette personne ce jour-là.",
+      "timereports_scope_invalid": "Cet équipage ou cette personne n'est pas actif sur ce déploiement.",
+      "timereports_locked": "Ce rapport ne peut plus être modifié.",
+      "timereports_time_invalid": "Saisissez les heures au format HH:mm.",
+      "deployments_closed": "Ce déploiement est clôturé.",
+      "expenses_receipt_invalid": "Le reçu n'a pas pu être lu.",
+      "deployments_attachment_too_large": "Le reçu est trop volumineux."
     },
     "financeMode": {
       "0": "Opérationnel",
@@ -1152,7 +1173,15 @@
       "end_before_start": "L'heure de fin doit être après l'heure de début.",
       "missing_subject": "Choisissez à qui ou à quoi correspond cette entrée.",
       "missing_time": "Saisissez une heure de début et de fin.",
-      "overlap": "Cette entrée chevauche une autre pour la même personne ou unité."
+      "overlap": "Cette entrée chevauche une autre pour la même personne ou unité.",
+      "subject_outside_report_scope": "Cette entrée concerne quelqu'un hors de l'équipage ou de la personne de ce rapport.",
+      "subject_on_other_report": "Cette personne ou unité a déjà du temps sur un autre rapport le même jour.",
+      "subject_not_on_roster": "Cette entrée concerne quelqu'un qui n'est pas dans l'effectif.",
+      "entries_overlap": "Deux entrées de la même personne ou unité se chevauchent.",
+      "no_entries": "Ajoutez au moins une entrée.",
+      "break_rule": "Une longue vacation n'a aucune pause enregistrée.",
+      "long_travel": "Plus de déplacement qu'autorisé en une journée ; une approbation est nécessaire.",
+      "outside_report_date": "Cette entrée tombe en dehors de la date du rapport."
     },
     "mars": {
       "counts": "{{errors}} erreurs · {{warnings}} avertissements",
@@ -1201,7 +1230,7 @@
       "noReport": "Aucun rapport de temps pour ce jour.",
       "notes": "Notes",
       "remove": "Supprimer",
-      "report": "Rapport n° {{number}}",
+      "report": "Rapport #{{number}}",
       "save": "Enregistrer les entrées",
       "start": "Commencer le rapport de temps",
       "subject": "Qui ou quoi",
@@ -1210,7 +1239,19 @@
       "to": "À",
       "total": "Total {{hours}} h",
       "type": "Type d'entrée",
-      "unpaidBreak": "Pause non payée (min)"
+      "unpaidBreak": "Pause non payée (min)",
+      "crewReport": "Rapport de temps d'équipage #{{number}} · {{name}}",
+      "individualReport": "Rapport de temps #{{number}} · {{name}}",
+      "noCrewReport": "Aucun rapport d'équipage pour {{name}} ce jour-là.",
+      "coveredBy": "Ce temps figure déjà sur le rapport #{{number}} de ce jour.",
+      "startCrew": "Commencer le rapport d'équipage",
+      "readOnly": "Vous pouvez consulter ce rapport mais pas le modifier.",
+      "nextDay": "Se termine le lendemain",
+      "applyToCrew": "Appliquer à l'équipage",
+      "approve": "Approuver le rapport",
+      "dayReports": "Rapports de ce jour",
+      "awaitingApproval": "En attente d'approbation ({{count}})",
+      "notOnRoster": "Vous ne faites pas partie de l'effectif ni d'un équipage de ce déploiement."
     },
     "title": "Déploiements",
     "usage": {
@@ -1224,6 +1265,54 @@
       "startOdometer": "Compteur début",
       "title": "Utilisation",
       "unit": "Unité"
+    },
+    "crewOf": "Équipage de {{names}}",
+    "scope": {
+      "deployment": "Tout le déploiement",
+      "mine": "Mon temps",
+      "crew": "Équipage : {{name}}",
+      "individual": "{{name}}"
+    },
+    "sign": {
+      "title": "Signatures",
+      "crewBossSigned": "Signé par le chef d'équipage {{when}}",
+      "crewBossPending": "Pas encore signé par le chef d'équipage.",
+      "customerSigned": "Signataire de l'organisme : {{name}}",
+      "customerPending": "Aucune signature de l'organisme enregistrée.",
+      "asCrewBoss": "Signer en tant que chef d'équipage",
+      "customerName": "Nom du signataire de l'organisme",
+      "recordCustomer": "Enregistrer la signature de l'organisme"
+    },
+    "expenses": {
+      "title": "Dépenses",
+      "type": {
+        "0": "Indemnité de repas",
+        "1": "Hébergement",
+        "2": "Hébergement privé",
+        "3": "Traversier",
+        "4": "Carburant",
+        "5": "Réapprovisionnement",
+        "6": "Autre"
+      },
+      "typeLabel": "Type de dépense",
+      "amount": "Montant ({{currency}})",
+      "description": "Description",
+      "city": "Ville",
+      "takePhoto": "Prendre une photo",
+      "choosePhoto": "Choisir une photo",
+      "receiptAttached": "Photo du reçu jointe.",
+      "save": "Ajouter la dépense",
+      "add": "Nouvelle dépense",
+      "noneToday": "Aucune dépense ce jour-là.",
+      "otherDays": "Autres jours",
+      "hasReceipt": "reçu",
+      "remove": "Supprimer",
+      "removeTitle": "Supprimer la dépense ?",
+      "removeBody": "Cela supprime la dépense et son reçu du déploiement.",
+      "cancel": "Annuler",
+      "saved": "Dépense enregistrée.",
+      "amountInvalid": "Saisissez un montant comme 42.50.",
+      "photoDenied": "Autorisez l'accès à l'appareil photo ou aux photos pour joindre un reçu."
     }
   },
   "personnel": {
@@ -1940,5 +2029,12 @@
     "entrance": "Entrée",
     "alert_notes": "Notes d'alerte",
     "files": "Fichiers du site"
+  },
+  "notifications": {
+    "detail_title": "Notification",
+    "additional_info": "Informations supplémentaires",
+    "view_call": "Voir l'appel",
+    "view_chat": "Voir la discussion",
+    "open_reference": "Ouvrir"
   }
 }

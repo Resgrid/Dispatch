@@ -1,5 +1,4 @@
-import { useFocusEffect } from '@react-navigation/native';
-import { type Href, router, Stack } from 'expo-router';
+import { type Href, router, Stack, useFocusEffect } from 'expo-router';
 import { CalendarClockIcon, Search, X } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';

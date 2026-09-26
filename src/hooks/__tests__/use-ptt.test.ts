@@ -19,12 +19,6 @@ jest.mock('@/stores/app/livekit-store', () => ({
   })),
 }));
 
-jest.mock('expo-av', () => ({
-  Audio: {
-    setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
-  },
-}));
-
 jest.mock('@/lib/logging', () => ({
   logger: {
     debug: jest.fn(),

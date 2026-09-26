@@ -11,7 +11,7 @@ jest.mock('@/lib/auth');
 jest.mock('@/stores/calls/detail-store');
 
 // Mock navigation
-jest.mock('@react-navigation/native', () => ({
+jest.mock('expo-router', () => ({
   useIsFocused: () => true,
   useNavigation: () => ({
     navigate: jest.fn(),

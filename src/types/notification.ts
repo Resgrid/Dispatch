@@ -6,7 +6,7 @@ export interface NotificationPayload {
   read?: boolean;
   type?: string;
   referenceId?: string;
-  referenceType?: 'call' | 'message' | 'status' | 'note' | 'other';
+  referenceType?: 'call' | 'message' | 'status' | 'note' | 'chat' | 'other';
   metadata?: Record<string, any>;
 }
 

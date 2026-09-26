@@ -118,7 +118,6 @@ const Menu = React.forwardRef<React.ComponentRef<typeof UIMenu>, IMenuProps>(fun
     <UIMenu
       entering={ZoomIn.duration(150).withInitialValues({
         transform: [{ scale: 0.9 }],
-        opacity: 0,
       })}
       exiting={FadeOut.duration(150)}
       ref={ref}

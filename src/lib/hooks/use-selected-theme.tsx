@@ -9,9 +9,9 @@ export type ColorSchemeType = 'light' | 'dark' | 'system';
 
 const applyColorScheme = (t: ColorSchemeType) => {
   // NativeWind v5: theme overrides go through the standard Appearance API
-  // (null clears the override on RN 0.81). GluestackUIProvider picks the value
+  // ('unspecified' clears the override). GluestackUIProvider picks the value
   // up via useColorScheme and applies the web <html> class / native class wrapper.
-  Appearance.setColorScheme(t === 'system' ? null : t);
+  Appearance.setColorScheme(t === 'system' ? 'unspecified' : t);
 };
 
 /**

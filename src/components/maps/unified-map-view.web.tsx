@@ -5,11 +5,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { StyleSheet, View } from 'react-native';
 
 import { getMapDataAndMarkers } from '@/api/mapping/mapping';
+import { useMapLiveLocations } from '@/hooks/use-map-live-locations';
 import { Env } from '@/lib/env';
 import { logger } from '@/lib/logging';
 import { getDepartmentMapCenter } from '@/lib/map-center';
-import { getMapPinSummary, hasValidMapCoordinates } from '@/lib/map-markers';
-import { createMapMarkerElement } from '@/lib/map-markers-web';
+import { hasValidMapCoordinates } from '@/lib/map-markers';
+import { buildMapPinPopupHtml, createMapMarkerElement } from '@/lib/map-markers-web';
 import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersData';
 import { type GetMapLayersData } from '@/models/v4/mapping/getMapLayersResultData';
 import { useLocationStore } from '@/stores/app/location-store';
@@ -47,6 +48,20 @@ interface UnifiedMapViewProps {
   testID?: string;
 }
 
+// Helper function to calculate center from markers
+const calculateCenterFromMarkers = (markers: MapMakerInfoData[]): { lat: number; lon: number } | null => {
+  const validMarkers = markers.filter((m) => m.Latitude && m.Longitude);
+  if (validMarkers.length === 0) return null;
+
+  const sumLat = validMarkers.reduce((sum, m) => sum + m.Latitude, 0);
+  const sumLon = validMarkers.reduce((sum, m) => sum + m.Longitude, 0);
+
+  return {
+    lat: sumLat / validMarkers.length,
+    lon: sumLon / validMarkers.length,
+  };
+};
+
 /**
  * Unified Map View component for Web using mapbox-gl-js.
  * Supports pins, layers, and user location.
@@ -66,7 +81,7 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
-  const markerMetaRef = useRef<Map<string, { signature: string; latitude: number; longitude: number }>>(new Map());
+  const markerMetaRef = useRef<Map<string, { signature: string; latitude: number; longitude: number; pin: MapMakerInfoData }>>(new Map());
   const onPinPressRef = useRef(onPinPress);
   const layerIdsRef = useRef<string[]>([]);
   const sourceIdsRef = useRef<string[]>([]);
@@ -76,6 +91,12 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
 
   // Use external pins if provided, otherwise use internal pins
   const mapPins = externalPins ?? internalPins;
+
+  // Realtime unit/personnel positions from the geolocation hub move the pins this view fetched itself; a parent
+  // that passes `pins` owns them. Refetch requests reuse fetchPins below.
+  const requestPinsRefreshRef = useRef<(() => void) | null>(null);
+  const requestPinsRefresh = useCallback(() => requestPinsRefreshRef.current?.(), []);
+  const { applyToFetchedPins } = useMapLiveLocations({ pins: internalPins, setPins: setInternalPins, requestRefresh: requestPinsRefresh, enabled: autoFetchPins && externalPins === undefined });
 
   // Get map style based on current theme
   const getMapStyle = useCallback(() => {
@@ -152,33 +173,29 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
     }
   }, [colorScheme, getMapStyle, isMapReady]);
 
-  // Helper function to calculate center from markers
-  const calculateCenterFromMarkers = (markers: MapMakerInfoData[]): { lat: number; lon: number } | null => {
-    const validMarkers = markers.filter((m) => m.Latitude && m.Longitude);
-    if (validMarkers.length === 0) return null;
-
-    const sumLat = validMarkers.reduce((sum, m) => sum + m.Latitude, 0);
-    const sumLon = validMarkers.reduce((sum, m) => sum + m.Longitude, 0);
-
-    return {
-      lat: sumLat / validMarkers.length,
-      lon: sumLon / validMarkers.length,
-    };
-  };
-
-  // Auto-fetch pins if enabled
-  useEffect(() => {
-    if (!autoFetchPins) return;
-
+  // Fetches the pins this view shows when auto-fetching: once on mount, and again in the background when the
+  // realtime location feed asks for it. Only the first successful load may move the camera.
+  const fetchAbortRef = useRef<AbortController | null>(null);
+  const hasCenteredOnDataRef = useRef(false);
+  const fetchPins = useCallback(async () => {
+    fetchAbortRef.current?.abort();
     const abortController = new AbortController();
+    fetchAbortRef.current = abortController;
 
-    const fetchMapDataAndMarkers = async () => {
-      try {
-        const mapDataAndMarkers = await getMapDataAndMarkers(abortController.signal);
+    try {
+      const fetchStartedAt = Date.now();
+      const mapDataAndMarkers = await getMapDataAndMarkers(abortController.signal);
 
-        if (mapDataAndMarkers?.Data) {
-          const markers = mapDataAndMarkers.Data.MapMakerInfos;
-          setInternalPins(markers);
+      if (abortController.signal.aborted) {
+        return;
+      }
+
+      if (mapDataAndMarkers?.Data) {
+        const markers = mapDataAndMarkers.Data.MapMakerInfos;
+        setInternalPins(applyToFetchedPins(markers, fetchStartedAt));
+
+        if (!hasCenteredOnDataRef.current) {
+          hasCenteredOnDataRef.current = true;
 
           // Center map on the data center if provided
           if (mapDataAndMarkers.Data.CenterLat && mapDataAndMarkers.Data.CenterLon && map.current) {
@@ -206,24 +223,42 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
             }
           }
         }
-      } catch (error) {
-        if (error instanceof Error && (error.name === 'AbortError' || error.message === 'canceled')) {
-          return;
-        }
-
-        logger.error({
-          message: 'Failed to fetch map data',
-          context: { error },
-        });
       }
-    };
+    } catch (error) {
+      if (error instanceof Error && (error.name === 'AbortError' || error.message === 'canceled')) {
+        return;
+      }
 
-    fetchMapDataAndMarkers();
+      logger.error({
+        message: 'Failed to fetch map data',
+        context: { error },
+      });
+    } finally {
+      if (fetchAbortRef.current === abortController) {
+        fetchAbortRef.current = null;
+      }
+    }
+  }, [applyToFetchedPins]);
+
+  useEffect(() => {
+    requestPinsRefreshRef.current = autoFetchPins
+      ? () => {
+          void fetchPins();
+        }
+      : null;
+  }, [autoFetchPins, fetchPins]);
+
+  // Auto-fetch pins if enabled
+  useEffect(() => {
+    if (!autoFetchPins) return;
+
+    void fetchPins();
 
     return () => {
-      abortController.abort();
+      fetchAbortRef.current?.abort();
+      fetchAbortRef.current = null;
     };
-  }, [autoFetchPins]);
+  }, [autoFetchPins, fetchPins]);
 
   // Keep a ref to the latest onPinPress so marker click handlers always call the
   // current callback without forcing a marker rebuild when its identity changes.
@@ -238,24 +273,20 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
     const theme = colorScheme === 'dark' ? 'dark' : 'light';
     const seenPinIds = new Set<string>();
 
-    const buildPopupHtml = (pin: MapMakerInfoData) =>
-      `<div style="padding: 8px;">
-        <h3 style="margin: 0 0 8px 0; font-weight: 600;">${pin.Title}</h3>
-        ${getMapPinSummary(pin) ? `<p style="margin: 0 0 8px 0; font-size: 12px;">${getMapPinSummary(pin)}</p>` : ''}
-        <p style="margin: 0; font-size: 11px; color: #666;">
-          ${pin.Latitude.toFixed(6)}, ${pin.Longitude.toFixed(6)}
-        </p>
-      </div>`;
-
     mapPins.forEach((pin) => {
       if (!hasValidMapCoordinates(pin)) return;
       seenPinIds.add(pin.Id);
 
-      const signature = `${theme}:${pin.Title}:${pin.Type}:${pin.PoiTypeId}:${pin.LayerId}:${pin.ImagePath}:${pin.PoiImage}:${pin.Marker}:${pin.Color}:${pin.Address}:${pin.Note}:${pin.PoiTypeName}:${pin.InfoWindowContent}`;
       const existing = markersRef.current.get(pin.Id);
+      const currentMeta = markerMetaRef.current.get(pin.Id);
+      // Live location moves replace only the moved pins' objects, so an unchanged pin is skipped outright
+      // instead of re-deriving its signature on every realtime update.
+      if (existing && currentMeta && currentMeta.pin === pin && currentMeta.signature.startsWith(`${theme}:`)) return;
+
+      const signature = `${theme}:${pin.Title}:${pin.Type}:${pin.PoiTypeId}:${pin.LayerId}:${pin.ImagePath}:${pin.PoiImage}:${pin.Marker}:${pin.Color}:${pin.Address}:${pin.Note}:${pin.PoiTypeName}:${pin.InfoWindowContent}`;
 
       if (existing) {
-        const meta = markerMetaRef.current.get(pin.Id);
+        const meta = currentMeta;
         const moved = !meta || meta.latitude !== pin.Latitude || meta.longitude !== pin.Longitude;
 
         if (moved) {
@@ -264,9 +295,9 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
 
         if (meta && meta.signature === signature) {
           if (moved) {
-            existing.getPopup()?.setHTML(buildPopupHtml(pin));
-            markerMetaRef.current.set(pin.Id, { signature, latitude: pin.Latitude, longitude: pin.Longitude });
+            existing.getPopup()?.setHTML(buildMapPinPopupHtml(pin));
           }
+          markerMetaRef.current.set(pin.Id, { signature, latitude: pin.Latitude, longitude: pin.Longitude, pin });
           return;
         }
 
@@ -274,18 +305,20 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
         markersRef.current.delete(pin.Id);
       }
 
-      // Create custom marker element using shared utility
+      // Create custom marker element using shared utility. The click handler looks the pin up by id so a
+      // marker that has since moved reports its current data, not the pin it was created from.
+      const pinId = pin.Id;
       const el = createMapMarkerElement(pin, theme, () => {
-        onPinPressRef.current?.(pin);
+        onPinPressRef.current?.(markerMetaRef.current.get(pinId)?.pin ?? pin);
       });
 
       // Create popup
-      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(buildPopupHtml(pin));
+      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(buildMapPinPopupHtml(pin));
 
       const marker = new mapboxgl.Marker({ element: el }).setLngLat([pin.Longitude, pin.Latitude]).setPopup(popup).addTo(map.current!);
 
       markersRef.current.set(pin.Id, marker);
-      markerMetaRef.current.set(pin.Id, { signature, latitude: pin.Latitude, longitude: pin.Longitude });
+      markerMetaRef.current.set(pin.Id, { signature, latitude: pin.Latitude, longitude: pin.Longitude, pin });
     });
 
     // Remove stale markers

@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { StyleSheet, View } from 'react-native';
 
 import { getMapDataAndMarkers } from '@/api/mapping/mapping';
+import { useMapLiveLocations } from '@/hooks/use-map-live-locations';
 import { logger } from '@/lib/logging';
 import { getDepartmentMapCenter } from '@/lib/map-center';
 import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersData';
@@ -66,6 +67,12 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
   // Use external pins if provided, otherwise use internal pins
   const mapPins = externalPins ?? internalPins;
 
+  // Realtime unit/personnel positions from the geolocation hub move the pins this view fetched itself; a parent
+  // that passes `pins` owns them. Refetch requests reuse refreshPins below.
+  const requestPinsRefreshRef = useRef<(() => void) | null>(null);
+  const requestPinsRefresh = useCallback(() => requestPinsRefreshRef.current?.(), []);
+  const { applyToFetchedPins } = useMapLiveLocations({ pins: internalPins, setPins: setInternalPins, requestRefresh: requestPinsRefresh, enabled: autoFetchPins && externalPins === undefined });
+
   // Get map style based on current theme
   const getMapStyle = useCallback(() => {
     return colorScheme === 'dark' ? Mapbox.StyleURL.Dark : Mapbox.StyleURL.Street;
@@ -101,11 +108,12 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
 
     const fetchMapDataAndMarkers = async () => {
       try {
+        const fetchStartedAt = Date.now();
         const mapDataAndMarkers = await getMapDataAndMarkers(abortController.signal);
 
         if (mapDataAndMarkers?.Data) {
           const markers = mapDataAndMarkers.Data.MapMakerInfos;
-          setInternalPins(markers);
+          setInternalPins(applyToFetchedPins(markers, fetchStartedAt));
 
           // Center map on the data center if provided
           if (mapDataAndMarkers.Data.CenterLat && mapDataAndMarkers.Data.CenterLon && cameraRef.current) {
@@ -150,7 +158,45 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
     return () => {
       abortController.abort();
     };
-  }, [autoFetchPins]);
+  }, [autoFetchPins, applyToFetchedPins]);
+
+  // Background refetch of the pins (update-hub changes, realtime location requests). Never moves the camera.
+  const refreshPins = useCallback(async () => {
+    // Abort any in-flight refresh
+    if (signalRAbortController.current) {
+      signalRAbortController.current.abort();
+    }
+    const controller = new AbortController();
+    signalRAbortController.current = controller;
+
+    try {
+      logger.debug({
+        message: 'Refreshing map pins in the background',
+      });
+
+      const fetchStartedAt = Date.now();
+      const mapDataAndMarkers = await getMapDataAndMarkers(controller.signal);
+      if (!controller.signal.aborted && mapDataAndMarkers?.Data) {
+        setInternalPins(applyToFetchedPins(mapDataAndMarkers.Data.MapMakerInfos, fetchStartedAt));
+      }
+    } catch (error) {
+      if (error instanceof Error && (error.name === 'AbortError' || error.message === 'canceled')) {
+        return;
+      }
+      logger.error({
+        message: 'Failed to refresh map pins',
+        context: { error },
+      });
+    }
+  }, [applyToFetchedPins]);
+
+  useEffect(() => {
+    requestPinsRefreshRef.current = autoFetchPins
+      ? () => {
+          void refreshPins();
+        }
+      : null;
+  }, [autoFetchPins, refreshPins]);
 
   // Refresh pins when SignalR updates come in (only when autoFetchPins is enabled)
   useEffect(() => {
@@ -162,33 +208,8 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
     }
 
     // Debounce to prevent rapid consecutive API calls from multiple SignalR events
-    signalRDebounceTimer.current = setTimeout(async () => {
-      // Abort any in-flight SignalR-triggered fetch
-      if (signalRAbortController.current) {
-        signalRAbortController.current.abort();
-      }
-      const controller = new AbortController();
-      signalRAbortController.current = controller;
-
-      try {
-        logger.debug({
-          message: 'Refreshing map pins from SignalR update',
-          context: { timestamp: lastUpdateTimestamp },
-        });
-
-        const mapDataAndMarkers = await getMapDataAndMarkers(controller.signal);
-        if (!controller.signal.aborted && mapDataAndMarkers?.Data) {
-          setInternalPins(mapDataAndMarkers.Data.MapMakerInfos);
-        }
-      } catch (error) {
-        if (error instanceof Error && (error.name === 'AbortError' || error.message === 'canceled')) {
-          return;
-        }
-        logger.error({
-          message: 'Failed to refresh map pins from SignalR update',
-          context: { error },
-        });
-      }
+    signalRDebounceTimer.current = setTimeout(() => {
+      void refreshPins();
     }, 1500);
 
     return () => {
@@ -199,7 +220,14 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
         signalRAbortController.current.abort();
       }
     };
-  }, [autoFetchPins, lastUpdateTimestamp]);
+  }, [autoFetchPins, lastUpdateTimestamp, refreshPins]);
+
+  // Abort a background refresh still in flight when the view unmounts.
+  useEffect(() => {
+    return () => {
+      signalRAbortController.current?.abort();
+    };
+  }, []);
 
   // Helper function to get layer style based on type
   const getLayerStyle = (layer: GetMapLayersData): FillLayerStyle | LineLayerStyle | CircleLayerStyle => {

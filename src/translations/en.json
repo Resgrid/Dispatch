@@ -163,6 +163,12 @@
     "no_location_for_routing": "No location data available for routing",
     "no_protocols": "No protocols attached to this call",
     "no_timeline": "No timeline events available",
+    "activity_link": {
+      "auto_linked": "auto-linked",
+      "auto_linked_hint": "Sent without a call; Resgrid linked it from the previous status or the dispatch.",
+      "inferred": "inferred",
+      "inferred_hint": "Set with no destination by a unit or person dispatched to this call while working it."
+    },
     "not_available": "N/A",
     "not_found": "Call not found",
     "missing_call_id": "Call ID is missing",
@@ -310,6 +316,7 @@
     "selected": "selected",
     "title": "Calls",
     "type": "Type",
+    "udf_suggestions": "Suggestions",
     "units": "Units",
     "users": "Users",
     "viewNotes": "Notes",
@@ -678,7 +685,13 @@
       "empty": "No files have been attached to this contact.",
       "share_unavailable": "Sharing is not available on this device.",
       "download_failed": "The file could not be downloaded."
-    }
+    },
+    "withheld": "{{count}} protected details are hidden.",
+    "categoryLabel": "Category: {{name}}",
+    "physicalAddress": "Physical address",
+    "mailingAddress": "Mailing address",
+    "hasGeofence": "This location has a mapped geofence.",
+    "customFields": "Custom fields"
   },
   "dispatch": {
     "active_calls": "Active Calls",
@@ -1141,7 +1154,15 @@
       "disabled": "This feature is turned off for your department.",
       "locked": "Unlock protected data to continue.",
       "retry": "Could not reach the server. Try again.",
-      "validation": "The server rejected the change."
+      "validation": "The server rejected the change.",
+      "timereports_subject_covered": "That crew or person already has time on another report for this day.",
+      "timereports_date_exists": "A report for this crew or person already exists for that day.",
+      "timereports_scope_invalid": "That crew or person is not active on this deployment.",
+      "timereports_locked": "This report can no longer be changed.",
+      "timereports_time_invalid": "Enter times as HH:mm.",
+      "deployments_closed": "This deployment is closed.",
+      "expenses_receipt_invalid": "The receipt could not be read.",
+      "deployments_attachment_too_large": "The receipt is too large."
     },
     "financeMode": {
       "0": "Operational",
@@ -1152,7 +1173,15 @@
       "end_before_start": "End time must be after the start time.",
       "missing_subject": "Pick who or what this entry is for.",
       "missing_time": "Enter a start and end time.",
-      "overlap": "This entry overlaps another for the same person or unit."
+      "overlap": "This entry overlaps another for the same person or unit.",
+      "subject_outside_report_scope": "This entry is for someone outside this report's crew or person.",
+      "subject_on_other_report": "This person or unit already has time on another report for the same day.",
+      "subject_not_on_roster": "This entry is for someone who is not on the roster.",
+      "entries_overlap": "Two entries overlap for the same person or unit.",
+      "no_entries": "Add at least one entry.",
+      "break_rule": "A long shift has no break recorded.",
+      "long_travel": "More travel than allowed in one day; it needs approval.",
+      "outside_report_date": "This entry falls outside the report date."
     },
     "mars": {
       "counts": "{{errors}} errors · {{warnings}} warnings",
@@ -1210,7 +1239,19 @@
       "to": "To",
       "total": "Total {{hours}} h",
       "type": "Entry type",
-      "unpaidBreak": "Unpaid break (min)"
+      "unpaidBreak": "Unpaid break (min)",
+      "crewReport": "Crew time report #{{number}} · {{name}}",
+      "individualReport": "Time report #{{number}} · {{name}}",
+      "noCrewReport": "No crew time report for {{name}} on this day.",
+      "coveredBy": "This time is already on report #{{number}} for this day.",
+      "startCrew": "Start crew time report",
+      "readOnly": "You can view this report but not change it.",
+      "nextDay": "Ends the next day",
+      "applyToCrew": "Apply to crew",
+      "approve": "Approve report",
+      "dayReports": "Reports this day",
+      "awaitingApproval": "Awaiting approval ({{count}})",
+      "notOnRoster": "You are not on this deployment's roster or crew."
     },
     "title": "Deployments",
     "usage": {
@@ -1224,6 +1265,54 @@
       "startOdometer": "Start odometer",
       "title": "Usage",
       "unit": "Unit"
+    },
+    "crewOf": "Crew of {{names}}",
+    "scope": {
+      "deployment": "Whole deployment",
+      "mine": "My time",
+      "crew": "Crew: {{name}}",
+      "individual": "{{name}}"
+    },
+    "sign": {
+      "title": "Signatures",
+      "crewBossSigned": "Crew boss signed {{when}}",
+      "crewBossPending": "Not signed by the crew boss yet.",
+      "customerSigned": "Agency signer: {{name}}",
+      "customerPending": "No agency signature recorded.",
+      "asCrewBoss": "Sign as crew boss",
+      "customerName": "Agency signer name",
+      "recordCustomer": "Record agency signature"
+    },
+    "expenses": {
+      "title": "Expenses",
+      "type": {
+        "0": "Meal per diem",
+        "1": "Lodging",
+        "2": "Private lodging",
+        "3": "Ferry",
+        "4": "Fuel",
+        "5": "Supply restock",
+        "6": "Other"
+      },
+      "typeLabel": "Expense type",
+      "amount": "Amount ({{currency}})",
+      "description": "Description",
+      "city": "City",
+      "takePhoto": "Take photo",
+      "choosePhoto": "Choose photo",
+      "receiptAttached": "Receipt photo attached.",
+      "save": "Add expense",
+      "add": "New expense",
+      "noneToday": "No expenses for this day.",
+      "otherDays": "Other days",
+      "hasReceipt": "receipt",
+      "remove": "Remove",
+      "removeTitle": "Remove expense?",
+      "removeBody": "This removes the expense and its receipt from the deployment.",
+      "cancel": "Cancel",
+      "saved": "Expense saved.",
+      "amountInvalid": "Enter an amount such as 42.50.",
+      "photoDenied": "Allow camera or photo access to attach a receipt."
     }
   },
   "personnel": {
@@ -1940,5 +2029,12 @@
     "entrance": "Entrance",
     "alert_notes": "Alert notes",
     "files": "Site files"
+  },
+  "notifications": {
+    "detail_title": "Notification",
+    "additional_info": "Additional Information",
+    "view_call": "View Call",
+    "view_chat": "View Chat",
+    "open_reference": "Open"
   }
 }

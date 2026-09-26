@@ -767,7 +767,7 @@ describe('StatusBottomSheet', () => {
     const buttons = screen.getAllByTestId('button');
     const submitButton = buttons.find(button => {
       try {
-        const textElements = button.findAllByType('Text');
+        const textElements = button.findAll((node: any) => node.type === 'Text');
         return textElements.some((text: any) => text.props.children === 'Submit');
       } catch (e) {
         return false;
@@ -798,7 +798,7 @@ describe('StatusBottomSheet', () => {
     const buttons = screen.getAllByTestId('button');
     const submitButton = buttons.find(button => {
       try {
-        const textElements = button.findAllByType('Text');
+        const textElements = button.findAll((node: any) => node.type === 'Text');
         return textElements.some((text: any) => text.props.children === 'Submit');
       } catch (e) {
         return false;

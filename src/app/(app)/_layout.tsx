@@ -57,6 +57,7 @@ async function teardownSignedInSession(): Promise<void> {
     ['SignalR update hub', () => signalR.disconnectUpdateHub()],
     ['SignalR chat hub', () => signalR.disconnectChatHub()],
     ['SignalR geolocation hub', () => signalR.disconnectGeolocationHub()],
+    ['realtime map locations', () => signalR.clearLiveLocations()],
     ['LiveKit room', () => useLiveKitStore.getState().disconnectFromRoom()],
     ['audio stream', () => useAudioStreamStore.getState().cleanup()],
     ['audio service', () => audioService.cleanup()],
@@ -239,6 +240,24 @@ export default function TabLayout() {
         } catch (error) {
           logger.error({
             message: 'Failed to connect SignalR update hub during initialization',
+            context: { error, platform: Platform.OS },
+          });
+          // Don't fail initialization if SignalR connection fails
+        }
+
+        if (!isCurrentRun()) return;
+
+        // The dispatch console's live maps move unit and personnel pins from the geolocation hub's feed, so it
+        // connects with the update hub (and, like it, disconnects on background and reconnects on resume).
+        try {
+          await useSignalRStore.getState().connectGeolocationHub();
+          logger.info({
+            message: 'SignalR geolocation hub connected successfully',
+            context: { platform: Platform.OS },
+          });
+        } catch (error) {
+          logger.error({
+            message: 'Failed to connect SignalR geolocation hub during initialization',
             context: { error, platform: Platform.OS },
           });
           // Don't fail initialization if SignalR connection fails

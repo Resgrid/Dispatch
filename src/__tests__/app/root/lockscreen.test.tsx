@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
-import { NavigationContainer } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 
 import Lockscreen from '../../../app/lockscreen';
@@ -11,6 +10,7 @@ import useLockscreenStore from '@/stores/lockscreen/store';
 // Mock dependencies
 jest.mock('expo-router', () => ({
   useRouter: jest.fn(),
+  useIsFocused: jest.fn(() => true),
 }));
 
 jest.mock('react-i18next', () => ({
@@ -38,7 +38,7 @@ jest.mock('@/lib/auth/api', () => ({
 jest.mock('@/stores/lockscreen/store');
 
 const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  return <NavigationContainer>{children}</NavigationContainer>;
+  return <>{children}</>;
 };
 
 describe('Lockscreen', () => {
@@ -122,7 +122,7 @@ describe('Lockscreen', () => {
       expect(passwordInput.props.type).toBe('password');
 
       // Find all pressable elements and get the eye icon toggle (it's inside InputSlot)
-      const allElements = root.findAllByType('View');
+      const allElements = root.findAll((node: any) => node.type === 'View');
       const inputSlot = allElements.find((el: any) => el.props.className?.includes('pr-3'));
       
       // Trigger the press on the InputSlot which has the onPress handler

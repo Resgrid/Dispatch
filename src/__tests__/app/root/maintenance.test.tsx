@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
-import { NavigationContainer } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 
 import Maintenance from '../../../app/maintenance';
@@ -9,6 +8,7 @@ import { Env } from '@/lib/env';
 // Mock dependencies
 jest.mock('expo-router', () => ({
   useRouter: jest.fn(),
+  useIsFocused: jest.fn(() => true),
 }));
 
 jest.mock('react-i18next', () => ({
@@ -31,7 +31,7 @@ jest.mock('@/lib/env', () => ({
 }));
 
 const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  return <NavigationContainer>{children}</NavigationContainer>;
+  return <>{children}</>;
 };
 
 describe('Maintenance', () => {

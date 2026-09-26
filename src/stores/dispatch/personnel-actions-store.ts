@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 import { savePersonsStaffings } from '@/api/personnel/personnelStaffing';
 import { savePersonsStatuses } from '@/api/personnel/personnelStatuses';
-import { DestinationEntityType, type DestinationSelectionType } from '@/lib/destination-helpers';
+import { type DestinationSelectionType, getStatusDestinationPayload } from '@/lib/destination-helpers';
 import { type CallResultData } from '@/models/v4/calls/callResultData';
 import { type GroupResultData } from '@/models/v4/groups/groupsResultData';
 import { type PoiResultData } from '@/models/v4/mapping/poiResultData';
@@ -12,12 +12,28 @@ import { type StatusesResultData } from '@/models/v4/statuses/statusesResultData
 export type PersonnelActionTab = 'status' | 'staffing';
 export type DestinationType = DestinationSelectionType;
 
+export interface OpenPersonnelActionsOptions {
+  /**
+   * Explicit call context (the dashboard "+" set-status-for-call action). The destination is preset
+   * to this call and it is sent with the status even when the status's Detail does not list calls.
+   */
+  callContext?: CallResultData | null;
+}
+
 interface PersonnelActionsState {
   // Panel visibility
   isActionsOpen: boolean;
 
   // Selected personnel
   selectedPersonnel: PersonnelInfoResultData | null;
+
+  // Explicit call context the panel was opened from (null for a plain personnel selection)
+  callContext: CallResultData | null;
+
+  // Incremented on every openActions so the panel re-initialises its default destination per open
+  actionsSessionId: number;
+  // The session whose default destination has been applied (kept here so a remount does not re-apply it)
+  destinationInitializedSessionId: number | null;
 
   // Current tab
   activeTab: PersonnelActionTab;
@@ -49,8 +65,9 @@ interface PersonnelActionsState {
   staffingError: string | null;
 
   // Actions
-  openActions: (personnel: PersonnelInfoResultData) => void;
+  openActions: (personnel: PersonnelInfoResultData, options?: OpenPersonnelActionsOptions) => void;
   closeActions: () => void;
+  markDestinationInitialized: (sessionId: number) => void;
   setActiveTab: (tab: PersonnelActionTab) => void;
 
   // Status actions
@@ -84,6 +101,9 @@ interface PersonnelActionsState {
 const initialState = {
   isActionsOpen: false,
   selectedPersonnel: null,
+  callContext: null,
+  actionsSessionId: 0,
+  destinationInitializedSessionId: null,
   activeTab: 'status' as PersonnelActionTab,
   selectedStatus: null,
   statusDestinationType: 'none' as DestinationType,
@@ -108,15 +128,18 @@ const initialState = {
 export const usePersonnelActionsStore = create<PersonnelActionsState>((set, get) => ({
   ...initialState,
 
-  openActions: (personnel) => {
-    set({
+  openActions: (personnel, options) => {
+    const callContext = options?.callContext ?? null;
+    set((state) => ({
       isActionsOpen: true,
       selectedPersonnel: personnel,
+      callContext,
+      actionsSessionId: state.actionsSessionId + 1,
       activeTab: 'status',
-      // Reset form states when opening for new personnel
+      // Reset form states when opening for new personnel; an explicit call context presets the destination
       selectedStatus: null,
-      statusDestinationType: 'none',
-      statusSelectedCall: null,
+      statusDestinationType: callContext ? 'call' : 'none',
+      statusSelectedCall: callContext,
       statusSelectedStation: null,
       statusSelectedPoi: null,
       statusNote: '',
@@ -124,15 +147,18 @@ export const usePersonnelActionsStore = create<PersonnelActionsState>((set, get)
       staffingNote: '',
       statusError: null,
       staffingError: null,
-    });
+    }));
   },
 
   closeActions: () => {
     set({
       isActionsOpen: false,
       selectedPersonnel: null,
+      callContext: null,
     });
   },
+
+  markDestinationInitialized: (sessionId) => set({ destinationInitializedSessionId: sessionId }),
 
   setActiveTab: (tab) => set({ activeTab: tab }),
 
@@ -189,7 +215,7 @@ export const usePersonnelActionsStore = create<PersonnelActionsState>((set, get)
     const storeState = get();
     const selectedPersonnel = overrides?.personnel ?? storeState.selectedPersonnel;
     const selectedStatus = overrides?.status ?? storeState.selectedStatus;
-    const { statusDestinationType, statusSelectedCall, statusSelectedStation, statusSelectedPoi, statusNote } = storeState;
+    const { statusDestinationType, statusSelectedCall, statusSelectedStation, statusSelectedPoi, statusNote, callContext } = storeState;
 
     if (!selectedPersonnel || !selectedStatus) {
       set({ statusError: 'Please select a status' });
@@ -200,25 +226,17 @@ export const usePersonnelActionsStore = create<PersonnelActionsState>((set, get)
 
     try {
       const date = new Date();
-      let respondingTo = '';
-
-      if (statusDestinationType === 'call' && statusSelectedCall) {
-        respondingTo = statusSelectedCall.CallId;
-      } else if (statusDestinationType === 'station' && statusSelectedStation) {
-        respondingTo = statusSelectedStation.GroupId;
-      } else if (statusDestinationType === 'poi' && statusSelectedPoi) {
-        respondingTo = statusSelectedPoi.PoiId.toString();
-      }
-
-      let respondingToType: number | null = null;
-
-      if (statusDestinationType === 'call' && statusSelectedCall) {
-        respondingToType = DestinationEntityType.Call;
-      } else if (statusDestinationType === 'station' && statusSelectedStation) {
-        respondingToType = DestinationEntityType.Station;
-      } else if (statusDestinationType === 'poi' && statusSelectedPoi) {
-        respondingToType = DestinationEntityType.Poi;
-      }
+      // Only send a destination the chosen status supports (an explicit call context always may carry its call)
+      const { respondingTo, respondingToType } = getStatusDestinationPayload(
+        {
+          selectedDestinationType: statusDestinationType,
+          selectedCall: statusSelectedCall,
+          selectedStation: statusSelectedStation,
+          selectedPoi: statusSelectedPoi,
+        },
+        selectedStatus.Detail,
+        !!callContext
+      );
 
       await savePersonsStatuses({
         UserIds: [selectedPersonnel.UserId],
@@ -238,14 +256,11 @@ export const usePersonnelActionsStore = create<PersonnelActionsState>((set, get)
         EventId: '',
       });
 
-      // Reset the status form after successful submission
+      // Reset the status and note after a successful submission. The destination stays sticky so a
+      // follow-up status for the same person (e.g. Responding -> On Scene) keeps the same call.
       set({
         isSubmittingStatus: false,
         selectedStatus: null,
-        statusDestinationType: 'none',
-        statusSelectedCall: null,
-        statusSelectedStation: null,
-        statusSelectedPoi: null,
         statusNote: '',
       });
 

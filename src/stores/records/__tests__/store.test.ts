@@ -137,6 +137,53 @@ describe('Field Records store conformance', () => {
     expect(useRecordsStore.getState().pendingDrafts).toEqual({});
   });
 
+  it('sends a protected definition online without ever keeping it on the device', async () => {
+    useRecordsStore.setState({ catalog: { ContractVersion: 'field-catalog.v1', OriginClient: 'Dispatch', Ok: true, Reasons: [], ContextVerified: true, Definitions: [goldenCatalogEntry({ RequiresProtectedGrant: true })], Exclusions: [], ServerTimestampMs: 0 } });
+    const draft = { clientRecordId: 'draft-p', recordId: null, definitionKey: 'shift-log', definitionVersion: 3, name: 'Shift log', values: [], updatedOn: '2026-09-06T00:00:00Z' };
+    recordsApi.createRecordDraft.mockRejectedValueOnce({ response: { status: 500, data: { title: 'Unavailable' } } }).mockResolvedValueOnce({ Data: { RecordId: 'server-p', DefinitionVersion: 3, State: RmsRecordState.Draft, RowVersion: 1 } });
+    fieldApi.syncFieldRecords.mockResolvedValue({ Data: { Ok: true, ResetRequired: false, ScopeStamp: 'scope-1', ServerTimestampMs: 10, Records: [], Tombstones: [], Drafts: [], Assignments: [] } });
+
+    useRecordsStore.getState().stageDraft(draft);
+    const failed = await useRecordsStore.getState().pushDraft('draft-p', draft);
+
+    expect(failed).toMatchObject({ ok: false, error: 'Unavailable' });
+    expect(useRecordsStore.getState().pendingDrafts).toEqual({});
+
+    const sent = await useRecordsStore.getState().pushDraft('draft-p', draft);
+
+    expect(sent).toMatchObject({ ok: true, recordId: 'server-p' });
+    expect(recordsApi.createRecordDraft).toHaveBeenLastCalledWith(expect.objectContaining({ DefinitionKey: 'shift-log', IdempotencyKey: 'draft-p' }));
+    expect(useRecordsStore.getState().pendingDrafts).toEqual({});
+  });
+
+  describe('before the catalog has loaded', () => {
+    const draft = { clientRecordId: 'draft-u', recordId: null, definitionKey: 'shift-log', definitionVersion: 3, name: 'Shift log', values: [], updatedOn: '2026-09-06T00:00:00Z' };
+
+    it('does not stage a draft, since its definition may be one that seals values', () => {
+      useRecordsStore.getState().stageDraft(draft);
+
+      expect(useRecordsStore.getState().pendingDrafts).toEqual({});
+    });
+
+    it('does not keep a failed send that was never staged', async () => {
+      recordsApi.createRecordDraft.mockRejectedValueOnce({ response: { status: 500, data: { title: 'Unavailable' } } });
+
+      const result = await useRecordsStore.getState().pushDraft('draft-u', draft);
+
+      expect(result).toMatchObject({ ok: false, error: 'Unavailable' });
+      expect(useRecordsStore.getState().pendingDrafts).toEqual({});
+    });
+
+    it('keeps a draft staged earlier when its send fails', async () => {
+      useRecordsStore.setState({ pendingDrafts: { 'draft-u': draft } });
+      recordsApi.createRecordDraft.mockRejectedValueOnce({ response: { status: 500, data: { title: 'Unavailable' } } });
+
+      await useRecordsStore.getState().pushAllDrafts();
+
+      expect(useRecordsStore.getState().pendingDrafts['draft-u']).toMatchObject({ clientRecordId: 'draft-u', lastError: 'Unavailable' });
+    });
+  });
+
   it('keeps a conflicted draft and never replays it in the batch push', async () => {
     useRecordsStore.setState({ catalog: { ContractVersion: 'field-catalog.v1', OriginClient: 'Dispatch', Ok: true, Reasons: [], ContextVerified: true, Definitions: [goldenCatalogEntry()], Exclusions: [], ServerTimestampMs: 0 } });
     recordsApi.createRecordDraft.mockRejectedValue({ response: { status: 409, data: { type: 'record_concurrency', title: 'Changed' } } });

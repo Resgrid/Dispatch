@@ -168,3 +168,97 @@ export const getSelectedDestinationId = ({ selectedDestinationType, selectedCall
       return '';
   }
 };
+
+/**
+ * Destination capabilities for a status change. Normally these come straight from the status's
+ * `Detail`, but a status set from an explicit call context (the dashboard "+" set-status-for-call
+ * action) may always carry a call destination, whatever the status's `Detail` lists — that call is
+ * how the server's call reports attribute the status change to the call.
+ */
+export const getStatusDestinationCapabilities = (detail?: number | null, hasCallContext = false): DestinationCapabilities => {
+  const capabilities = getDestinationCapabilities(detail);
+  if (!hasCallContext || capabilities.showCalls) {
+    return capabilities;
+  }
+
+  return { ...capabilities, showCalls: true, supportsDestination: true };
+};
+
+/**
+ * Narrows a destination selection to what the chosen status accepts. A destination picked (or
+ * carried over) for an earlier status is dropped to 'none' when the new status's `Detail` does not
+ * support that destination type, so a leftover call/station/POI is never sent with an unrelated status.
+ */
+export const getEffectiveDestinationType = (selection: DestinationSelectionState, detail?: number | null, hasCallContext = false): DestinationSelectionType => {
+  const capabilities = getStatusDestinationCapabilities(detail, hasCallContext);
+
+  switch (selection.selectedDestinationType) {
+    case 'call':
+      return capabilities.showCalls && selection.selectedCall ? 'call' : 'none';
+    case 'station':
+      return capabilities.showStations && selection.selectedStation ? 'station' : 'none';
+    case 'poi':
+      return capabilities.showPois && selection.selectedPoi ? 'poi' : 'none';
+    default:
+      return 'none';
+  }
+};
+
+export interface StatusDestinationPayload {
+  respondingTo: string;
+  respondingToType: DestinationEntityType | null;
+}
+
+/**
+ * The `RespondingTo` / `RespondingToType` pair to send with a status change (see
+ * {@link getEffectiveDestinationType}). Returns an empty destination when the status does not
+ * support the selected destination type.
+ */
+export const getStatusDestinationPayload = (selection: DestinationSelectionState, detail?: number | null, hasCallContext = false): StatusDestinationPayload => {
+  const effectiveType = getEffectiveDestinationType(selection, detail, hasCallContext);
+  const respondingTo = getSelectedDestinationId({ ...selection, selectedDestinationType: effectiveType });
+
+  if (!respondingTo) {
+    return { respondingTo: '', respondingToType: null };
+  }
+
+  return { respondingTo, respondingToType: getDestinationSelectionTypeValue(effectiveType) };
+};
+
+export interface DefaultDestinationCallInput {
+  /** Explicit call context (the dashboard "+" set-status-for-call action). Always wins. */
+  callContext?: CallResultData | null;
+  /** The unit's `CurrentDestinationId` / the person's `StatusDestinationId`. */
+  currentDestinationId?: string | null;
+  /** The call currently selected on the dispatch console. */
+  selectedCallId?: string | null;
+  /** Active calls only — a closed or cancelled call is never a default destination. */
+  activeCalls: CallResultData[];
+}
+
+/**
+ * Picks the call a status change for a unit/person should default to:
+ * (a) the explicit call context; (b) the unit's/person's current destination when it is a call that
+ * is still active; (c) the console's selected call when it is active; otherwise none.
+ */
+export const resolveDefaultDestinationCall = ({ callContext, currentDestinationId, selectedCallId, activeCalls }: DefaultDestinationCallInput): CallResultData | null => {
+  if (callContext) {
+    return callContext;
+  }
+
+  if (currentDestinationId) {
+    const currentCall = activeCalls.find((call) => call.CallId === currentDestinationId);
+    if (currentCall) {
+      return currentCall;
+    }
+  }
+
+  if (selectedCallId) {
+    const selectedCall = activeCalls.find((call) => call.CallId === selectedCallId);
+    if (selectedCall) {
+      return selectedCall;
+    }
+  }
+
+  return null;
+};

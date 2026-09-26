@@ -16,10 +16,12 @@ import { useActiveMapLayers } from '@/hooks/use-active-map-layers';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { useAppLifecycle } from '@/hooks/use-app-lifecycle';
 import { MapLayerType, useMapLayers } from '@/hooks/use-map-layers';
+import { useMapLiveLocations } from '@/hooks/use-map-live-locations';
 import { useMapSignalRUpdates } from '@/hooks/use-map-signalr-updates';
 import { Env } from '@/lib/env';
 import { logger } from '@/lib/logging';
-import { createDefaultVisiblePoiLayerIds, filterMapPinsByPoiLayers, getPoiMapLayerId } from '@/lib/poi-map-layers';
+import { getPinEntityId } from '@/lib/map-pin-ids';
+import { createDefaultVisiblePoiLayerIds, filterMapPinsByPoiLayers, getPoiMapLayerId, mergeVisiblePoiLayerIds } from '@/lib/poi-map-layers';
 import { onSortOptions } from '@/lib/utils';
 import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersData';
 import { type GetMapLayersData } from '@/models/v4/mapping/getMapLayersResultData';
@@ -124,12 +126,28 @@ export default function Map() {
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
+  // The POI layers last synced from map data; null until the first load. Background refetches (update-hub
+  // events, realtime locations) must keep the user's layer toggles, so only the first load applies defaults.
+  const syncedPoiLayersRef = useRef<PoiLayerData[] | null>(null);
   const syncPoiLayers = useCallback((nextPoiLayers: PoiLayerData[]) => {
+    const previousPoiLayers = syncedPoiLayersRef.current;
+    syncedPoiLayersRef.current = nextPoiLayers;
     setPoiLayers(nextPoiLayers);
-    setVisiblePoiLayerIds(createDefaultVisiblePoiLayerIds(nextPoiLayers));
+    setVisiblePoiLayerIds((currentLayerIds) => (previousPoiLayers === null ? createDefaultVisiblePoiLayerIds(nextPoiLayers) : mergeVisiblePoiLayerIds(currentLayerIds, previousPoiLayers, nextPoiLayers)));
   }, []);
 
-  useMapSignalRUpdates(setMapPins, syncPoiLayers);
+  // Realtime unit/personnel positions from the geolocation hub. Its refetch requests go through the
+  // update-hub refetch below, which is wired in once that hook has run.
+  const requestPinsRefreshRef = useRef<(() => void) | null>(null);
+  const requestPinsRefresh = useCallback(() => requestPinsRefreshRef.current?.(), []);
+  const { applyToFetchedPins } = useMapLiveLocations({ pins: mapPins, setPins: setMapPins, requestRefresh: requestPinsRefresh });
+
+  const handleMarkersFetched = useCallback((markers: MapMakerInfoData[], fetchStartedAt: number) => setMapPins(applyToFetchedPins(markers, fetchStartedAt)), [applyToFetchedPins]);
+
+  const { requestRefresh } = useMapSignalRUpdates(handleMarkersFetched, syncPoiLayers);
+  useEffect(() => {
+    requestPinsRefreshRef.current = requestRefresh;
+  }, [requestRefresh]);
 
   const togglePoiLayer = useCallback((layerId: string) => {
     setVisiblePoiLayerIds((currentLayerIds) => {
@@ -288,10 +306,11 @@ export default function Map() {
 
     const fetchMapDataAndMarkers = async () => {
       try {
+        const fetchStartedAt = Date.now();
         const mapDataAndMarkers = await getMapDataAndMarkers(abortController.signal);
 
         if (mapDataAndMarkers && mapDataAndMarkers.Data) {
-          setMapPins(mapDataAndMarkers.Data.MapMakerInfos);
+          handleMarkersFetched(mapDataAndMarkers.Data.MapMakerInfos, fetchStartedAt);
           syncPoiLayers(mapDataAndMarkers.Data.PoiLayers ?? []);
         }
       } catch (error) {
@@ -316,7 +335,7 @@ export default function Map() {
     return () => {
       abortController.abort();
     };
-  }, [syncPoiLayers]);
+  }, [handleMarkersFetched, syncPoiLayers]);
 
   useEffect(() => {
     Animated.loop(
@@ -384,19 +403,19 @@ export default function Map() {
       logger.info({
         message: 'Setting call as current call',
         context: {
-          callId: pin.Id,
+          callId: getPinEntityId(pin),
           callTitle: pin.Title,
         },
       });
 
-      await useCoreStore.getState().setActiveCall(pin.Id);
+      await useCoreStore.getState().setActiveCall(getPinEntityId(pin));
       useToastStore.getState().showToast('success', t('map.call_set_as_current'));
     } catch (error) {
       logger.error({
         message: 'Failed to set call as current call',
         context: {
           error,
-          callId: pin.Id,
+          callId: getPinEntityId(pin),
           callTitle: pin.Title,
         },
       });

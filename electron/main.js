@@ -275,6 +275,17 @@ app.whenReady().then(() => {
     });
 });
 
+// Settings such as the selected server URL live in the renderer's localStorage, which
+// Chromium writes to disk lazily. Flush it before exiting so a change made just before
+// quitting survives the next launch.
+app.on('before-quit', () => {
+    try {
+        session.defaultSession.flushStorageData();
+    } catch (err) {
+        console.error('Failed to flush storage data before quit:', err);
+    }
+});
+
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
         app.quit();

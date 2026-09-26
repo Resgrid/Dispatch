@@ -1,9 +1,11 @@
 import { useNotifications } from '@novu/react-native';
 import { useColorScheme } from 'nativewind';
 import React, { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Animated, Dimensions, Platform, Pressable, SafeAreaView, StatusBar, type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { ArrowLeft, Calendar, ExternalLink, Trash2 } from '@/components/ui/lucide-icons';
+import { hasReferenceRoute } from '@/lib/notifications/inbox-reference';
 
 // Define the interface directly in this file
 interface NotificationPayload {
@@ -30,6 +32,7 @@ const SIDEBAR_WIDTH = Math.min(width * 0.85, 400);
 const STATUS_BAR_HEIGHT = Platform.OS === 'ios' ? 44 : StatusBar.currentHeight || 0;
 
 export const NotificationDetail = ({ notification, onClose, onDelete, onNavigateToReference }: NotificationDetailProps) => {
+  const { t } = useTranslation();
   const styles = useStyles();
   const { refetch } = useNotifications();
   const slideAnim = React.useRef(new Animated.Value(SIDEBAR_WIDTH)).current;
@@ -111,7 +114,7 @@ export const NotificationDetail = ({ notification, onClose, onDelete, onNavigate
             <Pressable onPress={handleClose} style={styles.backButton}>
               <ArrowLeft size={24} className="text-primary-500 dark:text-primary-400" strokeWidth={2} />
             </Pressable>
-            <Text style={styles.headerTitle}>Notification</Text>
+            <Text style={styles.headerTitle}>{t('notifications.detail_title')}</Text>
             <Pressable onPress={handleDelete} style={styles.deleteButton}>
               <Trash2 size={24} className="text-red-500 dark:text-red-400" strokeWidth={2} />
             </Pressable>
@@ -140,7 +143,7 @@ export const NotificationDetail = ({ notification, onClose, onDelete, onNavigate
 
             {notification.metadata && Object.keys(notification.metadata).length > 0 ? (
               <View style={styles.metadataDetailsContainer}>
-                <Text style={styles.metadataTitle}>Additional Information</Text>
+                <Text style={styles.metadataTitle}>{t('notifications.additional_info')}</Text>
                 {Object.entries(notification.metadata).map(([key, value]) => (
                   <View key={key} style={styles.metadataItem}>
                     <Text style={styles.metadataKey}>{formatKey(key)}:</Text>
@@ -150,10 +153,12 @@ export const NotificationDetail = ({ notification, onClose, onDelete, onNavigate
               </View>
             ) : null}
 
-            {notification.referenceType && notification.referenceId ? (
-              <Pressable onPress={handleNavigateToReference} style={styles.referenceButton}>
+            {hasReferenceRoute(notification.referenceType, notification.referenceId) ? (
+              <Pressable onPress={handleNavigateToReference} style={styles.referenceButton} testID="notification-detail-reference">
                 <ExternalLink size={18} style={styles.referenceButtonIcon} />
-                <Text style={styles.buttonText}>View {notification.referenceType}</Text>
+                <Text style={styles.buttonText}>
+                  {notification.referenceType === 'call' ? t('notifications.view_call') : notification.referenceType === 'chat' ? t('notifications.view_chat') : t('notifications.open_reference')}
+                </Text>
               </Pressable>
             ) : null}
           </View>

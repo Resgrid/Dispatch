@@ -15,6 +15,7 @@ import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { isCallMarker, isPoiMarker } from '@/lib/destination-helpers';
 import { getMapPinSummary, hasValidMapCoordinates } from '@/lib/map-markers';
+import { getPinEntityId } from '@/lib/map-pin-ids';
 import { openMapsWithDirections } from '@/lib/navigation';
 import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersData';
 import { useLocationStore } from '@/stores/app/location-store';
@@ -67,15 +68,19 @@ export const PinDetailModal: React.FC<PinDetailModalProps> = ({ pin, isOpen, onC
   };
 
   const handleViewCallDetails = () => {
-    if (isCallPin && pin.Id) {
-      router.push(`/call/${pin.Id}` as Href);
+    const callId = getPinEntityId(pin);
+
+    if (isCallPin && callId) {
+      router.push(`/call/${callId}` as Href);
       onClose();
     }
   };
 
   const handleViewPoiDetails = () => {
-    if (isPoiPin && pin.Id) {
-      router.push(`/poi/${pin.Id}` as Href);
+    const poiId = getPinEntityId(pin);
+
+    if (isPoiPin && poiId) {
+      router.push(`/poi/${poiId}` as Href);
       onClose();
     }
   };

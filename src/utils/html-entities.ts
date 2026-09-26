@@ -28,3 +28,8 @@ export const decodeHtmlEntities = (value: string): string =>
 export const looksHtmlEncoded = (value: string): boolean => !/<[a-z!/]/i.test(value) && /&(lt|#0*60|#x0*3c);/i.test(value);
 
 export const decodeHtmlEntitiesIfEncoded = (value: string): string => (looksHtmlEncoded(value) ? decodeHtmlEntities(value) : value);
+
+const ESCAPED_CHARACTERS: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+
+/** Plain text made safe to place in HTML markup, as text content or a quoted attribute value. */
+export const escapeHtml = (value: string): string => value.replace(/[&<>"']/g, (character) => ESCAPED_CHARACTERS[character]);

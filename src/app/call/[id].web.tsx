@@ -26,6 +26,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
+import { ActivityLinkLegend, ActivityLinkMarker } from '@/components/calls/activity-link-marker';
 import { CallSiteInfoTabPanel } from '@/components/calls/call-site-info-tab-panel';
 import { VideoFeedsTab } from '@/components/callVideoFeeds/video-feeds-tab';
 import { CheckInTab } from '@/components/checkIn/check-in-tab';
@@ -419,7 +420,10 @@ export default function CallDetailWeb() {
                   <View key={index} style={styles.timelineItem}>
                     <View style={StyleSheet.flatten([styles.timelineDot, { backgroundColor: event.StatusColor || '#3b82f6' }])} />
                     <View style={styles.timelineContent}>
-                      <Text style={StyleSheet.flatten([styles.timelineStatus, { color: event.StatusColor || (isDark ? '#d1d5db' : '#374151') }])}>{event.StatusText}</Text>
+                      <View style={styles.timelineStatusRow}>
+                        <Text style={StyleSheet.flatten([styles.timelineStatus, { color: event.StatusColor || (isDark ? '#d1d5db' : '#374151') }])}>{event.StatusText}</Text>
+                        <ActivityLinkMarker source={event.DestinationSource} />
+                      </View>
                       <Text style={StyleSheet.flatten([styles.timelineInfo, isDark ? styles.timelineInfoDark : styles.timelineInfoLight])}>
                         {event.Name} - {event.Group}
                       </Text>
@@ -428,6 +432,7 @@ export default function CallDetailWeb() {
                     </View>
                   </View>
                 ))}
+                <ActivityLinkLegend activity={callExtraData.Activity} />
               </View>
             ) : (
               <Text style={StyleSheet.flatten([styles.emptyText, isDark ? styles.emptyTextDark : styles.emptyTextLight])}>{t('call_detail.no_timeline')}</Text>
@@ -1107,10 +1112,16 @@ const styles = StyleSheet.create({
   timelineContent: {
     flex: 1,
   },
+  timelineStatusRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 2,
+  },
   timelineStatus: {
     fontSize: 15,
     fontWeight: '600',
-    marginBottom: 2,
   },
   timelineInfo: {
     fontSize: 14,

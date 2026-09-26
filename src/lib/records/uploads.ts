@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer';
 import * as Crypto from 'expo-crypto';
 import * as FileSystem from 'expo-file-system/legacy';
 
@@ -65,11 +66,14 @@ const problemMessage = (error: unknown): string => {
   return response?.data?.title ?? (error instanceof Error ? error.message : 'Upload failed');
 };
 
-/** SHA-256 of the file, hex lower-case, computed without holding the whole file as a string twice. */
-export const hashFile = async (fileUri: string): Promise<string> => {
-  const base64 = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.Base64 });
-  return (await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, base64, { encoding: Crypto.CryptoEncoding.HEX })).toLowerCase();
-};
+/** The most of a file read at once; an attachment can be a long video, far too big to hold as one string. */
+export const FILE_READ_CHUNK_BYTES = 3 * 1024 * 1024;
+
+/**
+ * One byte range of the file as base64. Ranges are read and encoded on their own, so a chunk can start at
+ * any offset whatever it is modulo 3, and the file is never held as one base64 string.
+ */
+const readRange = (fileUri: string, position: number, length: number): Promise<string> => FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.Base64, position, length });
 
 export const fileSize = async (fileUri: string): Promise<number> => {
   const info = await FileSystem.getInfoAsync(fileUri);
@@ -77,21 +81,24 @@ export const fileSize = async (fileUri: string): Promise<number> => {
 };
 
 /**
- * The server hashes the assembled bytes, so the hash we declare has to be of the same bytes. Reading
- * base64 once and slicing it keeps the chunk boundaries aligned: base64 encodes 3 bytes as 4 chars,
- * so a chunk size that is a multiple of 3 slices cleanly without re-encoding anything.
+ * SHA-256 of the file's bytes, hex lower-case. The server hashes the assembled binary, so the digest is
+ * taken over the decoded bytes; hashing the base64 text would never match and every upload would fail.
+ * The digest needs every byte at once, but they are gathered a range at a time, so the file's base64 text
+ * is never held alongside them.
  */
-const chunkOf = (base64: string, offsetBytes: number, chunkBytes: number): string => {
-  const start = (offsetBytes / 3) * 4;
-  // Only the final chunk can be short of a multiple of 3; its trailing 1 or 2 bytes still occupy a
-  // full padded 4-character group, and slice() would otherwise truncate the fraction and drop them.
-  const length = Math.ceil(chunkBytes / 3) * 4;
-  return base64.slice(start, start + length);
-};
-
-const alignChunkSize = (chunkSize: number): number => {
-  const safe = Math.max(3, Math.min(chunkSize || 0, 3 * 1024 * 1024));
-  return safe - (safe % 3);
+export const hashFile = async (fileUri: string): Promise<string> => {
+  const size = await fileSize(fileUri);
+  const bytes = Buffer.alloc(size);
+  for (let offset = 0; offset < size; offset += FILE_READ_CHUNK_BYTES) {
+    const length = Math.min(FILE_READ_CHUNK_BYTES, size - offset);
+    const copied = Buffer.from(await readRange(fileUri, offset, length), 'base64').copy(bytes, offset);
+    if (copied !== length) {
+      // A short read means the file changed under us; a digest of it would only be refused at completion.
+      throw new Error('The file changed while it was being read.');
+    }
+  }
+  const digest = await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, bytes);
+  return Buffer.from(digest).toString('hex');
 };
 
 export interface UploadOptions {
@@ -146,8 +153,9 @@ export const runUpload = async (pending: PendingUpload, options: UploadOptions =
       return { ok: false, code: 'no_session', message: 'The server did not open an upload.', uploadId: null };
     }
 
-    const chunkSize = alignChunkSize(session.ChunkSize);
-    const base64 = await FileSystem.readAsStringAsync(pending.fileUri, { encoding: FileSystem.EncodingType.Base64 });
+    // The server accepts a chunk only at an offset that is a multiple of its own chunk size (only the last
+    // may be shorter), so each chunk is read from the file at exactly that size and offset.
+    const chunkSize = session.ChunkSize > 0 ? session.ChunkSize : pending.byteSize;
     // The server's count is authoritative: it is the only thing that knows what actually arrived.
     let sent = session.ReceivedBytes ?? 0;
     options.onProgress?.({ sentBytes: sent, totalBytes: pending.byteSize });
@@ -157,10 +165,14 @@ export const runUpload = async (pending: PendingUpload, options: UploadOptions =
         return { ok: false, code: 'cancelled', sentBytes: sent, uploadId: session.UploadId };
       }
       const size = Math.min(chunkSize, pending.byteSize - sent);
-      const data = chunkOf(base64, sent, size);
+      const data = await readRange(pending.fileUri, sent, size);
       const updated = (await uploadRecordChunk({ UploadId: session.UploadId, Offset: sent, Data: data }, options.signal))?.Data;
       if (!updated) {
         return { ok: false, code: 'chunk_failed', sentBytes: sent, uploadId: session.UploadId };
+      }
+      // A count that did not move means the chunk was not taken; sending it again would loop forever.
+      if (!(updated.ReceivedBytes > sent)) {
+        return { ok: false, code: 'chunk_stalled', sentBytes: sent, uploadId: session.UploadId };
       }
       // Trust the server's new count rather than adding locally, so a partially accepted chunk
       // cannot leave the client and the server disagreeing about where the file is.

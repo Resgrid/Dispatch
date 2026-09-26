@@ -164,6 +164,12 @@
     "no_location_for_routing": "Brak danych lokalizacyjnych do wyznaczenia trasy",
     "no_protocols": "Brak protokołów dołączonych do tego zgłoszenia",
     "no_timeline": "Brak zdarzeń na osi czasu",
+    "activity_link": {
+      "auto_linked": "powiązano automatycznie",
+      "auto_linked_hint": "Wysłano bez zgłoszenia; Resgrid powiązał status na podstawie poprzedniego statusu lub zadysponowania.",
+      "inferred": "wywnioskowano",
+      "inferred_hint": "Ustawiony bez celu przez jednostkę lub osobę zadysponowaną do tego zgłoszenia podczas działań przy nim."
+    },
     "not_available": "Nd.",
     "not_found": "Nie znaleziono zgłoszenia",
     "missing_call_id": "Brak identyfikatora zgłoszenia",
@@ -310,6 +316,7 @@
     "selected": "wybrano",
     "title": "Zgłoszenia",
     "type": "Typ",
+    "udf_suggestions": "Sugestie",
     "units": "Jednostki",
     "users": "Użytkownicy",
     "viewNotes": "Notatki",
@@ -678,7 +685,13 @@
       "empty": "Do tego kontaktu nie dołączono żadnych plików.",
       "share_unavailable": "Udostępnianie nie jest dostępne na tym urządzeniu.",
       "download_failed": "Nie udało się pobrać pliku."
-    }
+    },
+    "withheld": "Ukryto {{count}} chronionych danych.",
+    "categoryLabel": "Kategoria: {{name}}",
+    "physicalAddress": "Adres fizyczny",
+    "mailingAddress": "Adres korespondencyjny",
+    "hasGeofence": "Ta lokalizacja ma wyznaczoną na mapie strefę geofence.",
+    "customFields": "Pola niestandardowe"
   },
   "dispatch": {
     "active_calls": "Aktywne zgłoszenia",
@@ -1141,7 +1154,15 @@
       "disabled": "Ta funkcja jest wyłączona dla Twojego wydziału.",
       "locked": "Odblokuj dane chronione, aby kontynuować.",
       "retry": "Brak połączenia z serwerem. Spróbuj ponownie.",
-      "validation": "Serwer odrzucił zmianę."
+      "validation": "Serwer odrzucił zmianę.",
+      "timereports_subject_covered": "Ta załoga lub osoba ma już czas w innym raporcie z tego dnia.",
+      "timereports_date_exists": "Raport dla tej załogi lub osoby już istnieje w tym dniu.",
+      "timereports_scope_invalid": "Ta załoga lub osoba nie jest aktywna w tym rozmieszczeniu.",
+      "timereports_locked": "Tego raportu nie można już zmienić.",
+      "timereports_time_invalid": "Wpisz godziny w formacie HH:mm.",
+      "deployments_closed": "To rozmieszczenie jest zamknięte.",
+      "expenses_receipt_invalid": "Nie udało się odczytać paragonu.",
+      "deployments_attachment_too_large": "Paragon jest za duży."
     },
     "financeMode": {
       "0": "Operacyjne",
@@ -1152,7 +1173,15 @@
       "end_before_start": "Godzina zakończenia musi być późniejsza niż rozpoczęcia.",
       "missing_subject": "Wybierz, kogo lub czego dotyczy ten wpis.",
       "missing_time": "Podaj godzinę rozpoczęcia i zakończenia.",
-      "overlap": "Ten wpis nakłada się na inny dla tej samej osoby lub jednostki."
+      "overlap": "Ten wpis nakłada się na inny dla tej samej osoby lub jednostki.",
+      "subject_outside_report_scope": "Ten wpis dotyczy kogoś spoza załogi lub osoby tego raportu.",
+      "subject_on_other_report": "Ta osoba lub jednostka ma już czas w innym raporcie z tego samego dnia.",
+      "subject_not_on_roster": "Ten wpis dotyczy kogoś, kogo nie ma w składzie.",
+      "entries_overlap": "Dwa wpisy tej samej osoby lub jednostki nakładają się.",
+      "no_entries": "Dodaj co najmniej jeden wpis.",
+      "break_rule": "Długa zmiana nie ma zapisanej przerwy.",
+      "long_travel": "Więcej podróży niż dozwolone w ciągu dnia; wymaga zatwierdzenia.",
+      "outside_report_date": "Ten wpis wykracza poza datę raportu."
     },
     "mars": {
       "counts": "{{errors}} błędów · {{warnings}} ostrzeżeń",
@@ -1201,7 +1230,7 @@
       "noReport": "Brak raportu czasu na ten dzień.",
       "notes": "Notatki",
       "remove": "Usuń",
-      "report": "Raport nr {{number}}",
+      "report": "Raport #{{number}}",
       "save": "Zapisz wpisy",
       "start": "Rozpocznij raport czasu",
       "subject": "Kto lub co",
@@ -1210,7 +1239,19 @@
       "to": "Do",
       "total": "Razem {{hours}} h",
       "type": "Rodzaj wpisu",
-      "unpaidBreak": "Przerwa bezpłatna (min)"
+      "unpaidBreak": "Przerwa bezpłatna (min)",
+      "crewReport": "Raport czasu załogi #{{number}} · {{name}}",
+      "individualReport": "Raport czasu #{{number}} · {{name}}",
+      "noCrewReport": "Brak raportu czasu załogi {{name}} w tym dniu.",
+      "coveredBy": "Ten czas jest już w raporcie #{{number}} z tego dnia.",
+      "startCrew": "Rozpocznij raport czasu załogi",
+      "readOnly": "Możesz przeglądać ten raport, ale nie możesz go zmienić.",
+      "nextDay": "Kończy się następnego dnia",
+      "applyToCrew": "Zastosuj do załogi",
+      "approve": "Zatwierdź raport",
+      "dayReports": "Raporty z tego dnia",
+      "awaitingApproval": "Oczekuje na zatwierdzenie ({{count}})",
+      "notOnRoster": "Nie jesteś w składzie ani w załodze tego rozmieszczenia."
     },
     "title": "Rozmieszczenia",
     "usage": {
@@ -1224,6 +1265,54 @@
       "startOdometer": "Licznik początkowy",
       "title": "Użycie",
       "unit": "Jednostka"
+    },
+    "crewOf": "Załoga {{names}}",
+    "scope": {
+      "deployment": "Całe rozmieszczenie",
+      "mine": "Mój czas",
+      "crew": "Załoga: {{name}}",
+      "individual": "{{name}}"
+    },
+    "sign": {
+      "title": "Podpisy",
+      "crewBossSigned": "Podpisane przez dowódcę załogi {{when}}",
+      "crewBossPending": "Jeszcze nie podpisane przez dowódcę załogi.",
+      "customerSigned": "Podpisujący z ramienia instytucji: {{name}}",
+      "customerPending": "Brak podpisu instytucji.",
+      "asCrewBoss": "Podpisz jako dowódca załogi",
+      "customerName": "Imię i nazwisko podpisującego z instytucji",
+      "recordCustomer": "Zapisz podpis instytucji"
+    },
+    "expenses": {
+      "title": "Wydatki",
+      "type": {
+        "0": "Dieta posiłkowa",
+        "1": "Zakwaterowanie",
+        "2": "Zakwaterowanie prywatne",
+        "3": "Prom",
+        "4": "Paliwo",
+        "5": "Uzupełnienie zapasów",
+        "6": "Inne"
+      },
+      "typeLabel": "Rodzaj wydatku",
+      "amount": "Kwota ({{currency}})",
+      "description": "Opis",
+      "city": "Miasto",
+      "takePhoto": "Zrób zdjęcie",
+      "choosePhoto": "Wybierz zdjęcie",
+      "receiptAttached": "Dołączono zdjęcie paragonu.",
+      "save": "Dodaj wydatek",
+      "add": "Nowy wydatek",
+      "noneToday": "Brak wydatków w tym dniu.",
+      "otherDays": "Inne dni",
+      "hasReceipt": "paragon",
+      "remove": "Usuń",
+      "removeTitle": "Usunąć wydatek?",
+      "removeBody": "Spowoduje to usunięcie wydatku i jego paragonu z rozmieszczenia.",
+      "cancel": "Anuluj",
+      "saved": "Wydatek zapisany.",
+      "amountInvalid": "Wpisz kwotę, np. 42.50.",
+      "photoDenied": "Zezwól na dostęp do aparatu lub zdjęć, aby dołączyć paragon."
     }
   },
   "personnel": {
@@ -1940,5 +2029,12 @@
     "entrance": "Wejście",
     "alert_notes": "Notatki alarmowe",
     "files": "Pliki obiektu"
+  },
+  "notifications": {
+    "detail_title": "Powiadomienie",
+    "additional_info": "Dodatkowe informacje",
+    "view_call": "Zobacz zgłoszenie",
+    "view_chat": "Zobacz czat",
+    "open_reference": "Otwórz"
   }
 }

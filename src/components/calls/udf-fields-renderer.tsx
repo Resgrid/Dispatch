@@ -1,28 +1,16 @@
-import { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, type StyleProp, StyleSheet, TextInput, type TextStyle, View } from 'react-native';
 
 import { getUdfDefinition, getUdfValues } from '@/api/userDefinedFields/userDefinedFields';
+import { comboDisplayText, filterComboSuggestions, findComboOption, parseUdfOptions, selectedOptionKeys, UDF_FIELD_TYPE, type UdfOption } from '@/lib/udf/options';
 import { type UdfFieldResultData } from '@/models/v4/userDefinedFields/udfFieldResultData';
 import { type UdfFieldValueInput } from '@/models/v4/userDefinedFields/udfFieldValueInput';
 import { type UdfFieldValueResultData } from '@/models/v4/userDefinedFields/udfFieldValueResultData';
 
 import { Text } from '../ui/text';
 
-// FieldDataType enum
-const UDF_FIELD_TYPE = {
-  Text: 0,
-  Number: 1,
-  Decimal: 2,
-  Boolean: 3,
-  Date: 4,
-  DateTime: 5,
-  Dropdown: 6,
-  MultiSelect: 7,
-  Email: 8,
-  Phone: 9,
-  Url: 10,
-} as const;
+const EMPTY_OPTIONS: UdfOption[] = [];
 
 interface UdfFieldsRendererProps {
   entityType: number;
@@ -117,6 +105,15 @@ export const UdfFieldsRenderer: React.FC<UdfFieldsRendererProps> = ({ entityType
     [fields, notifyChange]
   );
 
+  // Parsed once per definition so option lists keep their identity across renders.
+  const optionsByField = useMemo(() => {
+    const map: Record<string, UdfOption[]> = {};
+    fields.forEach((f) => {
+      map[f.UdfFieldId] = parseUdfOptions(f.ValidationRules);
+    });
+    return map;
+  }, [fields]);
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -154,7 +151,7 @@ export const UdfFieldsRenderer: React.FC<UdfFieldsRendererProps> = ({ entityType
 
       case UDF_FIELD_TYPE.Dropdown:
       case UDF_FIELD_TYPE.MultiSelect: {
-        const opts = field.Options && field.Options.length > 0 ? field.Options : field.ValidationRules ? field.ValidationRules.split(',').map((o) => o.trim()) : [];
+        const opts = optionsByField[field.UdfFieldId] ?? EMPTY_OPTIONS;
         return (
           <View key={field.UdfFieldId} style={styles.fieldRow}>
             <Text style={labelStyle}>
@@ -174,6 +171,29 @@ export const UdfFieldsRenderer: React.FC<UdfFieldsRendererProps> = ({ entityType
           </View>
         );
       }
+
+      case UDF_FIELD_TYPE.ComboBox:
+        return (
+          <View key={field.UdfFieldId} style={styles.fieldRow}>
+            <Text style={labelStyle}>
+              {label}
+              {field.IsRequired ? <Text style={styles.required}> *</Text> : null}
+            </Text>
+            {field.Description ? <Text style={descStyle}>{field.Description}</Text> : null}
+            <ComboBoxInput
+              fieldId={field.UdfFieldId}
+              options={optionsByField[field.UdfFieldId] ?? EMPTY_OPTIONS}
+              value={val}
+              onChange={handleValueChange}
+              disabled={isFieldReadOnly}
+              isDark={isDark}
+              label={label}
+              placeholder={placeholder}
+              inputStyle={inputStyle}
+              captionStyle={descStyle}
+            />
+          </View>
+        );
 
       case UDF_FIELD_TYPE.Number:
       case UDF_FIELD_TYPE.Decimal:
@@ -339,7 +359,7 @@ const BooleanToggle: React.FC<BooleanToggleProps> = ({ value, onChange, disabled
 };
 
 interface OptionSelectorProps {
-  options: string[];
+  options: UdfOption[];
   value: string;
   multiSelect: boolean;
   onChange: (v: string) => void;
@@ -348,43 +368,133 @@ interface OptionSelectorProps {
   placeholder?: string;
 }
 
+// Chips show each option's label and store its key, the way the server stores a dropdown/multi-select value.
 const OptionSelector: React.FC<OptionSelectorProps> = ({ options, value, multiSelect, onChange, disabled = false, isDark = false }) => {
-  const selectedValues = value ? value.split(',').map((v) => v.trim()) : [];
+  const selectedKeys = selectedOptionKeys(multiSelect ? UDF_FIELD_TYPE.MultiSelect : UDF_FIELD_TYPE.Dropdown, value);
 
-  const toggle = (opt: string) => {
+  const toggle = (key: string) => {
     if (disabled) return;
     if (multiSelect) {
-      const next = selectedValues.includes(opt) ? selectedValues.filter((v) => v !== opt) : [...selectedValues, opt];
+      const next = selectedKeys.includes(key) ? selectedKeys.filter((k) => k !== key) : [...selectedKeys, key];
       onChange(next.join(','));
     } else {
-      onChange(selectedValues.includes(opt) ? '' : opt);
+      onChange(selectedKeys.includes(key) ? '' : key);
     }
   };
 
   return (
     <View style={styles.optionContainer}>
       {options.map((opt) => {
-        const isSelected = selectedValues.includes(opt);
+        const isSelected = selectedKeys.includes(opt.key);
         return (
           <Text
-            key={opt}
+            key={opt.key}
             style={StyleSheet.flatten([
               styles.optionItem,
               isDark ? styles.optionItemDark : styles.optionItemLight,
               isSelected ? (isDark ? styles.optionSelectedDark : styles.optionSelectedLight) : {},
               disabled ? styles.optionDisabled : {},
             ])}
-            onPress={() => toggle(opt)}
+            onPress={() => toggle(opt.key)}
             accessibilityRole="button"
-            accessibilityState={{ selected: isSelected }}
+            accessibilityState={{ selected: isSelected, disabled }}
           >
-            {opt}
+            {opt.label}
           </Text>
         );
       })}
     </View>
   );
 };
+
+interface ComboBoxInputProps {
+  fieldId: string;
+  options: UdfOption[];
+  value: string;
+  onChange: (fieldId: string, value: string) => void;
+  disabled?: boolean;
+  isDark?: boolean;
+  label: string;
+  placeholder?: string;
+  inputStyle: StyleProp<TextStyle>;
+  captionStyle: StyleProp<TextStyle>;
+}
+
+// A text input with the field's options offered as suggestions. Picking a suggestion shows its label and stores its
+// key; anything typed is sent as typed and the server stores a typed label as that option's key.
+const ComboBoxInput: React.FC<ComboBoxInputProps> = ({ fieldId, options, value, onChange, disabled = false, isDark = false, label, placeholder, inputStyle, captionStyle }) => {
+  const { t } = useTranslation();
+  // Held locally so typing a string that happens to equal an option key does not flip the input to that label mid-word.
+  const [text, setText] = useState(() => comboDisplayText(options, value));
+  const suggestions = useMemo(() => filterComboSuggestions(options, text), [options, text]);
+  const selectedKey = findComboOption(options, text)?.key;
+
+  const handleChangeText = useCallback(
+    (next: string) => {
+      setText(next);
+      onChange(fieldId, next);
+    },
+    [fieldId, onChange]
+  );
+
+  const handleSelect = useCallback(
+    (option: UdfOption) => {
+      if (disabled) return;
+      setText(option.label);
+      onChange(fieldId, option.key);
+    },
+    [disabled, fieldId, onChange]
+  );
+
+  return (
+    <View>
+      <TextInput
+        style={inputStyle}
+        value={text}
+        onChangeText={handleChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={isDark ? '#6b7280' : '#9ca3af'}
+        editable={!disabled}
+        autoCorrect={false}
+        accessibilityLabel={label}
+        testID={`udf-combo-input-${fieldId}`}
+      />
+      {!disabled && suggestions.length > 0 ? (
+        <View style={styles.suggestionsBlock} testID={`udf-combo-suggestions-${fieldId}`}>
+          <Text style={captionStyle}>{t('calls.udf_suggestions')}</Text>
+          <View style={styles.optionContainer}>
+            {suggestions.map((option) => (
+              <ComboSuggestion key={option.key} option={option} isSelected={option.key === selectedKey} onSelect={handleSelect} isDark={isDark} />
+            ))}
+          </View>
+        </View>
+      ) : null}
+    </View>
+  );
+};
+
+interface ComboSuggestionProps {
+  option: UdfOption;
+  isSelected: boolean;
+  onSelect: (option: UdfOption) => void;
+  isDark: boolean;
+}
+
+const ComboSuggestion: React.FC<ComboSuggestionProps> = React.memo(({ option, isSelected, onSelect, isDark }) => {
+  const handlePress = useCallback(() => onSelect(option), [onSelect, option]);
+  return (
+    <Text
+      style={StyleSheet.flatten([styles.optionItem, isDark ? styles.optionItemDark : styles.optionItemLight, isSelected ? (isDark ? styles.optionSelectedDark : styles.optionSelectedLight) : {}])}
+      onPress={handlePress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: isSelected }}
+    >
+      {option.label}
+    </Text>
+  );
+});
+
+ComboSuggestion.displayName = 'ComboSuggestion';
 
 const styles = StyleSheet.create({
   container: {
@@ -529,5 +639,8 @@ const styles = StyleSheet.create({
   },
   optionDisabled: {
     opacity: 0.5,
+  },
+  suggestionsBlock: {
+    marginTop: 8,
   },
 });

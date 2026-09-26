@@ -5,9 +5,8 @@ import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Platform, ScrollView } from 'react-native';
 
-import { getSystemConfig } from '@/api/config';
 import { logger } from '@/lib/logging';
-import { buildApiUrl, CUSTOM_SERVER_VALUE, toBaseUrl, URL_PATTERN } from '@/lib/server-url';
+import { buildApiUrl, CUSTOM_SERVER_VALUE, findLocationByUrl, isSameServerUrl, loadServerLocations, toBaseUrl, URL_PATTERN } from '@/lib/server-url';
 import { type ResgridSystemLocation } from '@/models/v4/configs/getSystemConfigResultData';
 import { useServerUrlStore } from '@/stores/app/server-url-store';
 
@@ -21,6 +20,7 @@ import { Select, SelectBackdrop, SelectContent, SelectDragIndicator, SelectDragI
 import { Spinner } from '../ui/spinner';
 import { Text } from '../ui/text';
 import { VStack } from '../ui/vstack';
+
 interface ServerUrlForm {
   url: string;
 }
@@ -28,9 +28,12 @@ interface ServerUrlForm {
 interface ServerUrlBottomSheetProps {
   isOpen: boolean;
   onClose: () => void;
+  // Called after a save that switched to a different server. The session's tokens belong to
+  // the previous server, so a signed-in caller should log out (as Responder does).
+  onUrlChanged?: () => Promise<void> | void;
 }
 
-export function ServerUrlBottomSheet({ isOpen, onClose }: ServerUrlBottomSheetProps) {
+export function ServerUrlBottomSheet({ isOpen, onClose, onUrlChanged }: ServerUrlBottomSheetProps) {
   const { t } = useTranslation();
   const { colorScheme } = useColorScheme();
   const [isLoading, setIsLoading] = React.useState(false);
@@ -43,6 +46,8 @@ export function ServerUrlBottomSheet({ isOpen, onClose }: ServerUrlBottomSheetPr
     control,
     handleSubmit,
     setValue,
+    setError,
+    clearErrors,
     formState: { errors },
   } = useForm<ServerUrlForm>();
 
@@ -57,25 +62,15 @@ export function ServerUrlBottomSheet({ isOpen, onClose }: ServerUrlBottomSheetPr
 
     const loadServers = async () => {
       setIsLoadingServers(true);
+      clearErrors();
 
       try {
         // The persisted value includes the /api/vX suffix; reduce it to a bare base so we
         // can match it against a hosted site or show it for editing in the custom field.
         const currentUrl = await getUrl();
         const currentBaseUrl = toBaseUrl(currentUrl);
-
-        let fetchedLocations: ResgridSystemLocation[] = [];
-        try {
-          const result = await getSystemConfig();
-          fetchedLocations = result?.Data?.Locations ?? [];
-        } catch (error) {
-          // The list of hosted sites is best-effort; on failure the user can still enter a
-          // custom URL manually, so we degrade gracefully instead of blocking the sheet.
-          logger.error({
-            message: 'Failed to load Resgrid hosted sites',
-            context: { error },
-          });
-        }
+        // Always includes the Resgrid hosted sites, even if the current server can't be reached.
+        const fetchedLocations = await loadServerLocations();
 
         if (isCancelled) {
           return;
@@ -85,7 +80,7 @@ export function ServerUrlBottomSheet({ isOpen, onClose }: ServerUrlBottomSheetPr
 
         // Preselect the hosted site whose API URL matches the persisted URL; otherwise fall
         // back to the Custom option and show the persisted URL so the user can edit it.
-        const matchedLocation = fetchedLocations.find((location) => toBaseUrl(location.ApiUrl) === currentBaseUrl);
+        const matchedLocation = findLocationByUrl(fetchedLocations, currentUrl);
         if (matchedLocation) {
           setSelectedServer(matchedLocation.Name);
           setValue('url', toBaseUrl(matchedLocation.ApiUrl));
@@ -105,7 +100,7 @@ export function ServerUrlBottomSheet({ isOpen, onClose }: ServerUrlBottomSheetPr
     return () => {
       isCancelled = true;
     };
-  }, [isOpen, getUrl, setValue]);
+  }, [isOpen, getUrl, setValue, clearErrors]);
 
   const handleServerChange = React.useCallback(
     (nextServer: string) => {
@@ -130,24 +125,38 @@ export function ServerUrlBottomSheet({ isOpen, onClose }: ServerUrlBottomSheetPr
       // the full API URL (with the /api/vX suffix) that the API client expects.
       const resolvedBaseUrl = isCustomSelected ? data.url : (location?.ApiUrl ?? data.url);
       const apiUrl = buildApiUrl(resolvedBaseUrl);
+      const previousUrl = await getUrl();
       await setUrl(apiUrl);
       logger.info({
         message: 'Server URL updated successfully',
         context: { url: apiUrl, server: selectedServer },
       });
+
+      if (onUrlChanged && !isSameServerUrl(previousUrl, apiUrl)) {
+        try {
+          await onUrlChanged();
+        } catch (error) {
+          // The session still belongs to the previous server. Put its URL back so a retry sees the change
+          // and signs out again, instead of finding the new URL already saved and closing.
+          await setUrl(previousUrl);
+          throw error;
+        }
+      }
+
       onClose();
     } catch (error) {
       logger.error({
         message: 'Failed to update server URL',
         context: { error },
       });
+      setError('root', { message: error instanceof Error ? error.message : t('common.error') });
     } finally {
       setIsLoading(false);
     }
   };
 
   const selectedLocation = locations.find((location) => location.Name === selectedServer);
-  const selectedServerLabel = isCustomSelected ? t('settings.custom') : selectedLocation?.DisplayName || selectedLocation?.Name;
+  const selectedServerLabel = isCustomSelected ? t('settings.custom') : selectedLocation?.Name;
 
   return (
     <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[80]}>
@@ -183,7 +192,7 @@ export function ServerUrlBottomSheet({ isOpen, onClose }: ServerUrlBottomSheetPr
                         <SelectDragIndicator />
                       </SelectDragIndicatorWrapper>
                       {locations.map((location) => (
-                        <SelectItem key={location.Name} label={location.DisplayName || location.Name} value={location.Name} />
+                        <SelectItem key={location.Name} label={location.Name} value={location.Name} />
                       ))}
                       <SelectItem label={t('settings.custom')} value={CUSTOM_SERVER_VALUE} />
                     </SelectContent>
@@ -241,6 +250,12 @@ export function ServerUrlBottomSheet({ isOpen, onClose }: ServerUrlBottomSheetPr
                 {t('settings.server_url_note')}
               </Text>
             </Center>
+
+            {errors.root?.message ? (
+              <Text size="sm" className="text-center text-red-500">
+                {errors.root.message}
+              </Text>
+            ) : null}
 
             <HStack space="md" className="mt-4">
               <Button variant="outline" className="flex-1" onPress={onClose}>

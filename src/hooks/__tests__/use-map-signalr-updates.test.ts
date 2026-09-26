@@ -100,7 +100,7 @@ describe('useMapSignalRUpdates', () => {
       expect(mockGetMapDataAndMarkers).toHaveBeenCalledWith(expect.objectContaining({ aborted: false }));
     });
 
-    expect(mockOnMarkersUpdate).toHaveBeenCalledWith(mockMapData.Data.MapMakerInfos);
+    expect(mockOnMarkersUpdate).toHaveBeenCalledWith(mockMapData.Data.MapMakerInfos, expect.any(Number));
   });
 
   it('should debounce multiple rapid timestamp changes', async () => {
@@ -176,7 +176,7 @@ describe('useMapSignalRUpdates', () => {
     resolveFirstCall!(mockMapData);
 
     await waitFor(() => {
-      expect(mockOnMarkersUpdate).toHaveBeenCalledWith(mockMapData.Data.MapMakerInfos);
+      expect(mockOnMarkersUpdate).toHaveBeenCalledWith(mockMapData.Data.MapMakerInfos, expect.any(Number));
     });
 
     // Wait for the queued call to be processed
@@ -236,7 +236,7 @@ describe('useMapSignalRUpdates', () => {
     resolveFirstCall!(mockMapData);
 
     await waitFor(() => {
-      expect(mockOnMarkersUpdate).toHaveBeenCalledWith(mockMapData.Data.MapMakerInfos);
+      expect(mockOnMarkersUpdate).toHaveBeenCalledWith(mockMapData.Data.MapMakerInfos, expect.any(Number));
     });
 
     // Wait for the queued call to be processed (should be timestamp3, not timestamp2)
@@ -387,7 +387,7 @@ describe('useMapSignalRUpdates', () => {
       expect(mockGetMapDataAndMarkers).toHaveBeenCalledWith(expect.objectContaining({ aborted: false }));
     });
 
-    expect(mockOnMarkersUpdate).toHaveBeenCalledWith([]);
+    expect(mockOnMarkersUpdate).toHaveBeenCalledWith([], expect.any(Number));
   });
 
   it('should handle null API response', async () => {
@@ -525,5 +525,23 @@ describe('useMapSignalRUpdates', () => {
         },
       });
     });
+  });
+
+  it('fetches on demand through a stable requestRefresh and reports when the fetch started', async () => {
+    mockUseSignalRStore.mockReturnValue(0);
+    const startedNoEarlierThan = Date.now();
+
+    const { result, rerender } = renderHook(() => useMapSignalRUpdates(mockOnMarkersUpdate));
+    const { requestRefresh } = result.current;
+    rerender({});
+    expect(result.current.requestRefresh).toBe(requestRefresh);
+
+    requestRefresh();
+
+    await waitFor(() => {
+      expect(mockGetMapDataAndMarkers).toHaveBeenCalledTimes(1);
+      expect(mockOnMarkersUpdate).toHaveBeenCalledWith(mockMapData.Data.MapMakerInfos, expect.any(Number));
+    });
+    expect(mockOnMarkersUpdate.mock.calls[0][1]).toBeGreaterThanOrEqual(startedNoEarlierThan);
   });
 });

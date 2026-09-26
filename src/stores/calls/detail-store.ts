@@ -85,7 +85,7 @@ export const useCallDetailStore = create<CallDetailState>((set, get) => ({
         });
       } else {
         set({
-          error: callResult.Message || callExtraDataResult.Message || 'Failed to fetch call details',
+          error: callResult?.Message || 'Failed to fetch call details',
           isLoading: false,
         });
       }

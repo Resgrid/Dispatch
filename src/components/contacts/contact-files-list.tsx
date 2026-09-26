@@ -3,7 +3,7 @@ import * as Sharing from 'expo-sharing';
 import { DownloadIcon, FileIcon, LockIcon, PaperclipIcon } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 
 import { getContactFileBase64 } from '@/api/contacts/contactFiles';
 import { ProtectedText } from '@/components/data-protection/protected-text';
@@ -73,6 +73,28 @@ export const ContactFilesList: React.FC<ContactFilesListProps> = ({ files, isLoa
         const base64 = await getContactFileBase64(file);
         const fallbackName = `contact_file_${file.Id}`;
         const fileName = safeFileName(isFieldRedacted(file.RedactedFields, FileFieldIds.fileName, file.FileName) ? null : file.FileName, fallbackName);
+
+        if (Platform.OS === 'web') {
+          // The dispatch console runs in a browser: there is no document directory or share sheet, so the
+          // bytes become a browser download. The object URL is always revoked, even when the click throws.
+          let objectUrl: string | null = null;
+          let link: HTMLAnchorElement | null = null;
+          try {
+            const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+            objectUrl = URL.createObjectURL(new Blob([bytes], { type: file.Mime || 'application/octet-stream' }));
+            link = document.createElement('a');
+            link.href = objectUrl;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+          } finally {
+            link?.remove();
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+          }
+          trackEvent('contact_file_download_completed', { contextId: contextId ?? '', fileId: file.Id, wasShared: false });
+          return;
+        }
+
         const fileUri = `${FileSystem.documentDirectory}${fileName}`;
         await FileSystem.writeAsStringAsync(fileUri, base64, { encoding: FileSystem.EncodingType.Base64 });
 
@@ -85,7 +107,12 @@ export const ContactFilesList: React.FC<ContactFilesListProps> = ({ files, isLoa
         }
       } catch (error) {
         logger.error({ message: 'Failed to download contact file', context: { error, fileId: file.Id } });
-        Alert.alert(t('contacts.files.download_failed'));
+        if (Platform.OS === 'web') {
+          // React Native Web's Alert.alert does nothing, so the browser reports the failure itself.
+          window.alert(t('contacts.files.download_failed'));
+        } else {
+          Alert.alert(t('contacts.files.download_failed'));
+        }
       } finally {
         setDownloading((prev) => {
           const next = { ...prev };

@@ -1,17 +1,8 @@
-// Mock expo-asset and expo-av first (before any imports)
+// Mock expo-asset first (before any imports)
 jest.mock('expo-asset', () => ({
   Asset: {
     fromModule: jest.fn(),
     loadAsync: jest.fn(),
-  },
-}));
-
-jest.mock('expo-av', () => ({
-  Audio: {
-    setAudioModeAsync: jest.fn(),
-    getStatusAsync: jest.fn(),
-    loadAsync: jest.fn(),
-    createAsync: jest.fn(),
   },
 }));
 

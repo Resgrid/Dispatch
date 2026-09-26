@@ -6,6 +6,12 @@ import { logger } from '@/lib/logging';
 import { isElectron } from '@/lib/platform';
 import useAuthStore from '@/stores/auth/store';
 
+// Location pushes arrive every few seconds for every unit and person, so they are not logged at all:
+// a per-message line would flood the console and push useful breadcrumbs out of error reports.
+const UNLOGGED_HUB_METHODS = new Set(['onunitlocationupdated', 'onpersonnellocationupdated']);
+
+export const isUnloggedHubMethod = (method: string): boolean => UNLOGGED_HUB_METHODS.has(method.toLowerCase());
+
 export interface SignalRHubConfig {
   name: string;
   url: string;
@@ -54,6 +60,14 @@ class SignalRService {
    */
   public static readonly HUB_DISCONNECTED_EVENT = '__hubDisconnected';
   public static readonly HUB_RECONNECTED_EVENT = '__hubReconnected';
+  /** The transport dropped and the client's automatic reconnect is running; the connection is in no group. */
+  public static readonly HUB_RECONNECTING_EVENT = '__hubReconnecting';
+  /**
+   * A brand-new connection finished starting — the first connect, the rebuild after a close, or the rebuild on
+   * visibility resume. Unlike HUB_RECONNECTED_EVENT (the client's own automatic reconnect), this is a fresh
+   * connection object with a fresh token, and it too belongs to no server-side group yet.
+   */
+  public static readonly HUB_CONNECTED_EVENT = '__hubConnected';
 
   private connections: Map<string, HubConnection> = new Map();
   private reconnectAttempts: Map<string, number> = new Map();
@@ -208,6 +222,15 @@ class SignalRService {
         // Reset reconnect attempts on visibility resume to give fresh attempts
         this.reconnectAttempts.set(hubName, 0);
 
+        // A close while the page was hidden skips the scheduled rebuild and leaves the dead connection
+        // mapped, and connecting over a mapped entry is a no-op — the hub would stay down. Drop a fully
+        // closed connection so a fresh one is built. One still inside its automatic reconnect is left
+        // alone: it will either recover or close and schedule its own rebuild.
+        if (connection && connection.state === HubConnectionState.Disconnected) {
+          this.cleanupHubMethodHandlers(hubName, connection);
+          this.connections.delete(hubName);
+        }
+
         try {
           await this.connectToHubWithEventingUrl(config);
         } catch (error) {
@@ -215,6 +238,9 @@ class SignalRService {
             message: `Failed to reconnect hub ${hubName} after visibility resume`,
             context: { error },
           });
+          // Typically the token expired while the page was hidden. Hand over to the close path, which
+          // refreshes the token and retries with backoff, instead of leaving the hub down until reload.
+          this.handleConnectionClose(hubName);
         }
       }
     }
@@ -422,6 +448,7 @@ class SignalRService {
           message: `Reconnecting to hub: ${config.name}`,
           context: { error },
         });
+        this.emitHubLifecycle(SignalRService.HUB_RECONNECTING_EVENT, config.name);
       });
 
       connection.onreconnected((connectionId) => {
@@ -446,10 +473,13 @@ class SignalRService {
         });
 
         const handler = (...args: unknown[]) => {
-          logger.info({
-            message: `Received ${method} message from hub: ${config.name}`,
-            context: { method, args },
-          });
+          // Never log payloads: they carry personal data (chat, call details, precise coordinates).
+          if (!isUnloggedHubMethod(method)) {
+            logger.debug({
+              message: `Received ${method} message from hub: ${config.name}`,
+              context: { method },
+            });
+          }
           this.handleMessage(config.name, method, args);
         };
 
@@ -482,6 +512,10 @@ class SignalRService {
       logger.info({
         message: `Connected to hub: ${config.name}`,
       });
+
+      // Every successful start is a new connection id outside every group — including the rebuilds after a
+      // close and on visibility resume, which raise no reconnected event. Subscribers re-announce on this.
+      this.emitHubLifecycle(SignalRService.HUB_CONNECTED_EVENT, config.name);
     } catch (error) {
       // Clear the direct-connecting state on failed connection
       this.setHubState(config.name, HubConnectingState.IDLE);
@@ -633,10 +667,13 @@ class SignalRService {
         });
 
         const handler = (...args: unknown[]) => {
-          logger.info({
-            message: `Received ${method} message from hub: ${config.name}`,
-            context: { method, args },
-          });
+          // Never log payloads: they carry personal data (chat, call details, precise coordinates).
+          if (!isUnloggedHubMethod(method)) {
+            logger.debug({
+              message: `Received ${method} message from hub: ${config.name}`,
+              context: { method },
+            });
+          }
           this.handleMessage(config.name, method, args);
         };
 
@@ -836,10 +873,6 @@ class SignalRService {
   }
 
   private handleMessage(hubName: string, method: string, args: unknown[]): void {
-    logger.debug({
-      message: `Received message from hub: ${hubName}`,
-      context: { method, args },
-    });
     // Emit event for subscribers using the method name as the event name. Hub methods
     // can send more than one argument (chatPresenceChanged sends `userId, isOnline`),
     // so forward every argument to the listeners.

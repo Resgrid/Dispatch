@@ -12,6 +12,9 @@ export interface OperationsResult<T> {
 export const DeploymentStatus = { Planned: 0, Standby: 1, Active: 2, Demobilizing: 3, Completed: 4, Cancelled: 5 } as const;
 export const DeploymentFinanceMode = { OperationalOnly: 0, CostRecovery: 1, Billable: 2 } as const;
 export const TimeReportStatus = { Draft: 0, Submitted: 1, Approved: 2, Billed: 3, Void: 4 } as const;
+/** Who a daily time report covers: the whole deployment (manager's DTR), one unit's crew (CTR) or one person. */
+export const TimeReportScope = { Deployment: 0, Crew: 1, Individual: 2 } as const;
+export const ExpenseType = { PerDiemMeal: 0, Accommodation: 1, PrivateAccommodation: 2, Ferry: 3, Fuel: 4, SupplyRestock: 5, Other: 6 } as const;
 export const TimeSubjectType = { Personnel: 0, Unit: 1, Equipment: 2 } as const;
 export const TimeEntryType = { Deployment: 0, Standby: 1, Travel: 2 } as const;
 export const UsagePhase = { Mobilization: 0, Standby: 1, Incident: 2, Return: 3 } as const;
@@ -66,6 +69,22 @@ export interface Deployment {
   Units: DeploymentUnit[];
   Personnel: DeploymentPersonnel[];
   Equipment: DeploymentEquipment[];
+  /** The caller's time scope, computed by the server (detail reads only). */
+  TimeAccess?: DeploymentTimeAccess | null;
+}
+
+/**
+ * What the signed-in person may do with this deployment's time: their own roster row (individual report),
+ * the deployed units they crew — on the deployment roster for that unit, or seated on the apparatus through
+ * an active unit role — (crew time report) and every subject id they may write. The server re-checks it all.
+ */
+export interface DeploymentTimeAccess {
+  CanManage: boolean;
+  CanApprove: boolean;
+  PersonnelId?: string | null;
+  CrewUnitIds: string[];
+  WritableSubjectIds: string[];
+  TimeZone?: string | null;
 }
 
 export interface TimeEntry {
@@ -75,8 +94,12 @@ export interface TimeEntry {
   DeploymentUnitId?: string | null;
   DeploymentEquipmentId?: string | null;
   EntryType: number;
-  StartTime: string;
-  EndTime: string;
+  /** UTC instant from the server; the field apps read and write the local wall clock below. */
+  StartTime?: string | null;
+  EndTime?: string | null;
+  /** Department-local wall clock "yyyy-MM-ddTHH:mm"; the server converts it in the department's zone. */
+  StartLocal: string;
+  EndLocal: string;
   PaidBreakMinutes: number;
   UnpaidBreakMinutes: number;
   CrewSizeSnapshot?: number | null;
@@ -95,13 +118,62 @@ export interface TimeReport {
   DeploymentId: string;
   ReportNumber: number;
   ReportDate: string;
+  /** TimeReportScope value. */
+  Scope: number;
+  DeploymentUnitId?: string | null;
+  DeploymentPersonnelId?: string | null;
+  /** The caller may write, sign and submit this report (its scope is theirs). */
+  CanAct: boolean;
   Status: number;
   IncidentNumber?: string | null;
+  ResourceOrderNumber?: string | null;
   RequestNumber?: string | null;
+  NoClear8?: boolean;
+  UnsafeConditionsStandDown?: boolean;
+  ContractorSignedByUserId?: string | null;
+  ContractorSignedOn?: string | null;
+  CustomerSignerName?: string | null;
+  CustomerSignedOn?: string | null;
+  SubmittedByUserId?: string | null;
   SubmittedOn?: string | null;
+  ApprovedByUserId?: string | null;
   ApprovedOn?: string | null;
   Notes?: string | null;
   Entries: TimeEntry[];
+}
+
+export interface Expense {
+  Id: string;
+  DeploymentId: string;
+  TimeReportId?: string | null;
+  ExpenseDate: string;
+  ExpenseType: number;
+  MealCode?: string | null;
+  City?: string | null;
+  Description?: string | null;
+  Amount: number;
+  Currency?: string | null;
+  PreApproved: boolean;
+  Billable: boolean;
+  ReceiptAttachmentId?: number | null;
+  AddedByUserId?: string | null;
+  AddedOn?: string | null;
+}
+
+export interface ExpenseInput {
+  Id?: string | null;
+  DeploymentId: string;
+  TimeReportId?: string | null;
+  ExpenseDate: string;
+  ExpenseType: number;
+  City?: string | null;
+  Description?: string | null;
+  Amount: number;
+  Currency?: string | null;
+  /** Receipt photo, base64 (the server files it as a Receipt attachment). */
+  ReceiptData?: string | null;
+  ReceiptFileName?: string | null;
+  ReceiptContentType?: string | null;
 }
 
 export interface TimeReportIssue {

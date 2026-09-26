@@ -74,6 +74,6 @@ describe('loadSelectedTheme', () => {
 
     loadSelectedTheme();
 
-    expect(setColorSchemeSpy).toHaveBeenCalledWith(null);
+    expect(setColorSchemeSpy).toHaveBeenCalledWith('unspecified');
   });
 });

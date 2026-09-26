@@ -1,11 +1,13 @@
 import { format } from 'date-fns';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Building2, Circle, Clock, MapPin, Shield, Truck, User } from 'lucide-react-native';
+import { useColorScheme } from 'nativewind';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { getUnitsInfos } from '@/api/units/units';
+import { UdfFieldsRenderer } from '@/components/calls/udf-fields-renderer';
 import { Loading } from '@/components/common/loading';
 import ZeroState from '@/components/common/zero-state';
 import { Box } from '@/components/ui/box';
@@ -19,11 +21,15 @@ import { VStack } from '@/components/ui/vstack';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { type UnitInfoResultData } from '@/models/v4/units/unitInfoResultData';
 
+// The detail page only displays custom fields; nothing is edited here.
+const ignoreUdfValues = () => {};
+
 export default function UnitDetail() {
   const { id } = useLocalSearchParams();
   const unitId = Array.isArray(id) ? id[0] : id;
   const router = useRouter();
   const { t } = useTranslation();
+  const { colorScheme } = useColorScheme();
   const { trackEvent } = useAnalytics();
 
   const [unit, setUnit] = useState<UnitInfoResultData | null>(null);
@@ -289,14 +295,8 @@ export default function UnitDetail() {
                 <Heading size="sm" className="mb-3 text-gray-900 dark:text-gray-50">
                   {t('units.custom_fields')}
                 </Heading>
-                <VStack space="sm">
-                  {unit.UdfValues.map((udf, index) => (
-                    <HStack key={`${udf.UdfFieldValueId}-${index}`} className={`items-center justify-between py-2 ${index < unit.UdfValues.length - 1 ? 'border-b border-gray-100 dark:border-gray-700' : ''}`}>
-                      <Text className="text-sm text-gray-500 dark:text-gray-400">{udf.UdfFieldId}</Text>
-                      <Text className="text-sm font-medium text-gray-700 dark:text-gray-200">{udf.Value || '—'}</Text>
-                    </HStack>
-                  ))}
-                </VStack>
+                {/* Labels and option values come from the definition; the raw rows only carry field ids and stored keys. */}
+                <UdfFieldsRenderer entityType={2} entityId={unit.UnitId} onValuesChange={ignoreUdfValues} readOnly={true} isDark={colorScheme === 'dark'} />
               </Box>
             ) : null}
 

@@ -163,6 +163,12 @@
     "no_location_for_routing": "No hay datos de ubicación disponibles para el enrutamiento",
     "no_protocols": "No hay protocolos adjuntos a esta llamada",
     "no_timeline": "No hay eventos de línea de tiempo disponibles",
+    "activity_link": {
+      "auto_linked": "vinculado automáticamente",
+      "auto_linked_hint": "Enviado sin llamada; Resgrid lo vinculó a partir del estado anterior o del despacho.",
+      "inferred": "inferido",
+      "inferred_hint": "Establecido sin destino por una unidad o persona despachada a esta llamada mientras la atendía."
+    },
     "not_available": "N/D",
     "not_found": "Llamada no encontrada",
     "missing_call_id": "Falta el ID de la llamada",
@@ -310,6 +316,7 @@
     "selected": "seleccionados",
     "title": "Llamadas",
     "type": "Tipo",
+    "udf_suggestions": "Sugerencias",
     "units": "Unidades",
     "users": "Usuarios",
     "viewNotes": "Notas",
@@ -678,7 +685,13 @@
       "empty": "No se han adjuntado archivos a este contacto.",
       "share_unavailable": "Compartir no está disponible en este dispositivo.",
       "download_failed": "No se pudo descargar el archivo."
-    }
+    },
+    "withheld": "Hay {{count}} datos protegidos ocultos.",
+    "categoryLabel": "Categoría: {{name}}",
+    "physicalAddress": "Dirección física",
+    "mailingAddress": "Dirección postal",
+    "hasGeofence": "Esta ubicación tiene una geocerca en el mapa.",
+    "customFields": "Campos personalizados"
   },
   "dispatch": {
     "active_calls": "Llamadas Activas",
@@ -1141,7 +1154,15 @@
       "disabled": "Esta función está desactivada para su departamento.",
       "locked": "Desbloquee los datos protegidos para continuar.",
       "retry": "No se pudo conectar con el servidor. Inténtelo de nuevo.",
-      "validation": "El servidor rechazó el cambio."
+      "validation": "El servidor rechazó el cambio.",
+      "timereports_subject_covered": "Esa tripulación o persona ya tiene horas en otro parte de este día.",
+      "timereports_date_exists": "Ya existe un parte para esa tripulación o persona ese día.",
+      "timereports_scope_invalid": "Esa tripulación o persona no está activa en este despliegue.",
+      "timereports_locked": "Este parte ya no se puede modificar.",
+      "timereports_time_invalid": "Introduzca las horas como HH:mm.",
+      "deployments_closed": "Este despliegue está cerrado.",
+      "expenses_receipt_invalid": "No se pudo leer el recibo.",
+      "deployments_attachment_too_large": "El recibo es demasiado grande."
     },
     "financeMode": {
       "0": "Operativo",
@@ -1152,7 +1173,15 @@
       "end_before_start": "La hora de fin debe ser posterior a la de inicio.",
       "missing_subject": "Elija a quién o a qué corresponde esta entrada.",
       "missing_time": "Introduzca una hora de inicio y de fin.",
-      "overlap": "Esta entrada se solapa con otra de la misma persona o unidad."
+      "overlap": "Esta entrada se solapa con otra de la misma persona o unidad.",
+      "subject_outside_report_scope": "Esta entrada es de alguien ajeno a la tripulación o persona de este parte.",
+      "subject_on_other_report": "Esta persona o unidad ya tiene horas en otro parte del mismo día.",
+      "subject_not_on_roster": "Esta entrada es de alguien que no figura en la dotación.",
+      "entries_overlap": "Dos entradas de la misma persona o unidad se solapan.",
+      "no_entries": "Añada al menos una entrada.",
+      "break_rule": "Un turno largo no tiene descanso registrado.",
+      "long_travel": "Más viaje del permitido en un día; necesita aprobación.",
+      "outside_report_date": "Esta entrada queda fuera de la fecha del parte."
     },
     "mars": {
       "counts": "{{errors}} errores · {{warnings}} avisos",
@@ -1201,7 +1230,7 @@
       "noReport": "No hay parte de tiempo para este día.",
       "notes": "Notas",
       "remove": "Quitar",
-      "report": "Parte n.º {{number}}",
+      "report": "Parte #{{number}}",
       "save": "Guardar entradas",
       "start": "Iniciar parte de tiempo",
       "subject": "Quién o qué",
@@ -1210,7 +1239,19 @@
       "to": "A",
       "total": "Total {{hours}} h",
       "type": "Tipo de entrada",
-      "unpaidBreak": "Descanso no pagado (min)"
+      "unpaidBreak": "Descanso no pagado (min)",
+      "crewReport": "Parte de horas de tripulación #{{number}} · {{name}}",
+      "individualReport": "Parte de horas #{{number}} · {{name}}",
+      "noCrewReport": "No hay parte de tripulación para {{name}} este día.",
+      "coveredBy": "Estas horas ya están en el parte #{{number}} de este día.",
+      "startCrew": "Iniciar parte de tripulación",
+      "readOnly": "Puede ver este parte pero no modificarlo.",
+      "nextDay": "Termina al día siguiente",
+      "applyToCrew": "Aplicar a la tripulación",
+      "approve": "Aprobar parte",
+      "dayReports": "Partes de este día",
+      "awaitingApproval": "Pendientes de aprobación ({{count}})",
+      "notOnRoster": "No figura en la dotación ni en una tripulación de este despliegue."
     },
     "title": "Despliegues",
     "usage": {
@@ -1224,6 +1265,54 @@
       "startOdometer": "Odómetro inicial",
       "title": "Uso",
       "unit": "Unidad"
+    },
+    "crewOf": "Tripulación de {{names}}",
+    "scope": {
+      "deployment": "Todo el despliegue",
+      "mine": "Mis horas",
+      "crew": "Tripulación: {{name}}",
+      "individual": "{{name}}"
+    },
+    "sign": {
+      "title": "Firmas",
+      "crewBossSigned": "Firmado por el jefe de tripulación {{when}}",
+      "crewBossPending": "Aún sin firma del jefe de tripulación.",
+      "customerSigned": "Firmante del organismo: {{name}}",
+      "customerPending": "No hay firma del organismo registrada.",
+      "asCrewBoss": "Firmar como jefe de tripulación",
+      "customerName": "Nombre del firmante del organismo",
+      "recordCustomer": "Registrar firma del organismo"
+    },
+    "expenses": {
+      "title": "Gastos",
+      "type": {
+        "0": "Dieta de comidas",
+        "1": "Alojamiento",
+        "2": "Alojamiento privado",
+        "3": "Ferry",
+        "4": "Combustible",
+        "5": "Reposición de material",
+        "6": "Otro"
+      },
+      "typeLabel": "Tipo de gasto",
+      "amount": "Importe ({{currency}})",
+      "description": "Descripción",
+      "city": "Ciudad",
+      "takePhoto": "Hacer foto",
+      "choosePhoto": "Elegir foto",
+      "receiptAttached": "Foto del recibo adjunta.",
+      "save": "Añadir gasto",
+      "add": "Nuevo gasto",
+      "noneToday": "No hay gastos este día.",
+      "otherDays": "Otros días",
+      "hasReceipt": "recibo",
+      "remove": "Quitar",
+      "removeTitle": "¿Quitar el gasto?",
+      "removeBody": "Esto quita el gasto y su recibo del despliegue.",
+      "cancel": "Cancelar",
+      "saved": "Gasto guardado.",
+      "amountInvalid": "Introduzca un importe como 42.50.",
+      "photoDenied": "Permita el acceso a la cámara o a las fotos para adjuntar un recibo."
     }
   },
   "personnel": {
@@ -1940,5 +2029,12 @@
     "entrance": "Entrada",
     "alert_notes": "Notas de alerta",
     "files": "Archivos del sitio"
+  },
+  "notifications": {
+    "detail_title": "Notificación",
+    "additional_info": "Información adicional",
+    "view_call": "Ver llamada",
+    "view_chat": "Ver chat",
+    "open_reference": "Abrir"
   }
 }

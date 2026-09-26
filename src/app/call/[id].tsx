@@ -24,6 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import WebView from 'react-native-webview';
 
+import { ActivityLinkLegend, ActivityLinkMarker } from '@/components/calls/activity-link-marker';
 import { CallSiteInfoTabPanel } from '@/components/calls/call-site-info-tab-panel';
 import { VideoFeedsTab } from '@/components/callVideoFeeds/video-feeds-tab';
 import { CheckInTab } from '@/components/checkIn/check-in-tab';
@@ -602,9 +603,12 @@ export default function CallDetail() {
               <VStack className="space-y-3">
                 {callExtraData.Activity.map((event, index) => (
                   <Box key={index} className="border-l-4 border-blue-500 py-1 pl-3">
-                    <Text className="font-semibold" style={{ color: event.StatusColor }}>
-                      {event.StatusText}
-                    </Text>
+                    <HStack className="flex-wrap items-center" space="xs">
+                      <Text className="font-semibold" style={{ color: event.StatusColor }}>
+                        {event.StatusText}
+                      </Text>
+                      <ActivityLinkMarker source={event.DestinationSource} />
+                    </HStack>
                     <Text className="text-sm text-gray-600">
                       {event.Name} - {event.Group}
                     </Text>
@@ -612,6 +616,7 @@ export default function CallDetail() {
                     <Text className="text-xs text-gray-500">{event.Note}</Text>
                   </Box>
                 ))}
+                <ActivityLinkLegend activity={callExtraData.Activity} />
               </VStack>
             ) : (
               <Text>{t('call_detail.no_timeline')}</Text>

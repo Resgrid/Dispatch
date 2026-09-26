@@ -1,6 +1,6 @@
 import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
 import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
-import { Audio, type AVPlaybackStatus } from 'expo-av';
+import { type AudioPlayer, type AudioStatus, createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { Music, PauseIcon, PlayIcon, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,7 +33,7 @@ export const CallAudioModal: React.FC<CallAudioModalProps> = ({ isOpen, onClose,
   const { callAudio, isLoadingAudio, errorAudio, fetchCallAudio } = useCallDetailStore();
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
-  const soundRef = useRef<Audio.Sound | null>(null);
+  const soundRef = useRef<AudioPlayer | null>(null);
   // Monotonic id bumped on every play/stop tap so overlapping async loads can tell
   // whether they are still the latest request before committing state.
   const playRequestRef = useRef(0);
@@ -44,9 +44,9 @@ export const CallAudioModal: React.FC<CallAudioModalProps> = ({ isOpen, onClose,
   const unloadSound = useCallback(async () => {
     if (soundRef.current) {
       try {
-        await soundRef.current.unloadAsync();
+        soundRef.current.remove();
       } catch {
-        // ignore — sound may already be unloaded
+        // ignore — player may already be released
       }
       soundRef.current = null;
     }
@@ -108,22 +108,25 @@ export const CallAudioModal: React.FC<CallAudioModalProps> = ({ isOpen, onClose,
     try {
       setLoadingId(file.Id);
       await unloadSound();
-      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: false });
-      const { sound } = await Audio.Sound.createAsync({ uri: file.Url.trim() }, { shouldPlay: true, volume: 1.0 }, (status: AVPlaybackStatus) => {
-        if (status.isLoaded && status.didJustFinish) {
+      await setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: false });
+
+      // A newer tap arrived while the audio session was being configured — bail out so
+      // this clip can't overwrite soundRef.current or start overlapping playback.
+      if (requestId !== playRequestRef.current) {
+        return;
+      }
+
+      const sound = createAudioPlayer({ uri: file.Url.trim() });
+      sound.volume = 1.0;
+      sound.addListener('playbackStatusUpdate', (status: AudioStatus) => {
+        if (status.didJustFinish && soundRef.current === sound) {
           void unloadSound();
         }
       });
 
-      // A newer tap arrived while this clip was loading — discard this sound so it
-      // can't overwrite soundRef.current or start overlapping playback.
-      if (requestId !== playRequestRef.current) {
-        await sound.unloadAsync().catch(() => {});
-        return;
-      }
-
       soundRef.current = sound;
       setPlayingId(file.Id);
+      sound.play();
     } catch (error) {
       logger.error({ message: 'Failed to play call audio', context: { error, callId } });
     } finally {

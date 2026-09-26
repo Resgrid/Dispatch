@@ -175,6 +175,9 @@ jest.mock('expo-router', () => ({
     back: jest.fn(),
     push: jest.fn(),
   })),
+  useIsFocused: jest.fn(() => true),
+  useNavigation: jest.fn(),
+  useFocusEffect: jest.fn(),
 }));
 
 // Mock Lucide React Native icons
@@ -402,13 +405,6 @@ jest.mock('expo-navigation-bar', () => ({
   getBackgroundColorAsync: jest.fn(),
   getVisibilityAsync: jest.fn(),
   getBehaviorAsync: jest.fn(),
-}));
-
-// Mock @react-navigation/native
-jest.mock('@react-navigation/native', () => ({
-  useIsFocused: jest.fn(() => true),
-  useNavigation: jest.fn(),
-  useFocusEffect: jest.fn(),
 }));
 
 // Mock react-native-edge-to-edge
