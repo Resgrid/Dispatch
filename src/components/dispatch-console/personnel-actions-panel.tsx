@@ -116,14 +116,8 @@ export const PersonnelActionsPanel: React.FC<PersonnelActionsPanelProps> = ({ pe
   const [isStatusSheetOpen, setIsStatusSheetOpen] = useState(false);
   const [isStaffingSheetOpen, setIsStaffingSheetOpen] = useState(false);
   const [isDestinationSheetOpen, setIsDestinationSheetOpen] = useState(false);
-  // The destination sheet opens a beat after the status sheet closes; a pending open dies with the panel.
+  // The destination sheet opens a beat after the status sheet closes.
   const destinationSheetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(
-    () => () => {
-      if (destinationSheetTimerRef.current) clearTimeout(destinationSheetTimerRef.current);
-    },
-    []
-  );
   const [destinationTab, setDestinationTab] = useState<DestinationTab>('calls');
   const [isAdditionalFieldsExpanded, setIsAdditionalFieldsExpanded] = useState(false);
 
@@ -212,6 +206,18 @@ export const PersonnelActionsPanel: React.FC<PersonnelActionsPanelProps> = ({ pe
 
   // Use prop if available, fallback to store
   const selectedPersonnel = personnelProp ?? storeSelectedPersonnel;
+
+  // A pending open belongs to the session it was chosen in: it dies with the panel, and with a switch to
+  // another person or a new session, so it never opens the sheet over what the dispatcher is now doing.
+  useEffect(
+    () => () => {
+      if (destinationSheetTimerRef.current) {
+        clearTimeout(destinationSheetTimerRef.current);
+        destinationSheetTimerRef.current = null;
+      }
+    },
+    [actionsSessionId, selectedPersonnel?.UserId]
+  );
 
   // Load options when panel opens
   useEffect(() => {

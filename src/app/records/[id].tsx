@@ -222,7 +222,8 @@ export default function RecordScreen() {
 
         {message ? <Text className="mb-3 text-sm text-typography-700">{message}</Text> : null}
 
-        {schema ? <RecordForm schema={schema} values={values} issues={issues} readOnly={!editable || unsupported.length > 0} forFinalize={false} onChange={handleChange} /> : <Spinner />}
+        {/* Locked while a save is in flight: the reload that follows it replaces the values, so an edit made meanwhile would be lost. */}
+        {schema ? <RecordForm schema={schema} values={values} issues={issues} readOnly={!editable || unsupported.length > 0 || isBusy} forFinalize={false} onChange={handleChange} /> : <Spinner />}
 
         {/* Attachments upload against a server-owned session, so an interruption resumes. */}
         <RecordAttachments recordId={record.RecordId} allowAttachments={entry?.AllowAttachments !== false} readOnly={!editable} />

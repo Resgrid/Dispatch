@@ -49,8 +49,18 @@ function getIconTargets(config) {
   ].filter((target) => typeof target.source === 'string');
 }
 
-// A config this plugin already ran on points at its own output; badging that again would stack a second
-// badge on the icon and delete the first render.
+// Per config object, the source each icon was rendered from and the output the config was pointed at.
+// Applied to the same config again, the plugin renders from those sources rather than badging its own
+// output, so a changed badge or a deleted output is rendered afresh.
+const appliedIcons = new WeakMap();
+
+function resolveSource(config, target) {
+  const applied = appliedIcons.get(config)?.[target.name];
+  return applied && applied.output === target.source ? applied.source : target.source;
+}
+
+// A copy of a config this plugin already rewrote carries no record of its sources. Its icons are this
+// plugin's output; badging them again would stack a second badge and delete the first render.
 function isBadgeOutput(projectRoot, source) {
   const relative = path.relative(path.resolve(projectRoot, OUTPUT_DIR), path.resolve(projectRoot, source));
   return relative.length > 0 && !relative.startsWith('..') && !path.isAbsolute(relative);
@@ -102,6 +112,7 @@ const withIconBadge = (config, { enabled = true, badges = [] } = {}) => {
 
   const projectRoot = config._internal?.projectRoot ?? process.cwd();
   const targets = getIconTargets(config)
+    .map((target) => ({ ...target, source: resolveSource(config, target) }))
     .filter((target) => !isBadgeOutput(projectRoot, target.source))
     .map((target) => ({ ...target, output: getOutputPath(projectRoot, target, badges) }));
   const pending = targets.filter((target) => !fs.existsSync(path.resolve(projectRoot, target.output)));
@@ -111,6 +122,7 @@ const withIconBadge = (config, { enabled = true, badges = [] } = {}) => {
   }
 
   targets.forEach((target) => target.apply(target.output));
+  appliedIcons.set(config, { ...appliedIcons.get(config), ...Object.fromEntries(targets.map((target) => [target.name, { source: target.source, output: target.output }])) });
   return config;
 };
 

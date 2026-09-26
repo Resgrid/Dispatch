@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
 
-import { hashFile, runUpload } from '@/lib/records/uploads';
+import { FILE_READ_CHUNK_BYTES, hashFile, runUpload } from '@/lib/records/uploads';
 
 // Shared conformance suite for resumable attachment upload (RMS plan RMS-1D). Identical in all four
 // app repositories: the server owns the session, so every adapter must resume from the server's own
@@ -40,6 +40,18 @@ const fs = jest.requireMock('expo-file-system/legacy');
 // 9 bytes encodes to 12 base64 characters, so a 3-byte chunk size slices cleanly.
 const NINE_BYTES_BASE64 = 'AAAAAAAAAAAA';
 
+/** Serves `bytes` as the device file, honouring the byte range a ranged read asks for. */
+const serveFile = (bytes: Buffer) => {
+  fs.getInfoAsync.mockResolvedValue({ exists: true, size: bytes.length });
+  fs.readAsStringAsync.mockImplementation(async (_uri: string, options?: { position?: number; length?: number }) => {
+    const start = options?.position ?? 0;
+    return (options?.length === undefined ? bytes.subarray(start) : bytes.subarray(start, start + options.length)).toString('base64');
+  });
+};
+
+/** The byte ranges the code asked the file system for. */
+const readLengths = (): (number | undefined)[] => fs.readAsStringAsync.mock.calls.map((call: unknown[]) => (call[1] as { length?: number } | undefined)?.length);
+
 const pending = (overrides: Record<string, unknown> = {}) => ({
   localId: 'upload-1',
   recordId: 'r1',
@@ -73,8 +85,7 @@ const session = (receivedBytes: number, chunkSize = 3) => ({
 describe('Record attachment uploads', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    fs.getInfoAsync.mockResolvedValue({ exists: true, size: 9 });
-    fs.readAsStringAsync.mockResolvedValue(NINE_BYTES_BASE64);
+    serveFile(Buffer.from(NINE_BYTES_BASE64, 'base64'));
   });
 
   it('sends the file in chunks and completes it', async () => {
@@ -97,8 +108,7 @@ describe('Record attachment uploads', () => {
     // 10 bytes: three full 3-byte chunks (4 base64 chars each) and a trailing single byte, which
     // base64 pads to a full 4-character group ("AA==") that must reach the server intact.
     const tenBytesBase64 = 'AAAAAAAAAAAAAA==';
-    fs.getInfoAsync.mockResolvedValue({ exists: true, size: 10 });
-    fs.readAsStringAsync.mockResolvedValue(tenBytesBase64);
+    serveFile(Buffer.from(tenBytesBase64, 'base64'));
     api.beginRecordUpload.mockResolvedValue({ Data: { ...session(0).Data, DeclaredSize: 10, ChunkCount: 4 } });
     api.uploadRecordChunk.mockResolvedValueOnce(session(3)).mockResolvedValueOnce(session(6)).mockResolvedValueOnce(session(9)).mockResolvedValueOnce(session(10));
     api.completeRecordUpload.mockResolvedValue({ Data: { AttachmentId: 'a4' } });
@@ -116,8 +126,7 @@ describe('Record attachment uploads', () => {
     // The server declares 512 KiB, which is not a multiple of 3; it refuses any chunk that is not exactly
     // that size except the last, so the chunks are cut from the bytes, not from the base64 text.
     const bytes = Buffer.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-    fs.getInfoAsync.mockResolvedValue({ exists: true, size: 10 });
-    fs.readAsStringAsync.mockResolvedValue(bytes.toString('base64'));
+    serveFile(bytes);
     api.beginRecordUpload.mockResolvedValue(session(0, 4));
     api.uploadRecordChunk.mockResolvedValueOnce(session(4, 4)).mockResolvedValueOnce(session(8, 4)).mockResolvedValueOnce(session(10, 4));
     api.completeRecordUpload.mockResolvedValue({ Data: { AttachmentId: 'a5' } });
@@ -144,9 +153,39 @@ describe('Record attachment uploads', () => {
 
   it('hashes the decoded file bytes, the same bytes the server assembles', async () => {
     const bytes = Buffer.from('synthetic attachment bytes');
-    fs.readAsStringAsync.mockResolvedValue(bytes.toString('base64'));
+    serveFile(bytes);
 
     await expect(hashFile('file:///photo.jpg')).resolves.toBe(createHash('sha256').update(bytes).digest('hex'));
+  });
+
+  it('reads a large file a range at a time, for the hash and for the upload', async () => {
+    const bytes = Buffer.alloc(FILE_READ_CHUNK_BYTES * 2 + 5, 7);
+    serveFile(bytes);
+
+    await expect(hashFile('file:///video.mp4')).resolves.toBe(createHash('sha256').update(bytes).digest('hex'));
+    expect(readLengths()).toEqual([FILE_READ_CHUNK_BYTES, FILE_READ_CHUNK_BYTES, 5]);
+
+    fs.readAsStringAsync.mockClear();
+    const chunkSize = FILE_READ_CHUNK_BYTES;
+    api.beginRecordUpload.mockResolvedValue(session(0, chunkSize));
+    api.uploadRecordChunk
+      .mockResolvedValueOnce(session(chunkSize, chunkSize))
+      .mockResolvedValueOnce(session(chunkSize * 2, chunkSize))
+      .mockResolvedValueOnce(session(bytes.length, chunkSize));
+    api.completeRecordUpload.mockResolvedValue({ Data: { AttachmentId: 'a6' } });
+
+    const outcome = await runUpload(pending({ byteSize: bytes.length }) as never);
+
+    expect(outcome.ok).toBe(true);
+    expect(readLengths()).toEqual([chunkSize, chunkSize, 5]);
+  });
+
+  it('refuses to hash a file that changed while it was being read', async () => {
+    const bytes = Buffer.from('synthetic attachment bytes');
+    serveFile(bytes);
+    fs.getInfoAsync.mockResolvedValue({ exists: true, size: bytes.length + 4 });
+
+    await expect(hashFile('file:///photo.jpg')).rejects.toThrow('The file changed while it was being read.');
   });
 
   it('resumes from the count the server reports, not the one the device remembers', async () => {

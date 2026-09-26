@@ -9,6 +9,7 @@ import withIconBadge from '../withIconBadge';
 jest.mock('child_process', () => ({ execFileSync: jest.fn() }));
 
 interface RenderJob {
+  icon: string;
   dstPath: string;
   isAdaptiveIcon: boolean;
 }
@@ -94,6 +95,28 @@ describe('withIconBadge', () => {
     expect(mockExecFileSync).toHaveBeenCalledTimes(1);
     expect([config.icon, config.ios.icon, config.android.adaptiveIcon.foregroundImage]).toEqual(badgedPaths);
     badgedPaths.forEach((iconPath) => expect(fs.existsSync(path.join(projectRoot, iconPath))).toBe(true));
+  });
+
+  it('renders an output deleted since the last application from the original icon, not its own output', () => {
+    const config = applyPlugin(createConfig(), { badges });
+    fs.rmSync(path.join(projectRoot, outputDir), { recursive: true, force: true });
+
+    applyPlugin(config, { badges });
+
+    expect(mockExecFileSync).toHaveBeenCalledTimes(2);
+    expect(getRenderJobs(1).map((job) => path.relative(projectRoot, job.icon))).toEqual([path.join('assets', 'icon.png'), path.join('assets', 'ios-icon.png'), path.join('assets', 'adaptive-icon.png')]);
+    [config.icon, config.ios.icon as string, config.android.adaptiveIcon.foregroundImage].forEach((iconPath) => expect(fs.existsSync(path.join(projectRoot, iconPath))).toBe(true));
+  });
+
+  it('badges the original icon when the same config is applied again with a different badge', () => {
+    const config = applyPlugin(createConfig(), { badges });
+    const firstIcon = config.icon;
+
+    applyPlugin(config, { badges: [{ ...badges[0], text: 'staging' }] });
+
+    expect(mockExecFileSync).toHaveBeenCalledTimes(2);
+    expect(path.relative(projectRoot, getRenderJobs(1)[0].icon)).toBe(path.join('assets', 'icon.png'));
+    expect(config.icon).not.toBe(firstIcon);
   });
 
   it('re-renders and removes the stale icons when a badge changes', () => {

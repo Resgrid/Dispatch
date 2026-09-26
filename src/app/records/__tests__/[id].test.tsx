@@ -23,6 +23,7 @@ interface MockCheckboxProps extends MockChildrenProps {
 
 interface MockRecordFormProps {
   onChange: (values: Record<string, unknown>) => void;
+  readOnly?: boolean;
 }
 
 jest.mock('expo-router', () => ({
@@ -63,8 +64,8 @@ jest.mock('@/components/records/record-attachments', () => ({
 jest.mock('@/components/records/record-form', () => {
   const { TouchableOpacity } = require('react-native');
   return {
-    RecordForm: ({ onChange }: MockRecordFormProps) => (
-      <TouchableOpacity testID="record-form-edit" onPress={() => onChange({ 'main:notes': { SectionKey: 'main', FieldKey: 'notes', Value: 'Edited' } })} />
+    RecordForm: ({ onChange, readOnly }: MockRecordFormProps) => (
+      <TouchableOpacity testID="record-form-edit" disabled={readOnly} onPress={() => onChange({ 'main:notes': { SectionKey: 'main', FieldKey: 'notes', Value: 'Edited' } })} />
     ),
   };
 });
@@ -192,6 +193,20 @@ describe('RecordScreen', () => {
 
     expect(await screen.findByText('records.conflict_etag')).toBeTruthy();
     expect(store.finalize).not.toHaveBeenCalled();
+    unmount();
+  });
+
+  it('locks the form while a save is in flight, so an edit cannot be lost to the reload that follows', async () => {
+    let finishSave: (result: { ok: boolean; recordId: string }) => void = () => undefined;
+    store.pushDraft.mockReturnValueOnce(new Promise((resolve) => (finishSave = resolve)));
+    const { unmount } = render(<RecordScreen />);
+    fireEvent.press(await screen.findByTestId('record-form-edit'));
+
+    fireEvent.press(screen.getByTestId('record-save'));
+
+    await waitFor(() => expect(screen.getByTestId('record-form-edit').props.accessibilityState).toMatchObject({ disabled: true }));
+    finishSave({ ok: true, recordId: 'r1' });
+    await waitFor(() => expect(screen.getByTestId('record-form-edit').props.accessibilityState).toMatchObject({ disabled: false }));
     unmount();
   });
 });

@@ -158,6 +158,50 @@ describe('PersonnelActionsPanel destination defaults', () => {
     consoleError.mockRestore();
   });
 
+  describe('destination sheet after a status that needs a destination', () => {
+    const openPanelFor = async (target: PersonnelInfoResultData) => {
+      act(() => {
+        usePersonnelActionsStore.getState().openActions(target);
+      });
+      const view = render(<PersonnelActionsPanel personnel={target} />);
+      await waitFor(() => expect(usePersonnelActionsStore.getState().destinationInitializedSessionId).toBe(usePersonnelActionsStore.getState().actionsSessionId));
+      return view;
+    };
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('opens a beat after the status is chosen', async () => {
+      await openPanelFor(person('p1'));
+      jest.useFakeTimers();
+
+      await pickStatus('Responding');
+      act(() => {
+        jest.advanceTimersByTime(300);
+      });
+
+      expect(mockFetchCalls).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not open for the next person when the dispatcher switches within that beat', async () => {
+      const view = await openPanelFor(person('p1'));
+      jest.useFakeTimers();
+
+      await pickStatus('Responding');
+      const second = person('p2');
+      view.rerender(<PersonnelActionsPanel personnel={second} />);
+      act(() => {
+        usePersonnelActionsStore.getState().openActions(second);
+      });
+      act(() => {
+        jest.advanceTimersByTime(300);
+      });
+
+      expect(mockFetchCalls).not.toHaveBeenCalled();
+    });
+  });
+
   it('does not send a leftover call with a status that does not support calls', async () => {
     const target = person('p1', 'A');
     act(() => {

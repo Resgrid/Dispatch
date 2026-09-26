@@ -174,8 +174,11 @@ const messageFrom = (error: unknown): string => {
   return response?.data?.title ?? (error instanceof Error ? error.message : 'Request failed');
 };
 
-/** An unknown definition (catalog not loaded) is kept; only one known to seal values is refused. */
-const mayKeepOnDevice = (entry: FieldRecordCatalogEntry | null): boolean => !entry || canAuthorOffline(entry);
+/**
+ * Only a definition the catalog confirms may be authored offline leaves its values on the device. An unknown
+ * one (the catalog is not persisted, so it is often not loaded yet) is refused: it may be one that seals values.
+ */
+const mayKeepOnDevice = (entry: FieldRecordCatalogEntry | null): boolean => canAuthorOffline(entry);
 
 export const useRecordsStore = create<RecordsState>()(
   persist(
@@ -340,8 +343,8 @@ export const useRecordsStore = create<RecordsState>()(
 
       stageDraft: (draft) => {
         if (!mayKeepOnDevice(get().entryFor(draft.definitionKey, draft.definitionVersion))) {
-          // A definition that seals values never leaves plaintext on the device, so it is not staged.
-          logger.info({ message: 'Draft not staged offline: definition requires a live protected-data grant', context: { definitionKey: draft.definitionKey } });
+          // A definition that seals values never leaves plaintext on the device, so one not confirmed safe is not staged.
+          logger.info({ message: 'Draft not staged offline: definition is not confirmed to allow offline authoring', context: { definitionKey: draft.definitionKey } });
           return;
         }
         set({ pendingDrafts: { ...get().pendingDrafts, [draft.clientRecordId]: { ...draft, updatedOn: new Date().toISOString() } } });
@@ -388,8 +391,10 @@ export const useRecordsStore = create<RecordsState>()(
         } catch (error) {
           const conflict = conflictFrom(error);
           // Never replayed silently: the draft is kept and flagged so a person decides what happens —
-          // unless its definition seals values, which are never left on the device.
-          if (mayKeepOnDevice(get().entryFor(draft.definitionKey, draft.definitionVersion))) {
+          // unless its definition seals values, which are never left on the device. A draft already staged
+          // passed that check when it was staged, so a catalog that has not loaded yet does not drop it.
+          const entry = get().entryFor(draft.definitionKey, draft.definitionVersion);
+          if (entry ? mayKeepOnDevice(entry) : clientRecordId in get().pendingDrafts) {
             set({
               pendingDrafts: {
                 ...get().pendingDrafts,

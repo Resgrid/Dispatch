@@ -119,14 +119,8 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
   // Local state for action sheets
   const [isStatusSheetOpen, setIsStatusSheetOpen] = useState(false);
   const [isDestinationSheetOpen, setIsDestinationSheetOpen] = useState(false);
-  // The destination sheet opens a beat after the status sheet closes; a pending open dies with the panel.
+  // The destination sheet opens a beat after the status sheet closes.
   const destinationSheetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(
-    () => () => {
-      if (destinationSheetTimerRef.current) clearTimeout(destinationSheetTimerRef.current);
-    },
-    []
-  );
   const [isAdditionalFieldsExpanded, setIsAdditionalFieldsExpanded] = useState(false);
   const [destinationTab, setDestinationTab] = useState<DestinationTab>('calls');
 
@@ -192,6 +186,18 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
 
   // Use prop if available, fallback to store
   const selectedUnit = unitProp ?? storeSelectedUnit;
+
+  // A pending open belongs to the session it was chosen in: it dies with the panel, and with a switch to
+  // another unit or a new session, so it never opens the sheet over what the dispatcher is now doing.
+  useEffect(
+    () => () => {
+      if (destinationSheetTimerRef.current) {
+        clearTimeout(destinationSheetTimerRef.current);
+        destinationSheetTimerRef.current = null;
+      }
+    },
+    [actionsSessionId, selectedUnit?.UnitId]
+  );
 
   // Load options when panel opens
   useEffect(() => {
