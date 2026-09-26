@@ -42,27 +42,39 @@ export default function RecordScreen() {
   const [attested, setAttested] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  // Edits made since the record was last loaded; they exist only here until they are saved.
+  const [dirty, setDirty] = useState(false);
 
-  const load = useCallback(async () => {
+  /** Loads the record as the server holds it now, replacing any local edits. */
+  const fetchRecord = useCallback(async (): Promise<RecordData | null> => {
     if (!id) {
-      return;
+      return null;
     }
-    setIsBusy(true);
     try {
       const response = await getRecord(id);
       const loaded = response?.Data ?? null;
       setRecord(loaded);
       setValues(toValueMap(loaded?.Values?.Cells));
+      setDirty(false);
       if (loaded?.DefinitionKey) {
         setSchema(await fetchSchema(loaded.DefinitionKey, loaded.DefinitionVersion));
       }
+      return loaded;
     } catch (error) {
       logger.error({ message: 'Record load failed', context: { error, id } });
       setMessage(t('records.load_failed'));
+      return null;
+    }
+  }, [id, fetchSchema, t]);
+
+  const load = useCallback(async () => {
+    setIsBusy(true);
+    try {
+      await fetchRecord();
     } finally {
       setIsBusy(false);
     }
-  }, [id, fetchSchema, t]);
+  }, [fetchRecord]);
 
   useEffect(() => {
     void load();
@@ -71,6 +83,39 @@ export default function RecordScreen() {
   const unsupported = useMemo(() => unsupportedFieldKeys(schema), [schema]);
   const editable = record ? record.State === RmsRecordState.Draft || record.State === RmsRecordState.Returned : false;
   const entry = record?.DefinitionKey ? entryFor(record.DefinitionKey, record.DefinitionVersion) : null;
+
+  const handleChange = useCallback((next: ValueMap) => {
+    setValues(next);
+    setDirty(true);
+  }, []);
+
+  /** Sends the edited values and returns the record as the server now holds it, or null when it was not saved. */
+  const persist = useCallback(
+    async (current: RecordData): Promise<RecordData | null> => {
+      const clientRecordId = `edit-${current.RecordId}-${current.RowVersion}`;
+      const draft = {
+        clientRecordId,
+        recordId: current.RecordId,
+        definitionKey: current.DefinitionKey ?? '',
+        definitionVersion: current.DefinitionVersion,
+        name: current.RecordNumber ?? current.DraftReference ?? entry?.Name ?? t('records.untitled'),
+        values: toValueList(values),
+        rowVersion: current.RowVersion,
+        updatedOn: new Date().toISOString(),
+      };
+      stageDraft(draft);
+      // Passed directly as well: a definition that seals values is never staged on the device.
+      const result = await pushDraft(clientRecordId, draft);
+      if (!result.ok) {
+        // A conflict is shown, never resolved by overwriting: the person reloads and decides.
+        setMessage(result.conflict ? t(`records.conflict_${result.conflict.replace('-', '_')}`) : (result.error ?? t('records.save_failed')));
+        return null;
+      }
+      discardDraft(clientRecordId);
+      return fetchRecord();
+    },
+    [values, entry, stageDraft, pushDraft, discardDraft, fetchRecord, t]
+  );
 
   const save = useCallback(async () => {
     if (!record || !schema) {
@@ -84,46 +129,42 @@ export default function RecordScreen() {
     }
     setIsBusy(true);
     try {
-      const clientRecordId = `edit-${record.RecordId}-${record.RowVersion}`;
-      stageDraft({
-        clientRecordId,
-        recordId: record.RecordId,
-        definitionKey: record.DefinitionKey ?? '',
-        definitionVersion: record.DefinitionVersion,
-        name: record.RecordNumber ?? record.DraftReference ?? entry?.Name ?? t('records.untitled'),
-        values: toValueList(values),
-        rowVersion: record.RowVersion,
-        updatedOn: new Date().toISOString(),
-      });
-      const result = await pushDraft(clientRecordId);
-      if (result.ok) {
-        discardDraft(clientRecordId);
+      if (await persist(record)) {
         setMessage(t('records.saved'));
-        await load();
-        return;
       }
-      // A conflict is shown, never resolved by overwriting: the person reloads and decides.
-      setMessage(result.conflict ? t(`records.conflict_${result.conflict.replace('-', '_')}`) : (result.error ?? t('records.save_failed')));
     } finally {
       setIsBusy(false);
     }
-  }, [record, schema, values, entry, stageDraft, pushDraft, discardDraft, load, t]);
+  }, [record, schema, values, persist, t]);
 
   const submit = useCallback(async () => {
     if (!record) {
       return;
     }
+    if (dirty && schema) {
+      const found = validate(schema, values, false);
+      setIssues(found);
+      if (found.length > 0) {
+        setMessage(t('records.fix_fields'));
+        return;
+      }
+    }
     setIsBusy(true);
     try {
-      const result = await submitForReview(record.RecordId, record.RowVersion);
+      // Unsaved edits go first; otherwise the server's older copy is what would be put up for review.
+      const current = dirty ? await persist(record) : record;
+      if (!current) {
+        return;
+      }
+      const result = await submitForReview(current.RecordId, current.RowVersion);
       setMessage(result.ok ? t('records.submitted') : (result.error ?? t('records.save_failed')));
       if (result.ok) {
-        await load();
+        await fetchRecord();
       }
     } finally {
       setIsBusy(false);
     }
-  }, [record, submitForReview, load, t]);
+  }, [record, schema, values, dirty, persist, submitForReview, fetchRecord, t]);
 
   const complete = useCallback(async () => {
     if (!record || !schema) {
@@ -137,15 +178,20 @@ export default function RecordScreen() {
     }
     setIsBusy(true);
     try {
-      const result = await finalize(record.RecordId, record.RowVersion, attested);
+      // The values just validated are the ones finalized, so unsaved edits are sent first.
+      const current = dirty ? await persist(record) : record;
+      if (!current) {
+        return;
+      }
+      const result = await finalize(current.RecordId, current.RowVersion, attested);
       setMessage(result.ok ? t('records.finalized') : (result.error ?? t('records.save_failed')));
       if (result.ok) {
-        await load();
+        await fetchRecord();
       }
     } finally {
       setIsBusy(false);
     }
-  }, [record, schema, values, attested, finalize, load, t]);
+  }, [record, schema, values, dirty, attested, persist, finalize, fetchRecord, t]);
 
   if (!record) {
     return (
@@ -176,7 +222,7 @@ export default function RecordScreen() {
 
         {message ? <Text className="mb-3 text-sm text-typography-700">{message}</Text> : null}
 
-        {schema ? <RecordForm schema={schema} values={values} issues={issues} readOnly={!editable || unsupported.length > 0} forFinalize={false} onChange={setValues} /> : <Spinner />}
+        {schema ? <RecordForm schema={schema} values={values} issues={issues} readOnly={!editable || unsupported.length > 0} forFinalize={false} onChange={handleChange} /> : <Spinner />}
 
         {/* Attachments upload against a server-owned session, so an interruption resumes. */}
         <RecordAttachments recordId={record.RecordId} allowAttachments={entry?.AllowAttachments !== false} readOnly={!editable} />

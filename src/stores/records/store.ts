@@ -116,7 +116,8 @@ interface RecordsState {
 
   stageDraft: (draft: PendingRecordDraft) => void;
   discardDraft: (clientRecordId: string) => void;
-  pushDraft: (clientRecordId: string) => Promise<{ ok: boolean; recordId?: string; conflict?: FieldRecordConflictKind; error?: string }>;
+  /** Sends a staged draft, or `draft` itself when it was not staged (a definition that seals values never is). */
+  pushDraft: (clientRecordId: string, draft?: PendingRecordDraft) => Promise<{ ok: boolean; recordId?: string; conflict?: FieldRecordConflictKind; error?: string }>;
   pushAllDrafts: () => Promise<void>;
   submitForReview: (recordId: string, rowVersion: number) => Promise<{ ok: boolean; error?: string }>;
   finalize: (recordId: string, rowVersion: number, attested: boolean) => Promise<{ ok: boolean; error?: string }>;
@@ -172,6 +173,9 @@ const messageFrom = (error: unknown): string => {
   const response = (error as { response?: { data?: { title?: string } } })?.response;
   return response?.data?.title ?? (error instanceof Error ? error.message : 'Request failed');
 };
+
+/** An unknown definition (catalog not loaded) is kept; only one known to seal values is refused. */
+const mayKeepOnDevice = (entry: FieldRecordCatalogEntry | null): boolean => !entry || canAuthorOffline(entry);
 
 export const useRecordsStore = create<RecordsState>()(
   persist(
@@ -335,8 +339,7 @@ export const useRecordsStore = create<RecordsState>()(
       },
 
       stageDraft: (draft) => {
-        const entry = get().entryFor(draft.definitionKey, draft.definitionVersion);
-        if (entry && !canAuthorOffline(entry)) {
+        if (!mayKeepOnDevice(get().entryFor(draft.definitionKey, draft.definitionVersion))) {
           // A definition that seals values never leaves plaintext on the device, so it is not staged.
           logger.info({ message: 'Draft not staged offline: definition requires a live protected-data grant', context: { definitionKey: draft.definitionKey } });
           return;
@@ -350,8 +353,8 @@ export const useRecordsStore = create<RecordsState>()(
         set({ pendingDrafts: pending });
       },
 
-      pushDraft: async (clientRecordId) => {
-        const draft = get().pendingDrafts[clientRecordId];
+      pushDraft: async (clientRecordId, supplied) => {
+        const draft = supplied ?? get().pendingDrafts[clientRecordId];
         if (!draft) {
           return { ok: false, error: 'not_found' };
         }
@@ -384,13 +387,16 @@ export const useRecordsStore = create<RecordsState>()(
           return { ok: true, recordId };
         } catch (error) {
           const conflict = conflictFrom(error);
-          // Never replayed silently: the draft is kept and flagged so a person decides what happens.
-          set({
-            pendingDrafts: {
-              ...get().pendingDrafts,
-              [clientRecordId]: { ...draft, lastError: messageFrom(error), conflict: conflict ?? null },
-            },
-          });
+          // Never replayed silently: the draft is kept and flagged so a person decides what happens —
+          // unless its definition seals values, which are never left on the device.
+          if (mayKeepOnDevice(get().entryFor(draft.definitionKey, draft.definitionVersion))) {
+            set({
+              pendingDrafts: {
+                ...get().pendingDrafts,
+                [clientRecordId]: { ...draft, lastError: messageFrom(error), conflict: conflict ?? null },
+              },
+            });
+          }
           logger.error({ message: 'Record draft push failed', context: { error, clientRecordId, conflict } });
           get().report({ EventType: 'draft_saved', Outcome: conflict ?? 'failed', DefinitionKey: draft.definitionKey, DefinitionVersion: draft.definitionVersion });
           if (conflict) {
