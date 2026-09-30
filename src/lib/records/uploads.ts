@@ -97,7 +97,8 @@ export const hashFile = async (fileUri: string): Promise<string> => {
       throw new Error('The file changed while it was being read.');
     }
   }
-  const digest = await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, bytes);
+  // Expo's native bridge requires a plain typed array, not the Buffer subclass.
+  const digest = await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength));
   return Buffer.from(digest).toString('hex');
 };
 

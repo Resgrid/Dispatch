@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { DateTimeField } from '@/components/common/date-time-field';
 import { OptionSelect } from '@/components/operations/option-select';
 import { Button, ButtonText } from '@/components/ui/button';
 import { HStack } from '@/components/ui/hstack';
@@ -9,7 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import type { EntrySubject } from '@/lib/operations/time';
-import { applyToCrew, combineDateTime, dateOf, endLocalFor, entryHours, hoursBySubject, isClockTime, isReportEditable, newEntry, subjectIdOf, sumHours, timeOf } from '@/lib/operations/time';
+import { applyToCrew, combineDateTime, dateOf, endLocalFor, entryHours, hoursBySubject, isReportEditable, newEntry, subjectIdOf, sumHours, timeOf } from '@/lib/operations/time';
 import type { TimeEntry, TimeReport, TimeReportIssue } from '@/models/v4/operations';
 import { TimeEntryType, TimeReportScope, TimeReportStatus, TimeSubjectType } from '@/models/v4/operations';
 
@@ -40,31 +41,6 @@ interface TimeReportEditorProps {
   onSign: (crewBossSigned: boolean, customerSignerName?: string | null) => void;
   onApprove: () => void;
 }
-
-// Keeps the keystrokes local and only commits a complete HH:mm, so a half-typed time never lands
-// in the entry as an unparseable value.
-const ClockField = ({ value, onCommit, isDisabled, testID, label }: { value: string; onCommit: (clock: string) => void; isDisabled: boolean; testID: string; label: string }) => {
-  const [text, setText] = useState(value);
-  useEffect(() => {
-    setText(value);
-  }, [value]);
-  return (
-    <Input isDisabled={isDisabled} className="w-24">
-      <InputField
-        testID={testID}
-        accessibilityLabel={label}
-        value={text}
-        placeholder="HH:mm"
-        keyboardType="numbers-and-punctuation"
-        maxLength={5}
-        onChangeText={(next) => {
-          setText(next);
-          if (isClockTime(next)) onCommit(next);
-        }}
-      />
-    </Input>
-  );
-};
 
 const typeRank = (entry: TimeEntry) => (entry.SubjectType === TimeSubjectType.Unit ? 0 : entry.SubjectType === TimeSubjectType.Personnel ? 1 : 2);
 
@@ -185,13 +161,23 @@ export const TimeReportEditor = ({
             />
             <HStack space="sm" className="items-center">
               <Text className="w-12">{t('operations.time.from')}</Text>
-              <ClockField label={t('operations.time.from')} value={timeOf(entry.StartLocal)} onCommit={(clock) => setStart(index, clock)} isDisabled={!rowEditable} testID={`operations-entry-start-${index}`} />
+              <DateTimeField
+                mode="time"
+                clearable={false}
+                label={t('operations.time.from')}
+                value={timeOf(entry.StartLocal)}
+                onChange={(clock) => setStart(index, clock)}
+                disabled={!rowEditable}
+                testID={`operations-entry-start-${index}`}
+              />
               <Text className="w-8">{t('operations.time.to')}</Text>
-              <ClockField
+              <DateTimeField
+                mode="time"
+                clearable={false}
                 label={t('operations.time.to')}
                 value={timeOf(entry.EndLocal)}
-                onCommit={(clock) => update(index, { EndLocal: endLocalFor(entry.StartLocal, clock) })}
-                isDisabled={!rowEditable}
+                onChange={(clock) => update(index, { EndLocal: endLocalFor(entry.StartLocal, clock) })}
+                disabled={!rowEditable}
                 testID={`operations-entry-end-${index}`}
               />
             </HStack>

@@ -4,6 +4,7 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView } from 'react-native';
 
+import { DateTimeField } from '@/components/common/date-time-field';
 import { ExpensesPanel } from '@/components/operations/expenses-panel';
 import { MarsPanel } from '@/components/operations/mars-panel';
 import { AwaitingApproval, DayReports, ScopePicker, useScopeLabel } from '@/components/operations/scope-picker';
@@ -103,8 +104,7 @@ export default function OperationsDeploymentScreen() {
     return mine.length > 0 ? mine : crewed;
   }, [deployment, access, activeUnitId]);
 
-  const changeDay = (days: number) => {
-    const next = shiftDateKey(dateKey, days);
+  const selectDay = (next: string) => {
     dateRef.current = next;
     setDateKey(next);
     useOperationsStore.getState().setScope(useOperationsStore.getState().scope, next);
@@ -182,11 +182,11 @@ export default function OperationsDeploymentScreen() {
         ) : null}
         {deployment && section !== 'mars' ? (
           <HStack className="items-center justify-between">
-            <Pressable onPress={() => changeDay(-1)} testID="operations-day-previous" accessibilityRole="button" accessibilityLabel={t('operations.previousDay')}>
+            <Pressable onPress={() => selectDay(shiftDateKey(dateKey, -1))} testID="operations-day-previous" accessibilityRole="button" accessibilityLabel={t('operations.previousDay')}>
               <ChevronLeft size={22} color="#2563eb" />
             </Pressable>
-            <Text className="font-semibold">{dateKey}</Text>
-            <Pressable onPress={() => changeDay(1)} testID="operations-day-next" accessibilityRole="button" accessibilityLabel={t('operations.nextDay')}>
+            <DateTimeField value={dateKey} onChange={selectDay} label={t('dateTimePicker.date')} clearable={false} disabled={busy} testID="operations-day" />
+            <Pressable onPress={() => selectDay(shiftDateKey(dateKey, 1))} testID="operations-day-next" accessibilityRole="button" accessibilityLabel={t('operations.nextDay')}>
               <ChevronRight size={22} color="#2563eb" />
             </Pressable>
           </HStack>
