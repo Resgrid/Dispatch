@@ -270,9 +270,15 @@ export const completionGrantRequest = async (transaction: string, completionCode
     transaction,
     completion_code: completionCode,
   });
-  const response = await authApi.post<AuthResponse>('/connect/token', data);
-  logger.info({ message: 'Login transaction completed' });
-  return response.data;
+  try {
+    const response = await authApi.post<AuthResponse>('/connect/token', data);
+    logger.info({ message: 'Login transaction completed' });
+    return response.data;
+  } catch (error) {
+    // The transaction and completion code travel in the request body; only the sanitized failure is logged.
+    logger.error({ message: 'Login transaction completion failed', context: sanitizeAuthError(error) });
+    throw error;
+  }
 };
 
 // Last SSO exchange that failed with a 2FA challenge, retained IN MEMORY ONLY so the OTP

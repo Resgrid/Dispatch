@@ -129,7 +129,7 @@ const samlRoundTrip = async (user: LiveUser, config: SsoConfig) => {
  * hands the app's scheme link back to it. The page reaches it through the same bridge the desktop preload exposes.
  */
 const desktopApp = () => {
-  const toLive = (url: string) => (url.startsWith(FAKE_IDP) ? `${LIVE}/__live/idp${url.substring(FAKE_IDP.length)}` : url);
+  const toLive = (url: string) => (url.startsWith(`${FAKE_IDP}/`) ? `${LIVE}/__live/idp${url.substring(FAKE_IDP.length)}` : url);
   const legacySso = createLegacySso({
     scheme: 'ResgridDispatch',
     fetch: (url: string, init?: RequestInit) => fetch(toLive(url), init),

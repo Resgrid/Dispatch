@@ -72,6 +72,15 @@ describe('createSsoLoopback', () => {
     expect(loopback.openTrips).toBe(0);
   });
 
+  it('closes the listener when the system browser cannot be opened', async () => {
+    const loopback = createSsoLoopback({ openExternal: async () => Promise.reject(new Error('no handler')) });
+    const listener = await loopback.listen();
+
+    await expect(loopback.open(listener.id, 'https://login.resgrid.com/sso/authorize')).rejects.toThrow('no handler');
+    expect(loopback.openTrips).toBe(0);
+    await expect(get(listener.returnTarget)).rejects.toThrow();
+  });
+
   it('resolves null on cancel and on timeout', async () => {
     const loopback = createSsoLoopback({ openExternal: async () => undefined, waitMs: 50 });
 

@@ -68,6 +68,33 @@ describe('finishing a sign-in on the login transaction', () => {
     expect(hasLoginTransaction()).toBe(false);
   });
 
+  it('does not sign in when the member cancels while the completion grant is in flight', async () => {
+    const h = host();
+    holdLoginTransaction('secret');
+    mocked.completeTotp.mockResolvedValue(completion());
+    grant.mockImplementationOnce(async () => {
+      forgetLoginSecrets();
+      return tokens;
+    });
+
+    expect(await verifyLoginMfa(h, { method: 'totp', code: '123456' })).toEqual({ ok: false, code: 'mfa_transaction_invalid', restart: false });
+    expect(h.signIn).not.toHaveBeenCalled();
+    expect(h.restart).not.toHaveBeenCalled();
+  });
+
+  it('does not spend the completion when the member cancels while the second factor is in flight', async () => {
+    const h = host();
+    holdLoginTransaction('secret');
+    mocked.completeTotp.mockImplementationOnce(async () => {
+      forgetLoginSecrets();
+      return completion();
+    });
+
+    expect(await verifyLoginMfa(h, { method: 'totp', code: '123456' })).toEqual({ ok: false, code: 'mfa_transaction_invalid', restart: false });
+    expect(grant).not.toHaveBeenCalled();
+    expect(h.signIn).not.toHaveBeenCalled();
+  });
+
   it('keeps the sign-in open after a wrong code, and ends it when the server says it is over', async () => {
     const h = host();
     holdLoginTransaction('secret');

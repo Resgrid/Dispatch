@@ -35,6 +35,37 @@ it('changes month and year without rolling an end-of-month value into another mo
   screen.unmount();
 });
 
+it('waits for a day after month or year navigation instead of committing the original date', () => {
+  const onChange = jest.fn();
+  const screen = render(<DateTimeField value="2026-03-05" label="Issued on" onChange={onChange} testID="date" />);
+  fireEvent.press(screen.getByTestId('date'));
+  fireEvent.press(screen.getByTestId('date-next'));
+  expect(screen.getByTestId('date-done').props.accessibilityState).toMatchObject({ disabled: true });
+  fireEvent.press(screen.getByTestId('date-done'));
+  expect(onChange).not.toHaveBeenCalled();
+
+  fireEvent.press(screen.getByTestId('date-year'));
+  fireEvent.press(screen.getByTestId('date-year-2027'));
+  fireEvent.press(screen.getByTestId('date-done'));
+  expect(onChange).not.toHaveBeenCalled();
+
+  fireEvent.press(screen.getByTestId('date-day-9'));
+  fireEvent.press(screen.getByTestId('date-done'));
+  expect(onChange).toHaveBeenCalledWith('2027-04-09');
+  screen.unmount();
+});
+
+it('keeps Done available when navigation returns to the drafted month', () => {
+  const onChange = jest.fn();
+  const screen = render(<DateTimeField mode="datetime" value="2026-09-26T21:15:00.000Z" label="Date and time" onChange={onChange} testID="date" />);
+  fireEvent.press(screen.getByTestId('date'));
+  fireEvent.press(screen.getByTestId('date-previous'));
+  fireEvent.press(screen.getByTestId('date-next'));
+  fireEvent.press(screen.getByTestId('date-done'));
+  expect(onChange).toHaveBeenCalledWith('2026-09-26T21:15:00.000Z');
+  screen.unmount();
+});
+
 it('cancels without changing the value, supports clearing, and prevents disabled edits', () => {
   const onChange = jest.fn();
   const screen = render(<DateTimeField value="2026-09-26" label="Date" onChange={onChange} testID="date" />);

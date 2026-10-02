@@ -51,6 +51,8 @@ export const DateTimeField = ({ value, onChange, label, mode = 'date', disabled 
   };
   const monthEnd = calendarDate(1);
   monthEnd.setMonth(month + 1, 0);
+  // Month and year only navigate. Away from the drafted day, Done waits for a day to be picked rather than committing one not on screen.
+  const awaitingDay = mode !== 'time' && (month !== draft.getMonth() || year !== draft.getFullYear());
   const move = (direction: number) => {
     if (view === 'years') {
       setYearPage((page) => Math.max(1, Math.min(9976, page + direction * 24)));
@@ -62,15 +64,16 @@ export const DateTimeField = ({ value, onChange, label, mode = 'date', disabled 
     setMonth(next.getMonth());
     setYear(next.getFullYear());
   };
-  const choice = (text: string, id: string, onPress: () => void, chosen = false, accessibilityLabel = text) => (
+  const choice = (text: string, id: string, onPress: () => void, chosen = false, accessibilityLabel = text, unavailable = false) => (
     <Pressable
       key={id}
       testID={`${testID}-${id}`}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      accessibilityState={{ selected: chosen }}
+      accessibilityState={{ selected: chosen, disabled: unavailable }}
+      disabled={unavailable}
       onPress={onPress}
-      className={chosen ? 'min-h-11 items-center justify-center rounded bg-primary-600 px-2 py-3' : 'min-h-11 items-center justify-center rounded px-2 py-3'}
+      className={`${chosen ? 'min-h-11 items-center justify-center rounded bg-primary-600 px-2 py-3' : 'min-h-11 items-center justify-center rounded px-2 py-3'}${unavailable ? ' opacity-50' : ''}`}
     >
       <Text className={chosen ? 'text-center text-white' : 'text-center text-typography-900'}>{text}</Text>
     </Pressable>
@@ -190,7 +193,7 @@ export const DateTimeField = ({ value, onChange, label, mode = 'date', disabled 
               <View className="mt-3 flex-row justify-between">
                 {clearable ? choice(t('dateTimePicker.clear'), 'clear', () => commit('')) : <View />}
                 {choice(t('common.cancel'), 'cancel', () => setOpen(false))}
-                {choice(t('common.done'), 'done', () => commit(serializePickerValue(draft, mode)), true)}
+                {choice(t('common.done'), 'done', () => commit(serializePickerValue(draft, mode)), true, t('common.done'), awaitingDay)}
               </View>
             </View>
           </SafeAreaView>

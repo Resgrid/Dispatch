@@ -1216,7 +1216,7 @@
     "login": {
       "body": "Hasło było poprawne. Dokończ logowanie jedną z tych metod.",
       "code_placeholder": "6-cyfrowy kod",
-      "lost_factor": "Zgubiłem aplikację uwierzytelniającą",
+      "lost_factor": "Nie mam już dostępu do aplikacji uwierzytelniającej",
       "recovery_body": "Wpisz jeden z zapisanych kodów odzyskiwania. Każdy kod działa raz.",
       "recovery_placeholder": "Kod odzyskiwania",
       "title": "Potwierdź, że to Ty",
@@ -1252,7 +1252,7 @@
       "body": "Przechowuj je bezpiecznie. Każdy działa raz, jeśli zgubisz aplikację. Nie zostaną pokazane ponownie.",
       "copied": "Skopiowano",
       "copy": "Kopiuj kody",
-      "saved": "Zapisałem je",
+      "saved": "Mam je zapisane",
       "title": "Zapisz kody odzyskiwania"
     },
     "setup": {

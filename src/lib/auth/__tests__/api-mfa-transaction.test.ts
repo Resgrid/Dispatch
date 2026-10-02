@@ -76,4 +76,16 @@ describe('login on the transaction flow (passkey workbook section 7.1)', () => {
     expect(await completionGrantRequest('secret', 'code-1')).toMatchObject({ access_token: 'a' });
     expect(sentBody()).toEqual({ grant_type: 'urn:resgrid:params:oauth:grant-type:mfa_completion', transaction: 'secret', completion_code: 'code-1' });
   });
+
+  it('logs a refused completion without its secrets and hands the refusal back', async () => {
+    const { logger } = jest.requireMock('@/lib/logging') as { logger: { error: jest.Mock } };
+    const refused = refusal({ error: 'invalid_grant' });
+    mockPost.mockRejectedValue(refused);
+
+    await expect(completionGrantRequest('secret', 'code-1')).rejects.toBe(refused);
+    expect(logger.error).toHaveBeenCalledWith(expect.objectContaining({ message: 'Login transaction completion failed' }));
+    const logged = JSON.stringify(logger.error.mock.calls);
+    expect(logged).not.toContain('secret');
+    expect(logged).not.toContain('code-1');
+  });
 });

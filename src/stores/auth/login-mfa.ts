@@ -75,8 +75,18 @@ const failed = (host: LoginMfaHost, problem: MfaProblem): LoginMfaResult => {
   return { ok: false, code: problem.code, restart: false };
 };
 
+// A sign-in the member cancelled (or signed out of) while a step was in flight; the store has already moved on.
+const abandoned: LoginMfaResult = { ok: false, code: 'mfa_transaction_invalid', restart: false };
+
 const finish = async (host: LoginMfaHost, secret: string, completion: CompletionData): Promise<LoginMfaResult> => {
+  if (loginTransaction !== secret) {
+    return abandoned;
+  }
   const tokens = await completionGrantRequest(secret, completion.CompletionCode);
+  // Checked again after the grant: a cancel during it must not sign in after all.
+  if (loginTransaction !== secret) {
+    return abandoned;
+  }
   loginTransaction = null;
   host.signIn(tokens, completion.RecoveryCodes ?? null);
   logger.info({ message: 'Signed in with a second factor', context: { recovery: completion.Recovery } });

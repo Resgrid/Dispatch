@@ -71,6 +71,12 @@ describe('runSsoRoundTrip', () => {
     await runSsoRoundTrip(async () => begun, true);
     expect(openAuthSession).toHaveBeenCalledWith(begun.AuthorizeUrl, 'resgriddispatch://sso-return', { preferEphemeralSession: true });
   });
+
+  it('reports a browser that cannot open as a failed round trip instead of rejecting', async () => {
+    openAuthSession.mockRejectedValueOnce(new Error('Another auth session is already open'));
+
+    await expect(runSsoRoundTrip(async () => begun)).resolves.toEqual({ ok: false, reason: 'failed' });
+  });
 });
 
 describe('runSsoRoundTrip in the desktop app', () => {
@@ -117,6 +123,22 @@ describe('runSsoRoundTrip in the desktop app', () => {
     expect(result).toEqual({ ok: false, reason: 'refused', code: 'sso_unavailable' });
     expect(bridge.ssoCancel).toHaveBeenCalledWith('trip-1');
     expect(bridge.ssoOpen).not.toHaveBeenCalled();
+  });
+
+  it('reports a listener that cannot start as failed, and opens nothing', async () => {
+    bridge.ssoListen.mockRejectedValueOnce(new Error('IPC failed'));
+    const begin = jest.fn(async () => begun);
+
+    expect(await runSsoRoundTrip(begin)).toEqual({ ok: false, reason: 'failed' });
+    expect(begin).not.toHaveBeenCalled();
+    expect(bridge.ssoOpen).not.toHaveBeenCalled();
+  });
+
+  it('closes the listener and reports failed when the system browser cannot be opened', async () => {
+    bridge.ssoOpen.mockRejectedValueOnce(new Error('no handler'));
+
+    expect(await runSsoRoundTrip(async () => begun)).toEqual({ ok: false, reason: 'failed' });
+    expect(bridge.ssoCancel).toHaveBeenCalledWith('trip-1');
   });
 
   it('reads a closed or timed-out listener as cancelled, and still checks the state', async () => {

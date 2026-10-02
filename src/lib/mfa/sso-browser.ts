@@ -65,7 +65,11 @@ export const runSsoRoundTrip = async (begin: (secrets: SsoRoundTripSecrets) => P
   const codeVerifier = randomBase64Url(32);
   const state = randomBase64Url(24);
   const desktop = desktopSso();
-  const listener = desktop ? await desktop.ssoListen() : null;
+  // The bridge or the browser failing is a failed round trip, never a rejection: every sign-in screen waits on this result.
+  const listener = desktop ? await desktop.ssoListen().catch(() => undefined) : null;
+  if (listener === undefined) {
+    return { ok: false, reason: 'failed' };
+  }
   const returnTarget = listener ? listener.returnTarget : ssoReturnTarget();
 
   let begun: SsoBeginData;
@@ -73,18 +77,25 @@ export const runSsoRoundTrip = async (begin: (secrets: SsoRoundTripSecrets) => P
     begun = await begin({ returnTarget, state, codeChallenge: await s256Challenge(codeVerifier), platform: ssoPlatform() });
   } catch (error) {
     if (desktop && listener) {
-      await desktop.ssoCancel(listener.id);
+      await desktop.ssoCancel(listener.id).catch(() => undefined);
     }
     return { ok: false, reason: 'refused', code: toMfaProblem(error).code };
   }
 
   let returnedUrl: string | null;
-  if (desktop && listener) {
-    // The provider opens in the member's own browser; the loopback listener hands back its one return.
-    returnedUrl = await desktop.ssoOpen(listener.id, begun.AuthorizeUrl);
-  } else {
-    const result = await WebBrowser.openAuthSessionAsync(begun.AuthorizeUrl, returnTarget, { preferEphemeralSession: ephemeral });
-    returnedUrl = result.type === 'success' && result.url ? result.url : null;
+  try {
+    if (desktop && listener) {
+      // The provider opens in the member's own browser; the loopback listener hands back its one return.
+      returnedUrl = await desktop.ssoOpen(listener.id, begun.AuthorizeUrl);
+    } else {
+      const result = await WebBrowser.openAuthSessionAsync(begun.AuthorizeUrl, returnTarget, { preferEphemeralSession: ephemeral });
+      returnedUrl = result.type === 'success' && result.url ? result.url : null;
+    }
+  } catch {
+    if (desktop && listener) {
+      await desktop.ssoCancel(listener.id).catch(() => undefined);
+    }
+    return { ok: false, reason: 'failed' };
   }
   if (!returnedUrl) {
     return { ok: false, reason: 'cancelled' };
