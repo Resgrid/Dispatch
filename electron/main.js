@@ -1,4 +1,6 @@
 const { app, BrowserWindow, protocol, net, Notification, ipcMain, session, shell, Menu } = require('electron');
+const { registerSsoLoopback } = require('./sso-loopback');
+const { registerLegacySso } = require('./legacy-sso');
 const path = require('path');
 const url = require('url');
 
@@ -31,7 +33,12 @@ let pendingDeepLink = null;
 const deepLinkScheme = 'ResgridDispatch';
 const deepLinkPrefix = deepLinkScheme.toLowerCase() + '://';
 
-app.setAsDefaultProtocolClient(deepLinkScheme);
+if (process.defaultApp && process.argv.length >= 2) {
+    // Unpackaged (electron .): the OS must start Electron with this app's entry script.
+    app.setAsDefaultProtocolClient(deepLinkScheme, process.execPath, [path.resolve(process.argv[1])]);
+} else {
+    app.setAsDefaultProtocolClient(deepLinkScheme);
+}
 
 function forwardDeepLink(deepLinkUrl) {
     if (mainWindow && !mainWindow.webContents.isLoading()) {
@@ -40,6 +47,25 @@ function forwardDeepLink(deepLinkUrl) {
         pendingDeepLink = deepLinkUrl;
     }
 }
+
+function focusMainWindow() {
+    if (mainWindow) {
+        if (mainWindow.isMinimized()) {
+            mainWindow.restore();
+        }
+        mainWindow.focus();
+    }
+}
+
+// Legacy SSO: the provider and the SAML relay return through the OS to resgriddispatch://auth/callback (legacy-sso.js).
+// That link goes to the waiting sign-in, never to the page; other links are forwarded as before.
+const legacySso = registerLegacySso(ipcMain, {
+    scheme: deepLinkScheme,
+    openExternal: (externalUrl) => shell.openExternal(externalUrl),
+    // The main process's network stack: the system's proxy settings, and no Origin header on the provider's token request.
+    fetch: (fetchUrl, init) => net.fetch(fetchUrl, init),
+    focus: focusMainWindow,
+});
 
 // Single-instance lock: required for the second-instance handler below to
 // fire on Windows/Linux instead of spawning a duplicate process.
@@ -52,10 +78,9 @@ if (!gotSingleInstanceLock) {
         if (!mainWindow) {
             createWindow();
         } else {
-            if (mainWindow.isMinimized()) mainWindow.restore();
-            mainWindow.focus();
+            focusMainWindow();
         }
-        if (deepLinkUrl) {
+        if (deepLinkUrl && !legacySso.handleLink(deepLinkUrl)) {
             forwardDeepLink(deepLinkUrl);
         }
     });
@@ -64,7 +89,9 @@ if (!gotSingleInstanceLock) {
 // macOS deep links arrive via open-url instead of second-instance argv
 app.on('open-url', (event, openUrl) => {
     event.preventDefault();
-    forwardDeepLink(openUrl);
+    if (!legacySso.handleLink(openUrl)) {
+        forwardDeepLink(openUrl);
+    }
 });
 
 function createWindow() {
@@ -144,6 +171,11 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+    // A second instance only hands its link to the first, then quits.
+    if (!gotSingleInstanceLock) {
+        return;
+    }
+
     // ── Content Security Policy ───────────────────────────────────────
     // Set a proper CSP to silence the Electron security warning about
     // "unsafe-eval" / missing CSP.  In development we allow the local
@@ -226,6 +258,13 @@ app.whenReady().then(() => {
     Menu.setApplicationMenu(Menu.buildFromTemplate(menuTemplate));
 
     createWindow();
+
+    // ── Brokered SSO ───────────────────────────────────────────────────
+    // The broker returns to a one-time loopback listener; the provider opens in the member's own browser.
+    registerSsoLoopback(ipcMain, {
+        openExternal: (url) => shell.openExternal(url),
+        focus: focusMainWindow,
+    });
 
     // ── Notification IPC handlers ──────────────────────────────────────
     // Allow the renderer to request native Electron Notification objects

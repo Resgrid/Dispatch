@@ -11,6 +11,7 @@ import { useFonts } from 'expo-font';
 import * as Notifications from 'expo-notifications';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider, useNavigationContainerRef } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import * as WebBrowser from 'expo-web-browser';
 import React, { useEffect } from 'react';
 import { LogBox, Platform, useColorScheme } from 'react-native';
 import FlashMessage from 'react-native-flash-message';
@@ -30,6 +31,11 @@ import { registerNavigationReadyCheck } from '@/lib/navigation';
 import { getDeviceUuid, setDeviceUuid } from '@/lib/storage/app';
 import { uuidv4 } from '@/lib/utils';
 import { appInitializationService } from '@/services/app-initialization.service';
+
+// A web sign-in popup returns to the page its redirect names (/login/sso), and a production web build loads a route's
+// module only when that route is shown, so the sign-in hooks' own completion may never run there. The root layout
+// loads on every page, so the popup is completed here. On native this does nothing.
+WebBrowser.maybeCompleteAuthSession();
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -214,6 +220,9 @@ function RootLayout() {
         <Stack.Screen name="(app)" options={{ headerShown: false }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         <Stack.Screen name="login/index" options={{ headerShown: false }} />
+        <Stack.Screen name="login/recovery" options={{ headerShown: true }} />
+        <Stack.Screen name="login/shared-device" options={{ headerShown: true }} />
+        <Stack.Screen name="sso-return" options={{ headerShown: false }} />
         <Stack.Screen name="lockscreen" options={{ headerShown: false }} />
         <Stack.Screen name="maintenance" options={{ headerShown: false }} />
       </Stack>

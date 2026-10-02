@@ -33,6 +33,7 @@ import {
   HomeIcon as RawHomeIcon,
   LinkIcon as RawLinkIcon,
   Loader2 as RawLoader2,
+  Lock as RawLock,
   LockKeyhole as RawLockKeyhole,
   type LucideProps,
   Mail as RawMail,
@@ -133,6 +134,7 @@ export const GlobeIcon = themed(RawGlobeIcon);
 export const HomeIcon = themed(RawHomeIcon);
 export const LinkIcon = themed(RawLinkIcon);
 export const Loader2 = themed(RawLoader2);
+export const Lock = themed(RawLock);
 export const LockKeyhole = themed(RawLockKeyhole);
 export const Mail = themed(RawMail);
 export const MailIcon = themed(RawMailIcon);

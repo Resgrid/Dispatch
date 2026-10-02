@@ -12,6 +12,7 @@ jest.mock('@/lib/logging', () => ({
 
 jest.mock('@/lib/auth/api', () => ({
   loginRequest: jest.fn(),
+  forgetPendingSsoExchange: jest.fn(),
   refreshTokenRequest: jest.fn(),
   clearPasswordVerificationHash: jest.fn().mockResolvedValue(undefined),
   storePasswordVerificationHash: jest.fn().mockResolvedValue(undefined),

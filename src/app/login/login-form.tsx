@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AlertTriangle, EyeIcon, EyeOffIcon } from 'lucide-react-native';
+import { AlertTriangle, EyeIcon, EyeOffIcon, MonitorCog } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import React, { useState } from 'react';
 import type { SubmitHandler } from 'react-hook-form';
@@ -15,6 +15,7 @@ import { FormControl, FormControlError, FormControlErrorIcon, FormControlErrorTe
 import { Input, InputField, InputIcon, InputSlot } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import colors from '@/constants/colors';
+import type { SharedInstallationSetting } from '@/lib/mfa/shared-installation';
 
 // Function to create schema - makes it easier to mock for testing
 const createLoginFormSchema = () =>
@@ -41,9 +42,13 @@ export type LoginFormProps = {
   error?: string;
   onServerUrlPress?: () => void;
   onSsoPress?: () => void;
+  /** Opens the shared device setting for this installation (passkey plan section 10.5). */
+  onSharedDevicePress?: () => void;
+  /** This installation's shared device setting, when the screen shows it. */
+  sharedDevice?: SharedInstallationSetting | null;
 };
 
-export const LoginForm = ({ onSubmit = () => {}, isLoading = false, error = undefined, onServerUrlPress, onSsoPress }: LoginFormProps) => {
+export const LoginForm = ({ onSubmit = () => {}, isLoading = false, error = undefined, onServerUrlPress, onSsoPress, onSharedDevicePress, sharedDevice = null }: LoginFormProps) => {
   const { colorScheme } = useColorScheme();
   const { t } = useTranslation();
   const {
@@ -184,6 +189,22 @@ export const LoginForm = ({ onSubmit = () => {}, isLoading = false, error = unde
             </Button>
           ) : null}
         </View>
+
+        {/* Shared workstation: every sign-in here starts a shared session that locks between operators */}
+        {onSharedDevicePress ? (
+          <Button className="mt-2 self-center" variant="link" action="secondary" size="sm" onPress={onSharedDevicePress} testID="login-shared-device">
+            <MonitorCog size={14} style={{ marginRight: 4 }} />
+            <ButtonText className="text-xs">
+              {!sharedDevice?.configured
+                ? t('shared_session.device_setup')
+                : sharedDevice.shared
+                  ? sharedDevice.label
+                    ? t('shared_session.device_on_label', { label: sharedDevice.label })
+                    : t('shared_session.device_on')
+                  : t('shared_session.device_settings')}
+            </ButtonText>
+          </Button>
+        ) : null}
 
         {/* Footer */}
         <View className="mt-8 items-center">

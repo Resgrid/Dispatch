@@ -1,16 +1,17 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as Linking from 'expo-linking';
-import { useRouter } from 'expo-router';
+import { type Href, useRouter } from 'expo-router';
 import { AlertTriangle, ChevronLeft, ShieldCheck } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import { useCallback, useEffect, useState } from 'react';
 import type { SubmitHandler } from 'react-hook-form';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { Image, ScrollView } from 'react-native';
+import { Image, Platform, ScrollView } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import * as z from 'zod';
 
+import { LoginMfaSheet } from '@/components/auth/login-mfa-sheet';
 import { LoginOtpModal } from '@/components/auth/login-otp-modal';
 import { View } from '@/components/ui';
 import { Button, ButtonSpinner, ButtonText } from '@/components/ui/button';
@@ -20,9 +21,12 @@ import { Text } from '@/components/ui/text';
 import colors from '@/constants/colors';
 import { useOidcLogin } from '@/hooks/use-oidc-login';
 import { useSamlLogin } from '@/hooks/use-saml-login';
-import { retrySsoExchangeWithOtp } from '@/lib/auth/api';
+import { forgetPendingSsoExchange, retrySsoExchangeWithOtp } from '@/lib/auth/api';
 import type { AuthResponse, SsoConfig } from '@/lib/auth/types';
 import { logger } from '@/lib/logging';
+import { desktopLegacySso } from '@/lib/mfa/legacy-sso-desktop';
+import { mfaErrorKey } from '@/lib/mfa/messages';
+import { isSharedInstallation } from '@/lib/mfa/shared-installation';
 import { fetchSsoConfigForUser } from '@/services/sso-discovery';
 import useAuthStore from '@/stores/auth/store';
 
@@ -35,6 +39,8 @@ interface OidcSignInSectionProps {
   clientId: string;
   username: string;
   departmentId?: number;
+  /** The department's encrypted token from discovery, which the exchange needs. */
+  departmentToken?: string | null;
   isAuthenticating: boolean;
   onAuthStart: () => void;
   onAuthEnd: () => void;
@@ -43,9 +49,21 @@ interface OidcSignInSectionProps {
   onError: (msg: string) => void;
 }
 
-function OidcSignInSection({ authority, clientId, username, departmentId, isAuthenticating, onAuthStart, onAuthEnd, onTokenReceived, onMfaRequired, onError }: OidcSignInSectionProps) {
+function OidcSignInSection({ authority, clientId, username, departmentId, departmentToken, isAuthenticating, onAuthStart, onAuthEnd, onTokenReceived, onMfaRequired, onError }: OidcSignInSectionProps) {
   const { t } = useTranslation();
-  const { request, response, promptAsync, exchangeCodeForResgridToken } = useOidcLogin(authority, clientId, username, departmentId);
+  const { request, response, promptAsync, exchangeCodeForResgridToken, exchangeIdTokenForResgridToken } = useOidcLogin(authority, clientId, username, departmentId, departmentToken);
+  // The desktop app's main process runs the provider's sign-in and redeems the code (see legacy-sso-desktop.ts).
+  const desktop = desktopLegacySso();
+
+  const settleExchange = (authResponse: AuthResponse | 'mfa_required' | null) => {
+    if (authResponse === 'mfa_required') {
+      onMfaRequired();
+    } else if (!authResponse) {
+      onError(t('sso.error_token_exchange'));
+    } else {
+      onTokenReceived(authResponse);
+    }
+  };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -53,14 +71,7 @@ function OidcSignInSection({ authority, clientId, username, departmentId, isAuth
       (async () => {
         onAuthStart();
         try {
-          const authResponse = await exchangeCodeForResgridToken();
-          if (authResponse === 'mfa_required') {
-            onMfaRequired();
-          } else if (!authResponse) {
-            onError(t('sso.error_token_exchange'));
-          } else {
-            onTokenReceived(authResponse);
-          }
+          settleExchange(await exchangeCodeForResgridToken());
         } catch (err) {
           logger.error({ message: 'SSO OidcSignInSection: exchange failed', context: { err } });
           onError(t('sso.error_generic'));
@@ -76,7 +87,22 @@ function OidcSignInSection({ authority, clientId, username, departmentId, isAuth
   const handlePress = async () => {
     onAuthStart();
     try {
+      if (desktop) {
+        // A shared installation needs a fresh provider sign-in (see the OIDC hook).
+        const signedIn = await desktop.legacySsoOidc(authority, clientId, isSharedInstallation());
+        if (signedIn.ok) {
+          settleExchange(await exchangeIdTokenForResgridToken(signedIn.idToken));
+        } else if (signedIn.reason === 'denied') {
+          onError(t('sso.error_oidc_cancelled'));
+        } else if (signedIn.reason === 'failed') {
+          onError(t('sso.error_generic'));
+        }
+        return;
+      }
       await promptAsync();
+    } catch (err) {
+      logger.error({ message: 'SSO OidcSignInSection: sign-in failed', context: { err } });
+      onError(t('sso.error_generic'));
     } finally {
       onAuthEnd();
     }
@@ -92,7 +118,7 @@ function OidcSignInSection({ authority, clientId, username, departmentId, isAuth
   }
 
   return (
-    <Button className="mt-2 w-full" variant="solid" action="primary" onPress={handlePress} isDisabled={!request}>
+    <Button className="mt-2 w-full" variant="solid" action="primary" onPress={handlePress} isDisabled={!request && !desktop} testID="sso-oidc">
       <ShieldCheck size={18} color="#ffffff" />
       <ButtonText className="ml-2">{t('sso.sign_in_button')}</ButtonText>
     </Button>
@@ -100,13 +126,16 @@ function OidcSignInSection({ authority, clientId, username, departmentId, isAuth
 }
 
 // ---------------------------------------------------------------------------
-// SamlSignInSection — only mounted when a valid SAML idpSsoUrl is available
+// SamlSignInSection — only mounted where the relay's link can come back (the native app, or the desktop app's main
+// process), when discovery names the server's SAML start page
 // ---------------------------------------------------------------------------
 
 interface SamlSignInSectionProps {
-  idpSsoUrl: string;
+  samlLoginUrl: string;
   username: string;
   departmentId?: number;
+  /** The department's encrypted token from discovery, which the exchange needs. */
+  departmentToken?: string | null;
   isAuthenticating: boolean;
   onAuthStart: () => void;
   onAuthEnd: () => void;
@@ -115,33 +144,34 @@ interface SamlSignInSectionProps {
   onError: (msg: string) => void;
 }
 
-function SamlSignInSection({ idpSsoUrl, username, departmentId, isAuthenticating, onAuthStart, onAuthEnd, onTokenReceived, onMfaRequired, onError }: SamlSignInSectionProps) {
+function SamlSignInSection({ samlLoginUrl, username, departmentId, departmentToken, isAuthenticating, onAuthStart, onAuthEnd, onTokenReceived, onMfaRequired, onError }: SamlSignInSectionProps) {
   const { t } = useTranslation();
-  const { startSamlLogin, handleSamlDeepLink } = useSamlLogin(idpSsoUrl, username, departmentId);
+  const { startSamlLogin, handleSamlDeepLink } = useSamlLogin(samlLoginUrl, username, departmentId, departmentToken);
+
+  // The relay's link back: a deep link (mobile), or the desktop main process's answer to startSamlLogin.
+  const processDeepLink = async (url: string) => {
+    if (url.includes('auth/callback') && url.includes('saml_response')) {
+      onAuthStart();
+      try {
+        const authResponse = await handleSamlDeepLink(url);
+        if (authResponse === 'mfa_required') {
+          onMfaRequired();
+        } else if (!authResponse) {
+          onError(t('sso.error_token_exchange'));
+        } else {
+          onTokenReceived(authResponse);
+        }
+      } catch (err) {
+        logger.error({ message: 'SSO SamlSignInSection: deep link failed', context: { err } });
+        onError(t('sso.error_generic'));
+      } finally {
+        onAuthEnd();
+      }
+    }
+  };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    const processDeepLink = async (url: string) => {
-      if (url.includes('auth/callback') && url.includes('saml_response')) {
-        onAuthStart();
-        try {
-          const authResponse = await handleSamlDeepLink(url);
-          if (authResponse === 'mfa_required') {
-            onMfaRequired();
-          } else if (!authResponse) {
-            onError(t('sso.error_token_exchange'));
-          } else {
-            onTokenReceived(authResponse);
-          }
-        } catch (err) {
-          logger.error({ message: 'SSO SamlSignInSection: deep link failed', context: { err } });
-          onError(t('sso.error_generic'));
-        } finally {
-          onAuthEnd();
-        }
-      }
-    };
-
     // Handle cold-start: app opened directly via SAML redirect URL
     Linking.getInitialURL().then((url) => {
       if (url) processDeepLink(url);
@@ -157,7 +187,10 @@ function SamlSignInSection({ idpSsoUrl, username, departmentId, isAuthenticating
   const handlePress = async () => {
     onAuthStart();
     try {
-      await startSamlLogin();
+      const returned = await startSamlLogin();
+      if (returned) {
+        await processDeepLink(returned);
+      }
     } finally {
       onAuthEnd();
     }
@@ -173,7 +206,7 @@ function SamlSignInSection({ idpSsoUrl, username, departmentId, isAuthenticating
   }
 
   return (
-    <Button className="mt-2 w-full" variant="solid" action="primary" onPress={handlePress}>
+    <Button className="mt-2 w-full" variant="solid" action="primary" onPress={handlePress} testID="sso-saml">
       <ShieldCheck size={18} color="#ffffff" />
       <ButtonText className="ml-2">{t('sso.sign_in_button')}</ButtonText>
     </Button>
@@ -211,6 +244,7 @@ export default function SsoLoginScreen() {
 
   const loginWithSso = useAuthStore((s) => s.loginWithSso);
   const status = useAuthStore((s) => s.status);
+  const mfaChallenge = useAuthStore((s) => s.mfaChallenge);
 
   const {
     control,
@@ -219,6 +253,14 @@ export default function SsoLoginScreen() {
   } = useForm<SsoLookupFormType>({
     resolver: zodResolver(ssoLookupSchema),
   });
+
+  // Leaving this screen ends a desktop sign-in still waiting in the member's browser.
+  useEffect(
+    () => () => {
+      void desktopLegacySso()?.legacySsoCancel();
+    },
+    []
+  );
 
   // Navigate to app once signed in
   useEffect(() => {
@@ -238,6 +280,13 @@ export default function SsoLoginScreen() {
     },
     [loginWithSso, t]
   );
+
+  // A dismissed code prompt, or leaving this screen, abandons the exchange: its IdP token is not kept.
+  const dismissOtpPrompt = useCallback(() => {
+    setShowOtpPrompt(false);
+    forgetPendingSsoExchange();
+  }, []);
+  useEffect(() => forgetPendingSsoExchange, []);
 
   // 2FA challenge from the exchange: the retained IdP token is retried with the code.
   const handleMfaRequired = useCallback(() => {
@@ -273,6 +322,21 @@ export default function SsoLoginScreen() {
     },
     [handleTokenReceived, t]
   );
+
+  // Brokered SSO (passkey plan section 7.7.2): the Resgrid broker talks to the provider, and only a one-time code comes
+  // back to this app. The app-side OIDC and SAML sections below remain for servers without the broker.
+  const handleBrokeredSso = useCallback(async () => {
+    if (!ssoConfig) {
+      return;
+    }
+    setIsAuthenticating(true);
+    setAuthError(null);
+    const result = await useAuthStore.getState().loginWithBrokeredSso(ssoConfig.departmentToken ? { departmentToken: ssoConfig.departmentToken } : { username: resolvedUsername });
+    setIsAuthenticating(false);
+    if (result.outcome === 'failed') {
+      setAuthError(t(mfaErrorKey(result.code)));
+    }
+  }, [resolvedUsername, ssoConfig, t]);
 
   const onLookup: SubmitHandler<SsoLookupFormType> = async (data) => {
     setLookupError(null);
@@ -383,7 +447,7 @@ export default function SsoLoginScreen() {
                 <ButtonText className="ml-2 text-sm font-medium">{t('sso.looking_up')}</ButtonText>
               </Button>
             ) : (
-              <Button className="mt-8 w-full" variant="solid" action="primary" onPress={handleSubmit(onLookup)}>
+              <Button className="mt-8 w-full" variant="solid" action="primary" onPress={handleSubmit(onLookup)} testID="sso-continue">
                 <ButtonText>{t('sso.continue_button')}</ButtonText>
               </Button>
             )}
@@ -397,6 +461,10 @@ export default function SsoLoginScreen() {
       </KeyboardAvoidingView>
     );
   }
+
+  // Without the broker, SAML returns on this app's own scheme: the native app receives it, and the desktop app's main
+  // process does. A web page receives neither.
+  const receivesAppScheme = Platform.OS !== 'web' || desktopLegacySso() !== null;
 
   // Phase: sso-options
   return (
@@ -420,12 +488,20 @@ export default function SsoLoginScreen() {
             </View>
           ) : null}
 
-          {ssoConfig?.providerType === 'oidc' && ssoConfig.authority && ssoConfig.clientId ? (
+          {ssoConfig?.brokeredSsoAvailable ? (
+            <Button className="mt-2 w-full" variant="solid" action="primary" onPress={() => void handleBrokeredSso()} isDisabled={isAuthenticating} testID="sso-brokered">
+              {isAuthenticating ? <ButtonSpinner /> : <ShieldCheck size={18} color="#fff" />}
+              <ButtonText className="ml-2">{isAuthenticating ? t('sso.authenticating') : t('sso.sign_in_button')}</ButtonText>
+            </Button>
+          ) : null}
+
+          {!ssoConfig?.brokeredSsoAvailable && ssoConfig?.providerType === 'oidc' && ssoConfig.authority && ssoConfig.clientId ? (
             <OidcSignInSection
               authority={ssoConfig.authority}
               clientId={ssoConfig.clientId}
               username={resolvedUsername}
               departmentId={resolvedDepartmentId}
+              departmentToken={ssoConfig.departmentToken}
               isAuthenticating={isAuthenticating}
               onAuthStart={() => {
                 setIsAuthenticating(true);
@@ -441,11 +517,19 @@ export default function SsoLoginScreen() {
             />
           ) : null}
 
-          {ssoConfig?.providerType === 'saml2' && ssoConfig.idpSsoUrl ? (
+          {!ssoConfig?.brokeredSsoAvailable && ssoConfig?.providerType === 'saml2' && (!receivesAppScheme || !ssoConfig.samlLoginUrl) ? (
+            <View className="mb-4 flex-row items-center rounded-lg bg-red-50 p-3 dark:bg-red-950" testID="sso-saml-unavailable">
+              <AlertTriangle size={16} color="#ef4444" />
+              <Text className="ml-2 text-sm text-red-600 dark:text-red-400">{t('sso.error_generic')}</Text>
+            </View>
+          ) : null}
+
+          {!ssoConfig?.brokeredSsoAvailable && ssoConfig?.providerType === 'saml2' && receivesAppScheme && ssoConfig.samlLoginUrl ? (
             <SamlSignInSection
-              idpSsoUrl={ssoConfig.idpSsoUrl}
+              samlLoginUrl={ssoConfig.samlLoginUrl}
               username={resolvedUsername}
               departmentId={resolvedDepartmentId}
+              departmentToken={ssoConfig.departmentToken}
               isAuthenticating={isAuthenticating}
               onAuthStart={() => {
                 setIsAuthenticating(true);
@@ -475,8 +559,11 @@ export default function SsoLoginScreen() {
             <ButtonText className="ml-1">{t('sso.back_to_lookup')}</ButtonText>
           </Button>
 
+          {/* Second factor after a brokered sign-in, on the login transaction the broker's redemption started */}
+          <LoginMfaSheet isOpen={status === 'mfaRequired' && mfaChallenge?.source === 'sso' && mfaChallenge.kind !== 'legacy'} onLostFactor={() => router.push('/login/recovery' as Href)} />
+
           {/* Two-factor challenge: SSO exchange answered mfa_required / invalid_totp */}
-          <LoginOtpModal isOpen={showOtpPrompt} isSubmitting={isOtpSubmitting} invalidCode={otpInvalid} onSubmit={handleOtpSubmit} onClose={() => setShowOtpPrompt(false)} />
+          <LoginOtpModal isOpen={showOtpPrompt} isSubmitting={isOtpSubmitting} invalidCode={otpInvalid} onSubmit={handleOtpSubmit} onClose={dismissOtpPrompt} />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

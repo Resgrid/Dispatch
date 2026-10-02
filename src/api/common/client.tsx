@@ -1,16 +1,21 @@
 import axios, { type AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
 
+import { sharedSession401 } from '@/lib/auth/shared-session-errors';
 import { performTokenRefresh } from '@/lib/auth/token-refresh';
 import { readProtectedGrantHeaders } from '@/lib/data-protection/grant-provider';
 import { logger } from '@/lib/logging';
+import { CLIENT_HEADER, RESGRID_CLIENT } from '@/lib/mfa/client-app';
 import { getBaseApiUrl } from '@/lib/storage/app';
 import useAuthStore from '@/stores/auth/store';
+import { markSharedSessionLocked } from '@/stores/shared-session/store';
 
 // Create axios instance with default config
 const axiosInstance: AxiosInstance = axios.create({
   baseURL: getBaseApiUrl(),
   headers: {
     'Content-Type': 'application/json',
+    // Which app is calling (passkey plan section 10.4): passkeys, brokered SSO and approvals are bound to it.
+    [CLIENT_HEADER]: RESGRID_CLIENT,
   },
 });
 
@@ -82,6 +87,25 @@ axiosInstance.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config;
     if (!originalRequest) {
+      return Promise.reject(error);
+    }
+
+    // A shared dispatch workstation (passkey plan section 10.5): a locked session means "unlock", never "sign out" and
+    // never a refresh (a refresh is refused while locked too). A shift that ran out ends the session for good.
+    const sharedSession = sharedSession401(error);
+    if (sharedSession?.kind === 'locked') {
+      markSharedSessionLocked(sharedSession.lockVersion);
+      return Promise.reject(error);
+    }
+    if (sharedSession?.kind === 'expired') {
+      void useAuthStore.getState().logout('shift_ended');
+      return Promise.reject(error);
+    }
+
+    // A 401 carrying a problem `type` is the application refusing this request (a wrong code, a session that ended),
+    // not an expired token: the authentication layer answers those with an empty body. Refreshing and replaying would
+    // count a wrong code twice, and a refresh refused while locked would replace the refusal the screen needs to show.
+    if (error.response?.status === 401 && typeof (error.response.data as { type?: unknown } | undefined)?.type === 'string') {
       return Promise.reject(error);
     }
     // Handle 401 errors

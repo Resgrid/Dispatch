@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from 'expo-router';
-import { AlertCircle, Eye, EyeOff, Loader2, Lock, Server, User } from 'lucide-react-native';
+import { type Href, useRouter } from 'expo-router';
+import { AlertCircle, Eye, EyeOff, Loader2, Lock, MonitorCog, Server, User } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -9,13 +9,18 @@ import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeInRight, FadeInUp, FadeOut, FadeOutLeft } from 'react-native-reanimated';
 import * as z from 'zod';
 
+import { LoginMfaSheet } from '@/components/auth/login-mfa-sheet';
+import { LoginOtpModal } from '@/components/auth/login-otp-modal';
 import { Text } from '@/components/ui/text';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { useAuth } from '@/lib/auth';
 import { logger } from '@/lib/logging';
+import { isMfaErrorCode, mfaErrorKey } from '@/lib/mfa/messages';
+import { useSharedInstallation } from '@/lib/mfa/shared-installation';
 import { buildApiUrl, CUSTOM_SERVER_VALUE, findLocationByUrl, loadServerLocations, toBaseUrl, URL_PATTERN } from '@/lib/server-url';
 import { type ResgridSystemLocation } from '@/models/v4/configs/getSystemConfigResultData';
 import { useServerUrlStore } from '@/stores/app/server-url-store';
+import useAuthStore from '@/stores/auth/store';
 
 // Form validation schema
 const loginFormSchema = z.object({
@@ -131,6 +136,15 @@ export default function LoginWeb() {
   const { trackEvent } = useAnalytics();
   const router = useRouter();
   const { login, status, error, isAuthenticated } = useAuth();
+  const mfaChallenge = useAuthStore((s) => s.mfaChallenge);
+  const installation = useSharedInstallation();
+  // Held only to resubmit with the code when an older server answers mfa_required without a login transaction;
+  // memory-only, dropped on success, dismissal or unmount. Never logged.
+  const [pendingCredentials, setPendingCredentials] = useState<{ username: string; password: string } | null>(null);
+  const [otpDismissed, setOtpDismissed] = useState(false);
+  // A sign-in that ended (expired, too many attempts, policy changed) or a shared shift that ran out says why in the
+  // member's language.
+  const displayError = error === 'shift_ended' ? t('shared_session.shift_ended') : isMfaErrorCode(error) ? t(mfaErrorKey(error)) : error;
 
   const [showPassword, setShowPassword] = useState(false);
   const [showServerUrlModal, setShowServerUrlModal] = useState(false);
@@ -243,7 +257,9 @@ export default function LoginWeb() {
 
   const onLoginSubmit = useCallback(
     async (data: LoginFormType) => {
-      logger.info({ message: 'Starting Login', context: { username: data.username } });
+      logger.info({ message: 'Starting Login' });
+      setPendingCredentials({ username: data.username, password: data.password });
+      setOtpDismissed(false);
       try {
         await login({ username: data.username, password: data.password });
       } catch (err) {
@@ -252,6 +268,24 @@ export default function LoginWeb() {
     },
     [login]
   );
+
+  // The older server's code prompt: resubmits the same credentials with the code.
+  const onOtpSubmit = useCallback(
+    async (code: string) => {
+      if (!pendingCredentials) {
+        return;
+      }
+      await login({ ...pendingCredentials, otpCode: code });
+    },
+    [login, pendingCredentials]
+  );
+
+  // Signed in: the credentials held for a code prompt are not kept a moment longer.
+  useEffect(() => {
+    if (status === 'signedIn') {
+      setPendingCredentials(null);
+    }
+  }, [status]);
 
   const handleServerSelectChange = useCallback(
     (nextServer: string) => {
@@ -473,6 +507,25 @@ export default function LoginWeb() {
                   <Text style={StyleSheet.flatten([styles.serverUrlButtonText, isDark ? styles.serverUrlButtonTextDark : styles.serverUrlButtonTextLight])}>{t('sso.sso_button')}</Text>
                 </Pressable>
               </View>
+
+              {/* Shared workstation: every sign-in here starts a shared session that locks between operators */}
+              <Pressable
+                style={({ pressed }) => StyleSheet.flatten([styles.serverUrlButton, isDark ? styles.serverUrlButtonDark : styles.serverUrlButtonLight, pressed ? styles.serverUrlButtonPressed : {}])}
+                onPress={() => router.push('/login/shared-device' as unknown as Href)}
+                testID="login-shared-device"
+                accessibilityRole="button"
+              >
+                <MonitorCog size={16} color={isDark ? '#9ca3af' : '#6b7280'} />
+                <Text style={StyleSheet.flatten([styles.serverUrlButtonText, isDark ? styles.serverUrlButtonTextDark : styles.serverUrlButtonTextLight])}>
+                  {!installation.configured
+                    ? t('shared_session.device_setup')
+                    : installation.shared
+                      ? installation.label
+                        ? t('shared_session.device_on_label', { label: installation.label })
+                        : t('shared_session.device_on')
+                      : t('shared_session.device_settings')}
+                </Text>
+              </Pressable>
             </Animated.View>
 
             {/* Footer */}
@@ -501,6 +554,7 @@ export default function LoginWeb() {
             </View>
             <Text style={StyleSheet.flatten([styles.modalTitle, isDark ? styles.modalTitleDark : styles.modalTitleLight])}>{t('login.errorModal.title')}</Text>
             <Text style={StyleSheet.flatten([styles.modalMessage, isDark ? styles.modalMessageDark : styles.modalMessageLight])}>{t('login.errorModal.message')}</Text>
+            {displayError ? <Text style={StyleSheet.flatten([styles.modalMessage, isDark ? styles.modalMessageDark : styles.modalMessageLight])}>{displayError}</Text> : null}
             <Pressable style={styles.modalButton} onPress={() => setShowErrorModal(false)}>
               <Text style={styles.modalButtonText}>{t('login.errorModal.confirmButton')}</Text>
             </Pressable>
@@ -592,6 +646,22 @@ export default function LoginWeb() {
           </Animated.View>
         </Animated.View>
       ) : null}
+
+      {/* Second factor on the login transaction: the methods this sign-in accepts, or the setup the department requires. An SSO sign-in's second factor is the SSO screen's, on top of this one */}
+      <LoginMfaSheet isOpen={status === 'mfaRequired' && mfaChallenge != null && mfaChallenge.kind !== 'legacy' && mfaChallenge.source !== 'sso'} onLostFactor={() => router.push('/login/recovery' as unknown as Href)} />
+
+      {/* Two-factor challenge on an older server: the token endpoint answered mfa_required / invalid_totp with no transaction */}
+      <LoginOtpModal
+        isOpen={status === 'mfaRequired' && mfaChallenge?.kind === 'legacy' && !otpDismissed && pendingCredentials != null}
+        isSubmitting={status === 'loading'}
+        invalidCode={error === 'invalid_totp'}
+        onSubmit={onOtpSubmit}
+        onClose={() => {
+          // Dismissing the challenge abandons the attempt, so the password goes with it.
+          setOtpDismissed(true);
+          setPendingCredentials(null);
+        }}
+      />
     </View>
   );
 }

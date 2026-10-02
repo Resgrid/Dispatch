@@ -61,6 +61,18 @@ jest.mock('@/lib/auth', () => ({
   useAuth: jest.fn(),
 }));
 
+// The sign-in prompts render as markers carrying whether they are open.
+jest.mock('@/components/auth/login-mfa-sheet', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return { LoginMfaSheet: ({ isOpen }: { isOpen: boolean }) => (isOpen ? React.createElement(View, { testID: 'login-mfa-sheet-open' }) : null) };
+});
+jest.mock('@/components/auth/login-otp-modal', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return { LoginOtpModal: ({ isOpen }: { isOpen: boolean }) => (isOpen ? React.createElement(View, { testID: 'login-otp-open' }) : null) };
+});
+
 jest.mock('@/lib/logging', () => ({
   logger: {
     info: jest.fn(),
@@ -117,6 +129,7 @@ jest.mock('lucide-react-native', () => ({
   EyeOff: () => null,
   Loader2: () => null,
   Lock: () => null,
+  MonitorCog: () => null,
   Server: () => null,
   User: () => null,
 }));
@@ -256,5 +269,49 @@ describe('LoginWeb', () => {
         status: 'idle',
       })
     );
+  });
+
+  describe('second factor (the web sign-in gap)', () => {
+    const { default: useAuthStore } = jest.requireActual('@/stores/auth/store') as typeof import('@/stores/auth/store');
+
+    afterEach(() => useAuthStore.setState({ mfaChallenge: null }));
+
+    it('opens the second-factor sheet when the sign-in continues on a login transaction', () => {
+      (useAuth as jest.Mock).mockReturnValue({ login: mockLogin, status: 'mfaRequired', error: null, isAuthenticated: false });
+      useAuthStore.setState({ mfaChallenge: { kind: 'verify', methods: ['totp'], enrolled: ['totp'], preferred: 'totp', expiresAt: null, source: 'password' } });
+
+      render(<LoginWeb />);
+
+      expect(screen.getByTestId('login-mfa-sheet-open')).toBeTruthy();
+      expect(screen.queryByTestId('login-otp-open')).toBeNull();
+    });
+
+    it("leaves a single sign-on's second factor to the SSO screen on top of it", () => {
+      (useAuth as jest.Mock).mockReturnValue({ login: mockLogin, status: 'mfaRequired', error: null, isAuthenticated: false });
+      useAuthStore.setState({ mfaChallenge: { kind: 'verify', methods: ['totp'], enrolled: ['totp'], preferred: 'totp', expiresAt: null, source: 'sso' } });
+
+      render(<LoginWeb />);
+
+      expect(screen.queryByTestId('login-mfa-sheet-open')).toBeNull();
+    });
+
+    it("keeps the older server's code prompt closed with no sign-in to resubmit", () => {
+      (useAuth as jest.Mock).mockReturnValue({ login: mockLogin, status: 'mfaRequired', error: null, isAuthenticated: false });
+      useAuthStore.setState({ mfaChallenge: { kind: 'legacy', methods: ['totp'], enrolled: ['totp'], preferred: 'totp', expiresAt: null, source: 'password' } });
+
+      render(<LoginWeb />);
+
+      expect(screen.queryByTestId('login-mfa-sheet-open')).toBeNull();
+      expect(screen.queryByTestId('login-otp-open')).toBeNull();
+    });
+  });
+
+  it('offers the shared device setting and opens it', () => {
+    render(<LoginWeb />);
+
+    fireEvent.press(screen.getByTestId('login-shared-device'));
+
+    expect(screen.getByText('shared_session.device_setup')).toBeTruthy();
+    expect(mockPush).toHaveBeenCalledWith('/login/shared-device');
   });
 });
