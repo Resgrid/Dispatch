@@ -134,6 +134,7 @@ describe('Coordinates Search Logic', () => {
     MapDayStyleUrl: '',
     MapNightStyleUrl: '',
     AppMapboxAccessToken: '',
+    IsDepartmentMapOverride: false,
   };
 
   beforeEach(() => {
@@ -284,6 +285,7 @@ describe('Coordinates Search Logic', () => {
         MapDayStyleUrl: '',
         MapNightStyleUrl: '',
         AppMapboxAccessToken: '',
+        IsDepartmentMapOverride: false,
       };
 
       const result = await performCoordinatesSearch('40.7128, -74.0060', configWithoutKey);

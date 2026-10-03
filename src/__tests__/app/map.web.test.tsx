@@ -228,7 +228,7 @@ describe('Map screen (web) realtime locations', () => {
     const mapboxgl = jest.requireMock('mapbox-gl').default as { accessToken: string };
     const customStyle = 'mapbox://styles/county-fire/ckcustom123';
     const departmentToken = 'pk.eyJ1IjoiY291bnR5LWZpcmUifQ.department-signature';
-    useCoreStore.setState({ config: { MapDayStyleUrl: customStyle, MapNightStyleUrl: customStyle, AppMapboxAccessToken: departmentToken } as GetConfigResultData });
+    useCoreStore.setState({ config: { MapDayStyleUrl: customStyle, MapNightStyleUrl: customStyle, AppMapboxAccessToken: departmentToken, IsDepartmentMapOverride: true } as GetConfigResultData });
 
     await renderLoadedMap();
 

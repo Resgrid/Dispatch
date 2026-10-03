@@ -97,6 +97,7 @@ describe('Plus Code Search Logic', () => {
     MapDayStyleUrl: '',
     MapNightStyleUrl: '',
     AppMapboxAccessToken: '',
+    IsDepartmentMapOverride: false,
   };
 
   beforeEach(() => {
@@ -151,6 +152,7 @@ describe('Plus Code Search Logic', () => {
         MapDayStyleUrl: '',
         MapNightStyleUrl: '',
         AppMapboxAccessToken: '',
+        IsDepartmentMapOverride: false,
       };
 
       const result = await performPlusCodeSearch('849VCWC8+R9', configWithoutKey);

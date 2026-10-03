@@ -21,6 +21,7 @@ const mockedGetState = useCoreStore.getState as unknown as jest.Mock;
 const SATELLITE = 'mapbox://styles/mapbox/satellite-v9';
 const NAVIGATION_NIGHT = 'mapbox://styles/mapbox/navigation-night-v1';
 const CUSTOM = 'mapbox://styles/county-fire/ckcustom123';
+const COMMUNITY = 'mapbox://styles/mapbox-map-design/cks97e1e37nsd17nzg7p0308g';
 const DEPARTMENT_TOKEN = 'pk.department.token';
 
 describe('resolveDepartmentMapStyle', () => {
@@ -56,7 +57,7 @@ describe('resolveDepartmentMapStyle', () => {
   });
 
   it('uses a department custom style once its token is the one in use', () => {
-    const config = { MapDayStyleUrl: CUSTOM, MapNightStyleUrl: CUSTOM, AppMapboxAccessToken: DEPARTMENT_TOKEN };
+    const config = { MapDayStyleUrl: CUSTOM, MapNightStyleUrl: CUSTOM, AppMapboxAccessToken: DEPARTMENT_TOKEN, IsDepartmentMapOverride: true };
 
     expect(resolveDepartmentMapStyle(config, 'light', DEPARTMENT_TOKEN)).toBe(CUSTOM);
     expect(resolveDepartmentMapStyle(config, 'dark', DEPARTMENT_TOKEN)).toBe(CUSTOM);
@@ -64,18 +65,25 @@ describe('resolveDepartmentMapStyle', () => {
 
   it('holds a custom style back until the department token is active', () => {
     // The custom style would load blank on the built-in token.
-    const config = { MapDayStyleUrl: CUSTOM, MapNightStyleUrl: CUSTOM, AppMapboxAccessToken: DEPARTMENT_TOKEN };
+    const config = { MapDayStyleUrl: CUSTOM, MapNightStyleUrl: CUSTOM, AppMapboxAccessToken: DEPARTMENT_TOKEN, IsDepartmentMapOverride: true };
 
     expect(resolveDepartmentMapStyle(config, 'light', 'pk.builtin.token')).toBe(FALLBACK_DAY_MAP_STYLE);
     expect(resolveDepartmentMapStyle(config, 'dark', undefined)).toBe(FALLBACK_NIGHT_MAP_STYLE);
   });
 
-  it('never uses a custom style the server sent without a token', () => {
-    expect(resolveDepartmentMapStyle({ MapDayStyleUrl: CUSTOM }, 'light', 'pk.builtin.token')).toBe(FALLBACK_DAY_MAP_STYLE);
+  it('never uses an override style the server sent without a token', () => {
+    expect(resolveDepartmentMapStyle({ MapDayStyleUrl: CUSTOM, IsDepartmentMapOverride: true }, 'light', 'pk.builtin.token')).toBe(FALLBACK_DAY_MAP_STYLE);
   });
 
-  it('uses Mapbox-owned styles on any token', () => {
+  it('uses Mapbox styles on any token', () => {
     expect(resolveDepartmentMapStyle({ MapDayStyleUrl: SATELLITE, AppMapboxAccessToken: DEPARTMENT_TOKEN }, 'light', 'pk.builtin.token')).toBe(SATELLITE);
+  });
+
+  it('uses community styles on any token, with or without a server token', () => {
+    // Gallery styles live under mapbox-map-design and are public.
+    expect(resolveDepartmentMapStyle({ MapDayStyleUrl: COMMUNITY, AppMapboxAccessToken: '' }, 'light', 'pk.builtin.token')).toBe(COMMUNITY);
+    expect(resolveDepartmentMapStyle({ MapDayStyleUrl: COMMUNITY, AppMapboxAccessToken: DEPARTMENT_TOKEN }, 'light', 'pk.builtin.token')).toBe(COMMUNITY);
+    expect(resolveDepartmentMapStyle({ MapNightStyleUrl: COMMUNITY }, 'dark', undefined)).toBe(COMMUNITY);
   });
 });
 
@@ -96,7 +104,7 @@ describe('getDepartmentMapStyle', () => {
   });
 
   it('checks a custom style against the token in use', () => {
-    mockedGetState.mockReturnValue({ config: { MapDayStyleUrl: CUSTOM, AppMapboxAccessToken: DEPARTMENT_TOKEN } });
+    mockedGetState.mockReturnValue({ config: { MapDayStyleUrl: CUSTOM, AppMapboxAccessToken: DEPARTMENT_TOKEN, IsDepartmentMapOverride: true } });
 
     mockActiveToken = 'pk.builtin.token';
     expect(getDepartmentMapStyle('light')).toBe(FALLBACK_DAY_MAP_STYLE);
