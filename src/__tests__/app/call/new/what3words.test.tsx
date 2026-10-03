@@ -28,6 +28,9 @@ const mockConfig: GetConfigResultData = {
   MapCenterLatitude: 0,
   MapCenterLongitude: 0,
   MapCenterZoomLevel: 9,
+  MapDayStyleUrl: '',
+  MapNightStyleUrl: '',
+  AppMapboxAccessToken: '',
 };
 
 // Mock the core store

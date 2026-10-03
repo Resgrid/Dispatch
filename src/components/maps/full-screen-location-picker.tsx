@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Box } from '@/components/ui/box';
 import { Button, ButtonText } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { useDepartmentMapStyle } from '@/lib/map-style';
 
 interface FullScreenLocationPickerProps {
   initialLocation?: {
@@ -32,6 +33,8 @@ const FullScreenLocationPicker: React.FC<FullScreenLocationPickerProps> = ({ ini
   const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
   const [address, setAddress] = useState<string | undefined>(undefined);
   const [isMounted, setIsMounted] = useState(true);
+  // Department base map (day/night by theme)
+  const mapStyle = useDepartmentMapStyle();
 
   const reverseGeocode = React.useCallback(
     async (latitude: number, longitude: number) => {
@@ -154,7 +157,7 @@ const FullScreenLocationPicker: React.FC<FullScreenLocationPickerProps> = ({ ini
   return (
     <Box style={styles.container}>
       {currentLocation ? (
-        <Mapbox.MapView ref={mapRef} style={styles.map} logoEnabled={false} attributionEnabled={true} compassEnabled={true} zoomEnabled={true} rotateEnabled={true} onPress={handleMapPress}>
+        <Mapbox.MapView ref={mapRef} style={styles.map} styleURL={mapStyle} logoEnabled={false} attributionEnabled={true} compassEnabled={true} zoomEnabled={true} rotateEnabled={true} onPress={handleMapPress}>
           <Mapbox.Camera ref={cameraRef} zoomLevel={15} centerCoordinate={[currentLocation.longitude, currentLocation.latitude]} animationMode="flyTo" animationDuration={1000} />
           {/* Marker for the selected location */}
           <Mapbox.PointAnnotation id="selectedLocation" coordinate={[currentLocation.longitude, currentLocation.latitude]} title="Selected Location">

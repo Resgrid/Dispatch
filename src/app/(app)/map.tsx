@@ -18,11 +18,11 @@ import { useAppLifecycle } from '@/hooks/use-app-lifecycle';
 import { MapLayerType, useMapLayers } from '@/hooks/use-map-layers';
 import { useMapLiveLocations } from '@/hooks/use-map-live-locations';
 import { useMapSignalRUpdates } from '@/hooks/use-map-signalr-updates';
-import { Env } from '@/lib/env';
 import { logger } from '@/lib/logging';
 import { getPinEntityId } from '@/lib/map-pin-ids';
+import { useDepartmentMapStyle } from '@/lib/map-style';
+import { getMapboxAccessToken } from '@/lib/mapbox-token';
 import { createDefaultVisiblePoiLayerIds, filterMapPinsByPoiLayers, getPoiMapLayerId, mergeVisiblePoiLayerIds } from '@/lib/poi-map-layers';
-import { onSortOptions } from '@/lib/utils';
 import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersData';
 import { type GetMapLayersData } from '@/models/v4/mapping/getMapLayersResultData';
 import { type PoiLayerData } from '@/models/v4/mapping/poiLayerData';
@@ -30,7 +30,7 @@ import { useCoreStore } from '@/stores/app/core-store';
 import { useLocationStore } from '@/stores/app/location-store';
 import { useToastStore } from '@/stores/toast/store';
 
-Mapbox.setAccessToken(Env.MAPBOX_PUBKEY);
+Mapbox.setAccessToken(getMapboxAccessToken());
 
 interface UserLocationMarkerProps {
   pulseAnim: Animated.Value;
@@ -108,21 +108,8 @@ export default function Map() {
   // Custom-map region layers (RE1-T105) rendered on top of the legacy vector layers.
   const { activeLayers } = useActiveMapLayers();
 
-  const _mapOptions = Object.keys(Mapbox.StyleURL)
-    .map((key) => {
-      return {
-        label: key,
-        data: (Mapbox.StyleURL as any)[key],
-      };
-    })
-    .sort(onSortOptions);
-
-  // Get map style based on current theme
-  const getMapStyle = useCallback(() => {
-    return colorScheme === 'dark' ? Mapbox.StyleURL.Dark : Mapbox.StyleURL.Street;
-  }, [colorScheme]);
-
-  const [styleURL, setStyleURL] = useState({ styleURL: getMapStyle() });
+  // Department base map (day/night by theme); updates when config loads or the theme flips.
+  const mapStyle = useDepartmentMapStyle();
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -182,12 +169,6 @@ export default function Map() {
   );
 
   const visibleMapPins = useMemo(() => filterMapPinsByPoiLayers(mapPins, visiblePoiLayerIds), [mapPins, visiblePoiLayerIds]);
-
-  // Update map style when theme changes
-  useEffect(() => {
-    const newStyle = getMapStyle();
-    setStyleURL({ styleURL: newStyle });
-  }, [getMapStyle]);
 
   // Handle navigation focus - reset map state when user navigates back to map page
   useFocusEffect(
@@ -644,7 +625,7 @@ export default function Map() {
         <FocusAwareStatusBar />
         <Mapbox.MapView
           ref={mapRef}
-          styleURL={styleURL.styleURL}
+          styleURL={mapStyle}
           style={styles.map}
           onCameraChanged={onCameraChanged}
           onDidFinishLoadingMap={() => setIsMapReady(true)}

@@ -6,6 +6,7 @@ import { create } from 'zustand';
 import { getConfig } from '@/api/config';
 import { getUnits } from '@/api/units/units';
 import { logger } from '@/lib/logging';
+import { applyServerMapboxToken } from '@/lib/mapbox-token';
 import { type CallResultData } from '@/models/v4/calls/callResultData';
 import { type GetConfigResultData } from '@/models/v4/configs/getConfigResultData';
 import { type CustomStatusesResult } from '@/models/v4/customStatuses/customStatusesResult';
@@ -32,6 +33,23 @@ interface CoreState {
   setActiveUnitWithFetch: (unitId: string) => Promise<void>;
   setActiveCall: (callId: string | null) => void;
 }
+
+/**
+ * Adopts the Mapbox token from a config that actually arrived. Fire and forget: the token check talks to
+ * Mapbox and must never hold up or fail config loading.
+ */
+const applyConfigMapboxToken = (config: GetConfigResultData | null | undefined): void => {
+  if (!config) {
+    return;
+  }
+
+  applyServerMapboxToken(config.AppMapboxAccessToken).catch((error) => {
+    logger.warn({
+      message: 'Failed to apply the server Mapbox token',
+      context: { error },
+    });
+  });
+};
 
 export const useCoreStore = create<CoreState>()((set, get) => ({
   config: null,
@@ -87,6 +105,7 @@ export const useCoreStore = create<CoreState>()((set, get) => ({
         config: config.Data,
         error: null,
       });
+      applyConfigMapboxToken(config.Data);
 
       logger.info({
         message: 'Core store initialization completed successfully',
@@ -125,6 +144,7 @@ export const useCoreStore = create<CoreState>()((set, get) => ({
       });
 
       set({ config: config.Data, error: null });
+      applyConfigMapboxToken(config.Data);
 
       logger.info({
         message: 'fetchConfig: Store updated with config',

@@ -6,11 +6,12 @@ import { StyleSheet, View } from 'react-native';
 
 import { getMapDataAndMarkers } from '@/api/mapping/mapping';
 import { useMapLiveLocations } from '@/hooks/use-map-live-locations';
-import { Env } from '@/lib/env';
 import { logger } from '@/lib/logging';
 import { getDepartmentMapCenter } from '@/lib/map-center';
 import { hasValidMapCoordinates } from '@/lib/map-markers';
 import { buildMapPinPopupHtml, createMapMarkerElement } from '@/lib/map-markers-web';
+import { useDepartmentMapStyle } from '@/lib/map-style';
+import { applyMapboxGlAccessToken } from '@/lib/mapbox-gl-token-web';
 import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersData';
 import { type GetMapLayersData } from '@/models/v4/mapping/getMapLayersResultData';
 import { useLocationStore } from '@/stores/app/location-store';
@@ -98,10 +99,18 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
   const requestPinsRefresh = useCallback(() => requestPinsRefreshRef.current?.(), []);
   const { applyToFetchedPins } = useMapLiveLocations({ pins: internalPins, setPins: setInternalPins, requestRefresh: requestPinsRefresh, enabled: autoFetchPins && externalPins === undefined });
 
-  // Get map style based on current theme
-  const getMapStyle = useCallback(() => {
-    return colorScheme === 'dark' ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/streets-v12';
-  }, [colorScheme]);
+  // Department base map (day/night by theme). It changes when config loads as well as when the theme flips.
+  const mapStyle = useDepartmentMapStyle();
+  // Construction reads the latest style through a ref, so a style change restyles the live map (below)
+  // instead of tearing it down and rebuilding it.
+  const mapStyleRef = useRef(mapStyle);
+  useEffect(() => {
+    mapStyleRef.current = mapStyle;
+  }, [mapStyle]);
+  // The style the current map instance was built with or last switched to.
+  const appliedMapStyleRef = useRef<string | null>(null);
+  // Bumped when a style switch finishes loading: setStyle drops every runtime-added source/layer.
+  const [styleRevision, setStyleRevision] = useState(0);
 
   // Inject Mapbox GL CSS
   useEffect(() => {
@@ -119,16 +128,19 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
     if (map.current) return;
     if (!mapContainer.current) return;
 
-    mapboxgl.accessToken = Env.MAPBOX_PUBKEY;
+    applyMapboxGlAccessToken();
 
     const { latitude, longitude } = useLocationStore.getState();
     // Read once: two calls are two store reads, and the second could see a different config.
     const departmentCenter = getDepartmentMapCenter();
     const initialCenter: [number, number] = longitude && latitude ? [longitude, latitude] : [departmentCenter.longitude, departmentCenter.latitude];
 
+    const initialStyle = mapStyleRef.current;
+    appliedMapStyleRef.current = initialStyle;
+
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: getMapStyle(),
+      style: initialStyle,
       center: initialCenter,
       // The department configured a zoom to go with its center; a fixed 3 opens on the whole globe.
       zoom: latitude && longitude ? 12 : departmentCenter.zoomLevel,
@@ -164,14 +176,25 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
       map.current?.remove();
       map.current = null;
     };
-  }, [getMapStyle, interactive, showUserLocation, onMapReady]);
+  }, [interactive, showUserLocation, onMapReady]);
 
-  // Update map style when theme changes
+  // Switch the base map when the department style changes (config load or theme flip)
   useEffect(() => {
-    if (map.current && isMapReady) {
-      map.current.setStyle(getMapStyle());
-    }
-  }, [colorScheme, getMapStyle, isMapReady]);
+    const instance = map.current;
+    if (!instance || !isMapReady) return;
+    if (appliedMapStyleRef.current === mapStyle) return;
+
+    instance.setStyle(mapStyle);
+    appliedMapStyleRef.current = mapStyle;
+
+    // Re-add the custom layers once the new style has finished loading.
+    const handleStyleLoad = () => setStyleRevision((revision) => revision + 1);
+    instance.once('style.load', handleStyleLoad);
+
+    return () => {
+      instance.off('style.load', handleStyleLoad);
+    };
+  }, [mapStyle, isMapReady]);
 
   // Fetches the pins this view shows when auto-fetching: once on mount, and again in the background when the
   // realtime location feed asks for it. Only the first successful load may move the camera.
@@ -441,7 +464,7 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
         });
       }
     });
-  }, [layersSignature, isMapReady]);
+  }, [layersSignature, isMapReady, styleRevision]);
 
   return (
     <View style={StyleSheet.flatten([styles.container, style])} testID={testID}>

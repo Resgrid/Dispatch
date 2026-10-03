@@ -7,6 +7,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { cacheManager } from '@/lib/cache/cache-manager';
 import { clearCacheScope, setCacheScope } from '@/lib/cache/cache-scope';
 import { logger } from '@/lib/logging';
+import { clearMapboxToken } from '@/lib/mapbox-token';
 
 import { clearPasswordVerificationHash, computePasswordVerification, forgetPendingSsoExchange, loginRequest, type PasswordVerification, savePasswordVerification, storePasswordVerificationHash } from '../../lib/auth/api';
 import { cancelScheduledTokenRefresh, initTokenRefresh, performTokenRefresh, scheduleTokenRefresh } from '../../lib/auth/token-refresh';
@@ -286,6 +287,16 @@ const useAuthStore = create<AuthState>()(
           mfaChallenge: null,
           pendingRecoveryCodes: null,
         });
+
+        // The server-supplied Mapbox token belongs to the session's department; the next config load re-applies one.
+        try {
+          clearMapboxToken();
+        } catch (error) {
+          logger.warn({
+            message: 'Failed to clear the server Mapbox token on logout',
+            context: { error: error instanceof Error ? error.message : String(error) },
+          });
+        }
 
         // End the session synchronously so API requests and routing cannot keep using
         // rejected credentials while storage cleanup is pending or unavailable.

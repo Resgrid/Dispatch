@@ -5,8 +5,9 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native';
 
 import { Button, ButtonText } from '@/components/ui/button';
-import { Env } from '@/lib/env';
 import { getDepartmentMapCenter } from '@/lib/map-center';
+import { useDepartmentMapStyle } from '@/lib/map-style';
+import { applyMapboxGlAccessToken } from '@/lib/mapbox-gl-token-web';
 
 // Mapbox GL CSS needs to be injected for web
 const MAPBOX_GL_CSS_URL = 'https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.css';
@@ -30,6 +31,16 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ initialLocation, onLoca
     longitude: number;
   } | null>(initialLocation || null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Department base map (day/night by theme). Construction reads it through a ref so a style change
+  // (config load or theme flip) restyles the live map instead of rebuilding it.
+  const mapStyle = useDepartmentMapStyle();
+  const mapStyleRef = useRef(mapStyle);
+  useEffect(() => {
+    mapStyleRef.current = mapStyle;
+  }, [mapStyle]);
+  // The style the current map instance was built with or last switched to.
+  const appliedMapStyleRef = useRef<string | null>(null);
 
   // Inject Mapbox GL CSS
   useEffect(() => {
@@ -91,15 +102,18 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ initialLocation, onLoca
     if (map.current) return;
     if (!mapContainer.current) return;
 
-    mapboxgl.accessToken = Env.MAPBOX_PUBKEY;
+    applyMapboxGlAccessToken();
 
     // Read once: two calls are two store reads, and the second could see a different config.
     const departmentCenter = getDepartmentMapCenter();
     const initialCenter: [number, number] = currentLocation ? [currentLocation.longitude, currentLocation.latitude] : [departmentCenter.longitude, departmentCenter.latitude];
 
+    const initialStyle = mapStyleRef.current;
+    appliedMapStyleRef.current = initialStyle;
+
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
+      style: initialStyle,
       center: initialCenter,
       // The department configured a zoom to go with its center; a fixed 3 opens on the whole globe.
       zoom: currentLocation ? 15 : departmentCenter.zoomLevel,
@@ -141,6 +155,14 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ initialLocation, onLoca
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Switch the base map when the department style changes; the DOM marker survives setStyle.
+  useEffect(() => {
+    if (!map.current || appliedMapStyleRef.current === mapStyle) return;
+
+    map.current.setStyle(mapStyle);
+    appliedMapStyleRef.current = mapStyle;
+  }, [mapStyle]);
 
   const handleConfirmLocation = () => {
     if (currentLocation) {

@@ -1,6 +1,5 @@
 import Mapbox, { type CircleLayerStyle, type FillLayerStyle, type LineLayerStyle } from '@rnmapbox/maps';
 import { type Feature, type FeatureCollection, type GeoJsonProperties, type Geometry } from 'geojson';
-import { useColorScheme } from 'nativewind';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -8,6 +7,7 @@ import { getMapDataAndMarkers } from '@/api/mapping/mapping';
 import { useMapLiveLocations } from '@/hooks/use-map-live-locations';
 import { logger } from '@/lib/logging';
 import { getDepartmentMapCenter } from '@/lib/map-center';
+import { useDepartmentMapStyle } from '@/lib/map-style';
 import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersData';
 import { type GetMapLayersData } from '@/models/v4/mapping/getMapLayersResultData';
 import { useLocationStore } from '@/stores/app/location-store';
@@ -51,7 +51,6 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
   style,
   testID = 'unified-map-view',
 }) => {
-  const { colorScheme } = useColorScheme();
   const mapRef = useRef<Mapbox.MapView>(null);
   const cameraRef = useRef<Mapbox.Camera>(null);
   const [isMapReady, setIsMapReady] = useState(false);
@@ -73,18 +72,8 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
   const requestPinsRefresh = useCallback(() => requestPinsRefreshRef.current?.(), []);
   const { applyToFetchedPins } = useMapLiveLocations({ pins: internalPins, setPins: setInternalPins, requestRefresh: requestPinsRefresh, enabled: autoFetchPins && externalPins === undefined });
 
-  // Get map style based on current theme
-  const getMapStyle = useCallback(() => {
-    return colorScheme === 'dark' ? Mapbox.StyleURL.Dark : Mapbox.StyleURL.Street;
-  }, [colorScheme]);
-
-  const [styleURL, setStyleURL] = useState({ styleURL: getMapStyle() });
-
-  // Update map style when theme changes
-  useEffect(() => {
-    const newStyle = getMapStyle();
-    setStyleURL({ styleURL: newStyle });
-  }, [getMapStyle]);
+  // Department base map (day/night by theme); updates when config loads or the theme flips.
+  const mapStyle = useDepartmentMapStyle();
 
   // Helper function to calculate center from markers
   const calculateCenterFromMarkers = (markers: MapMakerInfoData[]): { lat: number; lon: number } | null => {
@@ -305,7 +294,7 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
     <View style={StyleSheet.flatten([styles.container, style])} testID={testID}>
       <Mapbox.MapView
         ref={mapRef}
-        styleURL={styleURL.styleURL}
+        styleURL={mapStyle}
         style={styles.map}
         onDidFinishLoadingMap={handleMapReady}
         scrollEnabled={interactive}

@@ -30,6 +30,7 @@ import { useSignalRLifecycle } from '@/hooks/use-signalr-lifecycle';
 import { useAuthStore } from '@/lib/auth';
 import { Env } from '@/lib/env';
 import { logger } from '@/lib/logging';
+import { onMapboxAccessTokenChange } from '@/lib/mapbox-token';
 import { useSharedInstallation } from '@/lib/mfa/shared-installation';
 import { useIsFirstTime } from '@/lib/storage';
 import { type GetConfigResultData } from '@/models/v4/configs/getConfigResultData';
@@ -49,6 +50,20 @@ import { securityStore } from '@/stores/security/store';
 import { useSignalRStore } from '@/stores/signalr/signalr-store';
 import { useToastStore } from '@/stores/toast/store';
 import { useWeatherAlertsStore } from '@/stores/weatherAlerts/store';
+
+// Keep the native Mapbox SDK on the token in use: the verified server token, else the built-in one. On web,
+// mapbox-gl takes its token separately (lib/mapbox-gl-token-web). Registered once at module scope; store
+// listeners run synchronously inside the token change, before React re-renders, so the SDK has the new
+// token before any map re-renders with a style that needs it.
+if (Platform.OS !== 'web') {
+  onMapboxAccessTokenChange((token) => {
+    Mapbox.setAccessToken(token);
+    logger.info({
+      message: 'Mapbox access token set',
+      context: { platform: Platform.OS },
+    });
+  });
+}
 
 /**
  * Tear down every per-session resource on sign-out: SignalR hubs and their heartbeats,
@@ -141,18 +156,6 @@ export default function TabLayout() {
 
   // Initialize push notifications
   usePushNotifications();
-
-  // Initialize Mapbox - only on native platforms
-  // On web, Mapbox GL JS is loaded separately and doesn't use this initialization
-  useEffect(() => {
-    if (Platform.OS !== 'web') {
-      Mapbox.setAccessToken(Env.MAPBOX_PUBKEY);
-      logger.info({
-        message: 'Mapbox access token set',
-        context: { platform: Platform.OS },
-      });
-    }
-  }, []);
 
   const initializeApp = useCallback(async () => {
     if (isInitializing.current) {
