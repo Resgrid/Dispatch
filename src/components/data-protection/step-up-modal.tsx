@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { ApprovalPanel } from '@/components/mfa/approval-panel';
 import { Button, ButtonText } from '@/components/ui/button';
 import { Heading } from '@/components/ui/heading';
 import { Input, InputField } from '@/components/ui/input';
@@ -8,6 +9,7 @@ import { Modal, ModalBackdrop, ModalBody, ModalContent, ModalFooter, ModalHeader
 import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
+import { mfaErrorKey } from '@/lib/mfa/messages';
 import { dataProtectionStore } from '@/stores/data-protection/store';
 
 interface StepUpModalProps {
@@ -28,12 +30,68 @@ export const StepUpModal: React.FC<StepUpModalProps> = ({ isOpen, onClose, onVer
   const [code, setCode] = useState('');
   const isVerifying = dataProtectionStore((state) => state.isVerifying);
   const lastError = dataProtectionStore((state) => state.lastError);
+  const methods = dataProtectionStore((state) => state.stepUpMethods);
+  const [approval, setApproval] = useState<{ id: string; number: string } | null>(null);
+  const approvalAbort = useRef<AbortController | null>(null);
 
+  // The methods this member has and the department accepts for protected data (passkey plan section 8.1).
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
+      void dataProtectionStore.getState().loadStepUpMethods();
+    } else {
       setCode('');
+      approvalAbort.current?.abort();
+      approvalAbort.current = null;
+      setApproval(null);
     }
   }, [isOpen]);
+
+  const finished = useCallback(
+    (ok: boolean) => {
+      if (ok) {
+        onVerified?.();
+        onClose();
+      }
+    },
+    [onClose, onVerified]
+  );
+
+  const handlePasskey = useCallback(async () => finished(await dataProtectionStore.getState().verifyPasskey()), [finished]);
+
+  const handleProvider = useCallback(async () => finished(await dataProtectionStore.getState().verifyFederated()), [finished]);
+
+  const handleApproval = useCallback(async () => {
+    const store = dataProtectionStore.getState();
+    const started = await store.requestApproval();
+    if (!started) {
+      return;
+    }
+    setApproval(started);
+    const controller = new AbortController();
+    approvalAbort.current = controller;
+    const decided = await store.waitForApproval(started.id, controller.signal);
+    if (decided === 'aborted') {
+      return;
+    }
+    setApproval(null);
+    if (decided !== 'approved') {
+      dataProtectionStore.setState({ lastError: decided === 'denied' ? 'approval_denied' : 'approval_expired' });
+      return;
+    }
+    finished(await store.completeApproval(started.id));
+  }, [finished]);
+
+  const cancelApproval = useCallback(() => {
+    const current = approval;
+    approvalAbort.current?.abort();
+    approvalAbort.current = null;
+    setApproval(null);
+    if (current) {
+      void dataProtectionStore.getState().cancelApproval(current.id);
+    }
+  }, [approval]);
+
+  const offersCode = methods == null || methods.includes('totp');
 
   const handleVerify = useCallback(async () => {
     const submitted = code.trim();
@@ -61,8 +119,11 @@ export const StepUpModal: React.FC<StepUpModalProps> = ({ isOpen, onClose, onVer
         return t('data_protection.step_up_unavailable', 'Protected data is not available on this server yet. Contact your administrator.');
       case 'unknown':
         return t('data_protection.step_up_failed', 'Verification failed. Check your connection and try again.');
-      default:
+      case null:
+      case undefined:
         return null;
+      default:
+        return t(mfaErrorKey(lastError));
     }
   })();
 
@@ -76,25 +137,43 @@ export const StepUpModal: React.FC<StepUpModalProps> = ({ isOpen, onClose, onVer
         <ModalBody>
           <VStack space="md">
             <Text size="sm">{t('data_protection.step_up_body', 'This information is protected. Enter the current code from your authenticator app to view it for a limited time.')}</Text>
-            <Input variant="outline" size="lg" isDisabled={isVerifying}>
-              <InputField
-                testID="step-up-code-input"
-                value={code}
-                onChangeText={setCode}
-                placeholder={t('data_protection.step_up_placeholder', '6-digit code')}
-                keyboardType="number-pad"
-                maxLength={8}
-                autoFocus
-                autoComplete="one-time-code"
-                textContentType="oneTimeCode"
-                onSubmitEditing={handleVerify}
-                // A placeholder is not a label: it is announced once and then disappears the
-                // moment the member types, leaving the field unnamed for the rest of the entry.
-                accessibilityLabel={t('data_protection.step_up_placeholder', '6-digit code')}
-                accessibilityHint={t('data_protection.step_up_body')}
-                aria-label={t('data_protection.step_up_placeholder', '6-digit code')}
-              />
-            </Input>
+            {approval ? <ApprovalPanel matchNumber={approval.number} onCancel={cancelApproval} /> : null}
+            {!approval && offersCode ? (
+              <Input variant="outline" size="lg" isDisabled={isVerifying}>
+                <InputField
+                  testID="step-up-code-input"
+                  value={code}
+                  onChangeText={setCode}
+                  placeholder={t('data_protection.step_up_placeholder', '6-digit code')}
+                  keyboardType="number-pad"
+                  maxLength={8}
+                  autoFocus
+                  autoComplete="one-time-code"
+                  textContentType="oneTimeCode"
+                  onSubmitEditing={handleVerify}
+                  // A placeholder is not a label: it is announced once and then disappears the
+                  // moment the member types, leaving the field unnamed for the rest of the entry.
+                  accessibilityLabel={t('data_protection.step_up_placeholder', '6-digit code')}
+                  accessibilityHint={t('data_protection.step_up_body')}
+                  aria-label={t('data_protection.step_up_placeholder', '6-digit code')}
+                />
+              </Input>
+            ) : null}
+            {!approval && methods?.includes('passkey') ? (
+              <Button variant="outline" action="secondary" onPress={() => void handlePasskey()} isDisabled={isVerifying} testID="step-up-passkey">
+                <ButtonText>{t('mfa.login.use_passkey')}</ButtonText>
+              </Button>
+            ) : null}
+            {!approval && methods?.includes('passkey_approval') ? (
+              <Button variant="outline" action="secondary" onPress={() => void handleApproval()} isDisabled={isVerifying} testID="step-up-approval">
+                <ButtonText>{t('mfa.login.use_approval')}</ButtonText>
+              </Button>
+            ) : null}
+            {!approval && methods?.includes('federated') ? (
+              <Button variant="outline" action="secondary" onPress={() => void handleProvider()} isDisabled={isVerifying} testID="step-up-provider">
+                <ButtonText>{t('mfa.login.use_provider')}</ButtonText>
+              </Button>
+            ) : null}
             {errorText ? (
               // Announced on appearance: the error arrives while focus is still in the field, so
               // a screen reader would otherwise never reach it.
@@ -108,9 +187,11 @@ export const StepUpModal: React.FC<StepUpModalProps> = ({ isOpen, onClose, onVer
           <Button variant="outline" action="secondary" onPress={onClose} isDisabled={isVerifying} testID="step-up-cancel">
             <ButtonText>{t('common.cancel', 'Cancel')}</ButtonText>
           </Button>
-          <Button action="primary" onPress={handleVerify} isDisabled={isVerifying || code.trim().length === 0} testID="step-up-submit">
-            {isVerifying ? <Spinner size="small" /> : <ButtonText>{t('data_protection.step_up_verify', 'Verify')}</ButtonText>}
-          </Button>
+          {offersCode && !approval ? (
+            <Button action="primary" onPress={handleVerify} isDisabled={isVerifying || code.trim().length === 0} testID="step-up-submit">
+              {isVerifying ? <Spinner size="small" /> : <ButtonText>{t('data_protection.step_up_verify', 'Verify')}</ButtonText>}
+            </Button>
+          ) : null}
         </ModalFooter>
       </ModalContent>
     </Modal>

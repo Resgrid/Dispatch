@@ -1,5 +1,6 @@
 /* eslint-disable react/react-in-jsx-scope */
 import { Env } from '@env';
+import { type Href, useRouter } from 'expo-router';
 import { useColorScheme } from 'nativewind';
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,6 +28,7 @@ import { useUnitsStore } from '@/stores/units/store';
 
 export default function Settings() {
   const { t } = useTranslation();
+  const router = useRouter();
   const { trackEvent } = useAnalytics();
   const signOut = useAuthStore.getState().logout;
   const { colorScheme } = useColorScheme();
@@ -96,7 +98,9 @@ export default function Settings() {
               <Item text={t('settings.server')} value={getBaseApiUrl()} onPress={() => setShowServerUrl(true)} textStyle="text-info-600" />
               <Item text={t('settings.login_info')} onPress={() => setShowLoginInfo(true)} textStyle="text-info-600" />
               <Item text={t('settings.active_unit')} value={activeUnitName} onPress={() => setShowUnitSelection(true)} textStyle="text-info-600" />
-              <Item text={t('settings.logout')} onPress={signOut} textStyle="text-error-600" />
+              <Item text={t('mfa.account.title')} onPress={() => router.push('/account-security' as unknown as Href)} textStyle="text-info-600" />
+              <Item text={t('shared_session.device_title')} onPress={() => router.push('/login/shared-device' as unknown as Href)} textStyle="text-info-600" />
+              <Item text={t('settings.logout')} onPress={() => void signOut()} textStyle="text-error-600" />
             </VStack>
           </Card>
 

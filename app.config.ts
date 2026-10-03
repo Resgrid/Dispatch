@@ -28,7 +28,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   name: Env.NAME,
   description: `${Env.NAME} Resgrid Dispatch`,
   owner: Env.EXPO_ACCOUNT_OWNER,
-  scheme: Env.SCHEME,
+  // The display scheme, plus the lowercase one every sign-in return uses (SSO, the SAML relay, OIDC): Android matches
+  // intent-filter schemes case-sensitively.
+  scheme: [Env.SCHEME, 'resgriddispatch'],
   slug: 'resgrid-dispatch',
   version: packageJSON.version,
   orientation: 'default',
@@ -45,13 +47,18 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     supportsTablet: true,
     bundleIdentifier: Env.BUNDLE_ID,
     requireFullScreen: true,
+    // Passkeys: Dispatch's own relying-party hosts, one per region (passkey workbook section 5.1). Each host serves an
+    // apple-app-site-association listing only this app. Staging and development builds use their own hosts, not these.
+    ...((Env.APP_ENV === 'production' || Env.APP_ENV === 'internal') && {
+      associatedDomains: ['webcredentials:dispatch.resgrid.com', 'webcredentials:dispatch-eu-central.resgrid.com'],
+    }),
     infoPlist: {
       UIBackgroundModes: ['remote-notification', 'audio', 'bluetooth-central', 'voip'],
       ITSAppUsesNonExemptEncryption: false,
       UIViewControllerBasedStatusBarAppearance: false,
       NSBluetoothAlwaysUsageDescription:
         'Resgrid Dispatch uses Bluetooth to connect to wireless headsets and speaker-microphone accessories for Push-to-Talk audio. For example, when you pair a Bluetooth speaker-mic, pressing its talk button transmits your voice to your department audio channel.',
-      LSApplicationQueriesSchemes: [Env.SCHEME, 'https', 'http'],
+      LSApplicationQueriesSchemes: [Env.SCHEME, 'resgriddispatch', 'https', 'http'],
     },
     entitlements: {
       ...((Env.APP_ENV === 'production' || Env.APP_ENV === 'internal') && {
@@ -83,7 +90,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       {
         action: 'VIEW',
         autoVerify: true,
-        data: [{ scheme: Env.SCHEME }],
+        data: [{ scheme: Env.SCHEME }, { scheme: 'resgriddispatch' }],
         category: ['BROWSABLE', 'DEFAULT'],
       },
     ],

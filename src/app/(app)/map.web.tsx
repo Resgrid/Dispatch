@@ -12,11 +12,12 @@ import { useActiveMapLayers } from '@/hooks/use-active-map-layers';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { MapLayerType, useMapLayers } from '@/hooks/use-map-layers';
 import { useMapLiveLocations } from '@/hooks/use-map-live-locations';
-import { Env } from '@/lib/env';
 import { logger } from '@/lib/logging';
 import { getDepartmentMapCenter } from '@/lib/map-center';
 import { hasValidMapCoordinates } from '@/lib/map-markers';
 import { buildMapPinPopupHtml, createMapMarkerElement } from '@/lib/map-markers-web';
+import { useDepartmentMapStyle } from '@/lib/map-style';
+import { applyMapboxGlAccessToken } from '@/lib/mapbox-gl-token-web';
 import { createDefaultVisiblePoiLayerIds, filterMapPinsByPoiLayers, getPoiMapLayerId, mergeVisiblePoiLayerIds } from '@/lib/poi-map-layers';
 import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersData';
 import { type GetMapLayersData } from '@/models/v4/mapping/getMapLayersResultData';
@@ -105,10 +106,16 @@ export default function MapWeb() {
 
   const visibleMapPins = useMemo(() => filterMapPinsByPoiLayers(mapPins, visiblePoiLayerIds), [mapPins, visiblePoiLayerIds]);
 
-  // Get map style based on current theme
-  const getMapStyle = useCallback(() => {
-    return colorScheme === 'dark' ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/streets-v12';
-  }, [colorScheme]);
+  // Department base map (day/night by theme). It changes when config loads as well as when the theme flips.
+  const mapStyle = useDepartmentMapStyle();
+  // Construction reads the latest style through a ref, so a style change restyles the live map (below)
+  // instead of tearing it down and rebuilding it.
+  const mapStyleRef = useRef(mapStyle);
+  useEffect(() => {
+    mapStyleRef.current = mapStyle;
+  }, [mapStyle]);
+  // The style the current map instance was built with or last switched to.
+  const appliedMapStyleRef = useRef<string | null>(null);
 
   // Inject Mapbox GL CSS
   useEffect(() => {
@@ -126,16 +133,19 @@ export default function MapWeb() {
     if (map.current) return; // initialize map only once
     if (!mapContainer.current) return;
 
-    mapboxgl.accessToken = Env.MAPBOX_PUBKEY;
+    applyMapboxGlAccessToken();
 
     // Department map center as fallback. Read once: two calls are two store reads, and the second
     // could see a different config.
     const departmentCenter = getDepartmentMapCenter();
     const initialCenter: [number, number] = userLongitude && userLatitude ? [userLongitude, userLatitude] : [departmentCenter.longitude, departmentCenter.latitude];
 
+    const initialStyle = mapStyleRef.current;
+    appliedMapStyleRef.current = initialStyle;
+
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: getMapStyle(),
+      style: initialStyle,
       center: initialCenter,
       // The department configured a zoom to go with its center; a fixed 3 opens on the whole globe.
       zoom: userLatitude && userLongitude ? 12 : departmentCenter.zoomLevel,
@@ -171,14 +181,16 @@ export default function MapWeb() {
       map.current?.remove();
       map.current = null;
     };
-  }, [getMapStyle, userLatitude, userLongitude]);
+  }, [userLatitude, userLongitude]);
 
-  // Update map style when theme changes
+  // Switch the base map when the department style changes (config load or theme flip)
   useEffect(() => {
     const instance = map.current;
     if (!instance || !isMapReady) return;
+    if (appliedMapStyleRef.current === mapStyle) return;
 
-    instance.setStyle(getMapStyle());
+    instance.setStyle(mapStyle);
+    appliedMapStyleRef.current = mapStyle;
 
     // setStyle replaces the whole style and drops every runtime-added source/layer.
     // Re-add the runtime layers once the new style has finished loading. Custom
@@ -192,7 +204,7 @@ export default function MapWeb() {
     return () => {
       instance.off('style.load', handleStyleLoad);
     };
-  }, [colorScheme, getMapStyle, isMapReady]);
+  }, [mapStyle, isMapReady]);
 
   // Handle navigation focus - refresh data when navigating back to map
   useFocusEffect(

@@ -10,7 +10,8 @@ import { HStack } from '@/components/ui/hstack';
 import { Input, InputField } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
-import { Env } from '@/lib/env';
+import { useDepartmentMapStyle } from '@/lib/map-style';
+import { getMapboxAccessToken } from '@/lib/mapbox-token';
 import { IncidentCapabilities, IncidentMapAnnotationType } from '@/models/v4/incidentCommand/incidentCommandEnums';
 import { type IncidentMapAnnotation } from '@/models/v4/incidentCommand/incidentMapAnnotation';
 import { useLocationStore } from '@/stores/app/location-store';
@@ -20,7 +21,7 @@ import { useToastStore } from '@/stores/toast/store';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyGeoJson = any;
 
-Mapbox.setAccessToken(Env.MAPBOX_PUBKEY);
+Mapbox.setAccessToken(getMapboxAccessToken());
 
 const toFeatureCollection = (geoJson: AnyGeoJson): { type: 'FeatureCollection'; features: AnyGeoJson[] } => {
   if (geoJson?.type === 'FeatureCollection') return geoJson;
@@ -56,6 +57,8 @@ export const CommandMap: React.FC = () => {
   const [addMode, setAddMode] = useState(false);
   const [pending, setPending] = useState<{ longitude: number; latitude: number } | null>(null);
   const [label, setLabel] = useState('');
+  // Department base map (day/night by theme)
+  const mapStyle = useDepartmentMapStyle();
 
   const canManage = (capabilities & IncidentCapabilities.ManageAnnotations) === IncidentCapabilities.ManageAnnotations;
   const annotations = useMemo(() => (board?.Annotations ?? []).filter((a) => !a.DeletedOn), [board?.Annotations]);
@@ -141,7 +144,7 @@ export const CommandMap: React.FC = () => {
 
   return (
     <Box className="flex-1">
-      <Mapbox.MapView style={styles.map} logoEnabled={false} attributionEnabled={false} compassEnabled zoomEnabled rotateEnabled onPress={handleMapPress}>
+      <Mapbox.MapView style={styles.map} styleURL={mapStyle} logoEnabled={false} attributionEnabled={false} compassEnabled zoomEnabled rotateEnabled onPress={handleMapPress}>
         <Mapbox.Camera ref={cameraRef} zoomLevel={14} centerCoordinate={center} animationMode="flyTo" animationDuration={800} />
 
         {parsed.map(({ annotation, shape }, index) =>

@@ -121,6 +121,9 @@ describe('Address Search Logic', () => {
     MapCenterLatitude: 0,
     MapCenterLongitude: 0,
     MapCenterZoomLevel: 9,
+    MapDayStyleUrl: '',
+    MapNightStyleUrl: '',
+    AppMapboxAccessToken: '',
   };
 
   beforeEach(() => {
@@ -172,6 +175,9 @@ describe('Address Search Logic', () => {
         MapCenterLatitude: 0,
         MapCenterLongitude: 0,
         MapCenterZoomLevel: 9,
+        MapDayStyleUrl: '',
+        MapNightStyleUrl: '',
+        AppMapboxAccessToken: '',
       };
 
       const result = await performAddressSearch('123 Main St', configWithoutKey);

@@ -2,6 +2,7 @@ import { Lock } from 'lucide-react-native';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { DateTimeField } from '@/components/common/date-time-field';
 import { Badge, BadgeText } from '@/components/ui/badge';
 import { Box } from '@/components/ui/box';
 import { Checkbox, CheckboxIcon, CheckboxIndicator, CheckboxLabel } from '@/components/ui/checkbox';
@@ -77,6 +78,10 @@ export const RecordField: React.FC<RecordFieldProps> = ({ field, value, required
   }
 
   switch (field.Type) {
+    case RmsFieldType.Date:
+    case RmsFieldType.DateTime:
+      return wrap(<DateTimeField value={text} onChange={setText} label={field.Label} mode={field.Type === RmsFieldType.Date ? 'date' : 'datetime'} disabled={disabled} testID={testID ? `${testID}-picker` : undefined} />);
+
     case RmsFieldType.LongText:
       return wrap(
         <Textarea isDisabled={disabled} isInvalid={invalid}>

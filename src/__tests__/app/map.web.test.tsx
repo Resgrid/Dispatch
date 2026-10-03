@@ -3,7 +3,10 @@ import React from 'react';
 
 import { getMapDataAndMarkers } from '@/api/mapping/mapping';
 import { LIVE_LOCATION_REFRESH_DELAY_MS } from '@/hooks/use-map-live-locations';
+import { clearMapboxToken, useMapboxTokenStore } from '@/lib/mapbox-token';
+import { type GetConfigResultData } from '@/models/v4/configs/getConfigResultData';
 import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersData';
+import { useCoreStore } from '@/stores/app/core-store';
 import { useSignalRStore } from '@/stores/signalr/signalr-store';
 
 import MapWeb from '../../app/(app)/map.web';
@@ -18,6 +21,8 @@ interface MockMarker {
 interface MockMap {
   handlers: Record<string, () => void>;
   flyTo: jest.Mock;
+  options: { style?: string };
+  setStyle: jest.Mock;
 }
 const mockMarkers: MockMarker[] = [];
 const mockMaps: MockMap[] = [];
@@ -53,7 +58,10 @@ jest.mock('mapbox-gl', () => {
   class MapboxMap {
     handlers: Record<string, () => void> = {};
     flyTo = jest.fn();
-    constructor() {
+    setStyle = jest.fn();
+    options: { style?: string };
+    constructor(options: { style?: string }) {
+      this.options = options;
       mockMaps.push(this as unknown as MockMap);
     }
     addControl() {}
@@ -63,7 +71,6 @@ jest.mock('mapbox-gl', () => {
     once() {}
     off() {}
     remove() {}
-    setStyle() {}
     getLayer() {
       return undefined;
     }
@@ -137,6 +144,11 @@ describe('Map screen (web) realtime locations', () => {
 
   afterEach(() => {
     (global as any).document = originalDocument;
+    // The screen is still mounted here, so the store resets re-render it.
+    act(() => {
+      useCoreStore.setState({ config: null });
+      clearMapboxToken();
+    });
     jest.useRealTimers();
   });
 
@@ -189,5 +201,51 @@ describe('Map screen (web) realtime locations', () => {
 
     expect(liveMarker('poi5')).toHaveLength(0);
     expect(liveMarker('u12')).toHaveLength(1);
+  });
+
+  it("opens on the department's base map and restyles the live map when config changes", async () => {
+    const satellite = 'mapbox://styles/mapbox/satellite-v9';
+    const outdoors = 'mapbox://styles/mapbox/outdoors-v12';
+    const departmentConfig = { MapDayStyleUrl: satellite, MapNightStyleUrl: 'mapbox://styles/mapbox/dark-v11' } as GetConfigResultData;
+    useCoreStore.setState({ config: departmentConfig });
+
+    await renderLoadedMap();
+
+    expect(mockMaps[0].options.style).toBe(satellite);
+    // Already on the department style once loaded, so no redundant style reload.
+    expect(mockMaps[0].setStyle).not.toHaveBeenCalled();
+
+    act(() => {
+      useCoreStore.setState({ config: { ...departmentConfig, MapDayStyleUrl: outdoors } as GetConfigResultData });
+    });
+
+    expect(mockMaps[0].setStyle).toHaveBeenCalledWith(outdoors);
+    // Restyled in place, not torn down and rebuilt.
+    expect(mockMaps).toHaveLength(1);
+  });
+
+  it("holds a custom style until the department's token is in use, and switches mapbox-gl's token first", async () => {
+    const mapboxgl = jest.requireMock('mapbox-gl').default as { accessToken: string };
+    const customStyle = 'mapbox://styles/county-fire/ckcustom123';
+    const departmentToken = 'pk.eyJ1IjoiY291bnR5LWZpcmUifQ.department-signature';
+    useCoreStore.setState({ config: { MapDayStyleUrl: customStyle, MapNightStyleUrl: customStyle, AppMapboxAccessToken: departmentToken } as GetConfigResultData });
+
+    await renderLoadedMap();
+
+    // Built-in token (the mocked Env.MAPBOX_PUBKEY) and the default style until the department token is verified.
+    expect(mapboxgl.accessToken).toBe('pk.test');
+    expect(mockMaps[0].options.style).toBe('mapbox://styles/mapbox/streets-v12');
+
+    let tokenAtRestyle: string | null = null;
+    mockMaps[0].setStyle.mockImplementation(() => {
+      tokenAtRestyle = mapboxgl.accessToken;
+    });
+
+    act(() => {
+      useMapboxTokenStore.setState({ token: departmentToken, verifiedAt: Date.now() });
+    });
+
+    expect(mockMaps[0].setStyle).toHaveBeenCalledWith(customStyle);
+    expect(tokenAtRestyle).toBe(departmentToken);
   });
 });

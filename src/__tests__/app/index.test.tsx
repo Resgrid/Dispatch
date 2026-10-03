@@ -43,11 +43,6 @@ jest.mock('@rnmapbox/maps', () => ({
   MapView: 'MapView',
   Camera: 'Camera',
   PointAnnotation: 'PointAnnotation',
-  StyleURL: {
-    Street: 'mapbox://styles/mapbox/streets-v11',
-    Dark: 'mapbox://styles/mapbox/dark-v10',
-    Light: 'mapbox://styles/mapbox/light-v10',
-  },
   UserTrackingMode: {
     Follow: 'follow',
     FollowWithHeading: 'followWithHeading',
@@ -92,12 +87,15 @@ jest.mock('@/stores/toast/store', () => ({
     }),
   }),
 }));
+// The department map style is read through useCoreStore(selector); getState serves setActiveCall.
+const mockCoreState: { config: { MapDayStyleUrl: string; MapNightStyleUrl: string } | null } = { config: null };
 jest.mock('@/stores/app/core-store', () => ({
-  useCoreStore: {
+  useCoreStore: Object.assign((selector: (state: unknown) => unknown) => selector(mockCoreState), {
     getState: () => ({
+      ...mockCoreState,
       setActiveCall: jest.fn(),
     }),
-  },
+  }),
 }));
 jest.mock('@/components/maps/map-pins', () => ({
   __esModule: true,
@@ -138,6 +136,9 @@ const defaultAppLifecycleState = {
   lastActiveTimestamp: Date.now(),
 };
 
+const DEPARTMENT_DAY_STYLE = 'mapbox://styles/mapbox/satellite-streets-v12';
+const DEPARTMENT_NIGHT_STYLE = 'mapbox://styles/mapbox/navigation-night-v1';
+
 describe('Map Component - App Lifecycle', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -151,6 +152,7 @@ describe('Map Component - App Lifecycle', () => {
       setColorScheme: jest.fn(),
       toggleColorScheme: jest.fn(),
     });
+    mockCoreState.config = { MapDayStyleUrl: DEPARTMENT_DAY_STYLE, MapNightStyleUrl: DEPARTMENT_NIGHT_STYLE };
   });
 
   afterEach(() => {
@@ -244,32 +246,40 @@ describe('Map Component - App Lifecycle', () => {
     unmount();
   });
 
-  it('should use light theme map style when in light mode', async () => {
+  it("should use the department's day style when in light mode", async () => {
     mockUseColorScheme.mockReturnValue({
       colorScheme: 'light',
       setColorScheme: jest.fn(),
       toggleColorScheme: jest.fn(),
     });
 
-    const { unmount } = render(<Map />, { wrapper: TestWrapper });
+    const { getByTestId, unmount } = render(<Map />, { wrapper: TestWrapper });
 
-    // The map should use the light style
-    expect(mockUseColorScheme).toHaveBeenCalled();
+    expect(getByTestId('map-view').props.styleURL).toBe(DEPARTMENT_DAY_STYLE);
 
     unmount();
   });
 
-  it('should use dark theme map style when in dark mode', async () => {
+  it("should use the department's night style when in dark mode", async () => {
     mockUseColorScheme.mockReturnValue({
       colorScheme: 'dark',
       setColorScheme: jest.fn(),
       toggleColorScheme: jest.fn(),
     });
 
-    const { unmount } = render(<Map />, { wrapper: TestWrapper });
+    const { getByTestId, unmount } = render(<Map />, { wrapper: TestWrapper });
 
-    // The map should use the dark style
-    expect(mockUseColorScheme).toHaveBeenCalled();
+    expect(getByTestId('map-view').props.styleURL).toBe(DEPARTMENT_NIGHT_STYLE);
+
+    unmount();
+  });
+
+  it('should fall back to Streets before config loads', async () => {
+    mockCoreState.config = null;
+
+    const { getByTestId, unmount } = render(<Map />, { wrapper: TestWrapper });
+
+    expect(getByTestId('map-view').props.styleURL).toBe('mapbox://styles/mapbox/streets-v12');
 
     unmount();
   });
@@ -285,7 +295,8 @@ describe('Map Component - App Lifecycle', () => {
       toggleColorScheme,
     });
 
-    const { rerender, unmount } = render(<Map />, { wrapper: TestWrapper });
+    const { getByTestId, rerender, unmount } = render(<Map />, { wrapper: TestWrapper });
+    expect(getByTestId('map-view').props.styleURL).toBe(DEPARTMENT_DAY_STYLE);
 
     // Change to dark theme
     mockUseColorScheme.mockReturnValue({
@@ -296,8 +307,8 @@ describe('Map Component - App Lifecycle', () => {
 
     rerender(<Map />);
 
-    // Component should handle theme changes without errors
-    expect(mockUseColorScheme).toHaveBeenCalled();
+    // The base map follows the theme to the department's night style
+    expect(getByTestId('map-view').props.styleURL).toBe(DEPARTMENT_NIGHT_STYLE);
 
     unmount();
   });

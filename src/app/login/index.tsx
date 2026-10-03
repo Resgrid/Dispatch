@@ -1,8 +1,9 @@
-import { useRouter } from 'expo-router';
+import { type Href, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { LoginFormProps } from '@/app/login/login-form';
+import { LoginMfaSheet } from '@/components/auth/login-mfa-sheet';
 import { LoginOtpModal } from '@/components/auth/login-otp-modal';
 import { ServerUrlBottomSheet } from '@/components/settings/server-url-bottom-sheet';
 import { FocusAwareStatusBar } from '@/components/ui';
@@ -12,6 +13,9 @@ import { Text } from '@/components/ui/text';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { useAuth } from '@/lib/auth';
 import { logger } from '@/lib/logging';
+import { isMfaErrorCode, mfaErrorKey } from '@/lib/mfa/messages';
+import { useSharedInstallation } from '@/lib/mfa/shared-installation';
+import useAuthStore from '@/stores/auth/store';
 
 import { LoginForm } from './login-form';
 
@@ -26,6 +30,11 @@ export default function Login() {
   const { trackEvent } = useAnalytics();
   const router = useRouter();
   const { login, status, error, isAuthenticated } = useAuth();
+  const mfaChallenge = useAuthStore((s) => s.mfaChallenge);
+  const installation = useSharedInstallation();
+  // A sign-in that ended (expired, too many attempts, policy changed) or a shared shift that ran out says why in the
+  // member's language.
+  const displayError = error === 'shift_ended' ? t('shared_session.shift_ended') : isMfaErrorCode(error) ? t(mfaErrorKey(error)) : error;
 
   // Track when login view is rendered
   useEffect(() => {
@@ -105,7 +114,15 @@ export default function Login() {
   return (
     <>
       <FocusAwareStatusBar />
-      <LoginForm onSubmit={onSubmit} isLoading={status === 'loading'} error={error ?? undefined} onServerUrlPress={() => setShowServerUrl(true)} onSsoPress={() => router.push('/login/sso' as any)} />
+      <LoginForm
+        onSubmit={onSubmit}
+        isLoading={status === 'loading'}
+        error={displayError ?? undefined}
+        onServerUrlPress={() => setShowServerUrl(true)}
+        onSsoPress={() => router.push('/login/sso' as any)}
+        onSharedDevicePress={() => router.push('/login/shared-device' as unknown as Href)}
+        sharedDevice={installation}
+      />
 
       <Modal
         isOpen={isErrorModalVisible}
@@ -122,6 +139,7 @@ export default function Login() {
           </ModalHeader>
           <ModalBody>
             <Text>{t('login.errorModal.message')}</Text>
+            {displayError ? <Text className="mt-2 text-sm text-gray-500">{displayError}</Text> : null}
           </ModalBody>
           <ModalFooter>
             <Button
@@ -140,9 +158,12 @@ export default function Login() {
 
       <ServerUrlBottomSheet isOpen={showServerUrl} onClose={() => setShowServerUrl(false)} />
 
-      {/* Two-factor challenge: token endpoint answered mfa_required / invalid_totp */}
+      {/* Second factor on the login transaction: the methods this sign-in accepts, or the setup the department requires. An SSO sign-in's second factor is the SSO screen's, on top of this one */}
+      <LoginMfaSheet isOpen={status === 'mfaRequired' && mfaChallenge != null && mfaChallenge.kind !== 'legacy' && mfaChallenge.source !== 'sso'} onLostFactor={() => router.push('/login/recovery' as unknown as Href)} />
+
+      {/* Two-factor challenge on an older server: token endpoint answered mfa_required / invalid_totp with no transaction */}
       <LoginOtpModal
-        isOpen={status === 'mfaRequired' && !otpDismissed && pendingCredentials != null}
+        isOpen={status === 'mfaRequired' && mfaChallenge?.kind === 'legacy' && !otpDismissed && pendingCredentials != null}
         isSubmitting={status === 'loading'}
         invalidCode={error === 'invalid_totp'}
         onSubmit={onOtpSubmit}

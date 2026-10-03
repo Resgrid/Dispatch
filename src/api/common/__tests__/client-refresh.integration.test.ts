@@ -17,6 +17,7 @@ jest.mock('@/lib/storage/app', () => ({
 
 jest.mock('@/lib/auth/api', () => ({
   loginRequest: jest.fn(),
+  forgetPendingSsoExchange: jest.fn(),
   refreshTokenRequest: jest.fn(),
   clearPasswordVerificationHash: jest.fn().mockResolvedValue(undefined),
 }));

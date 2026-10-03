@@ -8,8 +8,9 @@ import { Button, ButtonIcon, ButtonText } from '@/components/ui/button';
 import { HStack } from '@/components/ui/hstack';
 import { Input, InputField } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
-import { Env } from '@/lib/env';
 import { getDepartmentMapCenter } from '@/lib/map-center';
+import { useDepartmentMapStyle } from '@/lib/map-style';
+import { applyMapboxGlAccessToken } from '@/lib/mapbox-gl-token-web';
 import { IncidentCapabilities, IncidentMapAnnotationType } from '@/models/v4/incidentCommand/incidentCommandEnums';
 import { useLocationStore } from '@/stores/app/location-store';
 import { useIncidentCommandStore } from '@/stores/incident-command/store';
@@ -59,6 +60,18 @@ export const CommandMap: React.FC = () => {
   const [pending, setPending] = useState<{ longitude: number; latitude: number } | null>(null);
   const [label, setLabel] = useState('');
 
+  // Department base map (day/night by theme). Construction reads it through a ref so a style change
+  // (config load or theme flip) restyles the live map instead of rebuilding it.
+  const mapStyle = useDepartmentMapStyle();
+  const mapStyleRef = useRef(mapStyle);
+  useEffect(() => {
+    mapStyleRef.current = mapStyle;
+  }, [mapStyle]);
+  // The style the current map instance was built with or last switched to.
+  const appliedMapStyleRef = useRef<string | null>(null);
+  // Bumped when a style switch finishes loading: setStyle drops every runtime-added source/layer.
+  const [styleRevision, setStyleRevision] = useState(0);
+
   const canManage = (capabilities & IncidentCapabilities.ManageAnnotations) === IncidentCapabilities.ManageAnnotations;
   const annotations = useMemo(() => (board?.Annotations ?? []).filter((a) => !a.DeletedOn), [board?.Annotations]);
 
@@ -95,10 +108,12 @@ export const CommandMap: React.FC = () => {
   // Initialize the map once.
   useEffect(() => {
     if (map.current || !mapContainer.current) return;
-    mapboxgl.accessToken = Env.MAPBOX_PUBKEY;
+    applyMapboxGlAccessToken();
+    const initialStyle = mapStyleRef.current;
+    appliedMapStyleRef.current = initialStyle;
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
+      style: initialStyle,
       center: camera.center,
       zoom: camera.zoom,
     });
@@ -114,6 +129,23 @@ export const CommandMap: React.FC = () => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Switch the base map when the department style changes, then re-render the annotations on the new style.
+  useEffect(() => {
+    const instance = map.current;
+    if (!instance || !isReady) return;
+    if (appliedMapStyleRef.current === mapStyle) return;
+
+    instance.setStyle(mapStyle);
+    appliedMapStyleRef.current = mapStyle;
+
+    const handleStyleLoad = () => setStyleRevision((revision) => revision + 1);
+    instance.once('style.load', handleStyleLoad);
+
+    return () => {
+      instance.off('style.load', handleStyleLoad);
+    };
+  }, [mapStyle, isReady]);
 
   // Render annotations whenever they change.
   useEffect(() => {
@@ -172,7 +204,7 @@ export const CommandMap: React.FC = () => {
       const marker = new mapboxgl.Marker({ element: el }).setLngLat(point).addTo(instance);
       markersRef.current.push(marker);
     });
-  }, [annotations, isReady, canManage, showToast, t]);
+  }, [annotations, isReady, canManage, showToast, t, styleRevision]);
 
   const saveMarker = async () => {
     if (!pending) return;

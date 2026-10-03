@@ -25,6 +25,8 @@ jest.mock('expo-file-system/legacy', () => ({
 jest.mock('expo-crypto', () => ({
   CryptoDigestAlgorithm: { SHA256: 'SHA-256' },
   digest: jest.fn(async (_algorithm: string, data: Uint8Array) => {
+    // Model the native bridge instead of silently accepting Node Buffer inputs.
+    if (data.constructor !== Uint8Array) throw new Error('Native bridge requires Uint8Array');
     const digest = jest.requireActual<typeof import('crypto')>('crypto').createHash('sha256').update(data).digest();
     return digest.buffer.slice(digest.byteOffset, digest.byteOffset + digest.byteLength);
   }),
@@ -249,4 +251,11 @@ describe('Record attachment uploads', () => {
     expect(outcome).toMatchObject({ ok: false, code: 'cancelled', sentBytes: 3 });
     expect(api.completeRecordUpload).not.toHaveBeenCalled();
   });
+});
+
+it.each([[[]], [[0, 127, 128, 255, 1]]])('hashes binary bytes %j through a native-compatible array', async (values: number[]) => {
+  const bytes = Buffer.from(values);
+  serveFile(bytes);
+  const expected = jest.requireActual<typeof import('crypto')>('crypto').createHash('sha256').update(bytes).digest('hex');
+  await expect(hashFile('file:///binary.bin')).resolves.toBe(expected);
 });

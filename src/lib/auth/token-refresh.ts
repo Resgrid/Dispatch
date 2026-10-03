@@ -3,6 +3,7 @@ import axios from 'axios';
 import { logger } from '@/lib/logging';
 
 import { refreshTokenRequest } from './api';
+import { isSharedSessionLockedRefresh } from './shared-session-errors';
 import type { AuthResponse } from './types';
 
 const REFRESH_BUFFER_MS = 60000;
@@ -24,6 +25,8 @@ export interface TokenRefreshHandlers {
   getRefreshToken: () => string | null;
   applyAuthResponse: (response: AuthResponse) => void;
   onRefreshFailed: () => void;
+  /** The refresh was refused because the shared session is locked: show the lock screen, keep the tokens. */
+  onSharedSessionLocked?: () => void;
 }
 
 let handlers: TokenRefreshHandlers | null = null;
@@ -120,6 +123,14 @@ export function performTokenRefresh(): Promise<boolean> {
       return true;
     } catch (error) {
       if (handlers.getRefreshToken() !== refreshToken) {
+        return false;
+      }
+      if (isSharedSessionLockedRefresh(error)) {
+        // A locked shared session (passkey plan section 10.5): the tokens stay, the lock screen unlocks the same
+        // session, and the refresh runs again after the unlock. Never a sign-out.
+        logger.info({ message: 'Token refresh waits for the shared session to unlock' });
+        cancelScheduledTokenRefresh();
+        handlers.onSharedSessionLocked?.();
         return false;
       }
       // A refresh token the server no longer honours is how a session ends: the token

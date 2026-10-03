@@ -4,6 +4,8 @@ import { CryptoDigestAlgorithm, digestStringAsync, randomUUID } from 'expo-crypt
 import queryString from 'query-string';
 
 import { logger } from '@/lib/logging';
+import { applyClientHeaders } from '@/lib/mfa/client-app';
+import { type MfaChallenge, parseMethods } from '@/lib/mfa/types';
 
 import { getItem, removeItem, setItem } from '../storage';
 import { getBaseApiUrl } from '../storage/app';
@@ -42,19 +44,44 @@ const sanitizeAuthError = (error: unknown): Record<string, unknown> => {
 const PASSWORD_VERIFICATION_HASH_KEY = 'PASSWORD_VERIFICATION_HASH';
 const PASSWORD_VERIFICATION_SALT_KEY = 'PASSWORD_VERIFICATION_SALT';
 
+/** A salted SHA-256 of the password for the personal lockscreen; never the password itself. */
+export interface PasswordVerification {
+  salt: string;
+  hash: string;
+}
+
+/**
+ * Computes the lockscreen verifier without storing it, so a sign-in still waiting for its second factor can hold it in
+ * memory (never the password) and store it only once the sign-in finishes.
+ */
+export const computePasswordVerification = async (password: string): Promise<PasswordVerification | null> => {
+  try {
+    const salt = getItem<string>(PASSWORD_VERIFICATION_SALT_KEY) ?? randomUUID();
+    const hash = await digestStringAsync(CryptoDigestAlgorithm.SHA256, `${salt}:${password}`);
+    return { salt, hash };
+  } catch (error) {
+    logger.error({
+      message: 'Failed to compute password verification hash',
+      context: { message: error instanceof Error ? error.message : String(error) },
+    });
+    return null;
+  }
+};
+
+export const savePasswordVerification = async (verification: PasswordVerification): Promise<void> => {
+  await setItem(PASSWORD_VERIFICATION_SALT_KEY, verification.salt);
+  await setItem(PASSWORD_VERIFICATION_HASH_KEY, verification.hash);
+};
+
 // Store a salted SHA-256 hash of the password after a successful password-grant
 // login so the lockscreen can verify the password offline. This is a verification
 // cache only - the password itself is never stored.
 export const storePasswordVerificationHash = async (password: string): Promise<void> => {
   try {
-    let salt = getItem<string>(PASSWORD_VERIFICATION_SALT_KEY);
-    if (!salt) {
-      salt = randomUUID();
-      await setItem(PASSWORD_VERIFICATION_SALT_KEY, salt);
+    const verification = await computePasswordVerification(password);
+    if (verification) {
+      await savePasswordVerification(verification);
     }
-
-    const hash = await digestStringAsync(CryptoDigestAlgorithm.SHA256, `${salt}:${password}`);
-    await setItem(PASSWORD_VERIFICATION_HASH_KEY, hash);
   } catch (error) {
     logger.error({
       message: 'Failed to store password verification hash',
@@ -99,6 +126,9 @@ const authApi = axios.create({
 // Add request interceptor to dynamically set baseURL
 authApi.interceptors.request.use((config) => {
   config.baseURL = getBaseApiUrl();
+  // The app and installation headers bind a sign-in transaction and the session it creates to this app, and mark a shared
+  // dispatch workstation (passkey plan sections 10.4 and 10.5).
+  applyClientHeaders(config.headers);
   logger.info({
     message: 'Auth API request interceptor',
     context: { baseURL: config.baseURL, url: sanitizeUrl(config.url) },
@@ -106,14 +136,45 @@ authApi.interceptors.request.use((config) => {
   return config;
 });
 
+interface OAuthErrorBody {
+  error?: string;
+  mfa_transaction?: string;
+  mfa_setup_transaction?: string;
+  mfa_methods?: string;
+  mfa_enrolled?: string;
+  mfa_preferred?: string;
+  mfa_expires_in?: number;
+}
+
+const oauthErrorBody = (error: unknown): OAuthErrorBody => {
+  const data = (error as { response?: { data?: unknown } })?.response?.data;
+  return typeof data === 'object' && data !== null ? (data as OAuthErrorBody) : {};
+};
+
+/** The login transaction the token endpoint started, when it started one (transaction flow on, passkey workbook section 7.1). */
+export const loginTransactionFrom = (body: OAuthErrorBody, source: MfaChallenge['source']): LoginResponse['mfaTransaction'] | undefined => {
+  const expiresAt = typeof body.mfa_expires_in === 'number' ? Date.now() + body.mfa_expires_in * 1000 : null;
+  if (body.error === 'mfa_required' && body.mfa_transaction) {
+    const methods = parseMethods(body.mfa_methods);
+    const enrolled = parseMethods(body.mfa_enrolled);
+    const preferred = parseMethods(body.mfa_preferred)[0] ?? null;
+    return { secret: body.mfa_transaction, challenge: { kind: 'verify', methods, enrolled, preferred, expiresAt, source } };
+  }
+  if (body.error === 'mfa_enrollment_required' && body.mfa_setup_transaction) {
+    return { secret: body.mfa_setup_transaction, challenge: { kind: 'setup', methods: ['totp'], enrolled: [], preferred: 'totp', expiresAt, source } };
+  }
+  return undefined;
+};
+
 export const loginRequest = async (credentials: LoginCredentials): Promise<LoginResponse> => {
   try {
     const data = queryString.stringify({
       grant_type: 'password',
       username: credentials.username,
       password: credentials.password,
-      // Accounts with Resgrid 2FA enabled must supply the current authenticator code.
-      ...(credentials.otpCode ? { totp_code: credentials.otpCode.trim() } : {}),
+      // A second factor continues on a login transaction; a server without one answers the older way (a code resent
+      // with the password), which the totp_code below still serves.
+      ...(credentials.otpCode ? { totp_code: credentials.otpCode.trim() } : { mfa_flow: 'transaction' }),
       scope: Env.IS_MOBILE_APP ? 'openid profile offline_access mobile' : 'openid profile offline_access',
     });
 
@@ -154,8 +215,21 @@ export const loginRequest = async (credentials: LoginCredentials): Promise<Login
     }
   } catch (error) {
     // The OAuth error body distinguishes the 2FA challenge from a bad password. Neither the
-    // password nor any code is ever logged.
-    const oauthError = (error as { response?: { data?: { error?: string } } })?.response?.data?.error;
+    // password, the transaction nor any code is ever logged.
+    const body = oauthErrorBody(error);
+    const mfaTransaction = loginTransactionFrom(body, 'password');
+    if (mfaTransaction) {
+      logger.info({
+        message: 'Login continues on a second-factor transaction',
+        context: { kind: mfaTransaction.challenge.kind, methods: mfaTransaction.challenge.methods },
+      });
+      return { successful: false, message: 'Additional verification is required', authResponse: null, mfaRequired: true, mfaTransaction };
+    }
+    if (body.error === 'mfa_enrollment_required') {
+      return { successful: false, message: 'mfa_enrollment_required', authResponse: null, enrollmentRequired: true };
+    }
+
+    const oauthError = body.error;
     if (oauthError === 'mfa_required' || oauthError === 'invalid_totp') {
       logger.info({
         message: 'Login requires two-factor code',
@@ -185,11 +259,38 @@ export const loginRequest = async (credentials: LoginCredentials): Promise<Login
   }
 };
 
+/**
+ * Exchanges a finished login transaction for tokens (passkey workbook section 7.1): the completion code is single-use,
+ * bound to this transaction and app, and lives about a minute. A lost response means signing in again. This request
+ * creates the session, so it carries the shared-installation and device headers too (the interceptor adds them).
+ */
+export const completionGrantRequest = async (transaction: string, completionCode: string): Promise<AuthResponse> => {
+  const data = queryString.stringify({
+    grant_type: 'urn:resgrid:params:oauth:grant-type:mfa_completion',
+    transaction,
+    completion_code: completionCode,
+  });
+  try {
+    const response = await authApi.post<AuthResponse>('/connect/token', data);
+    logger.info({ message: 'Login transaction completed' });
+    return response.data;
+  } catch (error) {
+    // The transaction and completion code travel in the request body; only the sanitized failure is logged.
+    logger.error({ message: 'Login transaction completion failed', context: sanitizeAuthError(error) });
+    throw error;
+  }
+};
+
 // Last SSO exchange that failed with a 2FA challenge, retained IN MEMORY ONLY so the OTP
 // prompt can retry the same IdP token with a code. Cleared on success and on any final failure.
-let pendingSsoMfaExchange: { provider: 'oidc' | 'saml2'; externalToken: string; username: string; departmentId?: number } | null = null;
+let pendingSsoMfaExchange: { provider: 'oidc' | 'saml2'; externalToken: string; username: string; departmentId?: number; departmentToken?: string } | null = null;
 
-export const externalTokenRequest = async (provider: 'oidc' | 'saml2', externalToken: string, username: string, departmentId?: number, otpCode?: string): Promise<LoginResponse> => {
+/**
+ * The legacy SSO exchange. `departmentToken` is the department's encrypted token (from SSO discovery, or from the SAML
+ * relay's callback): connect/external-token needs it, or a department code, to know which department's provider to
+ * validate against. `department_id` alone is not read by the server.
+ */
+export const externalTokenRequest = async (provider: 'oidc' | 'saml2', externalToken: string, username: string, departmentId?: number, otpCode?: string, departmentToken?: string): Promise<LoginResponse> => {
   const requestId = randomUUID();
   try {
     const data: Record<string, string> = {
@@ -201,6 +302,10 @@ export const externalTokenRequest = async (provider: 'oidc' | 'saml2', externalT
 
     if (departmentId) {
       data.department_id = String(departmentId);
+    }
+
+    if (departmentToken) {
+      data.department_token = departmentToken;
     }
 
     // Accounts with Resgrid 2FA enabled must supply the current authenticator code even via SSO.
@@ -232,7 +337,7 @@ export const externalTokenRequest = async (provider: 'oidc' | 'saml2', externalT
         context: { requestId, invalidOtp: oauthError === 'invalid_totp' },
       });
 
-      pendingSsoMfaExchange = { provider, externalToken, username, departmentId };
+      pendingSsoMfaExchange = { provider, externalToken, username, departmentId, departmentToken };
       return {
         successful: false,
         message: 'Two-factor authentication required',
@@ -252,14 +357,19 @@ export const externalTokenRequest = async (provider: 'oidc' | 'saml2', externalT
   }
 };
 
+/** Drops the IdP token kept for a code retry: the member dismissed the prompt, left the screen, or signed out. */
+export const forgetPendingSsoExchange = (): void => {
+  pendingSsoMfaExchange = null;
+};
+
 /** Retries the pending SSO exchange with the user's authenticator code (2FA challenge). */
 export const retrySsoExchangeWithOtp = async (otpCode: string): Promise<LoginResponse> => {
   if (!pendingSsoMfaExchange) {
     return { successful: false, message: 'No pending SSO sign-in to verify', authResponse: null };
   }
 
-  const { provider, externalToken, username, departmentId } = pendingSsoMfaExchange;
-  return externalTokenRequest(provider, externalToken, username, departmentId, otpCode);
+  const { provider, externalToken, username, departmentId, departmentToken } = pendingSsoMfaExchange;
+  return externalTokenRequest(provider, externalToken, username, departmentId, otpCode, departmentToken);
 };
 
 export const refreshTokenRequest = async (refreshToken: string): Promise<AuthResponse> => {

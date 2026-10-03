@@ -2,7 +2,7 @@ import axios, { AxiosError, type AxiosResponse, type InternalAxiosRequestConfig 
 
 import { logger } from '@/lib/logging';
 
-import { externalTokenRequest, loginRequest, retrySsoExchangeWithOtp } from '../api';
+import { externalTokenRequest, forgetPendingSsoExchange, loginRequest, retrySsoExchangeWithOtp } from '../api';
 
 jest.mock('@/lib/logging', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
 jest.mock('axios', () => {
@@ -77,6 +77,24 @@ describe('two-factor login handling', () => {
   });
 
   describe('externalTokenRequest and retrySsoExchangeWithOtp', () => {
+    it('names the department by its token, which the server needs, and keeps it for the code retry', async () => {
+      post.mockRejectedValueOnce(oauthError('mfa_required')).mockResolvedValueOnce({ status: 200, data: tokens });
+
+      await externalTokenRequest('saml2', 'saml-relay:ABC', 'dispatcher', undefined, undefined, 'enc/dept+token=');
+      await retrySsoExchangeWithOtp('123456');
+
+      const encoded = `department_token=${encodeURIComponent('enc/dept+token=')}`;
+      expect(post.mock.calls[0][1]).toContain(encoded);
+      expect(post.mock.calls[1][1]).toContain(encoded);
+      expect(post.mock.calls[1][1]).toContain('totp_code=123456');
+    });
+
+    it('sends no department token when it has none', async () => {
+      post.mockResolvedValueOnce({ status: 200, data: tokens });
+      await externalTokenRequest('oidc', 'idp-token-secret', 'dispatcher', 7);
+      expect(post.mock.calls[0][1]).not.toContain('department_token');
+    });
+
     it('retains the exchange on an mfa_required challenge and retries it with the code', async () => {
       post.mockRejectedValueOnce(oauthError('mfa_required')).mockResolvedValueOnce({ status: 200, data: tokens });
 
@@ -105,6 +123,16 @@ describe('two-factor login handling', () => {
       expect(rejected).toMatchObject({ successful: false, mfaRequired: true, invalidOtp: true });
       expect(accepted.successful).toBe(true);
       expect(post).toHaveBeenCalledTimes(3);
+    });
+
+    it('drops the retained exchange when the member abandons it, so its IdP token cannot be retried', async () => {
+      post.mockRejectedValueOnce(oauthError('mfa_required'));
+      await externalTokenRequest('oidc', 'idp-token-secret', 'dispatcher', 7);
+
+      forgetPendingSsoExchange();
+
+      expect(await retrySsoExchangeWithOtp('123456')).toMatchObject({ successful: false, message: 'No pending SSO sign-in to verify' });
+      expect(post).toHaveBeenCalledTimes(1);
     });
 
     it('drops the retained exchange once it succeeds', async () => {

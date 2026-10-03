@@ -12,8 +12,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { StepUpPromptHost } from '@/components/data-protection/step-up-prompt-host';
 import { DashboardViewToggles } from '@/components/dispatch-console';
+import { RecoveryCodesModal } from '@/components/mfa/recovery-codes-modal';
 import { NotificationButton } from '@/components/notifications/NotificationButton';
 import { NotificationInbox } from '@/components/notifications/NotificationInbox';
+import { SharedSessionBar } from '@/components/shared-session/shared-session-bar';
+import { SharedSessionLockScreen } from '@/components/shared-session/shared-session-lock-screen';
 import SideMenu from '@/components/sidebar/side-menu';
 import { View } from '@/components/ui';
 import { Button, ButtonText } from '@/components/ui/button';
@@ -22,10 +25,13 @@ import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
 import { useAppLifecycle } from '@/hooks/use-app-lifecycle';
 import { useInactivityLock } from '@/hooks/use-inactivity-lock';
+import { useSharedSessionLifecycle } from '@/hooks/use-shared-session-lifecycle';
 import { useSignalRLifecycle } from '@/hooks/use-signalr-lifecycle';
 import { useAuthStore } from '@/lib/auth';
 import { Env } from '@/lib/env';
 import { logger } from '@/lib/logging';
+import { onMapboxAccessTokenChange } from '@/lib/mapbox-token';
+import { useSharedInstallation } from '@/lib/mfa/shared-installation';
 import { useIsFirstTime } from '@/lib/storage';
 import { type GetConfigResultData } from '@/models/v4/configs/getConfigResultData';
 import { audioService } from '@/services/audio.service';
@@ -44,6 +50,20 @@ import { securityStore } from '@/stores/security/store';
 import { useSignalRStore } from '@/stores/signalr/signalr-store';
 import { useToastStore } from '@/stores/toast/store';
 import { useWeatherAlertsStore } from '@/stores/weatherAlerts/store';
+
+// Keep the native Mapbox SDK on the token in use: the verified server token, else the built-in one. On web,
+// mapbox-gl takes its token separately (lib/mapbox-gl-token-web). Registered once at module scope; store
+// listeners run synchronously inside the token change, before React re-renders, so the SDK has the new
+// token before any map re-renders with a style that needs it.
+if (Platform.OS !== 'web') {
+  onMapboxAccessTokenChange((token) => {
+    Mapbox.setAccessToken(token);
+    logger.info({
+      message: 'Mapbox access token set',
+      context: { platform: Platform.OS },
+    });
+  });
+}
 
 /**
  * Tear down every per-session resource on sign-out: SignalR hubs and their heartbeats,
@@ -82,6 +102,12 @@ export default function TabLayout() {
   const { t } = useTranslation();
   const status = useAuthStore((state) => state.status);
   const isLocked = useLockscreenStore((state) => state.isLocked);
+  // A shared workstation (passkey plan section 12.5): the server locks it, idle or put away, and unlocks it only for the
+  // operator's own second factor. The local password lock below is for personal installations only; it never
+  // establishes server MFA or renews protected data.
+  const sharedSession = useSharedSessionLifecycle(status === 'signedIn');
+  const installation = useSharedInstallation();
+  const sharedMode = sharedSession.shared || installation.shared;
   const [isFirstTime, _setIsFirstTime] = useIsFirstTime();
   const [isOpen, setIsOpen] = React.useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = React.useState(false);
@@ -96,8 +122,8 @@ export default function TabLayout() {
   const rights = securityStore((state) => state.rights);
   const userId = useAuthStore((state) => state.userId);
 
-  // Initialize inactivity lock monitoring
-  useInactivityLock(status === 'signedIn');
+  // Initialize inactivity lock monitoring (personal installations; a shared workstation follows the server's idle lock)
+  useInactivityLock(status === 'signedIn' && !sharedMode);
 
   // Memoize drawer navigation handler for better performance
   const handleNavigate = useCallback(() => {
@@ -130,18 +156,6 @@ export default function TabLayout() {
 
   // Initialize push notifications
   usePushNotifications();
-
-  // Initialize Mapbox - only on native platforms
-  // On web, Mapbox GL JS is loaded separately and doesn't use this initialization
-  useEffect(() => {
-    if (Platform.OS !== 'web') {
-      Mapbox.setAccessToken(Env.MAPBOX_PUBKEY);
-      logger.info({
-        message: 'Mapbox access token set',
-        context: { platform: Platform.OS },
-      });
-    }
-  }, []);
 
   const initializeApp = useCallback(async () => {
     if (isInitializing.current) {
@@ -382,7 +396,8 @@ export default function TabLayout() {
 
   // Handle SignalR lifecycle management
   useSignalRLifecycle({
-    isSignedIn: status === 'signedIn',
+    // A locked shared session keeps its tokens but must not reconnect the hubs on resume.
+    isSignedIn: status === 'signedIn' && !sharedSession.locked,
     hasInitialized: hasInitialized.current,
   });
 
@@ -490,7 +505,7 @@ export default function TabLayout() {
   }
 
   // Check if screen is locked
-  if (isLocked && status === 'signedIn') {
+  if (isLocked && status === 'signedIn' && !sharedMode) {
     logger.info({
       message: 'Screen is locked, redirecting to lockscreen',
     });
@@ -566,7 +581,7 @@ export default function TabLayout() {
 
   const content =
     Platform.OS === 'web' ? (
-      <RNView style={styles.container}>
+      <RNView style={styles.container} onStartShouldSetResponderCapture={sharedSession.onTouchCapture}>
         {/* Top Navigation Bar */}
         <RNView style={[layoutStyles.navBar, { paddingTop: insets.top }, webTheme.navBar]}>
           <CreateDrawerMenuButton setIsOpen={setIsOpen} colorScheme={webColorScheme} />
@@ -575,6 +590,7 @@ export default function TabLayout() {
           </RNView>
           {isDispatchScreen ? <DashboardViewToggles inHeader /> : null}
         </RNView>
+        <SharedSessionBar />
 
         <RNView style={{ flex: 1, flexDirection: 'row' }} ref={parentRef}>
           {/* Sidebar - simple show/hide */}
@@ -596,7 +612,7 @@ export default function TabLayout() {
         </RNView>
       </RNView>
     ) : (
-      <View style={styles.container}>
+      <View style={styles.container} onStartShouldSetResponderCapture={sharedSession.onTouchCapture}>
         {/* Top Navigation Bar */}
         <View className="flex-row items-center justify-between bg-primary-600 px-4" style={{ paddingTop: insets.top }}>
           <CreateDrawerMenuButton setIsOpen={setIsOpen} />
@@ -605,6 +621,7 @@ export default function TabLayout() {
           </View>
           {isDispatchScreen ? <DashboardViewToggles inHeader onColoredBg /> : null}
         </View>
+        <SharedSessionBar />
 
         <View className="flex-1" ref={parentRef}>
           {/* Native drawer implementation */}
@@ -630,6 +647,15 @@ export default function TabLayout() {
       </View>
     );
 
+  // Recovery codes shown once after setting up an authenticator at sign-in, and the shared workstation lock screen over
+  // everything while the server says this session is locked (the same session resumes on unlock).
+  const sessionOverlays = (
+    <>
+      <RecoveryCodesModal />
+      <SharedSessionLockScreen />
+    </>
+  );
+
   // On web, skip Novu integration as it may cause rendering issues
   if (Platform.OS === 'web') {
     logger.info({
@@ -641,6 +667,7 @@ export default function TabLayout() {
       <>
         <StepUpPromptHost />
         {content}
+        {sessionOverlays}
       </>
     );
   }
@@ -657,6 +684,7 @@ export default function TabLayout() {
       ) : (
         content
       )}
+      {sessionOverlays}
     </>
   );
 }

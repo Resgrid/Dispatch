@@ -1,10 +1,30 @@
 import { create } from 'zustand';
 
-import { getDataProtectionCapabilities, requestProtectedGrant, verifyStepUp } from '@/api/data-protection/data-protection';
+import {
+  beginStepUpSso,
+  cancelStepUpApproval,
+  completeStepUpApproval,
+  completeStepUpFederated,
+  getDataProtectionCapabilities,
+  getStepUpApprovalStatus,
+  getStepUpMethods,
+  getStepUpPasskeyOptions,
+  requestProtectedGrant,
+  requestStepUpApproval,
+  type StepUpResult,
+  verifyStepUp,
+  verifyStepUpPasskey,
+} from '@/api/data-protection/data-protection';
 import { setProtectedGrantProvider } from '@/lib/data-protection/grant-provider';
 import { logger } from '@/lib/logging';
+import { type ApprovalWaitResult, waitForApproval } from '@/lib/mfa/approval-wait';
+import { toMfaProblem } from '@/lib/mfa/errors';
+import { getPasskeyAssertion, passkeysSupported } from '@/lib/mfa/passkey';
+import { isPasskeyCeremonyError } from '@/lib/mfa/passkey-errors';
+import { runSsoRoundTrip } from '@/lib/mfa/sso-browser';
 
 import useAuthStore from '../auth/store';
+import { useSharedSessionStore } from '../shared-session/store';
 
 // ---------------------------------------------------------------------------
 // Advanced Data Protection (ADP) grant state.
@@ -14,7 +34,11 @@ import useAuthStore from '../auth/store';
 // starts locked. The window is ABSOLUTE — activity never extends it.
 // ---------------------------------------------------------------------------
 
-export type StepUpErrorCode = 'invalid_totp' | 'mfa_not_enrolled' | 'too_many_attempts' | 'grants_not_configured' | 'unknown';
+/**
+ * Why the last step-up did not produce a grant. The first five are the TOTP path's own; the other methods report the
+ * server's code (or `passkey_*` / `sso_*` for a prompt or browser round trip that did not finish), shown via mfaErrorKey.
+ */
+export type StepUpErrorCode = 'invalid_totp' | 'mfa_not_enrolled' | 'too_many_attempts' | 'grants_not_configured' | 'unknown' | (string & {});
 
 /** What ensureGrant() concluded. The caller shows the OTP prompt only for 'step_up_required'. */
 export type GrantOutcome = 'granted' | 'step_up_required' | 'unavailable';
@@ -44,6 +68,19 @@ export interface DataProtectionState {
   openPrompt: () => void;
   closePrompt: () => void;
   lastError: StepUpErrorCode | null;
+  /** The step-up methods this member has and the department accepts for protected data; null until loaded. */
+  stepUpMethods: string[] | null;
+  preferredStepUpMethod: string | null;
+  loadStepUpMethods: () => Promise<void>;
+  /** A passkey for this app (plan section 8.1). */
+  verifyPasskey: () => Promise<boolean>;
+  /** Approve with Responder: returns the number to show on this screen only. */
+  requestApproval: () => Promise<{ id: string; number: string } | null>;
+  waitForApproval: (approvalRequestId: string, signal?: AbortSignal) => Promise<ApprovalWaitResult>;
+  completeApproval: (approvalRequestId: string) => Promise<boolean>;
+  cancelApproval: (approvalRequestId: string) => Promise<void>;
+  /** The department's identity provider, where it accepts its provider's MFA for protected data (plan section 7.8). */
+  verifyFederated: () => Promise<boolean>;
   fetchCapabilities: () => Promise<void>;
   /**
    * Tries to obtain a grant without prompting. Returns 'granted' when the department has exempted
@@ -115,6 +152,45 @@ const scheduleExpiry = (expiresAt: number) => {
   );
 };
 
+/** The grant a step-up returned, when it is a usable one; a token-less or already-expired answer is a failure. */
+const grantFrom = (result: StepUpResult | undefined): { grantToken: string; stepUpExpiresAt: number } | null => {
+  const expiresAt = result?.StepUpExpiresOnUtc ? Date.parse(result.StepUpExpiresOnUtc) : NaN;
+  return result?.GrantToken && Number.isFinite(expiresAt) && expiresAt > Date.now() ? { grantToken: result.GrantToken, stepUpExpiresAt: expiresAt } : null;
+};
+
+/** Runs one step-up method; the grant it returns (memory only) becomes the window, and any refusal its code. */
+const stepUp = async (method: string, run: () => Promise<StepUpResult | null>): Promise<boolean> => {
+  const generation = sessionGeneration;
+  dataProtectionStore.setState({ isVerifying: true, lastError: null });
+  try {
+    const result = await run();
+    if (generation !== sessionGeneration) {
+      // Signed out while the ceremony ran: the sweep already reset the flags; this session's grant is not kept.
+      return false;
+    }
+    if (!result) {
+      dataProtectionStore.setState({ isVerifying: false });
+      return false;
+    }
+    const grant = grantFrom(result);
+    if (grant) {
+      dataProtectionStore.setState({ ...grant, isVerifying: false, lastError: null });
+      scheduleExpiry(grant.stepUpExpiresAt);
+      return true;
+    }
+    dataProtectionStore.setState({ isVerifying: false, lastError: 'unknown' });
+    return false;
+  } catch (error) {
+    if (generation !== sessionGeneration) {
+      return false;
+    }
+    const code = isPasskeyCeremonyError(error) ? `passkey_${error.reason}` : toMfaProblem(error).code;
+    logger.warn({ message: 'ADP step-up failed', context: { method, errorType: code } });
+    dataProtectionStore.setState({ isVerifying: false, lastError: code });
+    return false;
+  }
+};
+
 export const dataProtectionStore = create<DataProtectionState>()((set, get) => ({
   capabilities: null,
   isCapabilitiesLoaded: false,
@@ -124,6 +200,48 @@ export const dataProtectionStore = create<DataProtectionState>()((set, get) => (
   isRequestingGrant: false,
   isPromptOpen: false,
   lastError: null,
+  stepUpMethods: null,
+  preferredStepUpMethod: null,
+  loadStepUpMethods: async () => {
+    try {
+      const methods = await getStepUpMethods();
+      const usable = (methods?.Methods ?? []).filter((m) => m !== 'passkey' || passkeysSupported());
+      set({ stepUpMethods: usable, preferredStepUpMethod: methods?.Preferred ?? null });
+    } catch {
+      // An older server has no methods list: the authenticator code is the step-up it has always offered.
+      set({ stepUpMethods: ['totp'], preferredStepUpMethod: 'totp' });
+    }
+  },
+  verifyPasskey: () =>
+    stepUp('passkey', async () => {
+      const ceremony = await getStepUpPasskeyOptions();
+      const credential = await getPasskeyAssertion(ceremony.Options);
+      return verifyStepUpPasskey(ceremony.RequestId, credential);
+    }),
+  requestApproval: async () => {
+    set({ lastError: null });
+    try {
+      const started = await requestStepUpApproval();
+      return { id: started.ApprovalRequestId, number: started.MatchNumber };
+    } catch (error) {
+      set({ lastError: toMfaProblem(error).code });
+      return null;
+    }
+  },
+  waitForApproval: (approvalRequestId: string, signal?: AbortSignal) => waitForApproval(() => getStepUpApprovalStatus(approvalRequestId), signal),
+  completeApproval: (approvalRequestId: string) => stepUp('passkey_approval', () => completeStepUpApproval(approvalRequestId)),
+  cancelApproval: async (approvalRequestId: string) => {
+    await cancelStepUpApproval(approvalRequestId).catch(() => undefined);
+  },
+  verifyFederated: () =>
+    stepUp('federated', async () => {
+      const trip = await runSsoRoundTrip((secrets) => beginStepUpSso(secrets));
+      if (!trip.ok) {
+        set({ lastError: trip.code ?? `sso_${trip.reason}` });
+        return null;
+      }
+      return completeStepUpFederated(trip.trip.ssoTransactionId, trip.trip.ssoCode, trip.trip.codeVerifier);
+    }),
   openPrompt: () => {
     // A reveal whose request outlived the session must not queue a prompt for the next sign-in.
     const authStatus = useAuthStore?.getState?.()?.status;
@@ -290,11 +408,26 @@ if (typeof useAuthStore?.subscribe === 'function') {
         isRequestingGrant: false,
         isPromptOpen: false,
         lastError: null,
+        stepUpMethods: null,
+        preferredStepUpMethod: null,
       });
     }
   });
 } else {
   logger.warn({ message: 'ADP grant store could not subscribe to auth changes; sign-out will not sweep the grant early.' });
+}
+
+// A shared workstation session that locks drops the grant at once (passkey plan section 12.5.3): the next operator must
+// never see what the last one revealed, and the server refuses a grant from before the lock anyway. Any ceremony still
+// running belongs to the earlier lock, so its result is discarded too.
+if (typeof useSharedSessionStore?.subscribe === 'function') {
+  useSharedSessionStore.subscribe((state, prevState) => {
+    if (state.locked && !prevState.locked) {
+      sessionGeneration += 1;
+      clearExpiryTimer();
+      dataProtectionStore.setState({ stepUpExpiresAt: null, grantToken: null, isVerifying: false, isRequestingGrant: false, isPromptOpen: false, lastError: null });
+    }
+  });
 }
 
 // Every read through the shared API client carries the grant while one is held — see

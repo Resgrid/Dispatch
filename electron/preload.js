@@ -72,6 +72,20 @@ contextBridge.exposeInMainWorld('electronDeepLinks', {
     },
 });
 
+// ── SSO bridges ────────────────────────────────────────────────────────
+// Brokered SSO: a one-time loopback listener receives the broker's return (see sso-loopback.js). Legacy SSO: the main
+// process runs the provider's sign-in in the member's browser and takes the return on this app's scheme (see
+// legacy-sso.js); OIDC answers with the id_token, SAML with the relay's link for the page to check. The same names as
+// Unit's and IC's desktop bridge, so the shared sign-in code finds them.
+contextBridge.exposeInMainWorld('electronAPI', {
+    ssoListen: () => ipcRenderer.invoke('sso:listen'),
+    ssoOpen: (id, authorizeUrl) => ipcRenderer.invoke('sso:open', id, authorizeUrl),
+    ssoCancel: (id) => ipcRenderer.invoke('sso:cancel', id),
+    legacySsoOidc: (authority, clientId, reauthenticate) => ipcRenderer.invoke('legacy-sso:oidc', authority, clientId, reauthenticate),
+    legacySsoSaml: (signInUrl) => ipcRenderer.invoke('legacy-sso:saml', signInUrl),
+    legacySsoCancel: () => ipcRenderer.invoke('legacy-sso:cancel'),
+});
+
 // ── Version information (original preload logic) ───────────────────────
 window.addEventListener('DOMContentLoaded', () => {
     const replaceText = (selector, text) => {
