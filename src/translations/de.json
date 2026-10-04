@@ -189,7 +189,8 @@
       "protocols": "Protokolle",
       "timeline": "Aktivität",
       "video": "Video",
-      "site": "Objektinfo"
+      "site": "Objektinfo",
+      "history": "Verlauf"
     },
     "timestamp": "Zeitstempel",
     "title": "Einsatzdetails",
@@ -628,7 +629,8 @@
       "details": "Details",
       "notes": "Notizen",
       "preplan": "Einsatzplan",
-      "files": "Dateien"
+      "files": "Dateien",
+      "calls": "Einsätze"
     },
     "threads": "Threads",
     "title": "Kontakte",
@@ -2210,5 +2212,39 @@
     },
     "stats_label": "Wetterwarnungen"
   },
-  "welcome": "Willkommen bei der obytes App-Seite"
+  "welcome": "Willkommen bei der obytes App-Seite",
+  "location_history": {
+    "address_matching_off": "Für diese Abteilung ist Advanced Data Protection aktiv. Einsatzadressen sind verschlüsselt, daher werden nur über Kontakte verknüpfte Einsätze angezeigt.",
+    "closing_notes": "Abschlussnotizen",
+    "empty": "Keine zugehörigen Einsätze",
+    "empty_description": "An diesem Ort oder mit diesen Kontakten wurden keine früheren Einsätze gefunden.",
+    "has_more": "Es werden nur die neuesten Einsätze angezeigt.",
+    "header_call": "Frühere Einsätze an diesem Ort",
+    "header_contact": "Zugehörige Einsätze",
+    "help_call": "Einsätze an derselben Adresse, egal wie sie geschrieben wurde, Einsätze in der Nähe ohne Straßenadresse und Einsätze mit demselben Kontakt.",
+    "help_contact": "Einsätze, die mit diesem Kontakt verknüpft sind, sowie Einsätze an allen Objekten, mit denen dieser Kontakt verknüpft ist.",
+    "hide_notes": "Notizen ausblenden",
+    "index_incomplete": "Ältere Einsätze werden noch indiziert und erscheinen möglicherweise noch nicht.",
+    "load_failed": "Die Einsatzhistorie konnte nicht geladen werden.",
+    "loading": "Einsätze werden geladen...",
+    "matched_as": "Erkannt als {{address}}",
+    "meters_away": "{{distance}} m entfernt",
+    "show_notes": "Notizen ({{count}})",
+    "unknown_priority": "Unbekannt",
+    "unknown_user": "Unbekannter Benutzer",
+    "match": {
+      "nearby": "In der Nähe",
+      "same_address": "Gleiche Adresse",
+      "same_contact": "Gleicher Kontakt",
+      "similar_address": "Ähnliche Adresse"
+    },
+    "state": {
+      "0": "Aktiv",
+      "1": "Geschlossen",
+      "2": "Abgebrochen",
+      "3": "Unbegründet",
+      "4": "Begründet",
+      "5": "Geringfügig"
+    }
+  }
 }

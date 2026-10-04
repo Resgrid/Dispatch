@@ -188,7 +188,8 @@
       "protocols": "Protocols",
       "timeline": "Activity",
       "video": "Video",
-      "site": "Site Info"
+      "site": "Site Info",
+      "history": "History"
     },
     "timestamp": "Timestamp",
     "scheduled_on": "Scheduled Dispatch Date & Time",
@@ -628,7 +629,8 @@
       "details": "Details",
       "notes": "Notes",
       "preplan": "Pre-Plan",
-      "files": "Files"
+      "files": "Files",
+      "calls": "Calls"
     },
     "threads": "Threads",
     "title": "Contacts",
@@ -2210,5 +2212,39 @@
     },
     "stats_label": "Weather Alerts"
   },
-  "welcome": "Welcome to obytes app site"
+  "welcome": "Welcome to obytes app site",
+  "location_history": {
+    "address_matching_off": "Advanced Data Protection is on for this department, so call addresses are encrypted and only calls linked by contact are shown.",
+    "closing_notes": "Closing notes",
+    "empty": "No related calls",
+    "empty_description": "No earlier calls were found at this location or with these contacts.",
+    "has_more": "Only the most recent calls are shown.",
+    "header_call": "Previous calls at this location",
+    "header_contact": "Related calls",
+    "help_call": "Calls at the same address however it was typed, nearby calls without a street address, and calls linked to the same contact.",
+    "help_contact": "Calls linked to this contact, plus calls at any occupancy this contact is linked to.",
+    "hide_notes": "Hide notes",
+    "index_incomplete": "Older calls are still being indexed, so some may not appear yet.",
+    "load_failed": "The call history could not be loaded.",
+    "loading": "Loading calls...",
+    "matched_as": "Matched as {{address}}",
+    "meters_away": "{{distance}} m away",
+    "show_notes": "Notes ({{count}})",
+    "unknown_priority": "Unknown",
+    "unknown_user": "Unknown user",
+    "match": {
+      "nearby": "Nearby",
+      "same_address": "Same address",
+      "same_contact": "Same contact",
+      "similar_address": "Similar address"
+    },
+    "state": {
+      "0": "Active",
+      "1": "Closed",
+      "2": "Cancelled",
+      "3": "Unfounded",
+      "4": "Founded",
+      "5": "Minor"
+    }
+  }
 }

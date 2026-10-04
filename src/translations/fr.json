@@ -189,7 +189,8 @@
       "protocols": "Protocoles",
       "timeline": "Activité",
       "video": "Vidéo",
-      "site": "Infos site"
+      "site": "Infos site",
+      "history": "Historique"
     },
     "timestamp": "Horodatage",
     "title": "Détails de l'appel",
@@ -628,7 +629,8 @@
       "details": "Détails",
       "notes": "Notes",
       "preplan": "Plan d'intervention",
-      "files": "Fichiers"
+      "files": "Fichiers",
+      "calls": "Appels"
     },
     "threads": "Threads",
     "title": "Contacts",
@@ -2210,5 +2212,39 @@
     },
     "stats_label": "Alertes météo"
   },
-  "welcome": "Bienvenue sur le site de l'application obytes"
+  "welcome": "Bienvenue sur le site de l'application obytes",
+  "location_history": {
+    "address_matching_off": "La protection avancée des données est activée pour ce service : les adresses des appels sont chiffrées et seuls les appels liés par contact sont affichés.",
+    "closing_notes": "Notes de clôture",
+    "empty": "Aucun appel associé",
+    "empty_description": "Aucun appel antérieur n'a été trouvé à cet emplacement ou avec ces contacts.",
+    "has_more": "Seuls les appels les plus récents sont affichés.",
+    "header_call": "Appels précédents à cet emplacement",
+    "header_contact": "Appels associés",
+    "help_call": "Appels à la même adresse, quelle que soit sa saisie, appels à proximité sans adresse postale et appels liés au même contact.",
+    "help_contact": "Appels liés à ce contact, ainsi que les appels à toute occupation à laquelle ce contact est lié.",
+    "hide_notes": "Masquer les notes",
+    "index_incomplete": "Les appels plus anciens sont encore en cours d'indexation ; certains peuvent ne pas encore apparaître.",
+    "load_failed": "L'historique des appels n'a pas pu être chargé.",
+    "loading": "Chargement des appels...",
+    "matched_as": "Interprétée comme {{address}}",
+    "meters_away": "à {{distance}} m",
+    "show_notes": "Notes ({{count}})",
+    "unknown_priority": "Inconnue",
+    "unknown_user": "Utilisateur inconnu",
+    "match": {
+      "nearby": "À proximité",
+      "same_address": "Même adresse",
+      "same_contact": "Même contact",
+      "similar_address": "Adresse similaire"
+    },
+    "state": {
+      "0": "Actif",
+      "1": "Clôturé",
+      "2": "Annulé",
+      "3": "Non fondé",
+      "4": "Fondé",
+      "5": "Mineur"
+    }
+  }
 }

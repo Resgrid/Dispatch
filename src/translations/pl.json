@@ -189,7 +189,8 @@
       "protocols": "Protokoły",
       "timeline": "Aktywność",
       "video": "Wideo",
-      "site": "Info o obiekcie"
+      "site": "Info o obiekcie",
+      "history": "Historia"
     },
     "timestamp": "Znacznik czasu",
     "title": "Szczegóły zgłoszenia",
@@ -628,7 +629,8 @@
       "details": "Szczegóły",
       "notes": "Notatki",
       "preplan": "Plan operacyjny",
-      "files": "Pliki"
+      "files": "Pliki",
+      "calls": "Zgłoszenia"
     },
     "threads": "Threads",
     "title": "Kontakty",
@@ -2210,5 +2212,39 @@
     },
     "stats_label": "Alerty pogodowe"
   },
-  "welcome": "Witaj w aplikacji obytes"
+  "welcome": "Witaj w aplikacji obytes",
+  "location_history": {
+    "address_matching_off": "W tym departamencie włączona jest zaawansowana ochrona danych, dlatego adresy zgłoszeń są zaszyfrowane i wyświetlane są tylko zgłoszenia powiązane przez kontakt.",
+    "closing_notes": "Notatki zamknięcia",
+    "empty": "Brak powiązanych zgłoszeń",
+    "empty_description": "Nie znaleziono wcześniejszych zgłoszeń w tej lokalizacji ani z tymi kontaktami.",
+    "has_more": "Wyświetlane są tylko najnowsze zgłoszenia.",
+    "header_call": "Wcześniejsze zgłoszenia w tej lokalizacji",
+    "header_contact": "Powiązane zgłoszenia",
+    "help_call": "Zgłoszenia pod tym samym adresem, niezależnie od zapisu, pobliskie zgłoszenia bez adresu ulicy oraz zgłoszenia powiązane z tym samym kontaktem.",
+    "help_contact": "Zgłoszenia powiązane z tym kontaktem oraz zgłoszenia w każdym obiekcie, z którym ten kontakt jest powiązany.",
+    "hide_notes": "Ukryj notatki",
+    "index_incomplete": "Starsze zgłoszenia są jeszcze indeksowane, więc niektóre mogą się jeszcze nie pojawiać.",
+    "load_failed": "Nie udało się wczytać historii zgłoszeń.",
+    "loading": "Wczytywanie zgłoszeń...",
+    "matched_as": "Rozpoznano jako {{address}}",
+    "meters_away": "{{distance}} m stąd",
+    "show_notes": "Notatki ({{count}})",
+    "unknown_priority": "Nieznany",
+    "unknown_user": "Nieznany użytkownik",
+    "match": {
+      "nearby": "W pobliżu",
+      "same_address": "Ten sam adres",
+      "same_contact": "Ten sam kontakt",
+      "similar_address": "Podobny adres"
+    },
+    "state": {
+      "0": "Aktywne",
+      "1": "Zamknięte",
+      "2": "Anulowane",
+      "3": "Bezzasadne",
+      "4": "Zasadne",
+      "5": "Drobne"
+    }
+  }
 }
