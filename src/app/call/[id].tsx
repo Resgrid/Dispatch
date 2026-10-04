@@ -3,6 +3,7 @@ import {
   BuildingIcon,
   ClockIcon,
   FileTextIcon,
+  HistoryIcon,
   ImageIcon,
   InfoIcon,
   LoaderIcon,
@@ -26,6 +27,7 @@ import WebView from 'react-native-webview';
 
 import { ActivityLinkLegend, ActivityLinkMarker } from '@/components/calls/activity-link-marker';
 import { CallSiteInfoTabPanel } from '@/components/calls/call-site-info-tab-panel';
+import { LocationHistoryPanel } from '@/components/calls/location-history-panel';
 import { VideoFeedsTab } from '@/components/callVideoFeeds/video-feeds-tab';
 import { CheckInTab } from '@/components/checkIn/check-in-tab';
 import { Loading } from '@/components/common/loading';
@@ -648,6 +650,14 @@ export default function CallDetail() {
       title: t('call_detail.tabs.site'),
       icon: <BuildingIcon size={16} />,
       content: <CallSiteInfoTabPanel callId={call.CallId} />,
+    });
+
+    // History tab: previous calls at this location (address however it was typed) or with the same contacts.
+    tabs.push({
+      key: 'history',
+      title: t('call_detail.tabs.history'),
+      icon: <HistoryIcon size={16} />,
+      content: <LocationHistoryPanel source={{ kind: 'call', id: call.CallId }} />,
     });
 
     if (call?.CheckInTimersEnabled) {

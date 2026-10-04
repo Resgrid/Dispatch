@@ -65,7 +65,7 @@ jest.mock('@/lib/storage/app', () => ({
 }));
 
 jest.mock('@/api/devices/push', () => ({
-  registerUnitDevice: jest.fn(),
+  registerDevice: jest.fn(),
 }));
 
 jest.mock('@/stores/app/core-store', () => ({

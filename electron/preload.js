@@ -76,7 +76,7 @@ contextBridge.exposeInMainWorld('electronDeepLinks', {
 // Brokered SSO: a one-time loopback listener receives the broker's return (see sso-loopback.js). Legacy SSO: the main
 // process runs the provider's sign-in in the member's browser and takes the return on this app's scheme (see
 // legacy-sso.js); OIDC answers with the id_token, SAML with the relay's link for the page to check. The same names as
-// Unit's and IC's desktop bridge, so the shared sign-in code finds them.
+// Unit's and IC's desktop bridge, so the shared sign-in and push code finds them.
 contextBridge.exposeInMainWorld('electronAPI', {
     ssoListen: () => ipcRenderer.invoke('sso:listen'),
     ssoOpen: (id, authorizeUrl) => ipcRenderer.invoke('sso:open', id, authorizeUrl),
@@ -84,6 +84,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
     legacySsoOidc: (authority, clientId, reauthenticate) => ipcRenderer.invoke('legacy-sso:oidc', authority, clientId, reauthenticate),
     legacySsoSaml: (signInUrl) => ipcRenderer.invoke('legacy-sso:saml', signInUrl),
     legacySsoCancel: () => ipcRenderer.invoke('legacy-sso:cancel'),
+
+    // Desktop push (push-receiver.js): the main process holds the FCM connection; the page registers its token
+    // (src/services/web-push.web.ts). Same names as Unit's and IC's bridge.
+    pushStart: (firebaseConfig) => ipcRenderer.invoke('push:start', firebaseConfig),
+    pushStop: (forget) => ipcRenderer.invoke('push:stop', forget),
+    pushTakePendingClick: () => ipcRenderer.invoke('push:take-pending-click'),
+    onPushReceived: (callback) => {
+        const listener = (_event, payload) => callback(payload);
+        ipcRenderer.on('push:received', listener);
+        return () => ipcRenderer.removeListener('push:received', listener);
+    },
+    onPushNotificationClick: (callback) => {
+        const listener = (_event, payload) => callback(payload);
+        ipcRenderer.on('push:notification-click', listener);
+        return () => ipcRenderer.removeListener('push:notification-click', listener);
+    },
 });
 
 // ── Version information (original preload logic) ───────────────────────

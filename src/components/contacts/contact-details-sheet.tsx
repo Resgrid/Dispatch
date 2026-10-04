@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import { router } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, useWindowDimensions, View } from 'react-native';
 
+import { LocationHistoryPanel } from '@/components/calls/location-history-panel';
 import { UdfFieldsRenderer } from '@/components/calls/udf-fields-renderer';
 import { Avatar, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -94,7 +96,14 @@ export const ContactDetailsSheet: React.FC = () => {
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
   const { contacts, selectedContactId, selectedContactDetails, isDetailsOpen, closeDetails } = useContactsStore();
-  const [activeTab, setActiveTab] = useState<'details' | 'notes' | 'preplan' | 'files'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'notes' | 'preplan' | 'files' | 'calls'>('details');
+  const handleOpenCall = useCallback(
+    (callId: string) => {
+      closeDetails();
+      router.push(`/call/${callId}`);
+    },
+    [closeDetails]
+  );
 
   const selectedContact = React.useMemo(() => {
     if (!selectedContactId) return null;
@@ -237,6 +246,11 @@ export const ContactDetailsSheet: React.FC = () => {
                 {t('contacts.tabs.files')}
               </Text>
             </Pressable>
+            <Pressable onPress={() => setActiveTab('calls')} className={`flex-1 rounded-md ${isLandscape ? 'px-4 py-2' : 'px-3 py-1.5'} ${activeTab === 'calls' ? 'bg-white shadow-xs dark:bg-gray-700' : ''}`}>
+              <Text className={`text-center font-medium ${isLandscape ? 'text-sm' : 'text-xs'} ${activeTab === 'calls' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-400'}`}>
+                {t('contacts.tabs.calls')}
+              </Text>
+            </Pressable>
           </HStack>
 
           {/* Tab Content */}
@@ -344,6 +358,8 @@ export const ContactDetailsSheet: React.FC = () => {
             <ContactNotesList contactId={selectedContact.ContactId} />
           ) : activeTab === 'preplan' ? (
             <ContactPreplanPanel contactId={selectedContact.ContactId} />
+          ) : activeTab === 'calls' ? (
+            <LocationHistoryPanel source={{ kind: 'contact', id: selectedContact.ContactId }} onOpenCall={handleOpenCall} />
           ) : (
             <ContactFilesPanel contactId={selectedContact.ContactId} />
           )}

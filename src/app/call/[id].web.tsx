@@ -5,6 +5,7 @@ import {
   ClockIcon,
   EditIcon,
   FileTextIcon,
+  HistoryIcon,
   ImageIcon,
   InfoIcon,
   LoaderIcon,
@@ -28,6 +29,7 @@ import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 're
 
 import { ActivityLinkLegend, ActivityLinkMarker } from '@/components/calls/activity-link-marker';
 import { CallSiteInfoTabPanel } from '@/components/calls/call-site-info-tab-panel';
+import { LocationHistoryPanel } from '@/components/calls/location-history-panel';
 import { VideoFeedsTab } from '@/components/callVideoFeeds/video-feeds-tab';
 import { CheckInTab } from '@/components/checkIn/check-in-tab';
 import { Loading } from '@/components/common/loading';
@@ -68,7 +70,7 @@ import { DispatchSelectionModal } from '../../components/calls/dispatch-selectio
 import { RescheduleCallSheet } from '../../components/calls/reschedule-call-sheet';
 import { StatusBottomSheet } from '../../components/status/status-bottom-sheet';
 
-type TabKey = 'info' | 'contact' | 'protocols' | 'dispatched' | 'timeline' | 'video' | 'checkin' | 'command' | 'site';
+type TabKey = 'info' | 'contact' | 'protocols' | 'dispatched' | 'timeline' | 'video' | 'checkin' | 'command' | 'site' | 'history';
 
 export default function CallDetailWeb() {
   const { id } = useLocalSearchParams();
@@ -231,6 +233,7 @@ export default function CallDetailWeb() {
       { key: 'video', title: t('call_detail.tabs.video'), icon: VideoIcon },
       { key: 'command', title: t('incident_command.tab_title'), icon: NetworkIcon },
       { key: 'site', title: t('call_detail.tabs.site'), icon: BuildingIcon },
+      { key: 'history', title: t('call_detail.tabs.history'), icon: HistoryIcon },
     ];
     if (call?.CheckInTimersEnabled) {
       baseTabs.push({
@@ -449,6 +452,12 @@ export default function CallDetailWeb() {
         return (
           <View style={styles.tabContent}>
             <CallSiteInfoTabPanel callId={call.CallId} />
+          </View>
+        );
+      case 'history':
+        return (
+          <View style={styles.tabContent}>
+            <LocationHistoryPanel source={{ kind: 'call', id: call.CallId }} />
           </View>
         );
     }
@@ -928,6 +937,8 @@ const styles = StyleSheet.create({
   },
   tabNav: {
     flexDirection: 'row',
+    // Ten tabs don't fit one row in a narrow window, and tabsCard clips overflow: wrap so every tab stays reachable.
+    flexWrap: 'wrap',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
   },
