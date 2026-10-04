@@ -31,6 +31,7 @@ const mockConfig: GetConfigResultData = {
   MapDayStyleUrl: '',
   MapNightStyleUrl: '',
   AppMapboxAccessToken: '',
+  IsDepartmentMapOverride: false,
 };
 
 // Mock the core store

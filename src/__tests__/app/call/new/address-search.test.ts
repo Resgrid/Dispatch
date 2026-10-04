@@ -124,6 +124,7 @@ describe('Address Search Logic', () => {
     MapDayStyleUrl: '',
     MapNightStyleUrl: '',
     AppMapboxAccessToken: '',
+    IsDepartmentMapOverride: false,
   };
 
   beforeEach(() => {
@@ -178,6 +179,7 @@ describe('Address Search Logic', () => {
         MapDayStyleUrl: '',
         MapNightStyleUrl: '',
         AppMapboxAccessToken: '',
+        IsDepartmentMapOverride: false,
       };
 
       const result = await performAddressSearch('123 Main St', configWithoutKey);

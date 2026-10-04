@@ -7,8 +7,8 @@ import { useCoreStore } from '@/stores/app/core-store';
  * The department's Mapbox base map.
  *
  * Departments pick a day style and a night style on the web Mapping Settings screen (Streets,
- * Outdoors, Light, Dark, Satellite, Satellite Streets, Navigation Day/Night), or use their own Mapbox
- * account's custom style. The server resolves both, including the "Automatic" pairing, and ships them
+ * Outdoors, Light, Dark, Satellite, Satellite Streets, Navigation Day/Night, or one of the Mapbox
+ * gallery's community styles), or use their own Mapbox account's custom style. The server resolves both, including the "Automatic" pairing, and ships them
  * in config as mapbox:// urls. Every base map in the app renders through here, so the choice reaches
  * every map, and the device's dark mode switches to the night style.
  *
@@ -24,6 +24,7 @@ interface MapStyleConfig {
   MapDayStyleUrl?: string | null;
   MapNightStyleUrl?: string | null;
   AppMapboxAccessToken?: string | null;
+  IsDepartmentMapOverride?: boolean | null;
 }
 
 /** Only a mapbox:// style can load on the app's own token; anything else falls back. */
@@ -33,17 +34,16 @@ const toMapboxStyle = (value: string | null | undefined, fallback: string): stri
   return trimmed.startsWith('mapbox://styles/') ? trimmed : fallback;
 };
 
-/** Mapbox's own styles load on any token; a department's custom style only on that department's token. */
-const isMapboxOwnedStyle = (style: string): boolean => style.startsWith('mapbox://styles/mapbox/');
-
 export const resolveDepartmentMapStyle = (config: MapStyleConfig | null | undefined, colorScheme: string | null | undefined, activeToken?: string | null): string => {
   const isDark = colorScheme === 'dark';
   const fallback = isDark ? FALLBACK_NIGHT_MAP_STYLE : FALLBACK_DAY_MAP_STYLE;
   const style = toMapboxStyle(isDark ? config?.MapNightStyleUrl : config?.MapDayStyleUrl, fallback);
 
-  if (style !== fallback && !isMapboxOwnedStyle(style)) {
-    // Until the token that goes with a custom style has been checked and is the one in use, a map asking
-    // for that style would come back blank; show the default until the token switch lands.
+  if (config?.IsDepartmentMapOverride === true) {
+    // The department's own Mapbox account: its custom style only loads on its own token. Until that token
+    // has been checked and is the one in use, a map asking for the style would come back blank, so show
+    // the default until the token switch lands. Every other style the server sends (Mapbox's own and the
+    // gallery's community styles) is public and loads on any token, the built-in one included.
     const serverToken = typeof config?.AppMapboxAccessToken === 'string' ? config.AppMapboxAccessToken.trim() : '';
 
     if (!serverToken || (activeToken ?? '').trim() !== serverToken) {
