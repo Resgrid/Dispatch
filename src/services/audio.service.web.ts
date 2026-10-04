@@ -168,6 +168,14 @@ class AudioService {
     await this.playAudioBuffer('disconnectedFromAudioRoom');
   }
 
+  /**
+   * The in-app alert's sound (stores/push-notification). The native service plays the same beep for every type.
+   * Without this the store's call threw on web before the alert could open.
+   */
+  public async playNotificationSound(_notificationType?: 'call' | 'message' | 'chat' | 'group-chat' | 'unknown'): Promise<void> {
+    await this.playAudioBuffer('connectedDevice');
+  }
+
   public async setAudioModeForBluetooth(): Promise<void> {
     // No-op on web - audio routing is handled by the browser
     logger.debug({

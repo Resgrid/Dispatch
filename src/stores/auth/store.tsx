@@ -10,6 +10,7 @@ import { logger } from '@/lib/logging';
 import { clearMapboxToken } from '@/lib/mapbox-token';
 
 import { clearPasswordVerificationHash, computePasswordVerification, forgetPendingSsoExchange, loginRequest, type PasswordVerification, savePasswordVerification, storePasswordVerificationHash } from '../../lib/auth/api';
+import { runSignOutHooks } from '../../lib/auth/sign-out-hooks';
 import { cancelScheduledTokenRefresh, initTokenRefresh, performTokenRefresh, scheduleTokenRefresh } from '../../lib/auth/token-refresh';
 import type { AuthResponse, AuthState, LoginCredentials } from '../../lib/auth/types';
 import { type ProfileModel } from '../../lib/auth/types';
@@ -266,6 +267,9 @@ const useAuthStore = create<AuthState>()(
           message: 'Logout: Clearing auth state',
         });
 
+        // Kept for the sign-out hooks below: the server still honours it after this device lets it go.
+        const endingAccessToken = get().accessToken;
+
         // Cancel any pending automatic refresh so the timer cannot fire after logout
         cancelScheduledTokenRefresh();
         // Sign-in secrets and the shared session state must not outlive the session.
@@ -294,6 +298,17 @@ const useAuthStore = create<AuthState>()(
         } catch (error) {
           logger.warn({
             message: 'Failed to clear the server Mapbox token on logout',
+            context: { error: error instanceof Error ? error.message : String(error) },
+          });
+        }
+
+        // Whatever must still reach the server as the ended session (this device's web push token) runs
+        // now, with the token it had; bounded, so a dead server never holds sign-out up.
+        try {
+          await runSignOutHooks(endingAccessToken);
+        } catch (error) {
+          logger.warn({
+            message: 'A sign-out hook failed',
             context: { error: error instanceof Error ? error.message : String(error) },
           });
         }

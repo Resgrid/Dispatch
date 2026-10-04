@@ -19,6 +19,10 @@ const mockApp = {
   quit: jest.fn(),
   isPackaged: true,
   name: 'Resgrid Dispatch',
+  // Desktop push keeps its receiver state here (push-receiver.js); nothing is written in this test.
+  getPath: jest.fn(() => '/nonexistent/resgrid-dispatch'),
+  isReady: jest.fn(() => false),
+  setAppUserModelId: jest.fn(),
 };
 const mockShell = { openExternal: jest.fn(async () => undefined) };
 const mockWindow = {
@@ -73,6 +77,8 @@ describe('main process: the app scheme reaches the waiting legacy sign-in', () =
     expect(mockApp.requestSingleInstanceLock).toHaveBeenCalled();
     expect(mockApp.quit).not.toHaveBeenCalled();
     expect(Object.keys(mockIpcHandlers)).toEqual(expect.arrayContaining(['legacy-sso:oidc', 'legacy-sso:saml', 'legacy-sso:cancel']));
+    // Desktop push is wired up beside it.
+    expect(Object.keys(mockIpcHandlers)).toEqual(expect.arrayContaining(['push:start', 'push:stop', 'push:take-pending-click']));
   });
 
   it("takes the return from macOS's open-url", async () => {

@@ -16,6 +16,13 @@ export class GetConfigResultData {
   public NovuApplicationId: string = '';
   public AnalyticsApiKey: string = '';
   public AnalyticsHost: string = '';
+  /** Firebase web app for browser and desktop push; absent or empty while Core has web push off. */
+  public WebPushApiKey?: string;
+  public WebPushAuthDomain?: string;
+  public WebPushProjectId?: string;
+  public WebPushMessagingSenderId?: string;
+  public WebPushAppId?: string;
+  public WebPushVapidKey?: string;
   /** Department default map center latitude — every map opens here when it has nothing better. */
   public MapCenterLatitude: number = 0;
   /** Department default map center longitude. */

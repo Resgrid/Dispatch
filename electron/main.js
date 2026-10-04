@@ -1,6 +1,7 @@
 const { app, BrowserWindow, protocol, net, Notification, ipcMain, session, shell, Menu } = require('electron');
 const { registerSsoLoopback } = require('./sso-loopback');
 const { registerLegacySso } = require('./legacy-sso');
+const { registerPushReceiver } = require('./push-receiver');
 const path = require('path');
 const url = require('url');
 
@@ -27,6 +28,11 @@ protocol.registerSchemesAsPrivileged([
 
 let mainWindow = null;
 let pendingDeepLink = null;
+
+// Windows shows a toast only for the AppUserModelID the installer registered, which electron-builder sets to the appId.
+if (process.platform === 'win32') {
+    app.setAppUserModelId('com.resgrid.dispatch');
+}
 
 // Deep-link scheme matching the app's linking scheme (env.js SCHEME).
 // URL schemes are case-insensitive; argv/open-url matching is done lowercased.
@@ -65,6 +71,54 @@ const legacySso = registerLegacySso(ipcMain, {
     // The main process's network stack: the system's proxy settings, and no Origin header on the provider's token request.
     fetch: (fetchUrl, init) => net.fetch(fetchUrl, init),
     focus: focusMainWindow,
+});
+
+// Desktop push (push-receiver.js): this process receives the dispatcher's pushes and shows them natively.
+// Notifications are held until clicked or closed: one that is garbage collected loses its click handler.
+const activePushNotifications = new Set();
+
+const pushReceiver = registerPushReceiver(ipcMain, {
+    storePath: path.join(app.getPath('userData'), 'push-receiver.json'),
+    appName: 'Resgrid Dispatch',
+    notify: (payload, onClick) => {
+        if (!Notification.isSupported()) {
+            return false;
+        }
+
+        const isCall = payload.category === 'calls';
+        const notification = new Notification({
+            title: payload.title,
+            body: payload.body,
+            silent: false,
+            icon: path.join(__dirname, '../assets/icon.png'),
+            urgency: isCall ? 'critical' : 'normal',
+            timeoutType: isCall ? 'never' : 'default',
+        });
+        const release = () => activePushNotifications.delete(notification);
+        activePushNotifications.add(notification);
+        notification.on('click', () => {
+            release();
+            onClick();
+        });
+        notification.on('close', release);
+        notification.show();
+        return true;
+    },
+    isWindowFocused: () => !!mainWindow && !mainWindow.isDestroyed() && mainWindow.isFocused(),
+    send: (channel, payload) => {
+        if (!mainWindow || mainWindow.isDestroyed() || mainWindow.webContents.isLoading()) {
+            return false;
+        }
+        mainWindow.webContents.send(channel, payload);
+        return true;
+    },
+    focus: () => {
+        if (mainWindow) {
+            focusMainWindow();
+        } else if (app.isReady()) {
+            createWindow();
+        }
+    },
 });
 
 // Single-instance lock: required for the second-instance handler below to
@@ -318,6 +372,7 @@ app.whenReady().then(() => {
 // Chromium writes to disk lazily. Flush it before exiting so a change made just before
 // quitting survives the next launch.
 app.on('before-quit', () => {
+    pushReceiver.stop();
     try {
         session.defaultSession.flushStorageData();
     } catch (err) {

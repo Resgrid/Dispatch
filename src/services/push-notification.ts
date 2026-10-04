@@ -4,7 +4,7 @@ import type { Href } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 
-import { registerUnitDevice } from '@/api/devices/push';
+import { registerDevice } from '@/api/devices/push';
 import { useAuthStore } from '@/lib/auth';
 import { logger } from '@/lib/logging';
 import { type RouterPushRetryOptions, routerPushWithRetry } from '@/lib/navigation';
@@ -12,7 +12,7 @@ import { isNativePushSupported } from '@/lib/platform';
 import { storage } from '@/lib/storage';
 import { getDeviceUuid } from '@/lib/storage/app';
 import { electronNotificationService } from '@/services/electron-notification';
-import { useCoreStore } from '@/stores/app/core-store';
+import { useWebPushRegistration } from '@/services/web-push';
 import { isSafeRouteId, parseNotificationData, usePushNotificationModalStore } from '@/stores/push-notification/store';
 import { securityStore } from '@/stores/security/store';
 
@@ -379,9 +379,9 @@ class PushNotificationService {
     }
   }
 
-  public async registerForPushNotifications(unitId: string, departmentCode: string): Promise<string | null> {
-    // On web / Electron, push token registration is not available.
-    // Desktop notifications are handled by ElectronNotificationService.
+  public async registerForPushNotifications(userId: string, departmentCode: string): Promise<string | null> {
+    // On web / Electron the token comes from services/web-push.web.ts (FCM in the browser, or the desktop's main
+    // process) instead.
     if (!isNativePushSupported()) {
       logger.info({
         message: 'Push token registration skipped – not a native platform',
@@ -438,14 +438,16 @@ class PushNotificationService {
       logger.info({
         message: 'Push notification token obtained',
         context: {
-          token: this.pushToken,
-          unitId,
+          // The token alone is enough to push to this device; it never goes to the logs whole.
+          token: `${this.pushToken.slice(0, 8)}…`,
           platform: Platform.OS,
         },
       });
 
-      await registerUnitDevice({
-        UnitId: unitId,
+      // The dispatcher's own user subscriber, the one the notification inbox reads: Dispatch has no active unit to
+      // register under, and waiting on one meant it never registered at all.
+      await registerDevice({
+        UserId: userId,
         Token: this.pushToken,
         Platform: Platform.OS === 'ios' ? 1 : 2,
         DeviceUuid: getDeviceUuid() || '',
@@ -552,20 +554,32 @@ export const pushNotificationService = PushNotificationService.getInstance();
 
 // React hook for component usage
 export const usePushNotifications = () => {
-  const activeUnitId = useCoreStore((state) => state.activeUnitId);
+  const userId = useAuthStore((state) => state.userId);
+  const authStatus = useAuthStore((state) => state.status);
   const rights = securityStore((state) => state.rights);
-  const previousUnitIdRef = useRef<string | null>(null);
+  const previousUserIdRef = useRef<string | null>(null);
+
+  // Browser and desktop push (a no-op on the phone apps).
+  useWebPushRegistration();
 
   useEffect(() => {
-    // Only register if we have an active unit ID and it's different from the previous one
-    if (rights && activeUnitId && activeUnitId !== previousUnitIdRef.current) {
+    if (!userId) {
+      previousUserIdRef.current = null;
+      return;
+    }
+
+    // Registering before auth settles would send a token the server is about to refuse.
+    if (authStatus !== 'signedIn' || !useAuthStore.getState().accessToken) return;
+
+    if (rights && userId !== previousUserIdRef.current) {
       pushNotificationService
-        .registerForPushNotifications(activeUnitId, rights.DepartmentCode)
+        .registerForPushNotifications(userId, rights.DepartmentCode)
         .then((token) => {
           if (token) {
+            // Only once it worked: a transient failure must not end push for the rest of the session.
+            previousUserIdRef.current = userId;
             logger.info({
               message: 'Successfully registered for push notifications',
-              context: { unitId: activeUnitId },
             });
           }
         })
@@ -575,15 +589,8 @@ export const usePushNotifications = () => {
             context: { error },
           });
         });
-
-      previousUnitIdRef.current = activeUnitId;
     }
-
-    // Cleanup function
-    return () => {
-      // No need to clean up here as the service handles its own cleanup
-    };
-  }, [activeUnitId, rights]);
+  }, [userId, authStatus, rights]);
 
   return {
     pushToken: pushNotificationService.getPushToken(),
