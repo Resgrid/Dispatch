@@ -312,6 +312,7 @@ async function runSync(): Promise<void> {
 
 let syncQueue: Promise<void> = Promise.resolve();
 let askArmed = false;
+let cancelAsk: (() => void) | null = null;
 
 /** Brings this device's registration in line with whoever is signed in. Calls run one at a time. */
 export function syncWebPush(): Promise<void> {
@@ -337,6 +338,7 @@ export function askForPermissionOnce(): void {
   askArmed = true;
   const ask = () => {
     document.removeEventListener('click', ask, true);
+    cancelAsk = null;
     // Asked inside the click, while the browser still counts it as the person's.
     void Notification.requestPermission()
       .then((permission) => {
@@ -352,6 +354,16 @@ export function askForPermissionOnce(): void {
   };
 
   document.addEventListener('click', ask, true);
+  cancelAsk = () => {
+    document.removeEventListener('click', ask, true);
+    cancelAsk = null;
+    askArmed = false;
+  };
+}
+
+/** Takes back a prompt still waiting for its click, so a click after sign-out never asks on behalf of whoever left. */
+export function cancelPermissionAsk(): void {
+  cancelAsk?.();
 }
 
 registerSignOutHook(async (accessToken) => {
@@ -362,11 +374,15 @@ registerSignOutHook(async (accessToken) => {
     // Straight to the server, not through the api client: its 401 handling would re-enter logout. Awaited (sign-out
     // waits on it), so no keepalive: some browsers refuse keepalive on a cross-origin call that needs a preflight.
     try {
-      await fetch(`${getBaseApiUrl()}/Devices/UnRegisterWebPush`, {
+      const response = await fetch(`${getBaseApiUrl()}/Devices/UnRegisterWebPush`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}`, [CLIENT_HEADER]: RESGRID_CLIENT },
         body: JSON.stringify({ Token: stored.token, Prefix: stored.prefix }),
       });
+      if (!response.ok) {
+        // The server keeps the registration; deleting the token below still stops delivery to this browser.
+        logger.warn({ message: 'Web push: the server refused to unregister the token at sign-out', context: { status: response.status } });
+      }
     } catch (error) {
       logger.warn({ message: 'Web push: the token could not be unregistered at sign-out', context: { error } });
     }
@@ -485,6 +501,7 @@ export function _resetWebPushForTests(): void {
   detachListeners?.();
   detachListeners = null;
   syncQueue = Promise.resolve();
+  cancelPermissionAsk();
   askArmed = false;
   listeners.clear();
 }
@@ -508,5 +525,6 @@ export const useWebPushRegistration = (): void => {
 
     syncWebPush().catch((error) => logger.error({ message: 'Web push registration failed', context: { error } }));
     askForPermissionOnce();
+    return cancelPermissionAsk;
   }, [authStatus, userId, departmentCode, hasConfig]);
 };

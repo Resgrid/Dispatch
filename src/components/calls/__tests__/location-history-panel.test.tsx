@@ -1,11 +1,13 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import React from 'react';
 
 import { getCallLocationHistory } from '@/api/calls/callLocationHistory';
 import { getContactCallHistory } from '@/api/contacts/contactCallHistory';
+import { formatDateForDisplay } from '@/lib/utils';
 import { type LocationHistoryData } from '@/models/v4/calls/locationHistoryResult';
 import { useLocationHistoryStore } from '@/stores/calls/location-history-store';
+import { dataProtectionStore } from '@/stores/data-protection/store';
 
 import { LocationHistoryPanel } from '../location-history-panel';
 
@@ -88,6 +90,7 @@ describe('LocationHistoryPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     useLocationHistoryStore.setState({ entries: {} });
+    dataProtectionStore.setState({ grantToken: null });
   });
 
   it('lists previous calls with their match reasons and expands notes and closing notes', async () => {
@@ -148,6 +151,35 @@ describe('LocationHistoryPanel', () => {
 
     await waitFor(() => expect(screen.getByTestId('location-history-address-matching-off')).toBeTruthy());
     expect(screen.getByTestId('location-history-empty')).toBeTruthy();
+  });
+
+  it('shows UTC timestamps in local time, whether or not the server marks them with a Z', async () => {
+    const unmarked = { ...baseHistory.Calls[1], LoggedOnUtc: '2026-08-14T09:02:11' };
+    mockCallHistory.mockResolvedValueOnce({ Data: { ...baseHistory, Calls: [baseHistory.Calls[0], unmarked] } } as never);
+
+    render(<LocationHistoryPanel source={{ kind: 'call', id: '42' }} />);
+    await waitFor(() => expect(screen.getByTestId('location-history-call-8800')).toBeTruthy());
+
+    expect(screen.getByText(formatDateForDisplay(new Date('2026-08-14T09:02:11Z'), 'yyyy-MM-dd HH:mm'))).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('location-history-notes-toggle-9012'));
+    expect(screen.getByText(`${formatDateForDisplay(new Date('2026-10-01T14:20:00Z'), 'yyyy-MM-dd HH:mm')} · Taylor Reed`)).toBeTruthy();
+  });
+
+  it('takes revealed text off screen as soon as the grant is gone, not when the redacted answer lands', async () => {
+    dataProtectionStore.setState({ grantToken: 'grant-1' });
+    mockCallHistory.mockResolvedValueOnce({ Data: baseHistory } as never);
+
+    render(<LocationHistoryPanel source={{ kind: 'call', id: '42' }} />);
+    await waitFor(() => expect(screen.getByText('Structure fire')).toBeTruthy());
+
+    mockCallHistory.mockReturnValueOnce(new Promise(() => undefined) as never);
+    act(() => {
+      dataProtectionStore.setState({ grantToken: null });
+    });
+
+    expect(screen.getByTestId('location-history-loading')).toBeTruthy();
+    expect(screen.queryByText('Structure fire')).toBeNull();
   });
 
   it('shows the load error when the request fails', async () => {

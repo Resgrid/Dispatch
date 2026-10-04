@@ -111,6 +111,16 @@ describe('service worker', () => {
     expect(worker.opened).toEqual([]);
   });
 
+  it('still hands a click to an open window the browser would not focus', async () => {
+    const open = client('tab');
+    open.focus = () => Promise.reject(new Error('InvalidAccessError'));
+    const worker = loadWorker([open]);
+
+    await worker.click({ eventCode: 'C:9' });
+
+    expect(open.posted).toEqual([{ type: 'NOTIFICATION_CLICK', data: { eventCode: 'C:9' } }]);
+  });
+
   it('opens the app when no window is open, and hands it the click once it is ready', async () => {
     const worker = loadWorker();
 

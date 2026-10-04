@@ -122,7 +122,10 @@ describe('push:start', () => {
 
     const saved = JSON.parse(fs.readFileSync(storePath, 'utf8'));
     expect(saved.credentials).toEqual({ fcm: { token: 'token-1' } });
-    expect(fs.statSync(storePath).mode & 0o777).toBe(0o600);
+    // Windows has no POSIX permission bits to check.
+    if (process.platform !== 'win32') {
+      expect(fs.statSync(storePath).mode & 0o777).toBe(0o600);
+    }
 
     // A restart reuses the saved credentials, so the token the server holds stays valid.
     const restarted = setup({ storePath });
@@ -168,6 +171,57 @@ describe('push:start', () => {
 
     await expect(failing.ipcMain.invoke('push:start', firebase)).resolves.toEqual({ error: 'PHONE_REGISTRATION_ERROR' });
   });
+
+  it('never connects or saves credentials for a start that sign-out stopped mid-registration', async () => {
+    let finishRegistering!: () => void;
+    const { ipcMain, storePath } = setup({
+      createReceiver: (config: ConstructorParameters<typeof FakeReceiver>[0]) => {
+        const receiver = new FakeReceiver(config);
+        const register = receiver.registerIfNeeded.bind(receiver);
+        receiver.registerIfNeeded = () => new Promise((resolve) => (finishRegistering = () => resolve(register())));
+        return receiver;
+      },
+    });
+
+    const started = ipcMain.invoke('push:start', firebase);
+    await Promise.resolve();
+    await ipcMain.invoke('push:stop', true);
+    finishRegistering();
+
+    await expect(started).resolves.toEqual({ error: 'no-token' });
+    expect(FakeReceiver.created[0].destroyed).toBe(true);
+    expect(FakeReceiver.created[0].connected).toBe(false);
+    expect(fs.existsSync(storePath)).toBe(false);
+  });
+
+  it('lets a start after a stop run even when the stopped one finishes later', async () => {
+    const finishers: (() => void)[] = [];
+    const { ipcMain } = setup({
+      createReceiver: (config: ConstructorParameters<typeof FakeReceiver>[0]) => {
+        const receiver = new FakeReceiver(config);
+        const register = receiver.registerIfNeeded.bind(receiver);
+        receiver.registerIfNeeded = () => new Promise((resolve) => finishers.push(() => resolve(register())));
+        return receiver;
+      },
+    });
+
+    const first = ipcMain.invoke('push:start', firebase);
+    await Promise.resolve();
+    await ipcMain.invoke('push:stop', true);
+    const second = ipcMain.invoke('push:start', firebase);
+    await Promise.resolve();
+
+    finishers[0]();
+    await expect(first).resolves.toEqual({ error: 'no-token' });
+
+    // The stopped start finishing must not free the slot the running one holds.
+    void ipcMain.invoke('push:start', firebase);
+    expect(FakeReceiver.created).toHaveLength(2);
+
+    finishers[1]();
+    await expect(second).resolves.toEqual({ token: 'token-2' });
+    expect(FakeReceiver.created[1].connected).toBe(true);
+  });
 });
 
 describe('incoming pushes', () => {
@@ -194,6 +248,17 @@ describe('incoming pushes', () => {
     notify.mock.calls[0][1]();
     expect(focus).toHaveBeenCalled();
     expect(send).toHaveBeenCalledWith('push:notification-click', expect.objectContaining({ eventCode: 'C1234' }));
+  });
+
+  it('gives a push to the page when the system has no native notifications', async () => {
+    const { ipcMain, notify, send } = setup();
+    notify.mockReturnValue(false);
+    await ipcMain.invoke('push:start', firebase);
+
+    FakeReceiver.created[0].notificationListener!(fcmMessage('C1234'));
+
+    expect(notify).toHaveBeenCalledTimes(1);
+    expect(send).toHaveBeenCalledWith('push:received', expect.objectContaining({ eventCode: 'C1234' }));
   });
 
   it('keeps a click for a page that is not ready, until it asks', async () => {

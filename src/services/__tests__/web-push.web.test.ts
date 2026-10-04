@@ -10,6 +10,7 @@ const mockRouterPushWithRetry = jest.fn(async () => undefined);
 const mockShowNotificationModal = jest.fn(async () => undefined);
 const mockFirebaseGetToken = jest.fn(async () => 'browser-token');
 const mockFirebaseDeleteToken = jest.fn(async () => true);
+const mockLoggerWarn = jest.fn();
 
 jest.mock('firebase/app', () => ({ getApps: () => [], initializeApp: (_config: unknown, name: string) => ({ name }) }));
 jest.mock('firebase/messaging', () => ({
@@ -24,7 +25,7 @@ jest.mock('@/api/devices/push', () => ({
 }));
 jest.mock('@/lib/navigation', () => ({ routerPushWithRetry: (...args: unknown[]) => mockRouterPushWithRetry(...(args as [])) }));
 jest.mock('@/lib/storage/app', () => ({ getBaseApiUrl: () => 'https://api.test/api/v4', getDeviceUuid: () => 'device-uuid' }));
-jest.mock('@/lib/logging', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() } }));
+jest.mock('@/lib/logging', () => ({ logger: { info: jest.fn(), warn: (...args: unknown[]) => mockLoggerWarn(...args), error: jest.fn(), debug: jest.fn() } }));
 jest.mock('@/lib/mfa/client-app', () => ({ CLIENT_HEADER: 'X-Resgrid-Client', RESGRID_CLIENT: 'dispatch' }));
 jest.mock('@/stores/push-notification/store', () => {
   const actual = jest.requireActual('@/stores/push-notification/store');
@@ -276,6 +277,33 @@ describe('browser', () => {
     await hooks.runSignOutHooks('access-token');
 
     expect(mockFirebaseDeleteToken).toHaveBeenCalledTimes(1);
+  });
+
+  it('warns when the server refuses the sign-out call, and still kills the token', async () => {
+    permission = 'granted';
+    const { push, hooks } = load();
+    await push.syncWebPush();
+    (globals.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 401 });
+
+    await hooks.runSignOutHooks('access-token');
+
+    expect(mockLoggerWarn).toHaveBeenCalledWith(expect.objectContaining({ context: { status: 401 } }));
+    expect(mockFirebaseDeleteToken).toHaveBeenCalledTimes(1);
+  });
+
+  it('takes back a permission prompt still waiting for its click', async () => {
+    const { push } = load();
+
+    push.askForPermissionOnce();
+    push.cancelPermissionAsk();
+    clickPage();
+
+    expect(requestPermission).not.toHaveBeenCalled();
+
+    // Signing in again arms it again.
+    push.askForPermissionOnce();
+    clickPage();
+    expect(requestPermission).toHaveBeenCalledTimes(1);
   });
 
 });

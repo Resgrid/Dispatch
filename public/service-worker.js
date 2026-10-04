@@ -67,22 +67,31 @@ self.addEventListener('notificationclick', (event) => {
   const data = event.notification.data || {};
 
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
-      const client = windows.find((candidate) => 'focus' in candidate);
-      if (client) {
-        return client.focus().then((focused) => (focused || client).postMessage({ type: 'NOTIFICATION_CLICK', data }));
-      }
-
-      if (!self.clients.openWindow) {
-        return undefined;
-      }
-
-      return self.clients.openWindow('/').then((opened) => {
-        if (opened) {
-          pendingClicks.set(opened.id, data);
+    self.clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then((windows) => {
+        const client = windows.find((candidate) => 'focus' in candidate);
+        if (client) {
+          // A browser may refuse the focus; the window still gets the click.
+          return client
+            .focus()
+            .catch(() => client)
+            .then((focused) => (focused || client).postMessage({ type: 'NOTIFICATION_CLICK', data }));
         }
-      });
-    })
+
+        if (!self.clients.openWindow) {
+          return undefined;
+        }
+
+        return self.clients.openWindow('/').then((opened) => {
+          if (opened) {
+            pendingClicks.set(opened.id, data);
+          }
+        });
+      })
+      .catch((error) => {
+        console.error('Resgrid Dispatch: a notification click could not be handled', error);
+      })
   );
 });
 

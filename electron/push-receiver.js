@@ -75,6 +75,9 @@ function registerPushReceiver(ipcMain, options) {
     let receiverKey = null;
     let starting = null;
     let pendingClick = null;
+    // Bumped by every stop. A start still registering when it changes was stopped (sign-out, or a newer start took
+    // over), so it must neither connect nor write its credentials back.
+    let generation = 0;
 
     function load() {
         try {
@@ -128,10 +131,15 @@ function registerPushReceiver(ipcMain, options) {
             return;
         }
 
-        options.notify(payload, () => deliverClick(payload));
+        if (!options.notify(payload, () => deliverClick(payload)) && !options.send('push:received', payload)) {
+            // No native notifications on this system and no page to take it: nothing can show this push.
+            log.warn('Desktop push: a push could not be shown', { eventCode: payload.eventCode });
+        }
     }
 
     function stop(shouldForget) {
+        generation += 1;
+
         if (receiver) {
             try {
                 receiver.destroy();
@@ -156,6 +164,7 @@ function registerPushReceiver(ipcMain, options) {
         }
 
         stop(false);
+        const current = generation;
 
         const state = load();
         // Credentials minted for another Firebase app or key can't receive this one's pushes.
@@ -170,6 +179,8 @@ function registerPushReceiver(ipcMain, options) {
         });
 
         instance.onCredentialsChanged(({ newCredentials }) => {
+            // Sign-out forgot this state; a receiver stopped since must not write it back.
+            if (generation !== current) return;
             save({ ...load(), configKey: key, credentials: newCredentials, persistentIds: [] });
         });
         instance.onNotification(handleMessage);
@@ -179,7 +190,21 @@ function registerPushReceiver(ipcMain, options) {
 
         // The token exists once registration is done; the connection that delivers pushes can come up after
         // (and keeps retrying on its own), so the page can register without waiting on it.
-        await instance.registerIfNeeded();
+        try {
+            await instance.registerIfNeeded();
+        } catch (error) {
+            // Only this start's receiver: a newer one may already be running.
+            if (generation === current) {
+                stop(false);
+            }
+            throw error;
+        }
+
+        if (generation !== current) {
+            // Stopped while registering; stop() already destroyed this receiver.
+            return null;
+        }
+
         instance.connect().catch((error) => log.warn('Desktop push: connection failed', error));
 
         return instance.fcmToken;
@@ -191,16 +216,19 @@ function registerPushReceiver(ipcMain, options) {
         }
 
         if (!starting) {
-            starting = start(firebase).finally(() => {
-                starting = null;
+            const run = start(firebase).finally(() => {
+                // A stop in the meantime may have let a newer start take the slot.
+                if (starting === run) {
+                    starting = null;
+                }
             });
+            starting = run;
         }
 
         try {
             const token = await starting;
             return token ? { token } : { error: 'no-token' };
         } catch (error) {
-            stop(false);
             log.warn('Desktop push: could not register with FCM', error);
             return { error: (error && error.message) || 'register-failed' };
         }

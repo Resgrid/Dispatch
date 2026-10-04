@@ -101,6 +101,8 @@ const pushReceiver = registerPushReceiver(ipcMain, {
             onClick();
         });
         notification.on('close', release);
+        // Windows only: a notification the OS refused never clicks or closes.
+        notification.on('failed', release);
         notification.show();
         return true;
     },

@@ -13,7 +13,7 @@ import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { ProtectedFieldIds } from '@/lib/data-protection/redacted';
-import { formatDateForDisplay, parseDateISOString } from '@/lib/utils';
+import { formatDateForDisplay } from '@/lib/utils';
 import { type LocationHistoryCallData, type LocationHistoryMatch } from '@/models/v4/calls/locationHistoryResult';
 import { locationHistoryKey, type LocationHistorySource, useLocationHistoryStore } from '@/stores/calls/location-history-store';
 import { dataProtectionStore } from '@/stores/data-protection/store';
@@ -31,15 +31,16 @@ const MATCH_STYLES: Record<LocationHistoryMatch, { box: string; text: string; ke
   SameContact: { box: 'bg-green-100 dark:bg-green-900/40', text: 'text-green-800 dark:text-green-200', key: 'location_history.match.same_contact' },
 };
 
+/**
+ * The *Utc fields are UTC instants, with or without a trailing Z. parseDateISOString reads the clock fields as local
+ * time, so it would show 14:20Z as 14:20 everywhere; read the instant, then format it in the device's time zone.
+ */
 const formatTimestamp = (value?: string | null): string => {
   if (!value) {
     return '';
   }
-  try {
-    return formatDateForDisplay(parseDateISOString(value), 'yyyy-MM-dd HH:mm');
-  } catch {
-    return '';
-  }
+  const date = new Date(/(Z|[+-]\d{2}:?\d{2})$/i.test(value) ? value : `${value}Z`);
+  return isNaN(date.getTime()) ? '' : formatDateForDisplay(date, 'yyyy-MM-dd HH:mm');
 };
 
 interface HistoryCallCardProps {
@@ -52,10 +53,12 @@ const HistoryCallCard: React.FC<HistoryCallCardProps> = ({ call, onOpenCall }) =
   const [expanded, setExpanded] = useState(false);
   const hasNotes = call.Notes.length > 0 || !!call.CompletedNotes;
   const loggedOn = call.LoggedOn || formatTimestamp(call.LoggedOnUtc);
+  const handleOpen = useCallback(() => onOpenCall(call.CallId), [onOpenCall, call.CallId]);
+  const toggleNotes = useCallback(() => setExpanded((value) => !value), []);
 
   return (
     <Box className="mb-3 rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900" testID={`location-history-call-${call.CallId}`}>
-      <Pressable onPress={() => onOpenCall(call.CallId)} className="p-3" testID={`location-history-open-${call.CallId}`}>
+      <Pressable onPress={handleOpen} className="p-3" testID={`location-history-open-${call.CallId}`}>
         <HStack space="sm" className="items-start">
           <VStack className="flex-1">
             <HStack space="xs" className="flex-wrap items-center">
@@ -97,7 +100,7 @@ const HistoryCallCard: React.FC<HistoryCallCardProps> = ({ call, onOpenCall }) =
 
       {hasNotes ? (
         <Box className="border-t border-gray-100 dark:border-gray-800">
-          <Pressable onPress={() => setExpanded((value) => !value)} className="px-3 py-2" testID={`location-history-notes-toggle-${call.CallId}`}>
+          <Pressable onPress={toggleNotes} className="px-3 py-2" testID={`location-history-notes-toggle-${call.CallId}`}>
             <HStack space="xs" className="items-center">
               {expanded ? <ChevronUpIcon size={16} color="#6366F1" /> : <ChevronDownIcon size={16} color="#6366F1" />}
               <Text className="text-sm text-primary-600 dark:text-primary-400">{expanded ? t('location_history.hide_notes') : t('location_history.show_notes', { count: call.Notes.length })}</Text>
@@ -157,7 +160,8 @@ export const LocationHistoryPanel: React.FC<LocationHistoryPanelProps> = ({ sour
     if (previousGrant.current !== grantToken) {
       previousGrant.current = grantToken;
       if (id) {
-        fetchHistory({ kind, id });
+        // A lost grant must not leave revealed text up while the redacted answer loads.
+        fetchHistory({ kind, id }, { discardPrevious: !grantToken });
       }
     }
   }, [grantToken, kind, id, fetchHistory]);

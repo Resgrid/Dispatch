@@ -2,6 +2,7 @@ import { act } from '@testing-library/react-native';
 
 import { getCallLocationHistory } from '@/api/calls/callLocationHistory';
 import { getContactCallHistory } from '@/api/contacts/contactCallHistory';
+import { logger } from '@/lib/logging';
 import { type LocationHistoryData } from '@/models/v4/calls/locationHistoryResult';
 
 import { locationHistoryKey, useLocationHistoryStore } from '../location-history-store';
@@ -76,6 +77,49 @@ describe('useLocationHistoryStore', () => {
     });
 
     expect(useLocationHistoryStore.getState().entries['call:42']).toEqual({ history: null, isLoading: false, error: 'boom' });
+  });
+
+  it('logs only the status of a failed request, never the error that carries the grant header', async () => {
+    const error = Object.assign(new Error('Request failed with status code 403'), {
+      config: { headers: { 'X-Protected-Data-Grant': 'grant-secret' } },
+      response: { status: 403, data: { type: 'step_up_required' } },
+    });
+    mockCallHistory.mockRejectedValueOnce(error);
+
+    await act(async () => {
+      await useLocationHistoryStore.getState().fetchHistory({ kind: 'call', id: '42' });
+    });
+
+    expect(logger.error).toHaveBeenCalledWith({
+      message: 'Failed to fetch location history',
+      context: { status: 403, errorType: 'step_up_required', kind: 'call', id: '42' },
+    });
+    expect(JSON.stringify((logger.error as jest.Mock).mock.calls)).not.toContain('grant-secret');
+  });
+
+  it('keeps what is shown while reloading, unless asked to discard it', async () => {
+    mockCallHistory.mockResolvedValueOnce({ Data: history(['revealed']) } as never);
+    await act(async () => {
+      await useLocationHistoryStore.getState().fetchHistory({ kind: 'call', id: '42' });
+    });
+
+    const reload = deferred<never>();
+    mockCallHistory.mockReturnValueOnce(reload.promise).mockReturnValueOnce(reload.promise);
+
+    act(() => {
+      void useLocationHistoryStore.getState().fetchHistory({ kind: 'call', id: '42' });
+    });
+    expect(useLocationHistoryStore.getState().entries['call:42'].history?.Calls[0].CallId).toBe('revealed');
+
+    act(() => {
+      void useLocationHistoryStore.getState().fetchHistory({ kind: 'call', id: '42' }, { discardPrevious: true });
+    });
+    expect(useLocationHistoryStore.getState().entries['call:42']).toEqual({ history: null, isLoading: true, error: null });
+
+    await act(async () => {
+      reload.resolve({ Data: history(['redacted']) } as never);
+      await reload.promise;
+    });
   });
 
   it('clear removes the entry and ignores a response still in flight', async () => {

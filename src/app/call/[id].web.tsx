@@ -937,6 +937,8 @@ const styles = StyleSheet.create({
   },
   tabNav: {
     flexDirection: 'row',
+    // Ten tabs don't fit one row in a narrow window, and tabsCard clips overflow: wrap so every tab stays reachable.
+    flexWrap: 'wrap',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
   },
