@@ -122,11 +122,25 @@ describe('PendingCalls screen', () => {
   it('opens the dispatch picker and the cancel confirmation for a row', () => {
     render(<PendingCalls />);
 
-    fireEvent.press(screen.getByTestId('pending-call-dispatch-12'));
-    fireEvent.press(screen.getByTestId('pending-call-cancel-11'));
+    fireEvent.press(screen.getByTestId('pending-call-dispatch-12'), { stopPropagation: jest.fn() });
+    fireEvent.press(screen.getByTestId('pending-call-cancel-11'), { stopPropagation: jest.fn() });
 
     expect(mockOpenDispatchPicker).toHaveBeenCalledWith('12');
     expect(mockConfirmCancelPending).toHaveBeenCalledWith('11');
+  });
+
+  it('keeps a row action from also opening the call', () => {
+    const { router } = require('expo-router');
+    const dispatchEvent = { stopPropagation: jest.fn() };
+    const cancelEvent = { stopPropagation: jest.fn() };
+    render(<PendingCalls />);
+
+    fireEvent.press(screen.getByTestId('pending-call-dispatch-12'), dispatchEvent);
+    fireEvent.press(screen.getByTestId('pending-call-cancel-11'), cancelEvent);
+
+    expect(dispatchEvent.stopPropagation).toHaveBeenCalled();
+    expect(cancelEvent.stopPropagation).toHaveBeenCalled();
+    expect(router.push).not.toHaveBeenCalled();
   });
 
   it('opens the call when a row is pressed', () => {

@@ -152,7 +152,11 @@ export default function ScheduledCalls() {
                         <ActivityIndicator size="small" color={themedStyles.dispatchColor} />
                       ) : (
                         <Pressable
-                          onPress={() => confirmDispatchNow(item.CallId)}
+                          onPress={(event) => {
+                            // The row itself opens the call; Dispatch Now pressed inside it must not.
+                            event.stopPropagation();
+                            confirmDispatchNow(item.CallId);
+                          }}
                           style={[styles.actionButton, { backgroundColor: themedStyles.dispatchColor }]}
                           accessibilityRole="button"
                           accessibilityLabel={`${t('calls.dispatch_now')} ${item.Number || item.CallId}`}

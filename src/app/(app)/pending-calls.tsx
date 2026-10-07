@@ -169,7 +169,11 @@ export default function PendingCalls() {
                       ) : (
                         <>
                           <Pressable
-                            onPress={() => void openDispatchPicker(item.CallId)}
+                            onPress={(event) => {
+                              // The row itself opens the call; an action pressed inside it must not.
+                              event.stopPropagation();
+                              void openDispatchPicker(item.CallId);
+                            }}
                             style={[styles.actionButton, { backgroundColor: themedStyles.dispatchColor }]}
                             accessibilityRole="button"
                             accessibilityLabel={`${t('dispatch.dispatch')} ${item.Number || item.CallId}`}
@@ -179,7 +183,10 @@ export default function PendingCalls() {
                             <RNText style={styles.actionButtonText}>{t('dispatch.dispatch')}</RNText>
                           </Pressable>
                           <Pressable
-                            onPress={() => confirmCancelPending(item.CallId)}
+                            onPress={(event) => {
+                              event.stopPropagation();
+                              confirmCancelPending(item.CallId);
+                            }}
                             style={[styles.actionButton, styles.actionButtonOutline, { borderColor: themedStyles.cancelColor }]}
                             accessibilityRole="button"
                             accessibilityLabel={`${t('pending_calls.cancel_call')} ${item.Number || item.CallId}`}
