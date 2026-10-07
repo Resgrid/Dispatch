@@ -110,6 +110,8 @@
     "close_call_error": "Failed to close call",
     "close_call_note": "Close Note",
     "close_call_note_placeholder": "Enter a note about closing the call",
+    "close_call_notify": "Notify everyone on the call",
+    "close_call_notify_hint": "Alerts the dispatched personnel, groups, roles, units and command team that the call is closed.",
     "close_call_success": "Call closed successfully",
     "close_call_type": "Close Type",
     "close_call_type_placeholder": "Select close type",
@@ -215,7 +217,9 @@
     "map_destination": "Destination",
     "dispatch_more": "Dispatch additional resources",
     "dispatch_more_success": "Resources dispatched and notified",
-    "dispatch_more_error": "Failed to dispatch resources"
+    "dispatch_more_error": "Failed to dispatch resources",
+    "pending_banner_title": "Pending — not yet dispatched",
+    "pending_banner_description": "This call is saved but nobody has been notified. Choose who to send and dispatch it when ready."
   },
   "calls": {
     "address": "Address",
@@ -383,7 +387,16 @@
       "audio_name": "Audio clip"
     },
     "required_fields_missing": "Your department requires these fields before a call can be created: {{fields}}",
-    "field_policy_loading": "Still loading your department's call settings, please try again in a moment"
+    "field_policy_loading": "Still loading your department's call settings, please try again in a moment",
+    "save_as_pending": "Save as pending (do not dispatch yet)",
+    "save_as_pending_description": "The call is saved and numbered, but nobody is notified and the field apps do not see it. Recipients you pick are kept as the proposed dispatch; dispatch it later from Pending Calls.",
+    "save_pending_call": "Save Pending Call",
+    "pending_saved": "Call saved as pending",
+    "dispatch_now": "Dispatch now",
+    "dispatch_now_confirm": "Dispatch this call now? Everyone on its dispatch list is notified immediately.",
+    "dispatch_now_success": "Call dispatched",
+    "dispatch_now_error": "Failed to dispatch the call",
+    "dispatch_now_no_recipients": "Choose at least one recipient to dispatch this call to."
   },
   "chat": {
     "title": "Chat",
@@ -833,7 +846,10 @@
       "update_status": "Update Status",
       "update_staffing": "Update Staffing",
       "no_statuses_available": "No statuses available",
-      "no_staffings_available": "No staffing levels available"
+      "no_staffings_available": "No staffing levels available",
+      "no_active_calls": "No active calls",
+      "no_stations_available": "No stations available",
+      "no_destinations_available": "No destinations available"
     },
     "unit_actions_panel": {
       "status": "Status",
@@ -882,7 +898,9 @@
     "single_list": "Single list",
     "resources": "Resources",
     "search_resources_placeholder": "Search resources...",
-    "no_resources": "No resources"
+    "no_resources": "No resources",
+    "view_pending_calls": "View pending calls",
+    "view_scheduled_calls": "View scheduled calls"
   },
   "form": {
     "invalid_url": "Please enter a valid URL starting with https:// (http:// is only allowed for localhost)",
@@ -1124,7 +1142,8 @@
     "weatherAlerts": "Weather Alerts",
     "incident_command": "Incident Command",
     "chat": "Chat",
-    "assistant": "Assistant"
+    "assistant": "Assistant",
+    "pending_calls": "Pending Calls"
   },
   "mfa": {
     "account": {
@@ -1820,6 +1839,18 @@
     "table_address": "Address",
     "table_scheduled": "Scheduled For"
   },
+  "pending_calls": {
+    "title": "Pending Calls",
+    "loading": "Loading pending calls...",
+    "no_pending_calls": "No pending calls",
+    "no_pending_calls_description": "There are no calls waiting to be dispatched.",
+    "search": "Search pending calls...",
+    "table_received": "Received",
+    "cancel_call": "Cancel Call",
+    "cancel_confirm": "Cancel this pending call? It will be closed as Cancelled without notifying anyone.",
+    "cancel_success": "Pending call cancelled",
+    "cancel_error": "Failed to cancel the pending call"
+  },
   "settings": {
     "about": "About",
     "account": "Account",
@@ -2244,7 +2275,10 @@
       "2": "Cancelled",
       "3": "Unfounded",
       "4": "Founded",
-      "5": "Minor"
+      "5": "Minor",
+      "6": "Transferred",
+      "7": "False Alarm",
+      "8": "Pending"
     }
   }
 }

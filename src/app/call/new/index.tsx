@@ -33,11 +33,13 @@ import { FormControl, FormControlError, FormControlLabel, FormControlLabelText }
 import { Input, InputField } from '@/components/ui/input';
 import { BookOpenIcon, ChevronDownIcon, ChevronUpIcon, FileTextIcon, LinkIcon, PlusIcon, SearchIcon, UserIcon } from '@/components/ui/lucide-icons';
 import { Select, SelectBackdrop, SelectContent, SelectIcon, SelectInput, SelectItem, SelectPortal, SelectTrigger } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
 import { Textarea, TextareaInput } from '@/components/ui/textarea';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { useNewCallFieldPolicy } from '@/hooks/use-new-call-field-policy';
 import { useToast } from '@/hooks/use-toast';
+import { formatGeolocation } from '@/lib/call-geolocation';
 import { getPoiDestinationOptionLabel } from '@/lib/poi-display';
 import { type CallResultData } from '@/models/v4/calls/callResultData';
 import { type NewCallFieldKey, NewCallFieldKeys } from '@/models/v4/calls/newCallFieldPolicyResultData';
@@ -139,7 +141,11 @@ export default function NewCall() {
   const { t } = useTranslation();
   const { colorScheme } = useColorScheme();
   const insets = useSafeAreaInsets();
-  const { callPriorities, callTypes, isLoading, error, fetchCallPriorities, fetchCallTypes } = useCallsStore();
+  const { callPriorities, callTypes, isLoadingPriorities, isLoadingTypes, prioritiesError, typesError, fetchCallPriorities, fetchCallTypes } = useCallsStore();
+  // Only the first load of priorities and types holds the form back. The store's shared isLoading/error also follow
+  // the active-calls list, which reloads on every call event, so gating on them blanked the form while it was in use.
+  const isLoading = (isLoadingPriorities && callPriorities.length === 0) || (isLoadingTypes && callTypes.length === 0);
+  const error = callPriorities.length === 0 ? prioritiesError : callTypes.length === 0 ? typesError : null;
   const { config } = useCoreStore();
   const { trackEvent } = useAnalytics();
   const toast = useToast();
@@ -157,6 +163,8 @@ export default function NewCall() {
   const [linkedCall, setLinkedCall] = useState<{ callId: string; number: string; name: string } | null>(null);
   // Contact picked from the picker; linked to the call as its primary contact (Contacts plan Phase A).
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+  // Save as Pending: the call is stored and numbered but nobody is notified until a dispatcher sends it.
+  const [isPending, setIsPending] = useState(false);
   const [sectionsExpanded, setSectionsExpanded] = useState({
     templates: false,
     callName: true,
@@ -277,29 +285,33 @@ export default function NewCall() {
         return;
       }
 
-      // A location on the equator or the prime meridian has a zero coordinate, which is a real
-      // place, not a blank field — test that both are finite rather than truthy.
-      const hasGeolocation = Number.isFinite(data.latitude) && Number.isFinite(data.longitude);
+      // The same value createCall sends, so "required" here and on the server agree on what counts
+      // as a location (a single zero coordinate does; a blank pair or 0,0 does not).
+      const geolocation = formatGeolocation(data.latitude, data.longitude);
 
       // The department may require fields beyond the built-in mandatory four. Enforced here for a
       // clear message, and again on the server so an old build cannot slip an incomplete call past.
       // DispatchOn is deliberately absent: scheduling lives on the web form, not this one, so
       // validating it here could only produce a required field the dispatcher has no way to fill.
       // The server still enforces it and rejects the save with a reason.
-      const missingFields = fieldPolicy.missingRequired({
-        [NewCallFieldKeys.Address]: data.address,
-        [NewCallFieldKeys.Geolocation]: hasGeolocation ? `${data.latitude},${data.longitude}` : '',
-        [NewCallFieldKeys.What3Words]: data.what3words,
-        [NewCallFieldKeys.PlusCode]: data.plusCode,
-        [NewCallFieldKeys.Note]: data.note,
-        [NewCallFieldKeys.ContactName]: data.contactName,
-        [NewCallFieldKeys.ContactInfo]: data.contactInfo,
-        [NewCallFieldKeys.DestinationPoi]: data.destinationPoiId,
-        [NewCallFieldKeys.Protocols]: selectedProtocols.length > 0,
-        [NewCallFieldKeys.LinkedCall]: !!linkedCall,
-        [NewCallFieldKeys.DispatchList]:
-          dispatchSelection.everyone || dispatchSelection.units.length > 0 || dispatchSelection.users.length > 0 || dispatchSelection.groups.length > 0 || dispatchSelection.roles.length > 0,
-      });
+      // A pending call is not dispatched or scheduled yet, so neither the dispatch list nor the dispatch
+      // time can be required of it (the server skips both rules for pending calls too).
+      const missingFields = fieldPolicy
+        .missingRequired({
+          [NewCallFieldKeys.Address]: data.address,
+          [NewCallFieldKeys.Geolocation]: geolocation,
+          [NewCallFieldKeys.What3Words]: data.what3words,
+          [NewCallFieldKeys.PlusCode]: data.plusCode,
+          [NewCallFieldKeys.Note]: data.note,
+          [NewCallFieldKeys.ContactName]: data.contactName,
+          [NewCallFieldKeys.ContactInfo]: data.contactInfo,
+          [NewCallFieldKeys.DestinationPoi]: data.destinationPoiId,
+          [NewCallFieldKeys.Protocols]: selectedProtocols.length > 0,
+          [NewCallFieldKeys.LinkedCall]: !!linkedCall,
+          [NewCallFieldKeys.DispatchList]:
+            dispatchSelection.everyone || dispatchSelection.units.length > 0 || dispatchSelection.users.length > 0 || dispatchSelection.groups.length > 0 || dispatchSelection.roles.length > 0,
+        })
+        .filter((key) => !(isPending && (key === NewCallFieldKeys.DispatchOn || key === NewCallFieldKeys.DispatchList)));
 
       if (missingFields.length > 0) {
         const missingLabels = missingFields.map((key) => {
@@ -355,6 +367,7 @@ export default function NewCall() {
         contactName: data.contactName,
         contactInfo: data.contactInfo,
         contactId: selectedContactId ?? undefined,
+        isPending,
       });
 
       if (udfValues.length > 0 && response?.Id) {
@@ -365,11 +378,17 @@ export default function NewCall() {
         }
       }
 
-      // Show success toast
-      toast.success(t('calls.create_success'));
+      if (isPending) {
+        // Saved for later: show the queue it now waits in.
+        toast.success(t('calls.pending_saved'));
+        router.push('/pending-calls' as Href);
+      } else {
+        // Show success toast
+        toast.success(t('calls.create_success'));
 
-      // Navigate back to home dashboard
-      router.push('/(app)/home' as Href);
+        // Navigate back to home dashboard
+        router.push('/(app)/home' as Href);
+      }
     } catch (error) {
       console.error('Error creating call:', error);
 
@@ -1227,6 +1246,18 @@ export default function NewCall() {
               ) : null}
             </Card>
 
+            {/* Save as Pending: always offered, whatever the field policy shows, because it is what lets a
+                call be stored without dispatching it. */}
+            <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
+              <View className="flex-row items-center justify-between">
+                <View className="mr-3 flex-1">
+                  <Text className="text-base font-semibold">{t('calls.save_as_pending')}</Text>
+                  <Text className="text-sm text-gray-500">{t('calls.save_as_pending_description')}</Text>
+                </View>
+                <Switch size="md" value={isPending} onValueChange={setIsPending} testID="save-as-pending-switch" aria-label={t('calls.save_as_pending')} />
+              </View>
+            </Card>
+
             {fieldPolicy.isVisible(NewCallFieldKeys.DispatchList) ? (
               <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
                 <TouchableOpacity onPress={() => toggleSection('dispatch')} className="flex-row items-center justify-between p-4">
@@ -1260,7 +1291,7 @@ export default function NewCall() {
               </Button>
               <Button className="ml-10 flex-1" variant="solid" action="primary" isDisabled={!fieldPolicy.isLoaded} onPress={handleSubmit(onSubmit)}>
                 <PlusIcon size={18} className="mr-2" />
-                <ButtonText>{t('calls.create')}</ButtonText>
+                <ButtonText>{isPending ? t('calls.save_pending_call') : t('calls.create')}</ButtonText>
               </Button>
             </Box>
           </ScrollView>

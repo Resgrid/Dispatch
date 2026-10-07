@@ -88,7 +88,11 @@ export default function EditCall() {
   const { colorScheme } = useColorScheme();
   const { id } = useLocalSearchParams();
   const callId = Array.isArray(id) ? id[0] : id;
-  const { callPriorities, callTypes, isLoading: callDataLoading, error: callDataError, fetchCallPriorities, fetchCallTypes } = useCallsStore();
+  const { callPriorities, callTypes, isLoadingPriorities, isLoadingTypes, prioritiesError, typesError, fetchCallPriorities, fetchCallTypes } = useCallsStore();
+  // Only the first load of priorities and types holds the form back. The store's shared isLoading/error also follow
+  // the active-calls list, which reloads on every call event, so gating on them blanked the form while it was in use.
+  const callDataLoading = (isLoadingPriorities && callPriorities.length === 0) || (isLoadingTypes && callTypes.length === 0);
+  const callDataError = callPriorities.length === 0 ? prioritiesError : callTypes.length === 0 ? typesError : null;
   const { call, callExtraData, isLoading: callDetailLoading, error: callDetailError, fetchCallDetail } = useCallDetailStore();
   const { config } = useCoreStore();
   const toast = useToast();

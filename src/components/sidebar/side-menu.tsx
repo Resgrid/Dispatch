@@ -6,6 +6,7 @@ import {
   Contact,
   FileText,
   Home,
+  Hourglass,
   List,
   type LucideIcon,
   Map as MapIcon,
@@ -24,6 +25,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { usePendingCallsStore } from '@/stores/calls/pending-store';
 import { useIsChatEnabled, useIsDeploymentsEnabled, useIsRecordsFieldEnabled } from '@/stores/feature-flags/store';
 
 interface SideMenuProps {
@@ -37,9 +39,11 @@ interface MenuItem {
   icon: LucideIcon;
   route?: string;
   children?: MenuItem[];
+  /** Count shown as a badge after the label; hidden when zero or absent. */
+  badgeCount?: number;
 }
 
-const getMenuItems = (t: (key: string) => string): MenuItem[] => [
+const getMenuItems = (t: (key: string) => string, pendingCallsCount: number): MenuItem[] => [
   { id: 'home', label: t('menu.home'), icon: Home, route: '/' },
   {
     id: 'calls',
@@ -47,6 +51,7 @@ const getMenuItems = (t: (key: string) => string): MenuItem[] => [
     icon: Phone,
     children: [
       { id: 'calls-list', label: t('menu.calls_list'), icon: List, route: '/calls' },
+      { id: 'pending-calls', label: t('menu.pending_calls'), icon: Hourglass, route: '/pending-calls', badgeCount: pendingCallsCount },
       { id: 'scheduled-calls', label: t('menu.scheduled_calls'), icon: CalendarClock, route: '/scheduled-calls' },
       { id: 'new-call', label: t('menu.new_call'), icon: Plus, route: '/call/new' },
       { id: 'incident-command', label: t('menu.incident_command'), icon: Network, route: '/incident-command' },
@@ -101,10 +106,12 @@ function SideMenu({ onNavigate, colorScheme: propColorScheme }: SideMenuProps): 
   const isChatEnabled = useIsChatEnabled();
   const isRecordsEnabled = useIsRecordsFieldEnabled();
   const isDeploymentsEnabled = useIsDeploymentsEnabled();
+  // Whatever the console last loaded; the menu itself does not fetch.
+  const pendingCallsCount = usePendingCallsStore((s) => s.pendingCalls.length);
   // Chat and the assistant are gated by the Chat.System feature flag.
   // Chat.System off hides chat and the assistant; Field Records needs Records.System plus this app's
   // own child flag. Both fail closed, so an entry stays hidden until the server confirms it.
-  const menuItems = getMenuItems(t).filter((item) => {
+  const menuItems = getMenuItems(t, pendingCallsCount).filter((item) => {
     if (item.id === 'chat' || item.id === 'assistant') {
       return isChatEnabled;
     }
@@ -159,6 +166,11 @@ function SideMenu({ onNavigate, colorScheme: propColorScheme }: SideMenuProps): 
             <IconComponent size={isChild ? 18 : 20} color={theme.menuItemIcon} />
           </View>
           <Text style={[styles.menuItemText, { color: theme.menuItemText }, isChild ? styles.childMenuItemText : null]}>{item.label}</Text>
+          {item.badgeCount ? (
+            <View style={styles.badge} testID={`side-menu-badge-${item.id}`}>
+              <Text style={styles.badgeText}>{item.badgeCount > 99 ? '99+' : item.badgeCount}</Text>
+            </View>
+          ) : null}
           {hasChildren ? <Text style={[styles.chevron, { color: theme.chevron }]}>{isExpanded ? '▼' : '▶'}</Text> : null}
         </Pressable>
         {hasChildren && isExpanded ? <View style={[styles.childrenContainer, { borderLeftColor: theme.divider }]}>{item.children?.map((child) => renderMenuItem(child, true))}</View> : null}
@@ -226,6 +238,21 @@ const styles = StyleSheet.create({
   chevron: {
     fontSize: 12,
     marginLeft: 8,
+  },
+  badge: {
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 6,
+    borderRadius: 10,
+    backgroundColor: '#f59e0b', // amber-500, the Pending tile colour on the console
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#ffffff',
   },
   childrenContainer: {
     borderLeftWidth: 2,

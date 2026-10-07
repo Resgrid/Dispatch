@@ -114,6 +114,8 @@
     "close_call_error": "Einsatz konnte nicht geschlossen werden",
     "close_call_note": "Abschlussnotiz",
     "close_call_note_placeholder": "Geben Sie eine Notiz zum Abschluss des Einsatzes ein",
+    "close_call_notify": "Alle Beteiligten des Einsatzes benachrichtigen",
+    "close_call_notify_hint": "Informiert alarmierte Einsatzkräfte, Gruppen, Rollen, Einheiten und die Einsatzleitung, dass der Einsatz geschlossen ist.",
     "close_call_success": "Einsatz erfolgreich geschlossen",
     "close_call_type": "Abschlussart",
     "close_call_type_placeholder": "Abschlussart auswählen",
@@ -215,7 +217,9 @@
     "map_destination": "Ziel",
     "dispatch_more": "Zusätzliche Ressourcen alarmieren",
     "dispatch_more_success": "Ressourcen alarmiert und benachrichtigt",
-    "dispatch_more_error": "Ressourcen konnten nicht alarmiert werden"
+    "dispatch_more_error": "Ressourcen konnten nicht alarmiert werden",
+    "pending_banner_title": "Ausstehend — noch nicht disponiert",
+    "pending_banner_description": "Dieser Einsatz ist gespeichert, aber niemand wurde benachrichtigt. Wählen Sie die Empfänger und disponieren Sie ihn, wenn er bereit ist."
   },
   "calls": {
     "destination": "Ziel",
@@ -383,7 +387,16 @@
       "audio_name": "Audioclip"
     },
     "required_fields_missing": "Ihre Abteilung benötigt diese Felder, bevor ein Einsatz angelegt werden kann: {{fields}}",
-    "field_policy_loading": "Die Einsatzeinstellungen Ihrer Abteilung werden noch geladen, bitte versuchen Sie es gleich erneut"
+    "field_policy_loading": "Die Einsatzeinstellungen Ihrer Abteilung werden noch geladen, bitte versuchen Sie es gleich erneut",
+    "save_as_pending": "Als ausstehend speichern (noch nicht disponieren)",
+    "save_as_pending_description": "Der Einsatz wird gespeichert und nummeriert, aber niemand wird benachrichtigt und die Einsatz-Apps sehen ihn nicht. Ausgewählte Empfänger bleiben als vorgeschlagene Disposition erhalten; disponieren Sie ihn später unter „Ausstehende Einsätze“.",
+    "save_pending_call": "Ausstehenden Einsatz speichern",
+    "pending_saved": "Einsatz als ausstehend gespeichert",
+    "dispatch_now": "Jetzt disponieren",
+    "dispatch_now_confirm": "Diesen Einsatz jetzt disponieren? Alle Empfänger auf seiner Dispositionsliste werden sofort benachrichtigt.",
+    "dispatch_now_success": "Einsatz disponiert",
+    "dispatch_now_error": "Einsatz konnte nicht disponiert werden",
+    "dispatch_now_no_recipients": "Wählen Sie mindestens einen Empfänger, an den dieser Einsatz disponiert werden soll."
   },
   "chat": {
     "title": "Chat",
@@ -833,7 +846,10 @@
       "update_status": "Status aktualisieren",
       "update_staffing": "Besetzung aktualisieren",
       "no_statuses_available": "Keine Status verfügbar",
-      "no_staffings_available": "Keine Besetzungsstufen verfügbar"
+      "no_staffings_available": "Keine Besetzungsstufen verfügbar",
+      "no_active_calls": "Keine aktiven Einsätze",
+      "no_stations_available": "Keine Wachen verfügbar",
+      "no_destinations_available": "Keine Ziele verfügbar"
     },
     "unit_actions_panel": {
       "status": "Status",
@@ -882,7 +898,9 @@
     "single_list": "Einzelne Liste",
     "resources": "Ressourcen",
     "search_resources_placeholder": "Ressourcen suchen...",
-    "no_resources": "Keine Ressourcen"
+    "no_resources": "Keine Ressourcen",
+    "view_pending_calls": "Ausstehende Einsätze anzeigen",
+    "view_scheduled_calls": "Geplante Einsätze anzeigen"
   },
   "form": {
     "invalid_url": "Bitte geben Sie eine gültige URL ein, die mit http:// oder https:// beginnt",
@@ -1124,7 +1142,8 @@
     "weatherAlerts": "Wetterwarnungen",
     "incident_command": "Einsatzleitung",
     "chat": "Chat",
-    "assistant": "Assistent"
+    "assistant": "Assistent",
+    "pending_calls": "Ausstehende Einsätze"
   },
   "mfa": {
     "account": {
@@ -1820,6 +1839,18 @@
     "table_address": "Adresse",
     "table_scheduled": "Geplant für"
   },
+  "pending_calls": {
+    "title": "Ausstehende Einsätze",
+    "loading": "Ausstehende Einsätze werden geladen...",
+    "no_pending_calls": "Keine ausstehenden Einsätze",
+    "no_pending_calls_description": "Derzeit warten keine Einsätze auf die Disposition.",
+    "search": "Ausstehende Einsätze suchen...",
+    "table_received": "Eingegangen",
+    "cancel_call": "Einsatz stornieren",
+    "cancel_confirm": "Diesen ausstehenden Einsatz stornieren? Er wird als storniert abgeschlossen, ohne dass jemand benachrichtigt wird.",
+    "cancel_success": "Ausstehender Einsatz storniert",
+    "cancel_error": "Ausstehender Einsatz konnte nicht storniert werden"
+  },
   "settings": {
     "about": "Über",
     "account": "Konto",
@@ -2244,7 +2275,10 @@
       "2": "Abgebrochen",
       "3": "Unbegründet",
       "4": "Begründet",
-      "5": "Geringfügig"
+      "5": "Geringfügig",
+      "6": "Übergeben",
+      "7": "Fehlalarm",
+      "8": "Ausstehend"
     }
   }
 }

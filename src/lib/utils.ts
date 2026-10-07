@@ -7,75 +7,122 @@ import { Env } from './env';
 import { getBaseApiUrl } from './storage/app';
 
 /**
- * Call State Constants
- * API returns numeric state values:
- * 0 = Active, 1 = Open, 2 = Pending, 3 = Scheduled, 4 = Closed
+ * Call states, as Core's CallStates enum reports them in CallResultData.State.
+ *
+ * Closing a call stores the close type as its state, so every value from Closed (1) to False Alarm (7) is
+ * a closed call. Pending (8) is a call saved for a dispatcher to pick up later: numbered, nobody notified,
+ * not on the field apps. There is no scheduled state -- a scheduled call is Active with a future dispatch
+ * time (see isCallAwaitingScheduledDispatch).
  */
 export const CallState = {
   ACTIVE: 0,
-  OPEN: 1,
-  PENDING: 2,
-  SCHEDULED: 3,
-  CLOSED: 4,
+  CLOSED: 1,
+  CANCELLED: 2,
+  UNFOUNDED: 3,
+  FOUNDED: 4,
+  MINOR: 5,
+  TRANSFERRED: 6,
+  FALSE_ALARM: 7,
+  PENDING: 8,
 } as const;
 
+/** Names older API versions send instead of a number, for each closed state. */
+const CLOSED_CALL_STATE_NAMES = new Set(['closed', 'cancelled', 'canceled', 'unfounded', 'founded', 'minor', 'transferred', 'false alarm', 'falsealarm', 'false_alarm']);
+
 /**
- * Check if a call state represents an active/open call
- * Handles both numeric (0, 1) and string ('Active', 'Open', '0', '1') values
+ * Splits a call state into its numeric value (a number or a numeric string) or its lower-cased name
+ * (older API versions). Exactly one of the two is set for a usable value.
+ */
+function readCallState(state: number | string | undefined | null): { value: number | null; name: string | null } {
+  if (state === null || state === undefined) return { value: null, name: null };
+
+  if (typeof state === 'number') {
+    return { value: Number.isInteger(state) ? state : null, name: null };
+  }
+
+  const stateStr = String(state).toLowerCase().trim();
+  if (/^\d+$/.test(stateStr)) {
+    return { value: Number(stateStr), name: null };
+  }
+
+  return { value: null, name: stateStr || null };
+}
+
+/**
+ * Whether a call is active (dispatched and open). Only State 0 is: a pending call (8) has not been
+ * dispatched, and 1-7 are closed. The names 'Active' and 'Open' from older API versions also count.
  */
 export function isCallActive(state: number | string | undefined | null): boolean {
-  if (state === null || state === undefined) return false;
-
-  // Check numeric values
-  if (typeof state === 'number') {
-    return state === CallState.ACTIVE || state === CallState.OPEN;
-  }
-
-  // Check string values (case-insensitive)
-  const stateStr = String(state).toLowerCase().trim();
-  return stateStr === 'active' || stateStr === 'open' || stateStr === '0' || stateStr === '1';
+  const { value, name } = readCallState(state);
+  if (value !== null) return value === CallState.ACTIVE;
+  return name === 'active' || name === 'open';
 }
 
 /**
- * Check if a call state represents a pending call
+ * Whether a call is Pending (State 8): saved and numbered but not dispatched, waiting for a dispatcher.
  */
 export function isCallPending(state: number | string | undefined | null): boolean {
-  if (state === null || state === undefined) return false;
-
-  if (typeof state === 'number') {
-    return state === CallState.PENDING;
-  }
-
-  const stateStr = String(state).toLowerCase().trim();
-  return stateStr === 'pending' || stateStr === '2';
+  const { value, name } = readCallState(state);
+  if (value !== null) return value === CallState.PENDING;
+  return name === 'pending';
 }
 
 /**
- * Check if a call state represents a scheduled call
+ * Whether a call state names a scheduled call. Core has no scheduled state -- only the name 'Scheduled'
+ * from older API versions matches here. For Core calls use isCallAwaitingScheduledDispatch, which reads
+ * the dispatch time.
  */
 export function isCallScheduled(state: number | string | undefined | null): boolean {
-  if (state === null || state === undefined) return false;
-
-  if (typeof state === 'number') {
-    return state === CallState.SCHEDULED;
-  }
-
-  const stateStr = String(state).toLowerCase().trim();
-  return stateStr === 'scheduled' || stateStr === '3';
+  const { name } = readCallState(state);
+  return name === 'scheduled';
 }
 
 /**
- * Check if a call state represents a closed call
+ * Whether an active call is still waiting for its scheduled dispatch. Core keeps a scheduled call in the
+ * Active state (State 0) from the moment it is created and reports its dispatch time as DispatchedOnUtc
+ * (ScheduledOnUtc on newer servers); until that time arrives nobody has been notified. The value can
+ * arrive without a zone designator, so a bare timestamp is read as UTC.
+ */
+export function isCallAwaitingScheduledDispatch(
+  call: { State: number | string; DispatchedOnUtc?: string | null; ScheduledOnUtc?: string | null },
+  now: number = Date.now()
+): boolean {
+  if (!isCallActive(call.State)) return false;
+
+  const raw = (call.ScheduledOnUtc || call.DispatchedOnUtc || '').trim();
+  if (!raw) return false;
+
+  const hasZone = /([zZ]|[+-]\d{2}:?\d{2})$/.test(raw);
+  const dispatchAt = Date.parse(hasZone ? raw : `${raw}Z`);
+
+  return Number.isFinite(dispatchAt) && dispatchAt > now;
+}
+
+/**
+ * Whether a dispatcher can send a call out right now (Calls/DispatchCallNow): a Pending call, or a
+ * scheduled call whose dispatch time has not arrived yet.
+ */
+export function canDispatchCallNow(call: { State: number | string; DispatchedOnUtc?: string | null; ScheduledOnUtc?: string | null }, now: number = Date.now()): boolean {
+  return isCallPending(call.State) || isCallAwaitingScheduledDispatch(call, now);
+}
+
+/**
+ * The scheduled dispatch time of a call, as the department-local value when the server sent one. Core
+ * reports a scheduled call's dispatch time as DispatchedOn / DispatchedOnUtc (ScheduledOn on newer
+ * servers). Empty when the call was never scheduled.
+ */
+export function getCallScheduledDispatchTime(call: { ScheduledOn?: string | null; ScheduledOnUtc?: string | null; DispatchedOn?: string | null; DispatchedOnUtc?: string | null }): string {
+  return call.ScheduledOn || call.DispatchedOn || call.ScheduledOnUtc || call.DispatchedOnUtc || '';
+}
+
+/**
+ * Whether a call is closed, under any close type: Closed, Cancelled, Unfounded, Founded, Minor,
+ * Transferred or False Alarm (States 1-7). Active (0) and Pending (8) calls are open.
  */
 export function isCallClosed(state: number | string | undefined | null): boolean {
-  if (state === null || state === undefined) return false;
-
-  if (typeof state === 'number') {
-    return state === CallState.CLOSED;
-  }
-
-  const stateStr = String(state).toLowerCase().trim();
-  return stateStr === 'closed' || stateStr === '4';
+  const { value, name } = readCallState(state);
+  if (value !== null) return value >= CallState.CLOSED && value <= CallState.FALSE_ALARM;
+  return name !== null && CLOSED_CALL_STATE_NAMES.has(name);
 }
 
 export function openLinkInBrowser(url: string) {

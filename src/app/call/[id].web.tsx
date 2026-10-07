@@ -2,10 +2,12 @@ import DOMPurify from 'dompurify';
 import { type Href, Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   BuildingIcon,
+  CalendarClockIcon,
   ClockIcon,
   EditIcon,
   FileTextIcon,
   HistoryIcon,
+  HourglassIcon,
   ImageIcon,
   InfoIcon,
   LoaderIcon,
@@ -14,6 +16,7 @@ import {
   NetworkIcon,
   PaperclipIcon,
   RouteIcon,
+  SendIcon,
   ShieldCheckIcon,
   UserIcon,
   UserPlusIcon,
@@ -47,7 +50,7 @@ import { useAnalytics } from '@/hooks/use-analytics';
 import { buildAddResourcesUpdateRequest, EMPTY_DISPATCH_SELECTION } from '@/lib/dispatch-helpers';
 import { logger } from '@/lib/logging';
 import { openMapsWithDirections } from '@/lib/navigation';
-import { formatDateForDisplay, isCallActive, parseDateISOString } from '@/lib/utils';
+import { formatDateForDisplay, getCallScheduledDispatchTime, isCallActive, isCallAwaitingScheduledDispatch, isCallPending, parseDateISOString } from '@/lib/utils';
 import { CheckInTimerStatus } from '@/models/v4/checkIn/checkInEnums';
 import { useCoreStore } from '@/stores/app/core-store';
 import { useLocationStore } from '@/stores/app/location-store';
@@ -68,6 +71,7 @@ import CallNotesModal from '../../components/calls/call-notes-modal';
 import { CloseCallBottomSheet } from '../../components/calls/close-call-bottom-sheet';
 import { DispatchSelectionModal } from '../../components/calls/dispatch-selection-modal';
 import { RescheduleCallSheet } from '../../components/calls/reschedule-call-sheet';
+import { useCallDispatchNow } from '../../components/calls/use-call-dispatch-now';
 import { StatusBottomSheet } from '../../components/status/status-bottom-sheet';
 
 type TabKey = 'info' | 'contact' | 'protocols' | 'dispatched' | 'timeline' | 'video' | 'checkin' | 'command' | 'site' | 'history';
@@ -136,7 +140,14 @@ export default function CallDetailWeb() {
     })();
   };
 
-  const isScheduledPending = !!(call?.ScheduledOn || call?.ScheduledOnUtc) && !call?.DispatchedOn;
+  // A scheduled call stays Active (0) with a future dispatch time until it goes out; a Pending call (8) has
+  // been saved for a dispatcher to send. Either can be dispatched right now.
+  const isScheduledPending = !!call && isCallAwaitingScheduledDispatch(call);
+  const isPendingCall = !!call && isCallPending(call.State);
+  const { openDispatchPicker, confirmDispatchNow, busyCallId, dispatchPicker } = useCallDispatchNow({
+    onDispatched: (dispatchedCallId) => fetchCallDetail(dispatchedCallId),
+  });
+  const isDispatchingNow = !!call && busyCallId === call.CallId;
 
   const handleSetActive = async () => {
     if (!call) return;
@@ -313,9 +324,9 @@ export default function CallDetailWeb() {
         return (
           <View style={styles.tabContent}>
             <InfoRow label={t('call_detail.priority')} value={callPriority?.Name || '-'} valueColor={callPriority?.Color} isDark={isDark} />
-            <InfoRow label={t('call_detail.timestamp')} value={formatDateForDisplay(parseDateISOString(call.LoggedOn), 'MMM d, yyyy h:mm a')} isDark={isDark} />
-            {call.ScheduledOn || call.ScheduledOnUtc ? (
-              <InfoRow label={t('call_detail.scheduled_on')} value={formatDateForDisplay(parseDateISOString(call.ScheduledOn || call.ScheduledOnUtc), 'MMM d, yyyy h:mm a')} valueColor="#d97706" isDark={isDark} />
+            <InfoRow label={t('call_detail.timestamp')} value={formatDateForDisplay(parseDateISOString(call.LoggedOn), 'MMM dd, yyyy hh:mm t')} isDark={isDark} />
+            {getCallScheduledDispatchTime(call) ? (
+              <InfoRow label={t('call_detail.scheduled_on')} value={formatDateForDisplay(parseDateISOString(getCallScheduledDispatchTime(call)), 'MMM dd, yyyy hh:mm t')} valueColor="#d97706" isDark={isDark} />
             ) : null}
             <InfoRow label={t('call_detail.type')} value={call.Type || '-'} isDark={isDark} />
             <InfoRow label={t('call_detail.address')} value={call.Address || '-'} isDark={isDark} />
@@ -485,7 +496,7 @@ export default function CallDetailWeb() {
                 <Text style={StyleSheet.flatten([styles.callName, isDark ? styles.callNameDark : styles.callNameLight])}>{call.Name}</Text>
               </View>
               <View style={styles.headerActions}>
-                {activeUnit && activeCall?.CallId !== call.CallId ? (
+                {activeUnit && activeCall?.CallId !== call.CallId && !isPendingCall ? (
                   <Pressable style={StyleSheet.flatten([styles.setActiveButton, isSettingActive ? styles.setActiveButtonDisabled : {}])} onPress={handleSetActive} disabled={isSettingActive}>
                     {isSettingActive ? <LoaderIcon size={16} color="#fff" /> : null}
                     <Text style={styles.setActiveButtonText}>{isSettingActive ? t('call_detail.setting_active') : t('call_detail.set_active')}</Text>
@@ -514,6 +525,34 @@ export default function CallDetailWeb() {
             {/* Renders only once the call has been escalated past the first alarm. */}
             <AlarmLevelBadge alarmLevel={call.AlarmLevel} />
           </View>
+
+          {/* Not dispatched yet: a Pending call waiting for a dispatcher, or a scheduled call before its time. */}
+          {isPendingCall || isScheduledPending ? (
+            <View
+              style={StyleSheet.flatten([styles.dispatchBanner, isPendingCall ? (isDark ? styles.pendingBannerDark : styles.pendingBannerLight) : isDark ? styles.scheduledBannerDark : styles.scheduledBannerLight])}
+              testID={isPendingCall ? 'pending-call-banner' : 'scheduled-call-banner'}
+            >
+              {isPendingCall ? <HourglassIcon size={20} color={isDark ? '#fbbf24' : '#b45309'} /> : <CalendarClockIcon size={20} color={isDark ? '#38bdf8' : '#0369a1'} />}
+              <View style={styles.dispatchBannerTextContainer}>
+                <Text style={StyleSheet.flatten([styles.dispatchBannerTitle, { color: isPendingCall ? (isDark ? '#fbbf24' : '#92400e') : isDark ? '#7dd3fc' : '#075985' }])}>
+                  {isPendingCall ? t('call_detail.pending_banner_title') : `${t('scheduled_calls.scheduled_for')}: ${formatDateForDisplay(parseDateISOString(getCallScheduledDispatchTime(call)), 'MMM dd, yyyy hh:mm t')}`}
+                </Text>
+                {isPendingCall ? <Text style={StyleSheet.flatten([styles.dispatchBannerDescription, { color: isDark ? '#d1d5db' : '#78350f' }])}>{t('call_detail.pending_banner_description')}</Text> : null}
+              </View>
+              {canUserCreateCalls ? (
+                <Pressable
+                  style={StyleSheet.flatten([styles.dispatchBannerButton, isDispatchingNow ? styles.setActiveButtonDisabled : {}])}
+                  onPress={() => (isPendingCall ? void openDispatchPicker(call.CallId, callExtraData?.Dispatches) : confirmDispatchNow(call.CallId))}
+                  disabled={isDispatchingNow}
+                  accessibilityRole="button"
+                  testID={isPendingCall ? 'pending-call-dispatch-button' : 'scheduled-call-dispatch-now-button'}
+                >
+                  {isDispatchingNow ? <LoaderIcon size={16} color="#fff" /> : <SendIcon size={16} color="#fff" />}
+                  <Text style={styles.dispatchBannerButtonText}>{isPendingCall ? t('dispatch.dispatch') : t('calls.dispatch_now')}</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
 
           {/* Main Content - Two Column on Wide Screens */}
           <View style={isWideScreen ? styles.twoColumnLayout : styles.singleColumnLayout}>
@@ -607,6 +646,7 @@ export default function CallDetailWeb() {
       <RescheduleCallSheet isOpen={isRescheduleModalOpen} onClose={() => setIsRescheduleModalOpen(false)} callId={callId} />
       <StatusBottomSheet />
       <DispatchSelectionModal isVisible={isDispatchModalOpen} onClose={() => setIsDispatchModalOpen(false)} onConfirm={handleDispatchAdditional} initialSelection={EMPTY_DISPATCH_SELECTION} />
+      {dispatchPicker}
       <CallDetailActionSheet />
     </>
   );
@@ -721,6 +761,56 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   setActiveButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  dispatchBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 16,
+    marginBottom: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  pendingBannerLight: {
+    backgroundColor: '#fffbeb', // amber-50
+    borderColor: '#fcd34d', // amber-300
+  },
+  pendingBannerDark: {
+    backgroundColor: '#451a03', // amber-950
+    borderColor: '#b45309', // amber-700
+  },
+  scheduledBannerLight: {
+    backgroundColor: '#f0f9ff', // sky-50
+    borderColor: '#7dd3fc', // sky-300
+  },
+  scheduledBannerDark: {
+    backgroundColor: '#082f49', // sky-950
+    borderColor: '#0369a1', // sky-700
+  },
+  dispatchBannerTextContainer: {
+    flex: 1,
+  },
+  dispatchBannerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  dispatchBannerDescription: {
+    fontSize: 14,
+    marginTop: 4,
+  },
+  dispatchBannerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: '#2563eb', // blue-600
+  },
+  dispatchBannerButtonText: {
     color: '#ffffff',
     fontSize: 14,
     fontWeight: '600',

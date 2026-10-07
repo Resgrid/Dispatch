@@ -13,7 +13,7 @@ import { FlatList } from '@/components/ui/flat-list';
 import { FocusAwareStatusBar } from '@/components/ui/focus-aware-status-bar';
 import { Input, InputField, InputIcon, InputSlot } from '@/components/ui/input';
 import { useAnalytics } from '@/hooks/use-analytics';
-import { CallState } from '@/lib/utils';
+import { isCallAwaitingScheduledDispatch } from '@/lib/utils';
 import { type CallResultData } from '@/models/v4/calls/callResultData';
 import { useCallsStore } from '@/stores/calls/store';
 import { securityStore } from '@/stores/security/store';
@@ -61,10 +61,12 @@ export default function Calls() {
     router.push('/call/new/' as Href);
   };
 
-  // Filter calls: exclude scheduled calls and apply search
+  // Filter calls: exclude scheduled calls that have not gone out yet (Core keeps them Active with a future
+  // dispatch time; they are listed on Scheduled Calls) and apply search
   const filteredCalls = useMemo(() => {
     const query = searchQuery.toLowerCase();
-    return calls.filter((call) => call.State !== CallState.SCHEDULED).filter((call) => call.CallId.toLowerCase().includes(query) || (call.Nature?.toLowerCase() || '').includes(query));
+    const now = Date.now();
+    return calls.filter((call) => !isCallAwaitingScheduledDispatch(call, now)).filter((call) => call.CallId.toLowerCase().includes(query) || (call.Nature?.toLowerCase() || '').includes(query));
   }, [calls, searchQuery]);
 
   // O(1) priority lookup per row instead of an O(n) find inside renderItem

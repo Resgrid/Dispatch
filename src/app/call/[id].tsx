@@ -1,9 +1,11 @@
 import { type Href, Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   BuildingIcon,
+  CalendarClockIcon,
   ClockIcon,
   FileTextIcon,
   HistoryIcon,
+  HourglassIcon,
   ImageIcon,
   InfoIcon,
   LoaderIcon,
@@ -12,6 +14,7 @@ import {
   NetworkIcon,
   PaperclipIcon,
   RouteIcon,
+  SendIcon,
   ShieldCheckIcon,
   UserIcon,
   UserPlusIcon,
@@ -53,7 +56,7 @@ import { isFieldRedacted, ProtectedFieldIds } from '@/lib/data-protection/redact
 import { buildAddResourcesUpdateRequest, EMPTY_DISPATCH_SELECTION } from '@/lib/dispatch-helpers';
 import { logger } from '@/lib/logging';
 import { openMapsWithDirections } from '@/lib/navigation';
-import { formatDateForDisplay, isCallActive, parseDateISOString } from '@/lib/utils';
+import { formatDateForDisplay, getCallScheduledDispatchTime, isCallActive, isCallAwaitingScheduledDispatch, isCallPending, parseDateISOString } from '@/lib/utils';
 import { CheckInTimerStatus } from '@/models/v4/checkIn/checkInEnums';
 import { useCoreStore } from '@/stores/app/core-store';
 import { useLocationStore } from '@/stores/app/location-store';
@@ -74,6 +77,7 @@ import CallNotesModal from '../../components/calls/call-notes-modal';
 import { CloseCallBottomSheet } from '../../components/calls/close-call-bottom-sheet';
 import { DispatchSelectionModal } from '../../components/calls/dispatch-selection-modal';
 import { RescheduleCallSheet } from '../../components/calls/reschedule-call-sheet';
+import { useCallDispatchNow } from '../../components/calls/use-call-dispatch-now';
 import { StatusBottomSheet } from '../../components/status/status-bottom-sheet';
 
 export default function CallDetail() {
@@ -213,7 +217,14 @@ export default function CallDetail() {
     }
   };
 
-  const isScheduledPending = !!(call?.ScheduledOn || call?.ScheduledOnUtc) && !call?.DispatchedOn;
+  // A scheduled call stays Active (0) with a future dispatch time until it goes out; a Pending call (8) has
+  // been saved for a dispatcher to send. Either can be dispatched right now.
+  const isScheduledPending = !!call && isCallAwaitingScheduledDispatch(call);
+  const isPendingCall = !!call && isCallPending(call.State);
+  const { openDispatchPicker, confirmDispatchNow, busyCallId, dispatchPicker } = useCallDispatchNow({
+    onDispatched: (dispatchedCallId) => fetchCallDetail(dispatchedCallId),
+  });
+  const isDispatchingNow = !!call && busyCallId === call.CallId;
 
   // Initialize the call detail menu hook
   const { HeaderRightMenu, CallDetailActionSheet } = useCallDetailMenu({
@@ -389,10 +400,10 @@ export default function CallDetail() {
                 <Text className="text-sm text-gray-500">{t('call_detail.timestamp')}</Text>
                 <Text className="font-medium">{formatDateForDisplay(parseDateISOString(call.LoggedOn), 'MMM d, h:mm a')}</Text>
               </Box>
-              {call.ScheduledOn || call.ScheduledOnUtc ? (
+              {getCallScheduledDispatchTime(call) ? (
                 <Box className="border-b border-outline-100 pb-2">
                   <Text className="text-sm text-gray-500">{t('call_detail.scheduled_on')}</Text>
-                  <Text className="font-medium text-amber-600 dark:text-amber-400">{formatDateForDisplay(parseDateISOString(call.ScheduledOn || call.ScheduledOnUtc), 'MMM d, yyyy h:mm a')}</Text>
+                  <Text className="font-medium text-amber-600 dark:text-amber-400">{formatDateForDisplay(parseDateISOString(getCallScheduledDispatchTime(call)), 'MMM dd, yyyy hh:mm t')}</Text>
                 </Box>
               ) : null}
               <Box className="border-b border-outline-100 pb-2">
@@ -723,7 +734,7 @@ export default function CallDetail() {
               </Heading>
             )}
             {/* Show "Set Active" button if this call is not the active call and there is an active unit */}
-            {activeUnit && activeCall?.CallId !== call.CallId && (
+            {activeUnit && activeCall?.CallId !== call.CallId && !isPendingCall && (
               <Button variant="solid" size="sm" onPress={handleSetActive} disabled={isSettingActive} className={`${isSettingActive ? 'bg-primary-400 opacity-80' : 'bg-primary-500'} shadow-lg`}>
                 {isSettingActive && <ButtonIcon as={LoaderIcon} className="mr-1 animate-spin text-white" />}
                 <ButtonText className="font-medium text-white">{isSettingActive ? t('call_detail.setting_active') : t('call_detail.set_active')}</ButtonText>
@@ -770,6 +781,38 @@ export default function CallDetail() {
             )}
           </VStack>
         </Box>
+
+        {/* Not dispatched yet: a Pending call waiting for a dispatcher, or a scheduled call before its time. */}
+        {isPendingCall || isScheduledPending ? (
+          <Box
+            className={`mx-4 mt-3 rounded-xl border p-4 ${isPendingCall ? 'border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950' : 'border-sky-300 bg-sky-50 dark:border-sky-700 dark:bg-sky-950'}`}
+            testID={isPendingCall ? 'pending-call-banner' : 'scheduled-call-banner'}
+          >
+            <HStack className="items-center" space="md">
+              {isPendingCall ? <HourglassIcon size={20} color={colorScheme === 'dark' ? '#fbbf24' : '#b45309'} /> : <CalendarClockIcon size={20} color={colorScheme === 'dark' ? '#38bdf8' : '#0369a1'} />}
+              <VStack className="flex-1">
+                <Text className={`font-bold ${isPendingCall ? 'text-amber-800 dark:text-amber-300' : 'text-sky-800 dark:text-sky-300'}`}>
+                  {isPendingCall ? t('call_detail.pending_banner_title') : `${t('scheduled_calls.scheduled_for')}: ${formatDateForDisplay(parseDateISOString(getCallScheduledDispatchTime(call)), 'MMM dd, yyyy hh:mm t')}`}
+                </Text>
+                {isPendingCall ? <Text className="mt-1 text-sm text-amber-900 dark:text-gray-300">{t('call_detail.pending_banner_description')}</Text> : null}
+              </VStack>
+            </HStack>
+            {canUserCreateCalls ? (
+              <Button
+                variant="solid"
+                action="primary"
+                size="sm"
+                className="mt-3 self-start"
+                isDisabled={isDispatchingNow}
+                onPress={() => (isPendingCall ? void openDispatchPicker(call.CallId, callExtraData?.Dispatches) : confirmDispatchNow(call.CallId))}
+                testID={isPendingCall ? 'pending-call-dispatch-button' : 'scheduled-call-dispatch-now-button'}
+              >
+                <ButtonIcon as={isDispatchingNow ? LoaderIcon : SendIcon} className="mr-2" />
+                <ButtonText>{isPendingCall ? t('dispatch.dispatch') : t('calls.dispatch_now')}</ButtonText>
+              </Button>
+            ) : null}
+          </Box>
+        ) : null}
 
         {/* Map (toggles between the call address and the destination POI when one exists) */}
         <Box className="mx-4 mt-3 overflow-hidden rounded-xl shadow-xs">
@@ -863,6 +906,9 @@ export default function CallDetail() {
 
       {/* Dispatch additional resources */}
       <DispatchSelectionModal isVisible={isDispatchModalOpen} onClose={() => setIsDispatchModalOpen(false)} onConfirm={handleDispatchAdditional} initialSelection={EMPTY_DISPATCH_SELECTION} />
+
+      {/* Dispatch a pending call (picker preselected with its proposed recipients) */}
+      {dispatchPicker}
 
       {/* Call Detail Menu ActionSheet */}
       <CallDetailActionSheet />

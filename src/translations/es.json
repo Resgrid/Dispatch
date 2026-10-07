@@ -110,6 +110,8 @@
     "close_call_error": "Error al cerrar la llamada",
     "close_call_note": "Nota de cierre",
     "close_call_note_placeholder": "Introduce una nota sobre el cierre de la llamada",
+    "close_call_notify": "Notificar a todos los de la llamada",
+    "close_call_notify_hint": "Avisa al personal, los grupos, los roles y las unidades despachados y al equipo de mando de que la llamada está cerrada.",
     "close_call_success": "Llamada cerrada con éxito",
     "close_call_type": "Tipo de cierre",
     "close_call_type_placeholder": "Selecciona el tipo de cierre",
@@ -215,7 +217,9 @@
     "map_destination": "Destino",
     "dispatch_more": "Despachar recursos adicionales",
     "dispatch_more_success": "Recursos despachados y notificados",
-    "dispatch_more_error": "No se pudieron despachar los recursos"
+    "dispatch_more_error": "No se pudieron despachar los recursos",
+    "pending_banner_title": "Pendiente — aún no despachada",
+    "pending_banner_description": "Esta llamada está guardada pero no se ha notificado a nadie. Elija a quién enviar y despáchela cuando esté lista."
   },
   "calls": {
     "address": "Dirección",
@@ -383,7 +387,16 @@
       "audio_name": "Clip de audio"
     },
     "required_fields_missing": "Tu departamento exige estos campos antes de poder crear una llamada: {{fields}}",
-    "field_policy_loading": "Aún se están cargando los ajustes de llamadas de tu departamento, inténtalo de nuevo en un momento"
+    "field_policy_loading": "Aún se están cargando los ajustes de llamadas de tu departamento, inténtalo de nuevo en un momento",
+    "save_as_pending": "Guardar como pendiente (no despachar todavía)",
+    "save_as_pending_description": "La llamada se guarda y se numera, pero no se notifica a nadie y las aplicaciones de campo no la ven. Los destinatarios que elija se conservan como despacho propuesto; despáchela más tarde desde Llamadas pendientes.",
+    "save_pending_call": "Guardar llamada pendiente",
+    "pending_saved": "Llamada guardada como pendiente",
+    "dispatch_now": "Despachar ahora",
+    "dispatch_now_confirm": "¿Despachar esta llamada ahora? Todos los de su lista de despacho serán notificados de inmediato.",
+    "dispatch_now_success": "Llamada despachada",
+    "dispatch_now_error": "No se pudo despachar la llamada",
+    "dispatch_now_no_recipients": "Elija al menos un destinatario al que despachar esta llamada."
   },
   "chat": {
     "title": "Chat",
@@ -833,7 +846,10 @@
       "update_status": "Actualizar Estado",
       "update_staffing": "Actualizar Dotación",
       "no_statuses_available": "No hay estados disponibles",
-      "no_staffings_available": "No hay niveles de dotación disponibles"
+      "no_staffings_available": "No hay niveles de dotación disponibles",
+      "no_active_calls": "No hay llamadas activas",
+      "no_stations_available": "No hay estaciones disponibles",
+      "no_destinations_available": "No hay destinos disponibles"
     },
     "unit_actions_panel": {
       "status": "Estado",
@@ -882,7 +898,9 @@
     "single_list": "Lista única",
     "resources": "Recursos",
     "search_resources_placeholder": "Buscar recursos...",
-    "no_resources": "No hay recursos"
+    "no_resources": "No hay recursos",
+    "view_pending_calls": "Ver llamadas pendientes",
+    "view_scheduled_calls": "Ver llamadas programadas"
   },
   "form": {
     "invalid_url": "Por favor, introduce una URL válida que comience con http:// o https://",
@@ -1124,7 +1142,8 @@
     "weatherAlerts": "Alertas Meteorológicas",
     "incident_command": "Mando del incidente",
     "chat": "Chat",
-    "assistant": "Asistente"
+    "assistant": "Asistente",
+    "pending_calls": "Llamadas pendientes"
   },
   "mfa": {
     "account": {
@@ -1820,6 +1839,18 @@
     "table_address": "Dirección",
     "table_scheduled": "Programada para"
   },
+  "pending_calls": {
+    "title": "Llamadas pendientes",
+    "loading": "Cargando llamadas pendientes...",
+    "no_pending_calls": "No hay llamadas pendientes",
+    "no_pending_calls_description": "No hay llamadas esperando a ser despachadas.",
+    "search": "Buscar llamadas pendientes...",
+    "table_received": "Recibida",
+    "cancel_call": "Cancelar llamada",
+    "cancel_confirm": "¿Cancelar esta llamada pendiente? Se cerrará como Cancelada sin notificar a nadie.",
+    "cancel_success": "Llamada pendiente cancelada",
+    "cancel_error": "No se pudo cancelar la llamada pendiente"
+  },
   "settings": {
     "about": "Acerca de",
     "account": "Cuenta",
@@ -2244,7 +2275,10 @@
       "2": "Cancelada",
       "3": "Infundada",
       "4": "Fundada",
-      "5": "Menor"
+      "5": "Menor",
+      "6": "Transferida",
+      "7": "Falsa alarma",
+      "8": "Pendiente"
     }
   }
 }

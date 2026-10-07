@@ -16,7 +16,9 @@ export class CallResultData {
   public DestinationLongitude: number | null = null;
   public Geolocation: string = '';
   public LoggedOn: string = '';
-  // State: 0 = Active, 1 = Open, 2 = Pending, 3 = Scheduled, 4 = Closed (can be number or string depending on API version)
+  // State (Core CallStates): 0 = Active, 1 = Closed, 2 = Cancelled, 3 = Unfounded, 4 = Founded, 5 = Minor,
+  // 6 = Transferred, 7 = False Alarm, 8 = Pending (saved, not dispatched). A number, or a string on older API
+  // versions. A scheduled call is Active with a future DispatchedOnUtc; see isCallAwaitingScheduledDispatch.
   public State: number | string = 0;
   public Number: string = '';
   public NotesCount: number = 0;

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 import { getPendingScheduledCalls } from '@/api/calls/calls';
 import { logger } from '@/lib/logging';
+import { singleFlight } from '@/lib/single-flight';
 import { type CallPriorityResultData } from '@/models/v4/callPriorities/callPriorityResultData';
 import { type CallResultData } from '@/models/v4/calls/callResultData';
 
@@ -28,7 +29,8 @@ const initialState = {
 export const useScheduledCallsStore = create<ScheduledCallsState>((set) => ({
   ...initialState,
 
-  fetchScheduledCalls: async () => {
+  // Single-flight: the console and the scheduled list both refresh this on every calls push from SignalR.
+  fetchScheduledCalls: singleFlight(async () => {
     set({ isLoading: true, error: null });
 
     try {
@@ -58,7 +60,7 @@ export const useScheduledCallsStore = create<ScheduledCallsState>((set) => ({
         isLoading: false,
       });
     }
-  },
+  }),
 
   getPriorityForCall: (priorityId: number) => {
     return useCallsStore.getState().callPriorities.find((p) => p.Id === priorityId);

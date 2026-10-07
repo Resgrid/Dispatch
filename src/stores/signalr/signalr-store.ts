@@ -326,6 +326,26 @@ function stopUpdateRejoinRetry(): void {
   }
 }
 
+// Whether the update hub has joined its department group before in this session. Any later join
+// (automatic reconnect, resume from background, unlock) follows a gap whose pushes were lost.
+let updateHubHasJoined = false;
+
+/**
+ * Records a department-group join. On a re-join it returns the state that nudges every board listener
+ * into one refetch, as if a calls, units and personnel push had each just arrived: the hub replays
+ * nothing from the gap, so without it a unit status changed during the drop stays stale until that
+ * unit happens to change again. Null on the first join, which the screens' own mount fetch covers.
+ */
+function markUpdateHubJoined(afterReconnect: boolean): Partial<SignalRState> | null {
+  const isRejoin = afterReconnect || updateHubHasJoined;
+  updateHubHasJoined = true;
+  if (!isRejoin) {
+    return null;
+  }
+  const now = Date.now();
+  return { lastUpdateMessage: null, lastUpdateTimestamp: now, lastEventType: null, lastCallsUpdateTimestamp: now, lastUnitsUpdateTimestamp: now, lastPersonnelUpdateTimestamp: now };
+}
+
 /**
  * Lifecycle listeners for the update hub (reconnect/disconnect), kept apart from the method handlers
  * so they can be torn down without touching the event subscriptions.
@@ -490,6 +510,10 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
       const departmentId = Number(securityStore.getState().rights?.DepartmentId ?? '0');
       if (Number.isFinite(departmentId)) {
         await signalRService.invoke(Env.CHANNEL_HUB_NAME, 'connect', departmentId);
+        const rejoinNudge = markUpdateHubJoined(false);
+        if (rejoinNudge) {
+          set(rejoinNudge);
+        }
       } else {
         logger.error({
           message: 'Invalid DepartmentId, skipping update hub connect invoke',
@@ -683,8 +707,8 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
           }
           stopUpdateRejoinRetry();
           updateRejoinAttempts = 0;
-          set({ isUpdateHubConnected: true, error: null });
-          logger.info({ message: 'Re-announced to update hub after reconnect; reloading incident command', context: { departmentId: reconnectDepartmentId } });
+          set({ isUpdateHubConnected: true, error: null, ...markUpdateHubJoined(true) });
+          logger.info({ message: 'Re-announced to update hub after reconnect; reloading the board and incident command', context: { departmentId: reconnectDepartmentId } });
           // Lazy import to avoid circular dependency
           const { useIncidentCommandStore } = require('../incident-command/store');
           const openCallId = useIncidentCommandStore.getState().callId;

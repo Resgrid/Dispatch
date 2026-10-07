@@ -159,6 +159,13 @@ jest.mock('@/components/ui/textarea', () => ({
   },
 }));
 
+jest.mock('@/components/ui/switch', () => ({
+  Switch: ({ value, onValueChange, testID }: any) => {
+    const { Switch: RNSwitch } = require('react-native');
+    return <RNSwitch value={value} onValueChange={onValueChange} testID={testID} />;
+  },
+}));
+
 const mockRouter = {
   back: jest.fn(),
 };
@@ -260,6 +267,7 @@ describe('CloseCallBottomSheet', () => {
         callId: 'test-call-1',
         type: 1,
         note: 'Call resolved successfully',
+        sendNotification: true,
       });
       expect(mockShowToast).toHaveBeenCalledWith('success', 'call_detail.close_call_success');
       expect(mockFetchCalls).toHaveBeenCalled();
@@ -288,6 +296,7 @@ describe('CloseCallBottomSheet', () => {
         callId: 'test-call-1',
         type: 2,
         note: '',
+        sendNotification: true,
       });
       expect(mockShowToast).toHaveBeenCalledWith('success', 'call_detail.close_call_success');
       expect(mockFetchCalls).toHaveBeenCalled();
@@ -318,6 +327,55 @@ describe('CloseCallBottomSheet', () => {
     expect(mockRouter.back).not.toHaveBeenCalled();
   });
 
+  it('shows the server reason when the close is refused (call has an active incident command)', async () => {
+    const reason = 'This call has an active incident command. Close the incident command first, then close the call.';
+    mockCloseCall.mockRejectedValue(Object.assign(new Error('Request failed with status code 400'), { isAxiosError: true, response: { status: 400, data: reason } }));
+
+    render(<CloseCallBottomSheet isOpen={true} onClose={jest.fn()} callId="test-call-1" />);
+    fireEvent(screen.getByTestId('close-call-type-select'), 'onValueChange', '1');
+    fireEvent.press(screen.getAllByText('call_detail.close_call')[1]);
+
+    await waitFor(() => {
+      expect(mockShowToast).toHaveBeenCalledWith('error', reason);
+    });
+    expect(mockShowToast).not.toHaveBeenCalledWith('error', 'call_detail.close_call_error');
+    expect(mockFetchCalls).not.toHaveBeenCalled();
+    expect(mockRouter.back).not.toHaveBeenCalled();
+  });
+
+  it('notifies everyone on the call by default and lets the switch turn it off', async () => {
+    mockCloseCall.mockResolvedValue(undefined);
+    mockFetchCalls.mockResolvedValue(undefined);
+
+    render(<CloseCallBottomSheet isOpen={true} onClose={jest.fn()} callId="test-call-1" />);
+
+    expect(screen.getByText('call_detail.close_call_notify')).toBeTruthy();
+    expect(screen.getByText('call_detail.close_call_notify_hint')).toBeTruthy();
+    const notifySwitch = screen.getByTestId('close-call-notify-switch');
+    expect(notifySwitch.props.value).toBe(true);
+
+    fireEvent(notifySwitch, 'onValueChange', false);
+    fireEvent(screen.getByTestId('close-call-type-select'), 'onValueChange', '7');
+    fireEvent.press(screen.getAllByText('call_detail.close_call')[1]);
+
+    await waitFor(() => {
+      expect(mockCloseCall).toHaveBeenCalledWith({ callId: 'test-call-1', type: 7, note: '', sendNotification: false });
+    });
+  });
+
+  it('turns the notify switch back on when the sheet is cancelled', () => {
+    const mockOnClose = jest.fn();
+    render(<CloseCallBottomSheet isOpen={true} onClose={mockOnClose} callId="test-call-1" />);
+
+    fireEvent(screen.getByTestId('close-call-notify-switch'), 'onValueChange', false);
+    expect(screen.getByTestId('close-call-notify-switch').props.value).toBe(false);
+
+    fireEvent.press(screen.getByText('common.cancel'));
+
+    expect(mockOnClose).toHaveBeenCalled();
+    expect(screen.getByTestId('close-call-notify-switch').props.value).toBe(true);
+  });
+
   it.each([
     { type: '1', expected: 1 },
     { type: '2', expected: 2 },
@@ -346,6 +404,7 @@ describe('CloseCallBottomSheet', () => {
         callId: 'test-call-1',
         type: expected,
         note: '',
+        sendNotification: true,
       });
       expect(mockFetchCalls).toHaveBeenCalled();
     });

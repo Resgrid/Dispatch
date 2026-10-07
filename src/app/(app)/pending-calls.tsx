@@ -1,5 +1,5 @@
 import { type Href, router, Stack, useFocusEffect } from 'expo-router';
-import { CalendarClockIcon, Search, SendIcon, X } from 'lucide-react-native';
+import { HourglassIcon, Search, SendIcon, X, XCircleIcon } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -13,16 +13,24 @@ import { FlatList } from '@/components/ui/flat-list';
 import { FocusAwareStatusBar } from '@/components/ui/focus-aware-status-bar';
 import { Input, InputField, InputIcon, InputSlot } from '@/components/ui/input';
 import { useAnalytics } from '@/hooks/use-analytics';
-import { formatDateForDisplay, getCallScheduledDispatchTime, parseDateISOString } from '@/lib/utils';
+import { formatDateForDisplay, parseDateISOString } from '@/lib/utils';
 import { type CallResultData } from '@/models/v4/calls/callResultData';
-import { useScheduledCallsStore } from '@/stores/calls/scheduled-store';
+import { usePendingCallsStore } from '@/stores/calls/pending-store';
 import { useCallsStore } from '@/stores/calls/store';
 import { useSecurityStore } from '@/stores/security/store';
 import { useSignalRStore } from '@/stores/signalr/signalr-store';
 
-export default function ScheduledCalls() {
-  const { scheduledCalls, isLoading, error, fetchScheduledCalls } = useScheduledCallsStore();
-  const { fetchCallPriorities, callPriorities } = useCallsStore();
+/**
+ * Calls saved as Pending ("to be dispatched"): numbered, nobody notified, not on the field apps. A
+ * dispatcher picks one up here, chooses who to send and dispatches it, or cancels it.
+ */
+export default function PendingCalls() {
+  const pendingCalls = usePendingCallsStore((s) => s.pendingCalls);
+  const isLoading = usePendingCallsStore((s) => s.isLoading);
+  const error = usePendingCallsStore((s) => s.error);
+  const fetchPendingCalls = usePendingCallsStore((s) => s.fetchPendingCalls);
+  const callPriorities = useCallsStore((s) => s.callPriorities);
+  const fetchCallPriorities = useCallsStore((s) => s.fetchCallPriorities);
   const lastCallsUpdateTimestamp = useSignalRStore((s) => s.lastCallsUpdateTimestamp);
   const { canUserCreateCalls } = useSecurityStore();
   const { t } = useTranslation();
@@ -33,57 +41,66 @@ export default function ScheduledCalls() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const themedStyles = useMemo(() => getThemedStyles(isDark), [isDark]);
-  const { confirmDispatchNow, busyCallId } = useCallDispatchNow();
+  const { openDispatchPicker, confirmCancelPending, busyCallId, dispatchPicker } = useCallDispatchNow();
 
   useFocusEffect(
     useCallback(() => {
       fetchCallPriorities();
-      fetchScheduledCalls();
-    }, [fetchCallPriorities, fetchScheduledCalls])
+      fetchPendingCalls();
+    }, [fetchCallPriorities, fetchPendingCalls])
   );
 
-  // A scheduled call created, rescheduled or dispatched anywhere arrives as a calls push; keep the list
-  // current while it is on screen. The store collapses overlapping refreshes into one.
+  // A pending call created, edited, dispatched or cancelled anywhere arrives as a calls push; keep the
+  // list current while it is on screen. The store collapses overlapping refreshes into one.
   const prevCallsTimestamp = useRef(lastCallsUpdateTimestamp);
   useEffect(() => {
     if (lastCallsUpdateTimestamp > 0 && lastCallsUpdateTimestamp !== prevCallsTimestamp.current) {
       prevCallsTimestamp.current = lastCallsUpdateTimestamp;
-      fetchScheduledCalls();
+      fetchPendingCalls();
     }
-  }, [lastCallsUpdateTimestamp, fetchScheduledCalls]);
+  }, [lastCallsUpdateTimestamp, fetchPendingCalls]);
 
   useEffect(() => {
-    trackEvent('scheduled_calls_view_rendered', {
-      callsCount: scheduledCalls.length,
+    trackEvent('pending_calls_view_rendered', {
+      callsCount: pendingCalls.length,
     });
-  }, [trackEvent, scheduledCalls.length]);
+  }, [trackEvent, pendingCalls.length]);
 
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
-    fetchScheduledCalls().finally(() => setIsRefreshing(false));
-  }, [fetchScheduledCalls]);
+    fetchPendingCalls().finally(() => setIsRefreshing(false));
+  }, [fetchPendingCalls]);
 
-  const filteredCalls = scheduledCalls.filter(
-    (call) =>
-      call.CallId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (call.Nature?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-      (call.Name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-      (call.Address?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-      (call.Number?.toLowerCase() || '').includes(searchQuery.toLowerCase())
-  );
+  const priorityById = useMemo(() => {
+    const map = new Map<number, (typeof callPriorities)[number]>();
+    callPriorities.forEach((p) => map.set(p.Id, p));
+    return map;
+  }, [callPriorities]);
+
+  const filteredCalls = useMemo(() => {
+    const query = searchQuery.toLowerCase();
+    return pendingCalls.filter(
+      (call) =>
+        call.CallId.toLowerCase().includes(query) ||
+        (call.Nature?.toLowerCase() || '').includes(query) ||
+        (call.Name?.toLowerCase() || '').includes(query) ||
+        (call.Address?.toLowerCase() || '').includes(query) ||
+        (call.Number?.toLowerCase() || '').includes(query)
+    );
+  }, [pendingCalls, searchQuery]);
 
   const renderContent = () => {
     // Only the first load replaces the table; a refresh from a push keeps the rows on screen.
-    if (isLoading && scheduledCalls.length === 0) {
-      return <Loading text={t('scheduled_calls.loading')} />;
+    if (isLoading && pendingCalls.length === 0) {
+      return <Loading text={t('pending_calls.loading')} />;
     }
 
-    if (error && scheduledCalls.length === 0) {
+    if (error && pendingCalls.length === 0) {
       return <ZeroState heading={t('common.errorOccurred')} description={error} isError={true} />;
     }
 
     if (filteredCalls.length === 0) {
-      return <ZeroState heading={t('scheduled_calls.no_scheduled_calls')} description={t('scheduled_calls.no_scheduled_calls_description')} icon={CalendarClockIcon} />;
+      return <ZeroState heading={t('pending_calls.no_pending_calls')} description={t('pending_calls.no_pending_calls_description')} icon={HourglassIcon} />;
     }
 
     return (
@@ -96,23 +113,22 @@ export default function ScheduledCalls() {
             <RNText style={[styles.headerCell, styles.cellType, { color: themedStyles.headerTextColor }]}>{t('scheduled_calls.table_type')}</RNText>
             <RNText style={[styles.headerCell, styles.cellPriority, { color: themedStyles.headerTextColor }]}>{t('scheduled_calls.table_priority')}</RNText>
             <RNText style={[styles.headerCell, styles.cellAddress, { color: themedStyles.headerTextColor }]}>{t('scheduled_calls.table_address')}</RNText>
-            <RNText style={[styles.headerCell, styles.cellScheduled, { color: themedStyles.headerTextColor }]}>{t('scheduled_calls.table_scheduled')}</RNText>
+            <RNText style={[styles.headerCell, styles.cellReceived, { color: themedStyles.headerTextColor }]}>{t('pending_calls.table_received')}</RNText>
             {canUserCreateCalls ? <RNText style={[styles.headerCell, styles.cellActions, { color: themedStyles.headerTextColor }]}>{t('dispatch.actions')}</RNText> : null}
           </View>
 
           {/* Table Rows */}
           <FlatList<CallResultData>
-            testID="scheduled-calls-list"
+            testID="pending-calls-list"
             data={filteredCalls}
             renderItem={({ item, index }: { item: CallResultData; index: number }) => {
-              const priority = callPriorities.find((p) => p.Id === item.Priority);
-              // Core reports the scheduled dispatch time as DispatchedOn; ScheduledOn only on newer servers.
-              const scheduledDate = formatDateForDisplay(parseDateISOString(getCallScheduledDispatchTime(item)), 'MMM dd, yyyy hh:mm t');
+              const priority = priorityById.get(item.Priority);
+              const receivedDate = formatDateForDisplay(parseDateISOString(item.LoggedOn), 'MMM dd, yyyy hh:mm t');
               const rowBg = { backgroundColor: index % 2 === 0 ? themedStyles.rowEvenBg : themedStyles.rowOddBg };
               const isBusy = busyCallId === item.CallId;
 
               return (
-                <Pressable onPress={() => router.push(`/call/${item.CallId}` as Href)} style={[styles.tableRow, { borderBottomColor: themedStyles.borderColor }, rowBg]} testID={`scheduled-call-row-${item.CallId}`}>
+                <Pressable onPress={() => router.push(`/call/${item.CallId}` as Href)} style={[styles.tableRow, { borderBottomColor: themedStyles.borderColor }, rowBg]} testID={`pending-call-row-${item.CallId}`}>
                   <View style={[styles.cellNumber, styles.cellContainer]}>
                     <RNText style={[styles.cellTextBold, { color: themedStyles.textPrimary }]} numberOfLines={1}>
                       {item.Number || item.CallId}
@@ -141,30 +157,45 @@ export default function ScheduledCalls() {
                       {item.Address || '-'}
                     </RNText>
                   </View>
-                  <View style={[styles.cellScheduled, styles.cellContainer]}>
-                    <RNText style={[styles.cellTextScheduled, { color: themedStyles.scheduledColor }]} numberOfLines={1}>
-                      {scheduledDate}
+                  <View style={[styles.cellReceived, styles.cellContainer]}>
+                    <RNText style={[styles.cellTextSecondary, { color: themedStyles.textSecondary }]} numberOfLines={1}>
+                      {receivedDate || '-'}
                     </RNText>
                   </View>
                   {canUserCreateCalls ? (
-                    <View style={[styles.cellActions, styles.cellContainer]}>
+                    <View style={[styles.cellActions, styles.actionsRow]}>
                       {isBusy ? (
                         <ActivityIndicator size="small" color={themedStyles.dispatchColor} />
                       ) : (
-                        <Pressable
-                          onPress={(event) => {
-                            // The row itself opens the call; Dispatch Now pressed inside it must not.
-                            event.stopPropagation();
-                            confirmDispatchNow(item.CallId);
-                          }}
-                          style={[styles.actionButton, { backgroundColor: themedStyles.dispatchColor }]}
-                          accessibilityRole="button"
-                          accessibilityLabel={`${t('calls.dispatch_now')} ${item.Number || item.CallId}`}
-                          testID={`scheduled-call-dispatch-now-${item.CallId}`}
-                        >
-                          <SendIcon size={14} color="#ffffff" />
-                          <RNText style={styles.actionButtonText}>{t('calls.dispatch_now')}</RNText>
-                        </Pressable>
+                        <>
+                          <Pressable
+                            onPress={(event) => {
+                              // The row itself opens the call; an action pressed inside it must not.
+                              event.stopPropagation();
+                              void openDispatchPicker(item.CallId);
+                            }}
+                            style={[styles.actionButton, { backgroundColor: themedStyles.dispatchColor }]}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${t('dispatch.dispatch')} ${item.Number || item.CallId}`}
+                            testID={`pending-call-dispatch-${item.CallId}`}
+                          >
+                            <SendIcon size={14} color="#ffffff" />
+                            <RNText style={styles.actionButtonText}>{t('dispatch.dispatch')}</RNText>
+                          </Pressable>
+                          <Pressable
+                            onPress={(event) => {
+                              event.stopPropagation();
+                              confirmCancelPending(item.CallId);
+                            }}
+                            style={[styles.actionButton, styles.actionButtonOutline, { borderColor: themedStyles.cancelColor }]}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${t('pending_calls.cancel_call')} ${item.Number || item.CallId}`}
+                            testID={`pending-call-cancel-${item.CallId}`}
+                          >
+                            <XCircleIcon size={14} color={themedStyles.cancelColor} />
+                            <RNText style={[styles.actionButtonText, { color: themedStyles.cancelColor }]}>{t('pending_calls.cancel_call')}</RNText>
+                          </Pressable>
+                        </>
                       )}
                     </View>
                   ) : null}
@@ -185,7 +216,7 @@ export default function ScheduledCalls() {
       <FocusAwareStatusBar />
       <Stack.Screen
         options={{
-          title: t('scheduled_calls.title'),
+          title: t('pending_calls.title'),
           headerShown: true,
           headerBackTitle: '',
         }}
@@ -195,7 +226,7 @@ export default function ScheduledCalls() {
           <InputSlot className="pl-3">
             <InputIcon as={Search} />
           </InputSlot>
-          <InputField placeholder={t('scheduled_calls.search')} value={searchQuery} onChangeText={setSearchQuery} />
+          <InputField placeholder={t('pending_calls.search')} value={searchQuery} onChangeText={setSearchQuery} />
           {searchQuery ? (
             <InputSlot className="pr-3" onPress={() => setSearchQuery('')}>
               <InputIcon as={X} />
@@ -204,6 +235,7 @@ export default function ScheduledCalls() {
         </Input>
         <Box className="flex-1">{renderContent()}</Box>
       </Box>
+      {dispatchPicker}
     </View>
   );
 }
@@ -216,8 +248,8 @@ const getThemedStyles = (isDark: boolean) => ({
   rowOddBg: isDark ? '#1f2937' : '#f9fafb',
   textPrimary: isDark ? '#f3f4f6' : '#111827',
   textSecondary: isDark ? '#d1d5db' : '#4b5563',
-  scheduledColor: isDark ? '#fbbf24' : '#d97706',
   dispatchColor: isDark ? '#3b82f6' : '#2563eb',
+  cancelColor: isDark ? '#f87171' : '#dc2626',
 });
 
 const styles = StyleSheet.create({
@@ -255,10 +287,6 @@ const styles = StyleSheet.create({
   cellTextSecondary: {
     fontSize: 13,
   },
-  cellTextScheduled: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
   priorityBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -269,14 +297,22 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
   },
+  actionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
     gap: 6,
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 6,
+  },
+  actionButtonOutline: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
   },
   actionButtonText: {
     fontSize: 13,
@@ -298,10 +334,10 @@ const styles = StyleSheet.create({
   cellAddress: {
     width: 180,
   },
-  cellScheduled: {
+  cellReceived: {
     width: 160,
   },
   cellActions: {
-    width: 160,
+    width: 240,
   },
 });

@@ -114,6 +114,8 @@
     "close_call_error": "Nie udało się zamknąć zgłoszenia",
     "close_call_note": "Notatka zamknięcia",
     "close_call_note_placeholder": "Wprowadź notatkę dotyczącą zamknięcia zgłoszenia",
+    "close_call_notify": "Powiadom wszystkich przypisanych do zgłoszenia",
+    "close_call_notify_hint": "Informuje zadysponowany personel, grupy, role, jednostki i zespół dowodzenia o zamknięciu zgłoszenia.",
     "close_call_success": "Zgłoszenie zamknięte pomyślnie",
     "close_call_type": "Typ zamknięcia",
     "close_call_type_placeholder": "Wybierz typ zamknięcia",
@@ -215,7 +217,9 @@
     "map_destination": "Miejsce docelowe",
     "dispatch_more": "Wyślij dodatkowe zasoby",
     "dispatch_more_success": "Zasoby zostały wysłane i powiadomione",
-    "dispatch_more_error": "Nie udało się wysłać zasobów"
+    "dispatch_more_error": "Nie udało się wysłać zasobów",
+    "pending_banner_title": "Oczekujące — jeszcze nie zadysponowane",
+    "pending_banner_description": "To zgłoszenie jest zapisane, ale nikt nie został powiadomiony. Wybierz, kogo wysłać, i zadysponuj je, gdy będzie gotowe."
   },
   "calls": {
     "destination": "Miejsce docelowe",
@@ -383,7 +387,16 @@
       "audio_name": "Klip dźwiękowy"
     },
     "required_fields_missing": "Twój departament wymaga tych pól przed utworzeniem zgłoszenia: {{fields}}",
-    "field_policy_loading": "Ustawienia zgłoszeń Twojego departamentu są jeszcze wczytywane, spróbuj ponownie za chwilę"
+    "field_policy_loading": "Ustawienia zgłoszeń Twojego departamentu są jeszcze wczytywane, spróbuj ponownie za chwilę",
+    "save_as_pending": "Zapisz jako oczekujące (jeszcze nie dysponuj)",
+    "save_as_pending_description": "Zgłoszenie zostanie zapisane i otrzyma numer, ale nikt nie zostanie powiadomiony, a aplikacje terenowe go nie zobaczą. Wybrani odbiorcy zostaną zachowani jako proponowana dyspozycja; zadysponuj je później z listy Oczekujące zgłoszenia.",
+    "save_pending_call": "Zapisz oczekujące zgłoszenie",
+    "pending_saved": "Zgłoszenie zapisane jako oczekujące",
+    "dispatch_now": "Dysponuj teraz",
+    "dispatch_now_confirm": "Zadysponować to zgłoszenie teraz? Wszyscy z jego listy dyspozycji zostaną natychmiast powiadomieni.",
+    "dispatch_now_success": "Zgłoszenie zadysponowane",
+    "dispatch_now_error": "Nie udało się zadysponować zgłoszenia",
+    "dispatch_now_no_recipients": "Wybierz co najmniej jednego odbiorcę, do którego zadysponować to zgłoszenie."
   },
   "chat": {
     "title": "Czat",
@@ -833,7 +846,10 @@
       "update_status": "Zaktualizuj status",
       "update_staffing": "Zaktualizuj obsadę",
       "no_statuses_available": "Brak dostępnych statusów",
-      "no_staffings_available": "Brak dostępnych poziomów obsady"
+      "no_staffings_available": "Brak dostępnych poziomów obsady",
+      "no_active_calls": "Brak aktywnych zgłoszeń",
+      "no_stations_available": "Brak dostępnych stacji",
+      "no_destinations_available": "Brak dostępnych celów"
     },
     "unit_actions_panel": {
       "status": "Status",
@@ -882,7 +898,9 @@
     "single_list": "Jedna lista",
     "resources": "Zasoby",
     "search_resources_placeholder": "Szukaj zasobów...",
-    "no_resources": "Brak zasobów"
+    "no_resources": "Brak zasobów",
+    "view_pending_calls": "Pokaż oczekujące zgłoszenia",
+    "view_scheduled_calls": "Pokaż zaplanowane zgłoszenia"
   },
   "form": {
     "invalid_url": "Proszę podać prawidłowy adres URL zaczynający się od http:// lub https://",
@@ -1124,7 +1142,8 @@
     "weatherAlerts": "Alerty pogodowe",
     "incident_command": "Dowodzenie zdarzeniem",
     "chat": "Czat",
-    "assistant": "Asystent"
+    "assistant": "Asystent",
+    "pending_calls": "Oczekujące zgłoszenia"
   },
   "mfa": {
     "account": {
@@ -1820,6 +1839,18 @@
     "table_address": "Adres",
     "table_scheduled": "Zaplanowano na"
   },
+  "pending_calls": {
+    "title": "Oczekujące zgłoszenia",
+    "loading": "Ładowanie oczekujących zgłoszeń...",
+    "no_pending_calls": "Brak oczekujących zgłoszeń",
+    "no_pending_calls_description": "Żadne zgłoszenie nie czeka na zadysponowanie.",
+    "search": "Szukaj oczekujących zgłoszeń...",
+    "table_received": "Przyjęto",
+    "cancel_call": "Anuluj zgłoszenie",
+    "cancel_confirm": "Anulować to oczekujące zgłoszenie? Zostanie zamknięte jako Anulowane bez powiadamiania kogokolwiek.",
+    "cancel_success": "Oczekujące zgłoszenie anulowane",
+    "cancel_error": "Nie udało się anulować oczekującego zgłoszenia"
+  },
   "settings": {
     "about": "O aplikacji",
     "account": "Konto",
@@ -2244,7 +2275,10 @@
       "2": "Anulowane",
       "3": "Bezzasadne",
       "4": "Zasadne",
-      "5": "Drobne"
+      "5": "Drobne",
+      "6": "Przekazane",
+      "7": "Fałszywy alarm",
+      "8": "Oczekujące"
     }
   }
 }
