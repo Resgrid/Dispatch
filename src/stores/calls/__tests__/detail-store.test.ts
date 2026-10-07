@@ -617,6 +617,46 @@ describe('useCallDetailStore - Notes', () => {
 
       expect(mockCloseCall).toHaveBeenCalledTimes(closeTypes.length);
     });
+
+    it('passes the notify choice through to the API', async () => {
+      const closeData = { callId: 'call123', type: 1, note: '', sendNotification: false };
+      mockCloseCall.mockResolvedValue({} as any);
+
+      const { result } = renderHook(() => useCallDetailStore());
+
+      await act(async () => {
+        await result.current.closeCall(closeData);
+      });
+
+      expect(mockCloseCall).toHaveBeenCalledWith(closeData);
+    });
+
+    it('keeps the server reason when the close is refused (call has an active incident command)', async () => {
+      const reason = 'This call has an active incident command. Close the incident command first, then close the call.';
+      const refusal = Object.assign(new Error('Request failed with status code 400'), { isAxiosError: true, response: { status: 400, data: reason } });
+      mockCloseCall.mockRejectedValue(refusal);
+
+      const { result } = renderHook(() => useCallDetailStore());
+
+      await act(async () => {
+        await expect(result.current.closeCall({ callId: 'call123', type: 1, sendNotification: true })).rejects.toBe(refusal);
+      });
+
+      expect(result.current.error).toBe(reason);
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    it('falls back to the error message when the server gave no reason', async () => {
+      mockCloseCall.mockRejectedValue(new Error('Network Error'));
+
+      const { result } = renderHook(() => useCallDetailStore());
+
+      await act(async () => {
+        await expect(result.current.closeCall({ callId: 'call123', type: 1 })).rejects.toThrow('Network Error');
+      });
+
+      expect(result.current.error).toBe('Network Error');
+    });
   });
 
   describe('Integration - Update and Close Call', () => {

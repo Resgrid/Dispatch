@@ -114,6 +114,8 @@
     "close_call_error": "Impossibile chiudere l'intervento",
     "close_call_note": "Nota di chiusura",
     "close_call_note_placeholder": "Inserisci una nota sulla chiusura dell'intervento",
+    "close_call_notify": "Avvisa tutti i partecipanti all'intervento",
+    "close_call_notify_hint": "Avvisa personale, gruppi, ruoli e unità allertati e il team di comando che l'intervento è chiuso.",
     "close_call_success": "Intervento chiuso con successo",
     "close_call_type": "Tipo di chiusura",
     "close_call_type_placeholder": "Seleziona tipo di chiusura",
@@ -215,7 +217,9 @@
     "map_destination": "Destinazione",
     "dispatch_more": "Invia risorse aggiuntive",
     "dispatch_more_success": "Risorse inviate e notificate",
-    "dispatch_more_error": "Impossibile inviare le risorse"
+    "dispatch_more_error": "Impossibile inviare le risorse",
+    "pending_banner_title": "In attesa — non ancora inviata",
+    "pending_banner_description": "Questa chiamata è salvata ma nessuno è stato avvisato. Scegli chi inviare e inviala quando è pronta."
   },
   "calls": {
     "destination": "Destinazione",
@@ -383,7 +387,16 @@
       "audio_name": "Clip audio"
     },
     "required_fields_missing": "Il tuo dipartimento richiede questi campi prima di poter creare una chiamata: {{fields}}",
-    "field_policy_loading": "Le impostazioni delle chiamate del tuo dipartimento sono ancora in caricamento, riprova tra un momento"
+    "field_policy_loading": "Le impostazioni delle chiamate del tuo dipartimento sono ancora in caricamento, riprova tra un momento",
+    "save_as_pending": "Salva in attesa (non inviare ancora)",
+    "save_as_pending_description": "La chiamata viene salvata e numerata, ma nessuno viene avvisato e le app sul campo non la vedono. I destinatari scelti restano come invio proposto; inviala più tardi da Chiamate in attesa.",
+    "save_pending_call": "Salva chiamata in attesa",
+    "pending_saved": "Chiamata salvata in attesa",
+    "dispatch_now": "Invia ora",
+    "dispatch_now_confirm": "Inviare questa chiamata ora? Tutti i destinatari del suo elenco di invio vengono avvisati immediatamente.",
+    "dispatch_now_success": "Chiamata inviata",
+    "dispatch_now_error": "Impossibile inviare la chiamata",
+    "dispatch_now_no_recipients": "Scegli almeno un destinatario a cui inviare questa chiamata."
   },
   "chat": {
     "title": "Chat",
@@ -833,7 +846,10 @@
       "update_status": "Aggiorna stato",
       "update_staffing": "Aggiorna organico",
       "no_statuses_available": "Nessuno stato disponibile",
-      "no_staffings_available": "Nessun livello di organico disponibile"
+      "no_staffings_available": "Nessun livello di organico disponibile",
+      "no_active_calls": "Nessun intervento attivo",
+      "no_stations_available": "Nessuna stazione disponibile",
+      "no_destinations_available": "Nessuna destinazione disponibile"
     },
     "unit_actions_panel": {
       "status": "Stato",
@@ -882,7 +898,9 @@
     "single_list": "Elenco singolo",
     "resources": "Risorse",
     "search_resources_placeholder": "Cerca risorse...",
-    "no_resources": "Nessuna risorsa"
+    "no_resources": "Nessuna risorsa",
+    "view_pending_calls": "Visualizza chiamate in attesa",
+    "view_scheduled_calls": "Visualizza chiamate programmate"
   },
   "form": {
     "invalid_url": "Inserisci un URL valido che inizi con http:// o https://",
@@ -1124,7 +1142,8 @@
     "weatherAlerts": "Allerte meteo",
     "incident_command": "Comando dell’intervento",
     "chat": "Chat",
-    "assistant": "Assistente"
+    "assistant": "Assistente",
+    "pending_calls": "Chiamate in attesa"
   },
   "mfa": {
     "account": {
@@ -1820,6 +1839,18 @@
     "table_address": "Indirizzo",
     "table_scheduled": "Programmata per"
   },
+  "pending_calls": {
+    "title": "Chiamate in attesa",
+    "loading": "Caricamento delle chiamate in attesa...",
+    "no_pending_calls": "Nessuna chiamata in attesa",
+    "no_pending_calls_description": "Non ci sono chiamate in attesa di essere inviate.",
+    "search": "Cerca chiamate in attesa...",
+    "table_received": "Ricevuta",
+    "cancel_call": "Annulla chiamata",
+    "cancel_confirm": "Annullare questa chiamata in attesa? Verrà chiusa come Annullata senza avvisare nessuno.",
+    "cancel_success": "Chiamata in attesa annullata",
+    "cancel_error": "Impossibile annullare la chiamata in attesa"
+  },
   "settings": {
     "about": "Informazioni",
     "account": "Account",
@@ -2244,7 +2275,10 @@
       "2": "Annullata",
       "3": "Infondata",
       "4": "Fondata",
-      "5": "Minore"
+      "5": "Minore",
+      "6": "Trasferita",
+      "7": "Falso allarme",
+      "8": "In attesa"
     }
   }
 }

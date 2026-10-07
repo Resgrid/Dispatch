@@ -1,6 +1,9 @@
+import { formatGeolocation } from '@/lib/call-geolocation';
 import { type ActiveCallsResult } from '@/models/v4/calls/activeCallsResult';
 import { type CallExtraDataResult } from '@/models/v4/calls/callExtraDataResult';
 import { type CallResult } from '@/models/v4/calls/callResult';
+import { type DispatchCallNowResult } from '@/models/v4/calls/dispatchCallNowResult';
+import { type PendingCallsResult } from '@/models/v4/calls/pendingCallsResult';
 import { type SaveCallResult } from '@/models/v4/calls/saveCallResult';
 import { type ScheduledCallsResult } from '@/models/v4/calls/scheduledCallsResult';
 
@@ -8,6 +11,8 @@ import { createApiEndpoint } from '../common/client';
 
 const callsApi = createApiEndpoint('/Calls/GetActiveCalls');
 const pendingScheduledCallsApi = createApiEndpoint('/Calls/GetAllPendingScheduledCalls');
+const pendingCallsApi = createApiEndpoint('/Calls/GetPendingCalls');
+const dispatchCallNowApi = createApiEndpoint('/Calls/DispatchCallNow');
 const getCallApi = createApiEndpoint('/Calls/GetCall');
 const getCallExtraDataApi = createApiEndpoint('/Calls/GetCallExtraData');
 const createCallApi = createApiEndpoint('/Calls/SaveCall');
@@ -24,6 +29,32 @@ export const getCalls = async () => {
 
 export const getPendingScheduledCalls = async () => {
   const response = await pendingScheduledCallsApi.get<ScheduledCallsResult>({ _t: Date.now() });
+  return response.data;
+};
+
+/**
+ * Calls saved as Pending (State 8, "to be dispatched"): numbered, nobody notified, not on the field apps.
+ * Oldest first. The server answers Status "NotFound" with an empty list when there are none.
+ */
+export const getPendingCalls = async () => {
+  const response = await pendingCallsApi.get<PendingCallsResult>({ _t: Date.now() });
+  return response.data;
+};
+
+/**
+ * Dispatches a Pending call, or a scheduled call that has not gone out yet, immediately.
+ *
+ * Without a dispatch list (or with an empty one) the server uses the recipients already stored on the
+ * call (a pending call's proposed dispatch, a scheduled call's list). A non-empty list ("0" = everyone,
+ * otherwise the P:/G:/R:/U: entries from {@link buildDispatchList}) replaces the call's list first.
+ */
+export const dispatchCallNow = async (callId: string, dispatchList?: string) => {
+  const data: { CallId: string; DispatchList?: string } = { CallId: callId };
+  if (dispatchList) {
+    data.DispatchList = dispatchList;
+  }
+
+  const response = await dispatchCallNowApi.put<DispatchCallNowResult>(data);
   return response.data;
 };
 
@@ -69,6 +100,12 @@ export interface CreateCallRequest {
   referenceId?: string;
   scheduledOn?: string;
   destinationPoiId?: number | null;
+  /**
+   * Saves the call as Pending (State 8) instead of dispatching it: nobody is notified, `scheduledOn` is
+   * ignored, and the dispatch list is optional and kept as the proposed dispatch for whoever dispatches
+   * it later. The department's "dispatch list required" rule does not apply.
+   */
+  isPending?: boolean;
 }
 
 export interface UpdateCallRequest {
@@ -109,31 +146,60 @@ export interface CloseCallRequest {
   callId: string;
   type: number;
   note?: string;
+  /**
+   * Alert everyone attached to the call (dispatched personnel, groups, roles, units and the incident
+   * command team) that it is closed. Omitted from the request when not set, leaving the server default.
+   */
+  sendNotification?: boolean;
 }
 
-export const createCall = async (callData: CreateCallRequest) => {
-  let dispatchList = '';
+/** Who to dispatch, in the shape the dispatch picker produces (`DispatchSelection` fits it). */
+export interface DispatchListSelection {
+  everyone?: boolean;
+  users?: string[];
+  groups?: string[];
+  roles?: string[];
+  units?: string[];
+}
 
-  if (callData.dispatchEveryone) {
-    dispatchList = '0';
-  } else {
-    const dispatchEntries: string[] = [];
-
-    if (callData.dispatchUsers) {
-      dispatchEntries.push(...callData.dispatchUsers.map((user) => `P:${user}`));
-    }
-    if (callData.dispatchGroups) {
-      dispatchEntries.push(...callData.dispatchGroups.map((group) => `G:${group}`));
-    }
-    if (callData.dispatchRoles) {
-      dispatchEntries.push(...callData.dispatchRoles.map((role) => `R:${role}`));
-    }
-    if (callData.dispatchUnits) {
-      dispatchEntries.push(...callData.dispatchUnits.map((unit) => `U:${unit}`));
-    }
-
-    dispatchList = dispatchEntries.join('|');
+/**
+ * Builds the server's DispatchList string: "0" for everyone, otherwise "|"-joined `P:` (personnel),
+ * `G:` (group), `R:` (role) and `U:` (unit) entries. An empty selection yields an empty string.
+ */
+export const buildDispatchList = (selection: DispatchListSelection): string => {
+  if (selection.everyone) {
+    return '0';
   }
+
+  const dispatchEntries: string[] = [];
+
+  if (selection.users) {
+    dispatchEntries.push(...selection.users.map((user) => `P:${user}`));
+  }
+  if (selection.groups) {
+    dispatchEntries.push(...selection.groups.map((group) => `G:${group}`));
+  }
+  if (selection.roles) {
+    dispatchEntries.push(...selection.roles.map((role) => `R:${role}`));
+  }
+  if (selection.units) {
+    dispatchEntries.push(...selection.units.map((unit) => `U:${unit}`));
+  }
+
+  return dispatchEntries.join('|');
+};
+
+const dispatchListFor = (callData: CreateCallRequest | UpdateCallRequest): string =>
+  buildDispatchList({
+    everyone: callData.dispatchEveryone,
+    users: callData.dispatchUsers,
+    groups: callData.dispatchGroups,
+    roles: callData.dispatchRoles,
+    units: callData.dispatchUnits,
+  });
+
+export const createCall = async (callData: CreateCallRequest) => {
+  const dispatchList = dispatchListFor(callData);
 
   const data = {
     Name: callData.name,
@@ -141,7 +207,7 @@ export const createCall = async (callData: CreateCallRequest) => {
     Note: callData.note || '',
     Address: callData.address || '',
     DestinationPoiId: callData.destinationPoiId ?? null,
-    Geolocation: `${callData.latitude?.toString() || ''},${callData.longitude?.toString() || ''}`,
+    Geolocation: formatGeolocation(callData.latitude, callData.longitude),
     Priority: callData.priority,
     Type: callData.type || '',
     ContactName: callData.contactName || '',
@@ -155,7 +221,9 @@ export const createCall = async (callData: CreateCallRequest) => {
     IncidentId: callData.linkedCallId || '',
     ExternalId: callData.externalId || '',
     ReferenceId: callData.referenceId || '',
-    ScheduledOn: callData.scheduledOn || '',
+    // A pending call has no dispatch time; the server ignores one anyway.
+    ScheduledOn: callData.isPending ? '' : callData.scheduledOn || '',
+    IsPending: callData.isPending === true,
   };
 
   const response = await createCallApi.post<SaveCallResult>(data);
@@ -163,28 +231,7 @@ export const createCall = async (callData: CreateCallRequest) => {
 };
 
 export const updateCall = async (callData: UpdateCallRequest) => {
-  let dispatchList = '';
-
-  if (callData.dispatchEveryone) {
-    dispatchList = '0';
-  } else {
-    const dispatchEntries: string[] = [];
-
-    if (callData.dispatchUsers) {
-      dispatchEntries.push(...callData.dispatchUsers.map((user) => `P:${user}`));
-    }
-    if (callData.dispatchGroups) {
-      dispatchEntries.push(...callData.dispatchGroups.map((group) => `G:${group}`));
-    }
-    if (callData.dispatchRoles) {
-      dispatchEntries.push(...callData.dispatchRoles.map((role) => `R:${role}`));
-    }
-    if (callData.dispatchUnits) {
-      dispatchEntries.push(...callData.dispatchUnits.map((unit) => `U:${unit}`));
-    }
-
-    dispatchList = dispatchEntries.join('|');
-  }
+  const dispatchList = dispatchListFor(callData);
 
   const data = {
     Id: callData.callId,
@@ -193,7 +240,7 @@ export const updateCall = async (callData: UpdateCallRequest) => {
     Note: callData.note || '',
     Address: callData.address || '',
     DestinationPoiId: callData.destinationPoiId ?? null,
-    Geolocation: `${callData.latitude?.toString() || ''},${callData.longitude?.toString() || ''}`,
+    Geolocation: formatGeolocation(callData.latitude, callData.longitude),
     Priority: callData.priority,
     Type: callData.type || '',
     ContactName: callData.contactName || '',
@@ -220,6 +267,7 @@ export const closeCall = async (callData: CloseCallRequest) => {
     Id: callData.callId,
     Type: callData.type,
     Notes: callData.note || '',
+    ...(callData.sendNotification !== undefined ? { SendNotification: callData.sendNotification } : {}),
   };
 
   const response = await closeCallApi.put<SaveCallResult>(data);

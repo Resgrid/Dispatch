@@ -114,6 +114,8 @@
     "close_call_error": "Kunde inte stänga ärende",
     "close_call_note": "Stängningsanteckning",
     "close_call_note_placeholder": "Ange en anteckning om stängningen av ärendet",
+    "close_call_notify": "Meddela alla som är kopplade till ärendet",
+    "close_call_notify_hint": "Meddelar larmad personal, grupper, roller, enheter och ledningsgruppen att ärendet är stängt.",
     "close_call_success": "Ärende stängt",
     "close_call_type": "Stängningstyp",
     "close_call_type_placeholder": "Välj stängningstyp",
@@ -215,7 +217,9 @@
     "map_destination": "Destination",
     "dispatch_more": "Skicka ytterligare resurser",
     "dispatch_more_success": "Resurserna har skickats och meddelats",
-    "dispatch_more_error": "Det gick inte att skicka resurserna"
+    "dispatch_more_error": "Det gick inte att skicka resurserna",
+    "pending_banner_title": "Väntande — inte utlarmat än",
+    "pending_banner_description": "Ärendet är sparat men ingen har meddelats. Välj vilka som ska skickas och larma ut det när det är klart."
   },
   "calls": {
     "destination": "Destination",
@@ -383,7 +387,16 @@
       "audio_name": "Ljudklipp"
     },
     "required_fields_missing": "Din avdelning kräver dessa fält innan ett ärende kan skapas: {{fields}}",
-    "field_policy_loading": "Din avdelnings ärendeinställningar laddas fortfarande, försök igen om ett ögonblick"
+    "field_policy_loading": "Din avdelnings ärendeinställningar laddas fortfarande, försök igen om ett ögonblick",
+    "save_as_pending": "Spara som väntande (larma inte ut ännu)",
+    "save_as_pending_description": "Ärendet sparas och numreras, men ingen meddelas och fältapparna ser det inte. Mottagarna du väljer sparas som föreslagen utlarmning; larma ut det senare från Väntande larm.",
+    "save_pending_call": "Spara väntande larm",
+    "pending_saved": "Ärendet sparat som väntande",
+    "dispatch_now": "Larma ut nu",
+    "dispatch_now_confirm": "Larma ut detta ärende nu? Alla på dess utlarmningslista meddelas direkt.",
+    "dispatch_now_success": "Ärendet utlarmat",
+    "dispatch_now_error": "Det gick inte att larma ut ärendet",
+    "dispatch_now_no_recipients": "Välj minst en mottagare att larma ut ärendet till."
   },
   "chat": {
     "title": "Chatt",
@@ -833,7 +846,10 @@
       "update_status": "Uppdatera status",
       "update_staffing": "Uppdatera bemanning",
       "no_statuses_available": "Inga statusar tillgängliga",
-      "no_staffings_available": "Inga bemanningsnivåer tillgängliga"
+      "no_staffings_available": "Inga bemanningsnivåer tillgängliga",
+      "no_active_calls": "Inga aktiva ärenden",
+      "no_stations_available": "Inga stationer tillgängliga",
+      "no_destinations_available": "Inga destinationer tillgängliga"
     },
     "unit_actions_panel": {
       "status": "Status",
@@ -882,7 +898,9 @@
     "single_list": "En lista",
     "resources": "Resurser",
     "search_resources_placeholder": "Sök resurser...",
-    "no_resources": "Inga resurser"
+    "no_resources": "Inga resurser",
+    "view_pending_calls": "Visa väntande larm",
+    "view_scheduled_calls": "Visa schemalagda larm"
   },
   "form": {
     "invalid_url": "Vänligen ange en giltig URL som börjar med http:// eller https://",
@@ -1124,7 +1142,8 @@
     "weatherAlerts": "Vädervarningar",
     "incident_command": "Insatsledning",
     "chat": "Chatt",
-    "assistant": "Assistent"
+    "assistant": "Assistent",
+    "pending_calls": "Väntande larm"
   },
   "mfa": {
     "account": {
@@ -1820,6 +1839,18 @@
     "table_address": "Adress",
     "table_scheduled": "Schemalagt till"
   },
+  "pending_calls": {
+    "title": "Väntande larm",
+    "loading": "Läser in väntande larm...",
+    "no_pending_calls": "Inga väntande larm",
+    "no_pending_calls_description": "Det finns inga larm som väntar på att larmas ut.",
+    "search": "Sök väntande larm...",
+    "table_received": "Mottaget",
+    "cancel_call": "Avbryt larm",
+    "cancel_confirm": "Avbryta detta väntande larm? Det stängs som Avbrutet utan att någon meddelas.",
+    "cancel_success": "Väntande larm avbrutet",
+    "cancel_error": "Det gick inte att avbryta det väntande larmet"
+  },
   "settings": {
     "about": "Om",
     "account": "Konto",
@@ -2244,7 +2275,10 @@
       "2": "Avbrutet",
       "3": "Ogrundat",
       "4": "Grundat",
-      "5": "Mindre"
+      "5": "Mindre",
+      "6": "Överfört",
+      "7": "Falsklarm",
+      "8": "Väntande"
     }
   }
 }

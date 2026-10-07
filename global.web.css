@@ -10,3 +10,19 @@
    media query — so the class alone is authoritative. Matching prefers-color-scheme here as well
    would make an explicit Light choice render dark utilities on a dark-themed OS. */
 @custom-variant dark (&:where(.dark, .dark *));
+
+/* Native <select> dropdown rows. On web the gluestack Select renders an invisible <select> over its
+   trigger, and preflight gives it `color: inherit` + a transparent background — so in dark mode the
+   popup rows got the theme's light text on the browser's default white list, hiding every label but
+   the highlighted one. Paint the rows from the theme tokens so every select popup follows the mode. */
+@layer base {
+  select option,
+  select optgroup {
+    background-color: rgb(var(--color-background-0));
+    color: rgb(var(--color-typography-900));
+  }
+
+  select option:disabled {
+    color: rgb(var(--color-typography-500));
+  }
+}

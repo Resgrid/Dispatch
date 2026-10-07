@@ -24,15 +24,23 @@ export const getUnits = async (forceRefresh = false) => {
   return response.data;
 };
 
-export const getUnitsInfos = async (filter: string) => {
+/**
+ * Units with their current status. Pass `forceRefresh` wherever the answer is shown as the unit's
+ * live state: the cached copy outlives status changes, and a SignalR push only says "something
+ * changed", so reading the cache after one shows the status from before it.
+ */
+export const getUnitsInfos = async (filter: string, forceRefresh = false) => {
   if (filter) {
-    const response = await unitsInfosApi.get<UnitsInfoResult>({
-      activeFilter: encodeURIComponent(filter),
-    });
+    const response = await unitsInfosApi.get<UnitsInfoResult>(
+      {
+        activeFilter: encodeURIComponent(filter),
+      },
+      { forceRefresh }
+    );
     return response.data;
   }
 
-  const response = await unitsInfosApi.get<UnitsInfoResult>();
+  const response = await unitsInfosApi.get<UnitsInfoResult>(undefined, { forceRefresh });
   return response.data;
 };
 

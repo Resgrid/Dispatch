@@ -28,11 +28,13 @@ import { Button, ButtonText } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { FocusAwareStatusBar } from '@/components/ui/focus-aware-status-bar';
 import { HStack } from '@/components/ui/hstack';
+import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { useNewCallFieldPolicy } from '@/hooks/use-new-call-field-policy';
 import { useToast } from '@/hooks/use-toast';
+import { formatGeolocation } from '@/lib/call-geolocation';
 import { getPoiDestinationOptionLabel } from '@/lib/poi-display';
 import { type CallResultData } from '@/models/v4/calls/callResultData';
 import { type NewCallFieldKey, NewCallFieldKeys } from '@/models/v4/calls/newCallFieldPolicyResultData';
@@ -49,6 +51,8 @@ const NEW_CALL_FIELD_LABEL_KEYS: Partial<Record<NewCallFieldKey, string>> = {
   [NewCallFieldKeys.Note]: 'calls.note',
   [NewCallFieldKeys.ContactName]: 'calls.contact_name',
   [NewCallFieldKeys.ContactInfo]: 'calls.contact_info',
+  [NewCallFieldKeys.ExternalId]: 'call_detail.external_id',
+  [NewCallFieldKeys.ReferenceId]: 'call_detail.reference_id',
   [NewCallFieldKeys.DestinationPoi]: 'calls.destination',
   [NewCallFieldKeys.DispatchOn]: 'calls.scheduled_on',
   [NewCallFieldKeys.DispatchList]: 'calls.dispatch_to',
@@ -76,6 +80,8 @@ const formSchema = z.object({
   type: z.string().min(1, { message: 'Type is required' }),
   contactName: z.string().optional(),
   contactInfo: z.string().optional(),
+  externalId: z.string().optional(),
+  referenceId: z.string().optional(),
   scheduledOn: z.string().optional(),
   dispatchSelection: z
     .object({
@@ -282,7 +288,11 @@ export default function NewCallWeb() {
   const { t } = useTranslation();
   const { colorScheme } = useColorScheme();
   const { width } = useWindowDimensions();
-  const { callPriorities, callTypes, isLoading, error, fetchCallPriorities, fetchCallTypes } = useCallsStore();
+  const { callPriorities, callTypes, isLoadingPriorities, isLoadingTypes, prioritiesError, typesError, fetchCallPriorities, fetchCallTypes } = useCallsStore();
+  // Only the first load of priorities and types holds the form back. The store's shared isLoading/error also follow
+  // the active-calls list, which reloads on every call event, so gating on them blanked the form while it was in use.
+  const isLoading = (isLoadingPriorities && callPriorities.length === 0) || (isLoadingTypes && callTypes.length === 0);
+  const error = callPriorities.length === 0 ? prioritiesError : callTypes.length === 0 ? typesError : null;
   const { config } = useCoreStore();
   const { trackEvent } = useAnalytics();
   const toast = useToast();
@@ -299,6 +309,9 @@ export default function NewCallWeb() {
   const [udfValues, setUdfValues] = useState<UdfFieldValueInput[]>([]);
   const [selectedProtocols, setSelectedProtocols] = useState<SelectedProtocol[]>([]);
   const [linkedCall, setLinkedCall] = useState<{ callId: string; number: string; name: string } | null>(null);
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+  // Save as Pending: the call is stored and numbered but nobody is notified until a dispatcher sends it.
+  const [isPending, setIsPending] = useState(false);
   const [isGeocodingAddress, setIsGeocodingAddress] = useState(false);
   const [isGeocodingPlusCode, setIsGeocodingPlusCode] = useState(false);
   const [isGeocodingCoordinates, setIsGeocodingCoordinates] = useState(false);
@@ -365,6 +378,8 @@ export default function NewCallWeb() {
       type: '',
       contactName: '',
       contactInfo: '',
+      externalId: '',
+      referenceId: '',
       scheduledOn: '',
       dispatchSelection: {
         everyone: false,
@@ -433,29 +448,35 @@ export default function NewCallWeb() {
           return;
         }
 
-        // A location on the equator or the prime meridian has a zero coordinate, which is a real
-        // place, not a blank field — test that both are finite rather than truthy.
-        const hasGeolocation = Number.isFinite(data.latitude) && Number.isFinite(data.longitude);
+        // The same value createCall sends, so "required" here and on the server agree on what counts
+        // as a location (a single zero coordinate does; a blank pair or 0,0 does not).
+        const geolocation = formatGeolocation(data.latitude, data.longitude);
 
         // The department may require fields beyond the built-in mandatory four. Enforced here for a
         // clear message, and again on the server so an old build cannot slip an incomplete call past.
         // DispatchOn belongs here, unlike on the other forms: this screen is the one that actually
         // renders a scheduling input and sends ScheduledOn.
-        const missingFields = fieldPolicy.missingRequired({
-          [NewCallFieldKeys.Address]: data.address,
-          [NewCallFieldKeys.Geolocation]: hasGeolocation ? `${data.latitude},${data.longitude}` : '',
-          [NewCallFieldKeys.What3Words]: data.what3words,
-          [NewCallFieldKeys.PlusCode]: data.plusCode,
-          [NewCallFieldKeys.Note]: data.note,
-          [NewCallFieldKeys.ContactName]: data.contactName,
-          [NewCallFieldKeys.ContactInfo]: data.contactInfo,
-          [NewCallFieldKeys.DestinationPoi]: data.destinationPoiId,
-          [NewCallFieldKeys.Protocols]: selectedProtocols.length > 0,
-          [NewCallFieldKeys.LinkedCall]: !!linkedCall,
-          [NewCallFieldKeys.DispatchOn]: data.scheduledOn,
-          [NewCallFieldKeys.DispatchList]:
-            dispatchSelection.everyone || dispatchSelection.units.length > 0 || dispatchSelection.users.length > 0 || dispatchSelection.groups.length > 0 || dispatchSelection.roles.length > 0,
-        });
+        // A pending call is not dispatched or scheduled yet, so neither the dispatch list nor the dispatch
+        // time can be required of it (the server skips both rules for pending calls too).
+        const missingFields = fieldPolicy
+          .missingRequired({
+            [NewCallFieldKeys.Address]: data.address,
+            [NewCallFieldKeys.Geolocation]: geolocation,
+            [NewCallFieldKeys.What3Words]: data.what3words,
+            [NewCallFieldKeys.PlusCode]: data.plusCode,
+            [NewCallFieldKeys.Note]: data.note,
+            [NewCallFieldKeys.ContactName]: data.contactName,
+            [NewCallFieldKeys.ContactInfo]: data.contactInfo,
+            [NewCallFieldKeys.ExternalId]: data.externalId,
+            [NewCallFieldKeys.ReferenceId]: data.referenceId,
+            [NewCallFieldKeys.DestinationPoi]: data.destinationPoiId,
+            [NewCallFieldKeys.Protocols]: selectedProtocols.length > 0,
+            [NewCallFieldKeys.LinkedCall]: !!linkedCall,
+            [NewCallFieldKeys.DispatchOn]: data.scheduledOn,
+            [NewCallFieldKeys.DispatchList]:
+              dispatchSelection.everyone || dispatchSelection.units.length > 0 || dispatchSelection.users.length > 0 || dispatchSelection.groups.length > 0 || dispatchSelection.roles.length > 0,
+          })
+          .filter((key) => !(isPending && (key === NewCallFieldKeys.DispatchOn || key === NewCallFieldKeys.DispatchList)));
 
         if (missingFields.length > 0) {
           setIsSubmitting(false);
@@ -475,8 +496,8 @@ export default function NewCallWeb() {
           data.longitude = selectedLocation.longitude;
         }
 
-        // Validate scheduled time is in the future if provided
-        if (data.scheduledOn?.trim()) {
+        // Validate scheduled time is in the future if provided (a pending call ignores it)
+        if (!isPending && data.scheduledOn?.trim()) {
           const scheduledDate = new Date(data.scheduledOn);
           if (scheduledDate <= new Date()) {
             setIsSubmitting(false);
@@ -512,13 +533,19 @@ export default function NewCallWeb() {
           longitude: data.longitude,
           what3words: data.what3words,
           plusCode: data.plusCode,
+          contactName: data.contactName,
+          contactInfo: data.contactInfo,
+          contactId: selectedContactId ?? undefined,
+          externalId: data.externalId,
+          referenceId: data.referenceId,
           dispatchUsers: data.dispatchSelection?.users,
           dispatchGroups: data.dispatchSelection?.groups,
           dispatchRoles: data.dispatchSelection?.roles,
           dispatchUnits: data.dispatchSelection?.units,
           dispatchEveryone: data.dispatchSelection?.everyone,
           linkedCallId: linkedCall?.callId,
-          scheduledOn: data.scheduledOn?.trim() ? new Date(data.scheduledOn).toISOString() : undefined,
+          scheduledOn: !isPending && data.scheduledOn?.trim() ? new Date(data.scheduledOn).toISOString() : undefined,
+          isPending,
         });
 
         if (udfValues.length > 0 && response?.Id) {
@@ -529,8 +556,13 @@ export default function NewCallWeb() {
           }
         }
 
-        toast.success(t('calls.create_success'));
-        router.push('/(app)/home' as Href);
+        if (isPending) {
+          toast.success(t('calls.pending_saved'));
+          router.push('/pending-calls' as Href);
+        } else {
+          toast.success(t('calls.create_success'));
+          router.push('/(app)/home' as Href);
+        }
       } catch (err) {
         console.error('Error creating call:', err);
         toast.error(t('calls.create_error'));
@@ -538,7 +570,7 @@ export default function NewCallWeb() {
         setIsSubmitting(false);
       }
     },
-    [selectedLocation, callPriorities, callTypes, toast, t, linkedCall, selectedProtocols.length, udfValues, fieldPolicy, dispatchSelection]
+    [selectedLocation, callPriorities, callTypes, toast, t, linkedCall, selectedContactId, isPending, selectedProtocols.length, udfValues, fieldPolicy, dispatchSelection]
   );
 
   // Keyboard shortcuts
@@ -635,6 +667,8 @@ export default function NewCallWeb() {
       const info = contact.Email || String(contact.Phone || contact.Mobile || '');
       setValue('contactName', name);
       setValue('contactInfo', info);
+      // Links the call to the department contact record (its Primary Contact), as the native form does.
+      setSelectedContactId(contact.ContactId);
     },
     [setValue]
   );
@@ -943,8 +977,8 @@ export default function NewCallWeb() {
                 ) : null}
               </Card>
 
-              {/* Schedule Dispatch */}
-              {fieldPolicy.isVisible(NewCallFieldKeys.DispatchOn) ? (
+              {/* Schedule Dispatch (a pending call has no dispatch time, so it hides while "Save as pending" is on) */}
+              {fieldPolicy.isVisible(NewCallFieldKeys.DispatchOn) && !isPending ? (
                 <Card style={StyleSheet.flatten([styles.card, isDark ? styles.cardDark : styles.cardLight])}>
                   <Pressable style={styles.collapsibleHeader} onPress={() => toggleSection('scheduledDispatch')}>
                     <View style={styles.collapsibleHeaderLeft}>
@@ -976,8 +1010,11 @@ export default function NewCallWeb() {
                 </Card>
               ) : null}
 
-              {/* Contact Information — one card holds both fields, so it shows when either is enabled. */}
-              {fieldPolicy.isVisible(NewCallFieldKeys.ContactName) || fieldPolicy.isVisible(NewCallFieldKeys.ContactInfo) ? (
+              {/* Contact Information — one card holds the contact and identifier fields, so it shows when any is enabled. */}
+              {fieldPolicy.isVisible(NewCallFieldKeys.ContactName) ||
+              fieldPolicy.isVisible(NewCallFieldKeys.ContactInfo) ||
+              fieldPolicy.isVisible(NewCallFieldKeys.ExternalId) ||
+              fieldPolicy.isVisible(NewCallFieldKeys.ReferenceId) ? (
                 <Card style={StyleSheet.flatten([styles.card, isDark ? styles.cardDark : styles.cardLight])}>
                   <Pressable style={styles.collapsibleHeader} onPress={() => toggleSection('contact')}>
                     <Text style={StyleSheet.flatten([styles.sectionTitle, isDark ? styles.sectionTitleDark : styles.sectionTitleLight, { marginBottom: 0 }])}>{t('calls.contact_information')}</Text>
@@ -1011,6 +1048,31 @@ export default function NewCallWeb() {
                               name="contactInfo"
                               render={({ field: { onChange, onBlur, value } }) => (
                                 <WebInput label={t('calls.contact_info')} placeholder={t('calls.contact_info_placeholder')} value={value || ''} onChange={onChange} onBlur={onBlur} testID="contact-info-input" />
+                              )}
+                            />
+                          </View>
+                        ) : null}
+                      </View>
+
+                      <View style={styles.twoInputRow}>
+                        {fieldPolicy.isVisible(NewCallFieldKeys.ExternalId) ? (
+                          <View style={styles.halfWidth}>
+                            <Controller
+                              control={control}
+                              name="externalId"
+                              render={({ field: { onChange, onBlur, value } }) => (
+                                <WebInput label={t('call_detail.external_id')} placeholder={t('call_detail.external_id')} value={value || ''} onChange={onChange} onBlur={onBlur} testID="external-id-input" />
+                              )}
+                            />
+                          </View>
+                        ) : null}
+                        {fieldPolicy.isVisible(NewCallFieldKeys.ReferenceId) ? (
+                          <View style={styles.halfWidth}>
+                            <Controller
+                              control={control}
+                              name="referenceId"
+                              render={({ field: { onChange, onBlur, value } }) => (
+                                <WebInput label={t('call_detail.reference_id')} placeholder={t('call_detail.reference_id')} value={value || ''} onChange={onChange} onBlur={onBlur} testID="reference-id-input" />
                               )}
                             />
                           </View>
@@ -1236,6 +1298,18 @@ export default function NewCallWeb() {
                 </Card>
               ) : null}
 
+              {/* Save as Pending: always offered, whatever the field policy shows, because it is what lets a
+                  call be stored without dispatching it. */}
+              <Card style={StyleSheet.flatten([styles.card, isDark ? styles.cardDark : styles.cardLight])}>
+                <View style={styles.pendingRow}>
+                  <View style={styles.pendingTextContainer}>
+                    <Text style={StyleSheet.flatten([styles.sectionTitle, isDark ? styles.sectionTitleDark : styles.sectionTitleLight, { marginBottom: 4 }])}>{t('calls.save_as_pending')}</Text>
+                    <Text style={StyleSheet.flatten([styles.webLabel, { color: isDark ? '#9ca3af' : '#6b7280', fontWeight: '400', marginBottom: 0 }])}>{t('calls.save_as_pending_description')}</Text>
+                  </View>
+                  <Switch value={isPending} onValueChange={setIsPending} testID="save-as-pending-switch" aria-label={t('calls.save_as_pending')} />
+                </View>
+              </Card>
+
               {/* Dispatch Card */}
               {fieldPolicy.isVisible(NewCallFieldKeys.DispatchList) ? (
                 <Card style={StyleSheet.flatten([styles.card, isDark ? styles.cardDark : styles.cardLight])}>
@@ -1340,7 +1414,7 @@ export default function NewCallWeb() {
               disabled={isSubmitting || !fieldPolicy.isLoaded}
             >
               <PlusIcon size={18} color="#fff" />
-              <Text style={styles.submitButtonText}>{isSubmitting ? t('common.creating') : t('calls.create')}</Text>
+              <Text style={styles.submitButtonText}>{isSubmitting ? t('common.creating') : isPending ? t('calls.save_pending_call') : t('calls.create')}</Text>
             </Pressable>
           </View>
 
@@ -1547,6 +1621,14 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   halfWidth: {
+    flex: 1,
+  },
+  pendingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  pendingTextContainer: {
     flex: 1,
   },
   searchButton: {

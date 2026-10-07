@@ -22,16 +22,26 @@ interface StatItemProps {
   bgColor?: string;
   darkBgColor?: string;
   onPress?: () => void;
+  /** Read by screen readers for a pressable tile; the label and value are read otherwise. */
+  accessibilityLabel?: string;
+  testID?: string;
 }
 
-const StatItem: React.FC<StatItemProps> = React.memo(({ icon, label, value, color, darkColor, bgClassName, bgColor, darkBgColor, onPress }) => {
+const StatItem: React.FC<StatItemProps> = React.memo(({ icon, label, value, color, darkColor, bgClassName, bgColor, darkBgColor, onPress, accessibilityLabel, testID }) => {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
   const displayColor = isDark ? darkColor : color;
   const backgroundColor = bgColor || darkBgColor ? (isDark ? darkBgColor : bgColor) : undefined;
 
   return (
-    <Pressable onPress={onPress} disabled={!onPress} className="flex-1" testID={onPress ? `stat-${label}` : undefined}>
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      className="flex-1"
+      testID={testID ?? (onPress ? `stat-${label}` : undefined)}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={onPress ? (accessibilityLabel ?? `${label}: ${value}`) : undefined}
+    >
       <HStack className={`flex-1 items-center rounded-lg p-2 ${bgClassName || ''}`} space="sm" style={backgroundColor ? { backgroundColor } : undefined}>
         <View style={StyleSheet.flatten([styles.iconContainer, { backgroundColor: displayColor }])}>
           <Icon as={icon} size="sm" color="#fff" />
@@ -73,8 +83,13 @@ LiveClock.displayName = 'LiveClock';
 
 interface StatsHeaderProps {
   activeCalls: number;
-  pendingCalls: number;
+  /** Calls saved as Pending (State 8), from the pending-calls store. The tile is left out when undefined. */
+  pendingCalls?: number;
   scheduledCalls: number;
+  /** Makes the Pending tile pressable (opens the pending calls list). */
+  onPendingCallsPress?: () => void;
+  /** Makes the Scheduled tile pressable (opens the scheduled calls list). */
+  onScheduledCallsPress?: () => void;
   unitsAvailable: number;
   personnelAvailable: number;
   personnelOnDuty: number;
@@ -97,6 +112,8 @@ const StatsHeaderComponent: React.FC<StatsHeaderProps> = ({
   extremeAlerts = 0,
   severeAlerts = 0,
   onWeatherAlertsPress,
+  onPendingCallsPress,
+  onScheduledCallsPress,
 }) => {
   const { t } = useTranslation();
   const { colorScheme } = useColorScheme();
@@ -109,10 +126,32 @@ const StatsHeaderComponent: React.FC<StatsHeaderProps> = ({
         <StatItem icon={AlertTriangle} label={t('dispatch.active_calls')} value={activeCalls} color="#ef4444" darkColor="#f87171" bgClassName="bg-error-50 dark:bg-error-950" />
 
         {/* Pending Calls */}
-        <StatItem icon={Phone} label={t('dispatch.pending_calls')} value={pendingCalls} color="#f59e0b" darkColor="#fbbf24" bgClassName="bg-warning-50 dark:bg-warning-950" />
+        {pendingCalls !== undefined ? (
+          <StatItem
+            icon={Phone}
+            label={t('dispatch.pending_calls')}
+            value={pendingCalls}
+            color="#f59e0b"
+            darkColor="#fbbf24"
+            bgClassName="bg-warning-50 dark:bg-warning-950"
+            onPress={onPendingCallsPress}
+            accessibilityLabel={`${t('dispatch.view_pending_calls')}: ${pendingCalls}`}
+            testID="stat-pending-calls"
+          />
+        ) : null}
 
         {/* Scheduled Calls */}
-        <StatItem icon={CalendarClock} label={t('dispatch.scheduled_calls')} value={scheduledCalls} color="#0ea5e9" darkColor="#38bdf8" bgClassName="bg-info-50 dark:bg-info-950" />
+        <StatItem
+          icon={CalendarClock}
+          label={t('dispatch.scheduled_calls')}
+          value={scheduledCalls}
+          color="#0ea5e9"
+          darkColor="#38bdf8"
+          bgClassName="bg-info-50 dark:bg-info-950"
+          onPress={onScheduledCallsPress}
+          accessibilityLabel={`${t('dispatch.view_scheduled_calls')}: ${scheduledCalls}`}
+          testID="stat-scheduled-calls"
+        />
 
         {/* Units Available */}
         <StatItem icon={Truck} label={t('dispatch.units_available')} value={unitsAvailable} color="#22c55e" darkColor="#4ade80" bgClassName="bg-success-50 dark:bg-success-950" />

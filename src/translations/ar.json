@@ -110,6 +110,8 @@
     "close_call_error": "فشل في إغلاق المكالمة",
     "close_call_note": "ملاحظة الإغلاق",
     "close_call_note_placeholder": "أدخل ملاحظة حول إغلاق المكالمة",
+    "close_call_notify": "إشعار جميع المعنيين بالمكالمة",
+    "close_call_notify_hint": "ينبّه الأفراد والمجموعات والأدوار والوحدات المُرسلة وفريق القيادة بأن المكالمة قد أُغلقت.",
     "close_call_success": "تم إغلاق المكالمة بنجاح",
     "close_call_type": "نوع الإغلاق",
     "close_call_type_placeholder": "اختر نوع الإغلاق",
@@ -215,7 +217,9 @@
     "map_destination": "الوجهة",
     "dispatch_more": "إرسال موارد إضافية",
     "dispatch_more_success": "تم إرسال الموارد وإشعارها",
-    "dispatch_more_error": "تعذر إرسال الموارد"
+    "dispatch_more_error": "تعذر إرسال الموارد",
+    "pending_banner_title": "معلقة — لم يتم إرسالها بعد",
+    "pending_banner_description": "تم حفظ هذه المكالمة لكن لم يتم إشعار أي شخص. اختر من سترسل وأرسلها عندما تكون جاهزة."
   },
   "calls": {
     "address": "العنوان",
@@ -383,7 +387,16 @@
       "audio_name": "مقطع صوتي"
     },
     "required_fields_missing": "يطلب قسمك هذه الحقول قبل إنشاء البلاغ: {{fields}}",
-    "field_policy_loading": "لا يزال يتم تحميل إعدادات البلاغات في قسمك، يرجى المحاولة مرة أخرى بعد لحظات"
+    "field_policy_loading": "لا يزال يتم تحميل إعدادات البلاغات في قسمك، يرجى المحاولة مرة أخرى بعد لحظات",
+    "save_as_pending": "حفظ كمعلقة (عدم الإرسال الآن)",
+    "save_as_pending_description": "يتم حفظ المكالمة وترقيمها، لكن لا يتم إشعار أي شخص ولا تظهر في التطبيقات الميدانية. يتم الاحتفاظ بالمستلمين الذين تختارهم كإرسال مقترح؛ أرسلها لاحقًا من المكالمات المعلقة.",
+    "save_pending_call": "حفظ المكالمة المعلقة",
+    "pending_saved": "تم حفظ المكالمة كمعلقة",
+    "dispatch_now": "إرسال الآن",
+    "dispatch_now_confirm": "هل تريد إرسال هذه المكالمة الآن؟ سيتم إشعار كل من في قائمة الإرسال الخاصة بها فورًا.",
+    "dispatch_now_success": "تم إرسال المكالمة",
+    "dispatch_now_error": "تعذر إرسال المكالمة",
+    "dispatch_now_no_recipients": "اختر مستلمًا واحدًا على الأقل لإرسال هذه المكالمة إليه."
   },
   "chat": {
     "title": "الدردشة",
@@ -833,7 +846,10 @@
       "update_status": "تحديث الحالة",
       "update_staffing": "تحديث التعيين",
       "no_statuses_available": "لا توجد حالات متاحة",
-      "no_staffings_available": "لا توجد مستويات تعيين متاحة"
+      "no_staffings_available": "لا توجد مستويات تعيين متاحة",
+      "no_active_calls": "لا توجد مكالمات نشطة",
+      "no_stations_available": "لا توجد محطات متاحة",
+      "no_destinations_available": "لا توجد وجهات متاحة"
     },
     "unit_actions_panel": {
       "status": "الحالة",
@@ -882,7 +898,9 @@
     "single_list": "قائمة واحدة",
     "resources": "الموارد",
     "search_resources_placeholder": "البحث عن الموارد...",
-    "no_resources": "لا توجد موارد"
+    "no_resources": "لا توجد موارد",
+    "view_pending_calls": "عرض المكالمات المعلقة",
+    "view_scheduled_calls": "عرض المكالمات المجدولة"
   },
   "form": {
     "invalid_url": "يرجى إدخال عنوان URL صالح يبدأ بـ http:// أو https://",
@@ -1124,7 +1142,8 @@
     "weatherAlerts": "تنبيهات الطقس",
     "incident_command": "قيادة الحادث",
     "chat": "الدردشة",
-    "assistant": "المساعد"
+    "assistant": "المساعد",
+    "pending_calls": "المكالمات المعلقة"
   },
   "mfa": {
     "account": {
@@ -1820,6 +1839,18 @@
     "table_address": "العنوان",
     "table_scheduled": "مجدول في"
   },
+  "pending_calls": {
+    "title": "المكالمات المعلقة",
+    "loading": "تحميل المكالمات المعلقة...",
+    "no_pending_calls": "لا توجد مكالمات معلقة",
+    "no_pending_calls_description": "لا توجد مكالمات بانتظار الإرسال.",
+    "search": "البحث في المكالمات المعلقة...",
+    "table_received": "وقت الاستلام",
+    "cancel_call": "إلغاء المكالمة",
+    "cancel_confirm": "هل تريد إلغاء هذه المكالمة المعلقة؟ سيتم إغلاقها كملغاة دون إشعار أي شخص.",
+    "cancel_success": "تم إلغاء المكالمة المعلقة",
+    "cancel_error": "تعذر إلغاء المكالمة المعلقة"
+  },
   "settings": {
     "about": "حول التطبيق",
     "account": "الحساب",
@@ -2244,7 +2275,10 @@
       "2": "ملغاة",
       "3": "غير مؤكدة",
       "4": "مؤكدة",
-      "5": "بسيطة"
+      "5": "بسيطة",
+      "6": "محولة",
+      "7": "إنذار كاذب",
+      "8": "معلقة"
     }
   }
 }

@@ -29,11 +29,12 @@ import { VStack } from '@/components/ui/vstack';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { useSetStatusForCall } from '@/hooks/use-set-status-for-call';
 import { logger } from '@/lib/logging';
-import { isCallActive, isCallPending, isCallScheduled } from '@/lib/utils';
+import { isCallActive, isCallAwaitingScheduledDispatch } from '@/lib/utils';
 import { type PersonnelInfoResultData } from '@/models/v4/personnel/personnelInfoResultData';
 import { type UnitInfoResultData } from '@/models/v4/units/unitInfoResultData';
 import { WeatherAlertSeverity } from '@/models/v4/weatherAlerts/weatherAlertEnums';
 import useAuthStore from '@/stores/auth/store';
+import { refreshQueuedCallLists, usePendingCallsStore } from '@/stores/calls/pending-store';
 import { useCallsStore } from '@/stores/calls/store';
 import { useDashboardViewStore } from '@/stores/dispatch/dashboard-view-store';
 import { useDispatchConsoleStore } from '@/stores/dispatch/dispatch-console-store';
@@ -61,6 +62,7 @@ export default function DispatchConsoleWeb() {
   const callsLoading = useCallsStore((s) => s.isLoading);
   const fetchCalls = useCallsStore((s) => s.fetchCalls);
   const fetchCallPriorities = useCallsStore((s) => s.fetchCallPriorities);
+  const pendingCallsCount = usePendingCallsStore((s) => s.pendingCalls.length);
   const units = useUnitsStore((s) => s.units);
   const unitsLoading = useUnitsStore((s) => s.isLoading);
   const fetchUnits = useUnitsStore((s) => s.fetchUnits);
@@ -158,6 +160,8 @@ export default function DispatchConsoleWeb() {
     fetchNotes();
     fetchMapCenter();
     fetchWeatherAlerts();
+    // Pending calls are not in GetActiveCalls; the Pending tile counts them from their own list.
+    void usePendingCallsStore.getState().fetchPendingCalls();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -275,6 +279,8 @@ export default function DispatchConsoleWeb() {
       });
 
       fetchCalls();
+      // A pending call being saved, edited, dispatched or cancelled arrives as one of these pushes too.
+      refreshQueuedCallLists();
       // Also refresh notes if we have a selected call (call data may have changed)
       if (selectedCallId) {
         fetchNotes();
@@ -336,9 +342,12 @@ export default function DispatchConsoleWeb() {
 
   // Calculate stats
   const stats = useMemo(() => {
-    const activeCalls = calls.filter((c) => isCallActive(c.State)).length;
-    const pendingCalls = calls.filter((c) => isCallPending(c.State)).length;
-    const scheduledCalls = calls.filter((c) => isCallScheduled(c.State)).length;
+    // Core has no scheduled call state: a scheduled call is Active (0) with a future dispatch time, so it
+    // counts as scheduled until that time and as active after it. Pending calls (State 8) are not in this
+    // list at all; their count comes from the pending-calls store.
+    const now = Date.now();
+    const scheduledCalls = calls.filter((c) => isCallAwaitingScheduledDispatch(c, now)).length;
+    const activeCalls = calls.filter((c) => isCallActive(c.State)).length - scheduledCalls;
     // Only count units/personnel with explicit 'available' or 'standing by' status (case-insensitive)
     // Missing or null statuses are NOT considered available for safety in dispatch scenarios
     const availableUnits = units.filter((u) => {
@@ -357,7 +366,6 @@ export default function DispatchConsoleWeb() {
 
     return {
       activeCalls,
-      pendingCalls,
       scheduledCalls,
       unitsAvailable: availableUnits,
       personnelAvailable: availablePersonnel,
@@ -560,6 +568,14 @@ export default function DispatchConsoleWeb() {
 
   const handleWeatherAlertsPress = useCallback(() => {
     router.push('/(app)/weather-alerts' as Href);
+  }, []);
+
+  const handlePendingCallsPress = useCallback(() => {
+    router.push('/pending-calls' as Href);
+  }, []);
+
+  const handleScheduledCallsPress = useCallback(() => {
+    router.push('/scheduled-calls' as Href);
   }, []);
 
   const handleCloseAddNoteSheet = useCallback(() => {
@@ -964,8 +980,10 @@ export default function DispatchConsoleWeb() {
       {/* Stats Header */}
       <StatsHeader
         activeCalls={stats.activeCalls}
-        pendingCalls={stats.pendingCalls}
+        pendingCalls={pendingCallsCount}
         scheduledCalls={stats.scheduledCalls}
+        onPendingCallsPress={handlePendingCallsPress}
+        onScheduledCallsPress={handleScheduledCallsPress}
         unitsAvailable={stats.unitsAvailable}
         personnelAvailable={stats.personnelAvailable}
         personnelOnDuty={stats.personnelOnDuty}

@@ -47,7 +47,8 @@ export default function UnitDetail() {
       try {
         setIsLoading(true);
         setError(null);
-        const response = await getUnitsInfos('');
+        // Fresh: this screen shows the unit's current status, which the cached list can predate.
+        const response = await getUnitsInfos('', true);
         const found = response.Data?.find((u: UnitInfoResultData) => u.UnitId === unitId) || null;
         setUnit(found);
       } catch (err) {

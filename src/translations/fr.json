@@ -114,6 +114,8 @@
     "close_call_error": "Échec de la clôture de l'appel",
     "close_call_note": "Note de clôture",
     "close_call_note_placeholder": "Saisissez une note concernant la clôture de l'appel",
+    "close_call_notify": "Prévenir tous les intervenants de l'appel",
+    "close_call_notify_hint": "Informe le personnel, les groupes, les rôles et les unités engagés ainsi que l'équipe de commandement que l'appel est clôturé.",
     "close_call_success": "Appel clôturé avec succès",
     "close_call_type": "Type de clôture",
     "close_call_type_placeholder": "Sélectionner le type de clôture",
@@ -215,7 +217,9 @@
     "map_destination": "Destination",
     "dispatch_more": "Répartir des ressources supplémentaires",
     "dispatch_more_success": "Ressources réparties et notifiées",
-    "dispatch_more_error": "Échec de la répartition des ressources"
+    "dispatch_more_error": "Échec de la répartition des ressources",
+    "pending_banner_title": "En attente — pas encore dépêchée",
+    "pending_banner_description": "Cette intervention est enregistrée mais personne n’a été prévenu. Choisissez qui envoyer et dépêchez-la quand elle est prête."
   },
   "calls": {
     "destination": "Destination",
@@ -383,7 +387,16 @@
       "audio_name": "Extrait audio"
     },
     "required_fields_missing": "Votre service exige ces champs avant qu'un appel puisse être créé : {{fields}}",
-    "field_policy_loading": "Les paramètres d'appel de votre service sont encore en cours de chargement, veuillez réessayer dans un instant"
+    "field_policy_loading": "Les paramètres d'appel de votre service sont encore en cours de chargement, veuillez réessayer dans un instant",
+    "save_as_pending": "Enregistrer en attente (ne pas dépêcher maintenant)",
+    "save_as_pending_description": "L’intervention est enregistrée et numérotée, mais personne n’est prévenu et les applications terrain ne la voient pas. Les destinataires choisis sont conservés comme dispatch proposé ; dépêchez-la plus tard depuis Interventions en attente.",
+    "save_pending_call": "Enregistrer l’intervention en attente",
+    "pending_saved": "Intervention enregistrée en attente",
+    "dispatch_now": "Dépêcher maintenant",
+    "dispatch_now_confirm": "Dépêcher cette intervention maintenant ? Tous les destinataires de sa liste de dispatch sont prévenus immédiatement.",
+    "dispatch_now_success": "Intervention dépêchée",
+    "dispatch_now_error": "Impossible de dépêcher l’intervention",
+    "dispatch_now_no_recipients": "Choisissez au moins un destinataire auquel dépêcher cette intervention."
   },
   "chat": {
     "title": "Chat",
@@ -833,7 +846,10 @@
       "update_status": "Mettre à jour le statut",
       "update_staffing": "Mettre à jour les effectifs",
       "no_statuses_available": "Aucun statut disponible",
-      "no_staffings_available": "Aucun niveau d'effectifs disponible"
+      "no_staffings_available": "Aucun niveau d'effectifs disponible",
+      "no_active_calls": "Aucun appel actif",
+      "no_stations_available": "Aucune caserne disponible",
+      "no_destinations_available": "Aucune destination disponible"
     },
     "unit_actions_panel": {
       "status": "Statut",
@@ -882,7 +898,9 @@
     "single_list": "Liste unique",
     "resources": "Ressources",
     "search_resources_placeholder": "Rechercher des ressources...",
-    "no_resources": "Aucune ressource"
+    "no_resources": "Aucune ressource",
+    "view_pending_calls": "Voir les interventions en attente",
+    "view_scheduled_calls": "Voir les interventions planifiées"
   },
   "form": {
     "invalid_url": "Veuillez saisir une URL valide commençant par http:// ou https://",
@@ -1124,7 +1142,8 @@
     "weatherAlerts": "Alertes météo",
     "incident_command": "Commandement d’intervention",
     "chat": "Chat",
-    "assistant": "Assistant"
+    "assistant": "Assistant",
+    "pending_calls": "Interventions en attente"
   },
   "mfa": {
     "account": {
@@ -1820,6 +1839,18 @@
     "table_address": "Adresse",
     "table_scheduled": "Planifiée pour"
   },
+  "pending_calls": {
+    "title": "Interventions en attente",
+    "loading": "Chargement des interventions en attente...",
+    "no_pending_calls": "Aucune intervention en attente",
+    "no_pending_calls_description": "Aucune intervention n’attend d’être dépêchée.",
+    "search": "Rechercher des interventions en attente...",
+    "table_received": "Reçue",
+    "cancel_call": "Annuler l’intervention",
+    "cancel_confirm": "Annuler cette intervention en attente ? Elle sera clôturée comme Annulée sans prévenir personne.",
+    "cancel_success": "Intervention en attente annulée",
+    "cancel_error": "Impossible d’annuler l’intervention en attente"
+  },
   "settings": {
     "about": "À propos",
     "account": "Compte",
@@ -2244,7 +2275,10 @@
       "2": "Annulé",
       "3": "Non fondé",
       "4": "Fondé",
-      "5": "Mineur"
+      "5": "Mineur",
+      "6": "Transféré",
+      "7": "Fausse alerte",
+      "8": "En attente"
     }
   }
 }
