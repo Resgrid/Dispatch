@@ -18,6 +18,7 @@ import { DispatchSelectionModal } from '@/components/calls/dispatch-selection-mo
 import { LinkedCallsModal } from '@/components/calls/linked-calls-modal';
 import { ProtocolSelectorModal, type SelectedProtocol } from '@/components/calls/protocol-selector-modal';
 import { UdfFieldsRenderer } from '@/components/calls/udf-fields-renderer';
+import { DateTimeField } from '@/components/common/date-time-field';
 import { Loading } from '@/components/common/loading';
 import FullScreenLocationPicker from '@/components/maps/full-screen-location-picker';
 import LocationPicker from '@/components/maps/location-picker';
@@ -34,29 +35,12 @@ import { VStack } from '@/components/ui/vstack';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { useNewCallFieldPolicy } from '@/hooks/use-new-call-field-policy';
 import { useToast } from '@/hooks/use-toast';
+import { describeCallFields, getMissingCallFieldsFromError, hasDispatchRecipients, toProtocolIds } from '@/lib/call-field-policy';
 import { formatGeolocation } from '@/lib/call-geolocation';
+import { isDispatchTimeTooSoon, toDispatchOnUtc } from '@/lib/call-schedule';
 import { getPoiDestinationOptionLabel } from '@/lib/poi-display';
 import { type CallResultData } from '@/models/v4/calls/callResultData';
 import { type NewCallFieldKey, NewCallFieldKeys } from '@/models/v4/calls/newCallFieldPolicyResultData';
-
-// The policy speaks in stable wire keys; a dispatcher told to fill in 'contactName' is being shown
-// the protocol rather than their own form. Map each key back to the label this screen already puts
-// on the field. Only the fields this screen renders appear here — anything else falls back to the
-// raw key, which at least names something, rather than being dropped from the message.
-const NEW_CALL_FIELD_LABEL_KEYS: Partial<Record<NewCallFieldKey, string>> = {
-  [NewCallFieldKeys.Address]: 'calls.address',
-  [NewCallFieldKeys.Geolocation]: 'calls.coordinates',
-  [NewCallFieldKeys.What3Words]: 'calls.what3words',
-  [NewCallFieldKeys.PlusCode]: 'calls.plus_code',
-  [NewCallFieldKeys.Note]: 'calls.note',
-  [NewCallFieldKeys.ContactName]: 'calls.contact_name',
-  [NewCallFieldKeys.ContactInfo]: 'calls.contact_info',
-  [NewCallFieldKeys.ExternalId]: 'call_detail.external_id',
-  [NewCallFieldKeys.ReferenceId]: 'call_detail.reference_id',
-  [NewCallFieldKeys.DestinationPoi]: 'calls.destination',
-  [NewCallFieldKeys.DispatchOn]: 'calls.scheduled_on',
-  [NewCallFieldKeys.DispatchList]: 'calls.dispatch_to',
-};
 import { type ContactResultData } from '@/models/v4/contacts/contactResultData';
 import { type PoiResultData } from '@/models/v4/mapping/poiResultData';
 import { type UdfFieldValueInput } from '@/models/v4/userDefinedFields/udfFieldValueInput';
@@ -81,8 +65,10 @@ const formSchema = z.object({
   contactName: z.string().optional(),
   contactInfo: z.string().optional(),
   externalId: z.string().optional(),
+  incidentId: z.string().optional(),
   referenceId: z.string().optional(),
-  scheduledOn: z.string().optional(),
+  // When to dispatch, as the picker's ISO UTC instant; blank dispatches now.
+  dispatchOn: z.string().optional(),
   dispatchSelection: z
     .object({
       everyone: z.boolean(),
@@ -209,32 +195,29 @@ const WebInput: React.FC<WebInputProps> = ({ label, placeholder, value, onChange
   );
 };
 
-// Web-optimized datetime input component
+// Labelled date + time picker. The app's shared DateTimeField (clearable, works the same on web and
+// native) holds the value as an ISO UTC instant, the form the API takes as DispatchOnUtc.
 interface WebDateTimeInputProps {
   label: string;
   value: string;
   onChange: (value: string) => void;
-  min?: string;
   error?: string;
   helperText?: string;
   testID?: string;
+  required?: boolean;
 }
 
-const WebDateTimeInput: React.FC<WebDateTimeInputProps> = ({ label, value, onChange, min, error, helperText, testID }) => {
+const WebDateTimeInput: React.FC<WebDateTimeInputProps> = ({ label, value, onChange, error, helperText, testID, required = false }) => {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
 
-  const inputStyles = StyleSheet.flatten([webStyles.webInput as any, isDark ? styles.webInputDark : styles.webInputLight, error ? styles.webInputError : {}]);
-
-  const accessibleInputStyles = {
-    ...inputStyles,
-    outline: 'none',
-  } as React.CSSProperties;
-
   return (
     <View style={styles.webInputContainer}>
-      <Text style={StyleSheet.flatten([styles.webLabel, isDark ? styles.webLabelDark : styles.webLabelLight])}>{label}</Text>
-      <input type="datetime-local" className="web-input-accessible" style={accessibleInputStyles} value={value} onChange={(e) => onChange(e.target.value)} min={min} data-testid={testID} />
+      <Text style={StyleSheet.flatten([styles.webLabel, isDark ? styles.webLabelDark : styles.webLabelLight])}>
+        {label}
+        {required ? <Text style={styles.required}> *</Text> : null}
+      </Text>
+      <DateTimeField value={value} onChange={onChange} label={label} mode="datetime" testID={testID} />
       {helperText ? <Text style={StyleSheet.flatten([styles.webLabel, { color: isDark ? '#9ca3af' : '#6b7280', fontWeight: '400', marginTop: 4 }])}>{helperText}</Text> : null}
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
@@ -379,8 +362,9 @@ export default function NewCallWeb() {
       contactName: '',
       contactInfo: '',
       externalId: '',
+      incidentId: '',
       referenceId: '',
-      scheduledOn: '',
+      dispatchOn: '',
       dispatchSelection: {
         everyone: false,
         users: [],
@@ -454,8 +438,8 @@ export default function NewCallWeb() {
 
         // The department may require fields beyond the built-in mandatory four. Enforced here for a
         // clear message, and again on the server so an old build cannot slip an incomplete call past.
-        // DispatchOn belongs here, unlike on the other forms: this screen is the one that actually
-        // renders a scheduling input and sends ScheduledOn.
+        // Indoor location has no picker here, and the server does not enforce it on a save that sends
+        // no zone, so neither does this.
         // A pending call is not dispatched or scheduled yet, so neither the dispatch list nor the dispatch
         // time can be required of it (the server skips both rules for pending calls too).
         const missingFields = fieldPolicy
@@ -468,26 +452,20 @@ export default function NewCallWeb() {
             [NewCallFieldKeys.ContactName]: data.contactName,
             [NewCallFieldKeys.ContactInfo]: data.contactInfo,
             [NewCallFieldKeys.ExternalId]: data.externalId,
+            [NewCallFieldKeys.IncidentId]: data.incidentId,
             [NewCallFieldKeys.ReferenceId]: data.referenceId,
             [NewCallFieldKeys.DestinationPoi]: data.destinationPoiId,
-            [NewCallFieldKeys.Protocols]: selectedProtocols.length > 0,
+            // What is actually sent: a picked protocol without a usable id cannot be attached.
+            [NewCallFieldKeys.Protocols]: toProtocolIds(selectedProtocols).length > 0,
             [NewCallFieldKeys.LinkedCall]: !!linkedCall,
-            [NewCallFieldKeys.DispatchOn]: data.scheduledOn,
-            [NewCallFieldKeys.DispatchList]:
-              dispatchSelection.everyone || dispatchSelection.units.length > 0 || dispatchSelection.users.length > 0 || dispatchSelection.groups.length > 0 || dispatchSelection.roles.length > 0,
+            [NewCallFieldKeys.DispatchOn]: data.dispatchOn,
+            [NewCallFieldKeys.DispatchList]: hasDispatchRecipients(dispatchSelection),
           })
-          .filter((key) => !(isPending && (key === NewCallFieldKeys.DispatchOn || key === NewCallFieldKeys.DispatchList)));
+          .filter((key) => key !== NewCallFieldKeys.IndoorLocation && !(isPending && (key === NewCallFieldKeys.DispatchOn || key === NewCallFieldKeys.DispatchList)));
 
         if (missingFields.length > 0) {
           setIsSubmitting(false);
-
-          const missingLabels = missingFields.map((key) => {
-            const labelKey = NEW_CALL_FIELD_LABEL_KEYS[key];
-
-            return labelKey ? t(labelKey) : key;
-          });
-
-          toast.error(t('calls.required_fields_missing', { fields: missingLabels.join(', ') }));
+          toast.error(t('calls.required_fields_missing', { fields: describeCallFields(missingFields, t) }));
           return;
         }
 
@@ -496,14 +474,11 @@ export default function NewCallWeb() {
           data.longitude = selectedLocation.longitude;
         }
 
-        // Validate scheduled time is in the future if provided (a pending call ignores it)
-        if (!isPending && data.scheduledOn?.trim()) {
-          const scheduledDate = new Date(data.scheduledOn);
-          if (scheduledDate <= new Date()) {
-            setIsSubmitting(false);
-            toast.error(t('calls.scheduled_on_past_error'));
-            return;
-          }
+        // A scheduled dispatch has to be far enough ahead to be worth scheduling (a pending call ignores it).
+        if (!isPending && isDispatchTimeTooSoon(data.dispatchOn)) {
+          setIsSubmitting(false);
+          toast.error(t('calls.scheduled_on_too_soon'));
+          return;
         }
 
         const priority = callPriorities.find((p) => p.Name === data.priority);
@@ -537,14 +512,18 @@ export default function NewCallWeb() {
           contactInfo: data.contactInfo,
           contactId: selectedContactId ?? undefined,
           externalId: data.externalId,
+          incidentId: data.incidentId,
           referenceId: data.referenceId,
           dispatchUsers: data.dispatchSelection?.users,
           dispatchGroups: data.dispatchSelection?.groups,
           dispatchRoles: data.dispatchSelection?.roles,
           dispatchUnits: data.dispatchSelection?.units,
           dispatchEveryone: data.dispatchSelection?.everyone,
-          linkedCallId: linkedCall?.callId,
-          scheduledOn: !isPending && data.scheduledOn?.trim() ? new Date(data.scheduledOn).toISOString() : undefined,
+          // Sent whenever the picker is on screen, blank included, so the server links the call and
+          // enforces the department's requirement; left out when the policy hides the picker.
+          linkedCallId: fieldPolicy.isVisible(NewCallFieldKeys.LinkedCall) ? (linkedCall?.callId ?? '') : undefined,
+          protocolIds: fieldPolicy.isVisible(NewCallFieldKeys.Protocols) ? toProtocolIds(selectedProtocols) : undefined,
+          dispatchOnUtc: isPending ? undefined : toDispatchOnUtc(data.dispatchOn),
           isPending,
         });
 
@@ -565,12 +544,14 @@ export default function NewCallWeb() {
         }
       } catch (err) {
         console.error('Error creating call:', err);
-        toast.error(t('calls.create_error'));
+        // The server refuses a call the department's policy says is incomplete and names the fields.
+        const missingOnServer = getMissingCallFieldsFromError(err);
+        toast.error(missingOnServer ? t('calls.required_fields_missing', { fields: describeCallFields(missingOnServer, t) }) : t('calls.create_error'));
       } finally {
         setIsSubmitting(false);
       }
     },
-    [selectedLocation, callPriorities, callTypes, toast, t, linkedCall, selectedContactId, isPending, selectedProtocols.length, udfValues, fieldPolicy, dispatchSelection]
+    [selectedLocation, callPriorities, callTypes, toast, t, linkedCall, selectedContactId, isPending, selectedProtocols, udfValues, fieldPolicy, dispatchSelection]
   );
 
   // Keyboard shortcuts
@@ -853,6 +834,10 @@ export default function NewCallWeb() {
   const showPlusCode = fieldPolicy.isVisible(NewCallFieldKeys.PlusCode);
   const showDestinationPoi = fieldPolicy.isVisible(NewCallFieldKeys.DestinationPoi);
   const showLocationCard = showAddress || showGeolocation || showWhat3Words || showPlusCode || showDestinationPoi;
+  // Fields the department requires are marked the way the built-in ones are: inputs take `required`,
+  // section titles get this asterisk.
+  const isFieldRequired = (key: NewCallFieldKey) => fieldPolicy.isRequired(key);
+  const requiredMark = (key: NewCallFieldKey) => (isFieldRequired(key) ? <Text style={styles.required}> *</Text> : null);
 
   return (
     <>
@@ -969,7 +954,17 @@ export default function NewCallWeb() {
                         control={control}
                         name="note"
                         render={({ field: { onChange, onBlur, value } }) => (
-                          <WebInput label={t('calls.note')} placeholder={t('calls.note_placeholder')} value={value || ''} onChange={onChange} onBlur={onBlur} multiline rows={4} testID="note-input" />
+                          <WebInput
+                            label={t('calls.note')}
+                            placeholder={t('calls.note_placeholder')}
+                            value={value || ''}
+                            onChange={onChange}
+                            onBlur={onBlur}
+                            multiline
+                            rows={4}
+                            required={isFieldRequired(NewCallFieldKeys.Note)}
+                            testID="note-input"
+                          />
                         )}
                       />
                     ) : null}
@@ -983,7 +978,10 @@ export default function NewCallWeb() {
                   <Pressable style={styles.collapsibleHeader} onPress={() => toggleSection('scheduledDispatch')}>
                     <View style={styles.collapsibleHeaderLeft}>
                       <CalendarClockIcon size={18} color={isDark ? '#9ca3af' : '#6b7280'} />
-                      <Text style={StyleSheet.flatten([styles.sectionTitle, isDark ? styles.sectionTitleDark : styles.sectionTitleLight, { marginBottom: 0, marginLeft: 8 }])}>{t('calls.schedule_dispatch')}</Text>
+                      <Text style={StyleSheet.flatten([styles.sectionTitle, isDark ? styles.sectionTitleDark : styles.sectionTitleLight, { marginBottom: 0, marginLeft: 8 }])}>
+                        {t('calls.schedule_dispatch')}
+                        {requiredMark(NewCallFieldKeys.DispatchOn)}
+                      </Text>
                     </View>
                     <View>{sectionsExpanded.scheduledDispatch ? <ChevronUpIcon size={20} color={isDark ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={20} color={isDark ? '#9ca3af' : '#6b7280'} />}</View>
                   </Pressable>
@@ -992,15 +990,15 @@ export default function NewCallWeb() {
                       <Text style={StyleSheet.flatten([styles.webLabel, { color: isDark ? '#9ca3af' : '#6b7280', fontWeight: '400', marginBottom: 12 }])}>{t('calls.schedule_dispatch_description')}</Text>
                       <Controller
                         control={control}
-                        name="scheduledOn"
+                        name="dispatchOn"
                         render={({ field: { onChange, value } }) => (
                           <WebDateTimeInput
                             label={t('calls.scheduled_on')}
                             value={value || ''}
                             onChange={onChange}
-                            min={new Date(Date.now() + 60000).toISOString().slice(0, 16)}
                             helperText={t('calls.scheduled_on_helper')}
-                            error={errors.scheduledOn?.message}
+                            error={errors.dispatchOn?.message}
+                            required={isFieldRequired(NewCallFieldKeys.DispatchOn)}
                             testID="scheduled-on-input"
                           />
                         )}
@@ -1014,6 +1012,7 @@ export default function NewCallWeb() {
               {fieldPolicy.isVisible(NewCallFieldKeys.ContactName) ||
               fieldPolicy.isVisible(NewCallFieldKeys.ContactInfo) ||
               fieldPolicy.isVisible(NewCallFieldKeys.ExternalId) ||
+              fieldPolicy.isVisible(NewCallFieldKeys.IncidentId) ||
               fieldPolicy.isVisible(NewCallFieldKeys.ReferenceId) ? (
                 <Card style={StyleSheet.flatten([styles.card, isDark ? styles.cardDark : styles.cardLight])}>
                   <Pressable style={styles.collapsibleHeader} onPress={() => toggleSection('contact')}>
@@ -1022,12 +1021,15 @@ export default function NewCallWeb() {
                   </Pressable>
                   {sectionsExpanded.contact ? (
                     <View style={{ marginTop: 16 }}>
-                      <Pressable style={StyleSheet.flatten([styles.dispatchButton, isDark ? styles.dispatchButtonDark : styles.dispatchButtonLight, { marginBottom: 12 }])} onPress={() => setShowContactPicker(true)}>
-                        <UserIcon size={16} color={isDark ? '#9ca3af' : '#6b7280'} />
-                        <Text style={StyleSheet.flatten([styles.dispatchButtonText, isDark ? styles.dispatchButtonTextDark : styles.dispatchButtonTextLight, { marginLeft: 8 }])}>
-                          {t('calls.contact_picker.search_placeholder', 'Search contacts...')}
-                        </Text>
-                      </Pressable>
+                      {/* The picker fills the contact fields, so it only shows when one of them does. */}
+                      {fieldPolicy.isVisible(NewCallFieldKeys.ContactName) || fieldPolicy.isVisible(NewCallFieldKeys.ContactInfo) ? (
+                        <Pressable style={StyleSheet.flatten([styles.dispatchButton, isDark ? styles.dispatchButtonDark : styles.dispatchButtonLight, { marginBottom: 12 }])} onPress={() => setShowContactPicker(true)}>
+                          <UserIcon size={16} color={isDark ? '#9ca3af' : '#6b7280'} />
+                          <Text style={StyleSheet.flatten([styles.dispatchButtonText, isDark ? styles.dispatchButtonTextDark : styles.dispatchButtonTextLight, { marginLeft: 8 }])}>
+                            {t('calls.contact_picker.search_placeholder', 'Search contacts...')}
+                          </Text>
+                        </Pressable>
+                      ) : null}
 
                       <View style={styles.twoInputRow}>
                         {fieldPolicy.isVisible(NewCallFieldKeys.ContactName) ? (
@@ -1036,7 +1038,15 @@ export default function NewCallWeb() {
                               control={control}
                               name="contactName"
                               render={({ field: { onChange, onBlur, value } }) => (
-                                <WebInput label={t('calls.contact_name')} placeholder={t('calls.contact_name_placeholder')} value={value || ''} onChange={onChange} onBlur={onBlur} testID="contact-name-input" />
+                                <WebInput
+                                  label={t('calls.contact_name')}
+                                  placeholder={t('calls.contact_name_placeholder')}
+                                  value={value || ''}
+                                  onChange={onChange}
+                                  onBlur={onBlur}
+                                  required={isFieldRequired(NewCallFieldKeys.ContactName)}
+                                  testID="contact-name-input"
+                                />
                               )}
                             />
                           </View>
@@ -1047,7 +1057,15 @@ export default function NewCallWeb() {
                               control={control}
                               name="contactInfo"
                               render={({ field: { onChange, onBlur, value } }) => (
-                                <WebInput label={t('calls.contact_info')} placeholder={t('calls.contact_info_placeholder')} value={value || ''} onChange={onChange} onBlur={onBlur} testID="contact-info-input" />
+                                <WebInput
+                                  label={t('calls.contact_info')}
+                                  placeholder={t('calls.contact_info_placeholder')}
+                                  value={value || ''}
+                                  onChange={onChange}
+                                  onBlur={onBlur}
+                                  required={isFieldRequired(NewCallFieldKeys.ContactInfo)}
+                                  testID="contact-info-input"
+                                />
                               )}
                             />
                           </View>
@@ -1061,7 +1079,15 @@ export default function NewCallWeb() {
                               control={control}
                               name="externalId"
                               render={({ field: { onChange, onBlur, value } }) => (
-                                <WebInput label={t('call_detail.external_id')} placeholder={t('call_detail.external_id')} value={value || ''} onChange={onChange} onBlur={onBlur} testID="external-id-input" />
+                                <WebInput
+                                  label={t('call_detail.external_id')}
+                                  placeholder={t('call_detail.external_id')}
+                                  value={value || ''}
+                                  onChange={onChange}
+                                  onBlur={onBlur}
+                                  required={isFieldRequired(NewCallFieldKeys.ExternalId)}
+                                  testID="external-id-input"
+                                />
                               )}
                             />
                           </View>
@@ -1072,12 +1098,42 @@ export default function NewCallWeb() {
                               control={control}
                               name="referenceId"
                               render={({ field: { onChange, onBlur, value } }) => (
-                                <WebInput label={t('call_detail.reference_id')} placeholder={t('call_detail.reference_id')} value={value || ''} onChange={onChange} onBlur={onBlur} testID="reference-id-input" />
+                                <WebInput
+                                  label={t('call_detail.reference_id')}
+                                  placeholder={t('call_detail.reference_id')}
+                                  value={value || ''}
+                                  onChange={onChange}
+                                  onBlur={onBlur}
+                                  required={isFieldRequired(NewCallFieldKeys.ReferenceId)}
+                                  testID="reference-id-input"
+                                />
                               )}
                             />
                           </View>
                         ) : null}
                       </View>
+
+                      {fieldPolicy.isVisible(NewCallFieldKeys.IncidentId) ? (
+                        <View style={styles.twoInputRow}>
+                          <View style={styles.halfWidth}>
+                            <Controller
+                              control={control}
+                              name="incidentId"
+                              render={({ field: { onChange, onBlur, value } }) => (
+                                <WebInput
+                                  label={t('calls.incident_id')}
+                                  placeholder={t('calls.incident_id')}
+                                  value={value || ''}
+                                  onChange={onChange}
+                                  onBlur={onBlur}
+                                  required={isFieldRequired(NewCallFieldKeys.IncidentId)}
+                                  testID="incident-id-input"
+                                />
+                              )}
+                            />
+                          </View>
+                        </View>
+                      ) : null}
                     </View>
                   ) : null}
                 </Card>
@@ -1119,6 +1175,7 @@ export default function NewCallWeb() {
                               value={value || ''}
                               onChange={onChange}
                               onBlur={onBlur}
+                              required={isFieldRequired(NewCallFieldKeys.Address)}
                               testID="address-input"
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
@@ -1151,6 +1208,7 @@ export default function NewCallWeb() {
                               value={value || ''}
                               onChange={onChange}
                               onBlur={onBlur}
+                              required={isFieldRequired(NewCallFieldKeys.Geolocation)}
                               testID="coordinates-input"
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
@@ -1186,6 +1244,7 @@ export default function NewCallWeb() {
                                     value={value || ''}
                                     onChange={onChange}
                                     onBlur={onBlur}
+                                    required={isFieldRequired(NewCallFieldKeys.What3Words)}
                                     testID="what3words-input"
                                     onKeyDown={(e) => {
                                       if (e.key === 'Enter') {
@@ -1274,6 +1333,7 @@ export default function NewCallWeb() {
                                 placeholder={t('calls.select_destination_poi')}
                                 value={value || NO_DESTINATION_VALUE}
                                 onChange={(selectedValue) => onChange(selectedValue === NO_DESTINATION_VALUE ? '' : selectedValue)}
+                                required={isFieldRequired(NewCallFieldKeys.DestinationPoi)}
                                 useIdValue
                                 options={[
                                   { id: NO_DESTINATION_VALUE, name: t('calls.no_destination') },
@@ -1314,7 +1374,10 @@ export default function NewCallWeb() {
               {fieldPolicy.isVisible(NewCallFieldKeys.DispatchList) ? (
                 <Card style={StyleSheet.flatten([styles.card, isDark ? styles.cardDark : styles.cardLight])}>
                   <Pressable style={styles.collapsibleHeader} onPress={() => toggleSection('dispatch')}>
-                    <Text style={StyleSheet.flatten([styles.sectionTitle, isDark ? styles.sectionTitleDark : styles.sectionTitleLight, { marginBottom: 0 }])}>{t('calls.dispatch_to')}</Text>
+                    <Text style={StyleSheet.flatten([styles.sectionTitle, isDark ? styles.sectionTitleDark : styles.sectionTitleLight, { marginBottom: 0 }])}>
+                      {t('calls.dispatch_to')}
+                      {!isPending ? requiredMark(NewCallFieldKeys.DispatchList) : null}
+                    </Text>
                     <View>{sectionsExpanded.dispatch ? <ChevronUpIcon size={20} color={isDark ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={20} color={isDark ? '#9ca3af' : '#6b7280'} />}</View>
                   </Pressable>
                   {sectionsExpanded.dispatch ? (
@@ -1344,7 +1407,10 @@ export default function NewCallWeb() {
                 <Card style={StyleSheet.flatten([styles.card, isDark ? styles.cardDark : styles.cardLight])}>
                   <Pressable style={styles.collapsibleHeader} onPress={() => toggleSection('protocols')}>
                     <View style={styles.collapsibleHeaderLeft}>
-                      <Text style={StyleSheet.flatten([styles.sectionTitle, isDark ? styles.sectionTitleDark : styles.sectionTitleLight, { marginBottom: 0 }])}>{t('calls.protocols.title', 'Protocols')}</Text>
+                      <Text style={StyleSheet.flatten([styles.sectionTitle, isDark ? styles.sectionTitleDark : styles.sectionTitleLight, { marginBottom: 0 }])}>
+                        {t('calls.protocols.title', 'Protocols')}
+                        {requiredMark(NewCallFieldKeys.Protocols)}
+                      </Text>
                       {selectedProtocols.length > 0 ? (
                         <View style={styles.countBadge}>
                           <Text style={styles.countBadgeText}>{selectedProtocols.length}</Text>
@@ -1369,7 +1435,10 @@ export default function NewCallWeb() {
                 <Card style={StyleSheet.flatten([styles.card, isDark ? styles.cardDark : styles.cardLight])}>
                   <Pressable style={styles.collapsibleHeader} onPress={() => toggleSection('linkedCall')}>
                     <View style={styles.collapsibleHeaderLeft}>
-                      <Text style={StyleSheet.flatten([styles.sectionTitle, isDark ? styles.sectionTitleDark : styles.sectionTitleLight, { marginBottom: 0 }])}>{t('calls.linked_calls.title', 'Linked Call')}</Text>
+                      <Text style={StyleSheet.flatten([styles.sectionTitle, isDark ? styles.sectionTitleDark : styles.sectionTitleLight, { marginBottom: 0 }])}>
+                        {t('calls.linked_calls.title', 'Linked Call')}
+                        {requiredMark(NewCallFieldKeys.LinkedCall)}
+                      </Text>
                       {linkedCall ? (
                         <View style={styles.countBadge}>
                           <Text style={styles.countBadgeText}>#{linkedCall.number}</Text>

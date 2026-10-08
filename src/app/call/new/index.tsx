@@ -19,6 +19,7 @@ import { DispatchSelectionModal } from '@/components/calls/dispatch-selection-mo
 import { LinkedCallsModal } from '@/components/calls/linked-calls-modal';
 import { ProtocolSelectorModal, type SelectedProtocol } from '@/components/calls/protocol-selector-modal';
 import { UdfFieldsRenderer } from '@/components/calls/udf-fields-renderer';
+import { DateTimeField } from '@/components/common/date-time-field';
 import { Loading } from '@/components/common/loading';
 import FullScreenLocationPicker from '@/components/maps/full-screen-location-picker';
 import LocationPicker from '@/components/maps/location-picker';
@@ -39,26 +40,12 @@ import { Textarea, TextareaInput } from '@/components/ui/textarea';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { useNewCallFieldPolicy } from '@/hooks/use-new-call-field-policy';
 import { useToast } from '@/hooks/use-toast';
+import { describeCallFields, getMissingCallFieldsFromError, hasDispatchRecipients, toProtocolIds } from '@/lib/call-field-policy';
 import { formatGeolocation } from '@/lib/call-geolocation';
+import { isDispatchTimeTooSoon, toDispatchOnUtc } from '@/lib/call-schedule';
 import { getPoiDestinationOptionLabel } from '@/lib/poi-display';
 import { type CallResultData } from '@/models/v4/calls/callResultData';
 import { type NewCallFieldKey, NewCallFieldKeys } from '@/models/v4/calls/newCallFieldPolicyResultData';
-
-// The policy speaks in stable wire keys; a dispatcher told to fill in 'contactName' is being shown
-// the protocol rather than their own form. Map each key back to the label this screen already puts
-// on the field. Only the fields this screen renders appear here — anything else falls back to the
-// raw key, which at least names something, rather than being dropped from the message.
-const NEW_CALL_FIELD_LABEL_KEYS: Partial<Record<NewCallFieldKey, string>> = {
-  [NewCallFieldKeys.Address]: 'calls.address',
-  [NewCallFieldKeys.Geolocation]: 'calls.coordinates',
-  [NewCallFieldKeys.What3Words]: 'calls.what3words',
-  [NewCallFieldKeys.PlusCode]: 'calls.plus_code',
-  [NewCallFieldKeys.Note]: 'calls.note',
-  [NewCallFieldKeys.ContactName]: 'calls.contact_name',
-  [NewCallFieldKeys.ContactInfo]: 'calls.contact_info',
-  [NewCallFieldKeys.DestinationPoi]: 'calls.destination',
-  [NewCallFieldKeys.DispatchList]: 'calls.dispatch_to',
-};
 import { type ContactResultData } from '@/models/v4/contacts/contactResultData';
 import { type PoiResultData } from '@/models/v4/mapping/poiResultData';
 import { type UdfFieldValueInput } from '@/models/v4/userDefinedFields/udfFieldValueInput';
@@ -82,6 +69,11 @@ const formSchema = z.object({
   type: z.string().min(1, { message: 'Type is required' }),
   contactName: z.string().optional(),
   contactInfo: z.string().optional(),
+  externalId: z.string().optional(),
+  incidentId: z.string().optional(),
+  referenceId: z.string().optional(),
+  // When to dispatch, as the picker's ISO UTC instant; blank dispatches now.
+  dispatchOn: z.string().optional(),
   dispatchSelection: z
     .object({
       everyone: z.boolean(),
@@ -228,6 +220,10 @@ export default function NewCall() {
       type: '',
       contactName: '',
       contactInfo: '',
+      externalId: '',
+      incidentId: '',
+      referenceId: '',
+      dispatchOn: '',
       dispatchSelection: {
         everyone: false,
         users: [],
@@ -291,9 +287,8 @@ export default function NewCall() {
 
       // The department may require fields beyond the built-in mandatory four. Enforced here for a
       // clear message, and again on the server so an old build cannot slip an incomplete call past.
-      // DispatchOn is deliberately absent: scheduling lives on the web form, not this one, so
-      // validating it here could only produce a required field the dispatcher has no way to fill.
-      // The server still enforces it and rejects the save with a reason.
+      // Indoor location has no picker here, and the server does not enforce it on a save that sends no
+      // zone, so neither does this.
       // A pending call is not dispatched or scheduled yet, so neither the dispatch list nor the dispatch
       // time can be required of it (the server skips both rules for pending calls too).
       const missingFields = fieldPolicy
@@ -305,22 +300,26 @@ export default function NewCall() {
           [NewCallFieldKeys.Note]: data.note,
           [NewCallFieldKeys.ContactName]: data.contactName,
           [NewCallFieldKeys.ContactInfo]: data.contactInfo,
+          [NewCallFieldKeys.ExternalId]: data.externalId,
+          [NewCallFieldKeys.IncidentId]: data.incidentId,
+          [NewCallFieldKeys.ReferenceId]: data.referenceId,
           [NewCallFieldKeys.DestinationPoi]: data.destinationPoiId,
-          [NewCallFieldKeys.Protocols]: selectedProtocols.length > 0,
+          // What is actually sent: a picked protocol without a usable id cannot be attached.
+          [NewCallFieldKeys.Protocols]: toProtocolIds(selectedProtocols).length > 0,
           [NewCallFieldKeys.LinkedCall]: !!linkedCall,
-          [NewCallFieldKeys.DispatchList]:
-            dispatchSelection.everyone || dispatchSelection.units.length > 0 || dispatchSelection.users.length > 0 || dispatchSelection.groups.length > 0 || dispatchSelection.roles.length > 0,
+          [NewCallFieldKeys.DispatchOn]: data.dispatchOn,
+          [NewCallFieldKeys.DispatchList]: hasDispatchRecipients(dispatchSelection),
         })
-        .filter((key) => !(isPending && (key === NewCallFieldKeys.DispatchOn || key === NewCallFieldKeys.DispatchList)));
+        .filter((key) => key !== NewCallFieldKeys.IndoorLocation && !(isPending && (key === NewCallFieldKeys.DispatchOn || key === NewCallFieldKeys.DispatchList)));
 
       if (missingFields.length > 0) {
-        const missingLabels = missingFields.map((key) => {
-          const labelKey = NEW_CALL_FIELD_LABEL_KEYS[key];
+        toast.error(t('calls.required_fields_missing', { fields: describeCallFields(missingFields, t) }));
+        return;
+      }
 
-          return labelKey ? t(labelKey) : key;
-        });
-
-        toast.error(t('calls.required_fields_missing', { fields: missingLabels.join(', ') }));
+      // A scheduled dispatch has to be far enough ahead to be worth scheduling (a pending call ignores it).
+      if (!isPending && isDispatchTimeTooSoon(data.dispatchOn)) {
+        toast.error(t('calls.scheduled_on_too_soon'));
         return;
       }
 
@@ -363,10 +362,17 @@ export default function NewCall() {
         dispatchRoles: data.dispatchSelection?.roles,
         dispatchUnits: data.dispatchSelection?.units,
         dispatchEveryone: data.dispatchSelection?.everyone,
-        linkedCallId: linkedCall?.callId,
+        // Sent whenever the picker is on screen, blank included, so the server links the call and
+        // enforces the department's requirement; left out when the policy hides the picker.
+        linkedCallId: fieldPolicy.isVisible(NewCallFieldKeys.LinkedCall) ? (linkedCall?.callId ?? '') : undefined,
+        protocolIds: fieldPolicy.isVisible(NewCallFieldKeys.Protocols) ? toProtocolIds(selectedProtocols) : undefined,
         contactName: data.contactName,
         contactInfo: data.contactInfo,
         contactId: selectedContactId ?? undefined,
+        externalId: data.externalId,
+        incidentId: data.incidentId,
+        referenceId: data.referenceId,
+        dispatchOnUtc: isPending ? undefined : toDispatchOnUtc(data.dispatchOn),
         isPending,
       });
 
@@ -392,8 +398,11 @@ export default function NewCall() {
     } catch (error) {
       console.error('Error creating call:', error);
 
-      // Show error toast
-      toast.error(t('calls.create_error'));
+      // The server refuses a call the department's policy says is incomplete and names the fields;
+      // say which, in the form's own words, rather than a bare "error creating call".
+      const missingOnServer = getMissingCallFieldsFromError(error);
+
+      toast.error(missingOnServer ? t('calls.required_fields_missing', { fields: describeCallFields(missingOnServer, t) }) : t('calls.create_error'));
     }
   };
 
@@ -764,6 +773,32 @@ export default function NewCall() {
   const showPlusCode = fieldPolicy.isVisible(NewCallFieldKeys.PlusCode);
   const showDestinationPoi = fieldPolicy.isVisible(NewCallFieldKeys.DestinationPoi);
   const showLocationCard = showAddress || showGeolocation || showWhat3Words || showPlusCode || showDestinationPoi;
+  // Fields the department requires are marked the way the built-in ones are; labelled inputs get the
+  // form control's own asterisk, section titles get this one.
+  const requiredMark = (key: NewCallFieldKey) => (fieldPolicy.isRequired(key) ? <Text className="text-red-500"> *</Text> : null);
+  const showContactName = fieldPolicy.isVisible(NewCallFieldKeys.ContactName);
+  const showContactInfo = fieldPolicy.isVisible(NewCallFieldKeys.ContactInfo);
+  const showExternalId = fieldPolicy.isVisible(NewCallFieldKeys.ExternalId);
+  const showIncidentId = fieldPolicy.isVisible(NewCallFieldKeys.IncidentId);
+  const showReferenceId = fieldPolicy.isVisible(NewCallFieldKeys.ReferenceId);
+
+  // The call's own identifiers: plain text inputs, each gated and marked by the policy.
+  const renderIdentifierField = (name: 'externalId' | 'incidentId' | 'referenceId', key: NewCallFieldKey, label: string, testID: string) => (
+    <FormControl className="mt-3" isRequired={fieldPolicy.isRequired(key)}>
+      <FormControlLabel>
+        <FormControlLabelText>{label}</FormControlLabelText>
+      </FormControlLabel>
+      <Controller
+        control={control}
+        name={name}
+        render={({ field: { onChange, onBlur, value } }) => (
+          <Input>
+            <InputField testID={testID} placeholder={label} value={value} onChangeText={onChange} onBlur={onBlur} />
+          </Input>
+        )}
+      />
+    </FormControl>
+  );
 
   return (
     <>
@@ -927,7 +962,10 @@ export default function NewCall() {
             {fieldPolicy.isVisible(NewCallFieldKeys.Note) ? (
               <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
                 <TouchableOpacity onPress={() => toggleSection('note')} className="flex-row items-center justify-between p-4">
-                  <Text className="text-base font-semibold">{t('calls.note')}</Text>
+                  <Text className="text-base font-semibold">
+                    {t('calls.note')}
+                    {requiredMark(NewCallFieldKeys.Note)}
+                  </Text>
                   {sectionsExpanded.note ? <ChevronUpIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} />}
                 </TouchableOpacity>
                 {sectionsExpanded.note ? (
@@ -958,7 +996,7 @@ export default function NewCall() {
                   <View className="px-4 pb-4">
                     {/* Address Field */}
                     {showAddress ? (
-                      <FormControl className="mb-4">
+                      <FormControl className="mb-4" isRequired={fieldPolicy.isRequired(NewCallFieldKeys.Address)}>
                         <FormControlLabel>
                           <FormControlLabelText>{t('calls.address')}</FormControlLabelText>
                         </FormControlLabel>
@@ -983,7 +1021,7 @@ export default function NewCall() {
 
                     {/* GPS Coordinates Field */}
                     {showGeolocation ? (
-                      <FormControl className="mb-4">
+                      <FormControl className="mb-4" isRequired={fieldPolicy.isRequired(NewCallFieldKeys.Geolocation)}>
                         <FormControlLabel>
                           <FormControlLabelText>{t('calls.coordinates')}</FormControlLabelText>
                         </FormControlLabel>
@@ -1015,7 +1053,7 @@ export default function NewCall() {
 
                     {/* what3words Field */}
                     {showWhat3Words ? (
-                      <FormControl className="mb-4">
+                      <FormControl className="mb-4" isRequired={fieldPolicy.isRequired(NewCallFieldKeys.What3Words)}>
                         <FormControlLabel>
                           <FormControlLabelText>{t('calls.what3words')}</FormControlLabelText>
                         </FormControlLabel>
@@ -1077,7 +1115,7 @@ export default function NewCall() {
                     ) : null}
 
                     {showDestinationPoi ? (
-                      <FormControl>
+                      <FormControl isRequired={fieldPolicy.isRequired(NewCallFieldKeys.DestinationPoi)}>
                         <FormControlLabel>
                           <FormControlLabelText>{t('calls.destination_poi')}</FormControlLabelText>
                         </FormControlLabel>
@@ -1111,8 +1149,8 @@ export default function NewCall() {
               </Card>
             ) : null}
 
-            {/* One card holds both contact fields, so it shows when either is enabled. */}
-            {fieldPolicy.isVisible(NewCallFieldKeys.ContactName) || fieldPolicy.isVisible(NewCallFieldKeys.ContactInfo) ? (
+            {/* One card holds the contact fields and the call's identifiers (as on the web form), so it shows when any is enabled. */}
+            {showContactName || showContactInfo || showExternalId || showIncidentId || showReferenceId ? (
               <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
                 <TouchableOpacity onPress={() => toggleSection('contact')} className="flex-row items-center justify-between p-4">
                   <View className="flex-row items-center">
@@ -1123,13 +1161,16 @@ export default function NewCall() {
                 </TouchableOpacity>
                 {sectionsExpanded.contact ? (
                   <View className="px-4 pb-4">
-                    <Button variant="outline" className="mb-3 w-full" onPress={() => setShowContactPicker(true)}>
-                      <UserIcon size={16} color={colorScheme === 'dark' ? '#ffffff' : '#374151'} />
-                      <ButtonText className="ml-2">{t('calls.contact_picker.search_placeholder', 'Search contacts...')}</ButtonText>
-                    </Button>
-                    {/* The card shows when either field is enabled, so each one still guards itself. */}
-                    {fieldPolicy.isVisible(NewCallFieldKeys.ContactName) ? (
-                      <FormControl className="mb-3">
+                    {/* The picker fills the contact fields, so it only shows when one of them does. */}
+                    {showContactName || showContactInfo ? (
+                      <Button variant="outline" className="mb-3 w-full" onPress={() => setShowContactPicker(true)}>
+                        <UserIcon size={16} color={colorScheme === 'dark' ? '#ffffff' : '#374151'} />
+                        <ButtonText className="ml-2">{t('calls.contact_picker.search_placeholder', 'Search contacts...')}</ButtonText>
+                      </Button>
+                    ) : null}
+                    {/* The card shows when any field is enabled, so each one still guards itself. */}
+                    {showContactName ? (
+                      <FormControl className="mb-3" isRequired={fieldPolicy.isRequired(NewCallFieldKeys.ContactName)}>
                         <FormControlLabel>
                           <FormControlLabelText>{t('calls.contact_name')}</FormControlLabelText>
                         </FormControlLabel>
@@ -1144,8 +1185,8 @@ export default function NewCall() {
                         />
                       </FormControl>
                     ) : null}
-                    {fieldPolicy.isVisible(NewCallFieldKeys.ContactInfo) ? (
-                      <FormControl>
+                    {showContactInfo ? (
+                      <FormControl isRequired={fieldPolicy.isRequired(NewCallFieldKeys.ContactInfo)}>
                         <FormControlLabel>
                           <FormControlLabelText>{t('calls.contact_info')}</FormControlLabelText>
                         </FormControlLabel>
@@ -1160,6 +1201,9 @@ export default function NewCall() {
                         />
                       </FormControl>
                     ) : null}
+                    {showExternalId ? renderIdentifierField('externalId', NewCallFieldKeys.ExternalId, t('call_detail.external_id'), 'external-id-input') : null}
+                    {showIncidentId ? renderIdentifierField('incidentId', NewCallFieldKeys.IncidentId, t('calls.incident_id'), 'incident-id-input') : null}
+                    {showReferenceId ? renderIdentifierField('referenceId', NewCallFieldKeys.ReferenceId, t('call_detail.reference_id'), 'reference-id-input') : null}
                   </View>
                 ) : null}
               </Card>
@@ -1171,7 +1215,10 @@ export default function NewCall() {
                 <TouchableOpacity onPress={() => toggleSection('protocols')} className="flex-row items-center justify-between p-4">
                   <View className="flex-row items-center">
                     <BookOpenIcon size={16} color={colorScheme === 'dark' ? '#e5e7eb' : '#374151'} />
-                    <Text className="ml-2 text-base font-semibold">{t('calls.protocols.title', 'Protocols')}</Text>
+                    <Text className="ml-2 text-base font-semibold">
+                      {t('calls.protocols.title', 'Protocols')}
+                      {requiredMark(NewCallFieldKeys.Protocols)}
+                    </Text>
                     {selectedProtocols.length > 0 ? (
                       <View className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 dark:bg-blue-800">
                         <Text className="text-xs font-medium text-blue-700 dark:text-blue-200">{selectedProtocols.length}</Text>
@@ -1199,7 +1246,10 @@ export default function NewCall() {
                 <TouchableOpacity onPress={() => toggleSection('linkedCall')} className="flex-row items-center justify-between p-4">
                   <View className="flex-row items-center">
                     <LinkIcon size={16} color={colorScheme === 'dark' ? '#e5e7eb' : '#374151'} />
-                    <Text className="ml-2 text-base font-semibold">{t('calls.linked_calls.title', 'Linked Call')}</Text>
+                    <Text className="ml-2 text-base font-semibold">
+                      {t('calls.linked_calls.title', 'Linked Call')}
+                      {requiredMark(NewCallFieldKeys.LinkedCall)}
+                    </Text>
                     {linkedCall ? (
                       <View className="ml-2 rounded-full bg-green-100 px-2 py-0.5 dark:bg-green-800">
                         <Text className="text-xs font-medium text-green-700 dark:text-green-200">#{linkedCall.number}</Text>
@@ -1258,10 +1308,32 @@ export default function NewCall() {
               </View>
             </Card>
 
+            {/* Schedule Dispatch (a pending call has no dispatch time, so it hides while "Save as pending" is on) */}
+            {fieldPolicy.isVisible(NewCallFieldKeys.DispatchOn) && !isPending ? (
+              <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
+                <Text className="text-base font-semibold">{t('calls.schedule_dispatch')}</Text>
+                <Text className="mb-3 text-sm text-gray-500">{t('calls.schedule_dispatch_description')}</Text>
+                <FormControl isRequired={fieldPolicy.isRequired(NewCallFieldKeys.DispatchOn)}>
+                  <FormControlLabel>
+                    <FormControlLabelText>{t('calls.scheduled_on')}</FormControlLabelText>
+                  </FormControlLabel>
+                  <Controller
+                    control={control}
+                    name="dispatchOn"
+                    render={({ field: { onChange, value } }) => <DateTimeField value={value || ''} onChange={onChange} label={t('calls.scheduled_on')} mode="datetime" testID="scheduled-on-input" />}
+                  />
+                  <Text className="mt-2 text-xs text-gray-500 dark:text-gray-400">{t('calls.scheduled_on_helper')}</Text>
+                </FormControl>
+              </Card>
+            ) : null}
+
             {fieldPolicy.isVisible(NewCallFieldKeys.DispatchList) ? (
               <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
                 <TouchableOpacity onPress={() => toggleSection('dispatch')} className="flex-row items-center justify-between p-4">
-                  <Text className="text-base font-semibold">{t('calls.dispatch_to')}</Text>
+                  <Text className="text-base font-semibold">
+                    {t('calls.dispatch_to')}
+                    {!isPending ? requiredMark(NewCallFieldKeys.DispatchList) : null}
+                  </Text>
                   {sectionsExpanded.dispatch ? <ChevronUpIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} /> : <ChevronDownIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} />}
                 </TouchableOpacity>
                 {sectionsExpanded.dispatch ? (

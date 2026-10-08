@@ -13,9 +13,11 @@ interface LinkedCallsModalProps {
   onClose: () => void;
   onSelect: (call: CallResultData) => void;
   selectedCallId?: string;
+  /** A call that cannot be picked: the one being edited, since a call cannot be linked to itself. */
+  excludeCallId?: string;
 }
 
-export const LinkedCallsModal: React.FC<LinkedCallsModalProps> = ({ isVisible, onClose, onSelect, selectedCallId }) => {
+export const LinkedCallsModal: React.FC<LinkedCallsModalProps> = ({ isVisible, onClose, onSelect, selectedCallId, excludeCallId }) => {
   const { t } = useTranslation();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -43,10 +45,11 @@ export const LinkedCallsModal: React.FC<LinkedCallsModalProps> = ({ isVisible, o
   };
 
   const filtered = useMemo(() => {
-    if (!searchQuery.trim()) return calls;
+    const linkable = excludeCallId ? calls.filter((c) => c.CallId !== excludeCallId) : calls;
+    if (!searchQuery.trim()) return linkable;
     const q = searchQuery.toLowerCase();
-    return calls.filter((c) => c.Name.toLowerCase().includes(q) || c.Number.toLowerCase().includes(q) || c.Nature.toLowerCase().includes(q) || c.Address.toLowerCase().includes(q));
-  }, [calls, searchQuery]);
+    return linkable.filter((c) => c.Name.toLowerCase().includes(q) || c.Number.toLowerCase().includes(q) || c.Nature.toLowerCase().includes(q) || c.Address.toLowerCase().includes(q));
+  }, [calls, searchQuery, excludeCallId]);
 
   const handleSelect = useCallback(
     (call: CallResultData) => {

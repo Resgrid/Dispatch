@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { ChevronDownIcon, ChevronUpIcon, PlusIcon, SearchIcon } from 'lucide-react-native';
+import { BookOpenIcon, ChevronDownIcon, ChevronUpIcon, LinkIcon, PlusIcon, SearchIcon } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -9,10 +9,13 @@ import { ScrollView, TouchableOpacity, View } from 'react-native';
 import * as z from 'zod';
 
 import { getNewCallData } from '@/api/dispatch/dispatch';
-import { forwardGeocode } from '@/api/geocoding/geocoding';
+import { forwardGeocode, plusCodeLookup, what3WordsLookup } from '@/api/geocoding/geocoding';
 import { saveUdfValues } from '@/api/userDefinedFields/userDefinedFields';
 import { DispatchSelectionModal } from '@/components/calls/dispatch-selection-modal';
+import { LinkedCallsModal } from '@/components/calls/linked-calls-modal';
+import { ProtocolSelectorModal, type SelectedProtocol } from '@/components/calls/protocol-selector-modal';
 import { UdfFieldsRenderer } from '@/components/calls/udf-fields-renderer';
+import { DateTimeField } from '@/components/common/date-time-field';
 import { Loading } from '@/components/common/loading';
 import FullScreenLocationPicker from '@/components/maps/full-screen-location-picker';
 import LocationPicker from '@/components/maps/location-picker';
@@ -28,7 +31,13 @@ import { Text } from '@/components/ui/text';
 import { Textarea, TextareaInput } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/toast';
 import { useAnalytics } from '@/hooks/use-analytics';
+import { useNewCallFieldPolicy } from '@/hooks/use-new-call-field-policy';
+import { describeCallFields, getEditCallMissingFields, getMissingCallFieldsFromError, keepHiddenEditFieldsUnchanged, toProtocolIds } from '@/lib/call-field-policy';
+import { getScheduledDispatchPrefill, isDispatchTimeTooSoon, toDispatchOnUtc } from '@/lib/call-schedule';
 import { getPoiDestinationOptionLabel } from '@/lib/poi-display';
+import { isCallPending } from '@/lib/utils';
+import { type CallResultData } from '@/models/v4/calls/callResultData';
+import { type NewCallFieldKey, NewCallFieldKeys } from '@/models/v4/calls/newCallFieldPolicyResultData';
 import { type PoiResultData } from '@/models/v4/mapping/poiResultData';
 import { type UdfFieldValueInput } from '@/models/v4/userDefinedFields/udfFieldValueInput';
 import { useCoreStore } from '@/stores/app/core-store';
@@ -52,6 +61,11 @@ const formSchema = z.object({
   type: z.string().min(1, 'Type is required'),
   contactName: z.string().optional(),
   contactInfo: z.string().optional(),
+  externalId: z.string().optional(),
+  incidentId: z.string().optional(),
+  referenceId: z.string().optional(),
+  // New dispatch time, as the picker's ISO UTC instant. Pre-filled only while the call is still scheduled.
+  dispatchOn: z.string().optional(),
   dispatchSelection: z.object({
     everyone: z.boolean(),
     users: z.array(z.string()),
@@ -120,6 +134,19 @@ export default function EditCall() {
     longitude: number;
     address?: string;
   } | null>(null);
+  // Protocols and a linked call this edit adds. EditCall keeps what the call already has and cannot
+  // remove either, so these start empty rather than pre-filled from the call.
+  const [selectedProtocols, setSelectedProtocols] = useState<SelectedProtocol[]>([]);
+  const [linkedCall, setLinkedCall] = useState<{ callId: string; number: string; name: string } | null>(null);
+  // The dispatch time the form started with. Only a different one is sent (and checked), so saving other
+  // changes to a scheduled call neither resends its time nor trips the lead-time rule as it gets closer.
+  const [initialDispatchOn, setInitialDispatchOn] = useState('');
+  const [showProtocolSelector, setShowProtocolSelector] = useState(false);
+  const [showLinkedCallsModal, setShowLinkedCallsModal] = useState(false);
+
+  // The department's call field policy applies to edits too: hidden fields are not offered (and keep
+  // their stored value), required ones must still have a value once the edit is saved.
+  const fieldPolicy = useNewCallFieldPolicy();
 
   const {
     control,
@@ -144,6 +171,10 @@ export default function EditCall() {
       type: '',
       contactName: '',
       contactInfo: '',
+      externalId: '',
+      incidentId: '',
+      referenceId: '',
+      dispatchOn: '',
       dispatchSelection: {
         everyone: false,
         users: [],
@@ -220,6 +251,10 @@ export default function EditCall() {
 
       setDispatchSelection(initialDispatch);
 
+      // The stored dispatch time, while it is still ahead; a call that already went out starts blank.
+      const scheduledDispatchOn = getScheduledDispatchPrefill(call.DispatchedOnUtc);
+      setInitialDispatchOn(scheduledDispatchOn);
+
       reset({
         name: call.Name || '',
         nature: call.Nature || '',
@@ -227,7 +262,8 @@ export default function EditCall() {
         destinationPoiId: call.DestinationPoiId ? call.DestinationPoiId.toString() : '',
         address: call.Address || '',
         coordinates: call.Geolocation || '',
-        what3words: '',
+        what3words: call.What3Words || '',
+        // Never stored on a call: it only locates the call while it is entered.
         plusCode: '',
         latitude: call.Latitude ? parseFloat(call.Latitude) : undefined,
         longitude: call.Longitude ? parseFloat(call.Longitude) : undefined,
@@ -235,6 +271,10 @@ export default function EditCall() {
         type: type?.Name || '',
         contactName: call.ContactName || '',
         contactInfo: call.ContactInfo || '',
+        externalId: call.ExternalId || '',
+        incidentId: call.IncidentId || '',
+        referenceId: call.ReferenceId || '',
+        dispatchOn: scheduledDispatchOn,
         dispatchSelection: initialDispatch,
       });
 
@@ -263,7 +303,31 @@ export default function EditCall() {
     }
   }, [trackEvent, call]);
 
+  const showErrorToast = (message: string) => {
+    toast.show({
+      placement: 'top',
+      render: () => {
+        return (
+          <Box className="rounded-lg bg-red-500 p-4 shadow-lg">
+            <Text className="text-white">{message}</Text>
+          </Box>
+        );
+      },
+    });
+  };
+
   const onSubmit = async (data: FormValues) => {
+    if (!call) {
+      return;
+    }
+
+    // The policy arrives asynchronously and reads as "nothing required" until it lands; hold the save
+    // back rather than skip every requirement. Fail-open only applies once the lookup has finished.
+    if (!fieldPolicy.isLoaded) {
+      showErrorToast(t('calls.field_policy_loading'));
+      return;
+    }
+
     try {
       // If we have latitude and longitude, add them to the data
       if (selectedLocation?.latitude && selectedLocation?.longitude) {
@@ -271,34 +335,88 @@ export default function EditCall() {
         data.longitude = selectedLocation.longitude;
       }
 
-      console.log('Updating call with data:', data);
+      const destinationPoiId = data.destinationPoiId ? Number(data.destinationPoiId) : null;
+      const addedProtocolIds = toProtocolIds(selectedProtocols);
+
+      // Checked against the call as this save leaves it, the way EditCall checks it, so a field the
+      // department requires cannot be emptied by an edit. The server enforces the same rules.
+      const missingFields = getEditCallMissingFields(
+        fieldPolicy.missingRequired,
+        {
+          note: data.note,
+          address: data.address,
+          latitude: data.latitude,
+          longitude: data.longitude,
+          what3words: data.what3words,
+          plusCode: data.plusCode,
+          contactName: data.contactName,
+          contactInfo: data.contactInfo,
+          externalId: data.externalId,
+          incidentId: data.incidentId,
+          referenceId: data.referenceId,
+          destinationPoiId,
+          dispatch: data.dispatchSelection,
+          addedProtocolIds,
+          storedProtocolCount: callExtraData ? (callExtraData.Protocols?.length ?? 0) : null,
+          linkedCallId: linkedCall?.callId,
+        },
+        call
+      );
+
+      if (missingFields.length > 0) {
+        showErrorToast(t('calls.required_fields_missing_edit', { fields: describeCallFields(missingFields, t) }));
+        return;
+      }
+
+      // A newly picked dispatch time has to be far enough ahead to be worth scheduling. Clearing the
+      // field sends nothing, which keeps the call's schedule (EditCall cannot remove one).
+      const dispatchOnChanged = !!data.dispatchOn && data.dispatchOn !== initialDispatchOn;
+
+      if (dispatchOnChanged && isDispatchTimeTooSoon(data.dispatchOn)) {
+        showErrorToast(t('calls.scheduled_on_too_soon'));
+        return;
+      }
 
       const priority = callPriorities.find((p) => p.Name === data.priority);
       const type = callTypes.find((t) => t.Name === data.type);
 
-      // Update the call using the store
-      await useCallDetailStore.getState().updateCall({
-        callId: callId!,
-        name: data.name,
-        nature: data.nature,
-        priority: priority?.Id || 0,
-        type: type?.Name || '',
-        note: data.note,
-        destinationPoiId: data.destinationPoiId ? Number(data.destinationPoiId) : null,
-        address: data.address,
-        latitude: data.latitude,
-        longitude: data.longitude,
-        what3words: data.what3words,
-        plusCode: data.plusCode,
-        contactName: data.contactName,
-        contactInfo: data.contactInfo,
-        dispatchUsers: data.dispatchSelection?.users,
-        dispatchGroups: data.dispatchSelection?.groups,
-        dispatchRoles: data.dispatchSelection?.roles,
-        dispatchUnits: data.dispatchSelection?.units,
-        dispatchEveryone: data.dispatchSelection?.everyone,
-        notifyCancelledEntities: data.notifyCancelledEntities,
-      });
+      // Update the call using the store. A field the policy hides goes up as "unchanged", so the
+      // value the call already has is kept rather than overwritten by an input nobody could see.
+      await useCallDetailStore.getState().updateCall(
+        keepHiddenEditFieldsUnchanged(
+          {
+            callId: callId!,
+            name: data.name,
+            nature: data.nature,
+            priority: priority?.Id || 0,
+            type: type?.Name || '',
+            note: data.note,
+            destinationPoiId,
+            address: data.address,
+            latitude: data.latitude,
+            longitude: data.longitude,
+            what3words: data.what3words,
+            plusCode: data.plusCode,
+            contactName: data.contactName,
+            contactInfo: data.contactInfo,
+            externalId: data.externalId,
+            incidentId: data.incidentId,
+            referenceId: data.referenceId,
+            dispatchOnUtc: dispatchOnChanged ? toDispatchOnUtc(data.dispatchOn) : undefined,
+            // Added to the call; blank/empty still goes up so the server checks the requirement.
+            protocolIds: addedProtocolIds,
+            linkedCallId: linkedCall?.callId ?? '',
+            dispatchUsers: data.dispatchSelection?.users,
+            dispatchGroups: data.dispatchSelection?.groups,
+            dispatchRoles: data.dispatchSelection?.roles,
+            dispatchUnits: data.dispatchSelection?.units,
+            dispatchEveryone: data.dispatchSelection?.everyone,
+            notifyCancelledEntities: data.notifyCancelledEntities,
+          },
+          fieldPolicy.isVisible,
+          call
+        )
+      );
 
       if (udfValues.length > 0 && callId) {
         try {
@@ -325,18 +443,16 @@ export default function EditCall() {
     } catch (error) {
       console.error('Error updating call:', error);
 
-      // Show error toast
-      toast.show({
-        placement: 'top',
-        render: () => {
-          return (
-            <Box className="rounded-lg bg-red-500 p-4 shadow-lg">
-              <Text className="text-white">{t('call_detail.update_call_error')}</Text>
-            </Box>
-          );
-        },
-      });
+      // The server refuses an edit that would leave a required field blank and names the fields (it
+      // also sees what this screen cannot, such as the links already on the call).
+      const missingOnServer = getMissingCallFieldsFromError(error);
+
+      showErrorToast(missingOnServer ? t('calls.required_fields_missing_edit', { fields: describeCallFields(missingOnServer, t) }) : t('call_detail.update_call_error'));
     }
+  };
+
+  const handleLinkedCallSelect = (selected: CallResultData) => {
+    setLinkedCall({ callId: selected.CallId, number: selected.Number, name: selected.Name });
   };
 
   const handleLocationSelected = (location: { latitude: number; longitude: number; address?: string }) => {
@@ -448,6 +564,76 @@ export default function EditCall() {
     }
   };
 
+  const showToast = (className: string, message: string) => {
+    toast.show({
+      placement: 'top',
+      render: () => {
+        return (
+          <Box className={`rounded-lg ${className} p-4 shadow-lg`}>
+            <Text className="text-white">{message}</Text>
+          </Box>
+        );
+      },
+    });
+  };
+
+  // what3words search (same as New Call): the three words locate the call and are stored on it.
+  const handleWhat3WordsSearch = async (what3words: string) => {
+    if (!what3words.trim()) {
+      showToast('bg-orange-500', t('calls.what3words_required'));
+      return;
+    }
+
+    if (!/^[a-z]+\.[a-z]+\.[a-z]+$/.test(what3words.trim().toLowerCase())) {
+      showToast('bg-orange-500', t('calls.what3words_invalid_format'));
+      return;
+    }
+
+    setIsGeocodingWhat3Words(true);
+    try {
+      const lookup = await what3WordsLookup(what3words);
+
+      if (lookup.candidates.length > 0) {
+        const result = lookup.candidates[0];
+        handleLocationSelected({ latitude: result.geometry.location.lat, longitude: result.geometry.location.lng, address: result.formatted_address });
+        showToast('bg-green-500', t('calls.what3words_found'));
+      } else {
+        showToast('bg-red-500', t(lookup.succeeded ? 'calls.what3words_not_found' : 'calls.what3words_geocoding_error'));
+      }
+    } catch (error) {
+      console.error('Error geocoding what3words:', error);
+      showToast('bg-red-500', t('calls.what3words_geocoding_error'));
+    } finally {
+      setIsGeocodingWhat3Words(false);
+    }
+  };
+
+  // Plus code search (same as New Call): locates the call; the code itself is not stored.
+  const handlePlusCodeSearch = async (plusCode: string) => {
+    if (!plusCode.trim()) {
+      showToast('bg-orange-500', t('calls.plus_code_required'));
+      return;
+    }
+
+    setIsGeocodingPlusCode(true);
+    try {
+      const lookup = await plusCodeLookup(plusCode);
+
+      if (lookup.candidates.length > 0) {
+        const result = lookup.candidates[0];
+        handleLocationSelected({ latitude: result.geometry.location.lat, longitude: result.geometry.location.lng, address: result.formatted_address });
+        showToast('bg-green-500', t('calls.plus_code_found'));
+      } else {
+        showToast('bg-red-500', t(lookup.succeeded ? 'calls.plus_code_not_found' : 'calls.plus_code_geocoding_error'));
+      }
+    } catch (error) {
+      console.error('Error geocoding plus code:', error);
+      showToast('bg-red-500', t('calls.plus_code_geocoding_error'));
+    } finally {
+      setIsGeocodingPlusCode(false);
+    }
+  };
+
   const handleAddressSelected = (result: GeocodingResult) => {
     const newLocation = {
       latitude: result.geometry.location.lat,
@@ -503,6 +689,71 @@ export default function EditCall() {
       </>
     );
   }
+
+  // Every field the department's policy controls drives its own control, as on the new-call screen.
+  const showNote = fieldPolicy.isVisible(NewCallFieldKeys.Note);
+  const showAddress = fieldPolicy.isVisible(NewCallFieldKeys.Address);
+  const showGeolocation = fieldPolicy.isVisible(NewCallFieldKeys.Geolocation);
+  const showDestinationPoi = fieldPolicy.isVisible(NewCallFieldKeys.DestinationPoi);
+  const showWhat3Words = fieldPolicy.isVisible(NewCallFieldKeys.What3Words);
+  const showPlusCode = fieldPolicy.isVisible(NewCallFieldKeys.PlusCode);
+  const showLocationCard = showAddress || showGeolocation || showWhat3Words || showPlusCode || showDestinationPoi;
+  const showExternalId = fieldPolicy.isVisible(NewCallFieldKeys.ExternalId);
+  const showIncidentId = fieldPolicy.isVisible(NewCallFieldKeys.IncidentId);
+  const showReferenceId = fieldPolicy.isVisible(NewCallFieldKeys.ReferenceId);
+  const showContactName = fieldPolicy.isVisible(NewCallFieldKeys.ContactName);
+  const showContactInfo = fieldPolicy.isVisible(NewCallFieldKeys.ContactInfo);
+  const showProtocols = fieldPolicy.isVisible(NewCallFieldKeys.Protocols);
+  const showLinkedCall = fieldPolicy.isVisible(NewCallFieldKeys.LinkedCall);
+  const showDispatchList = fieldPolicy.isVisible(NewCallFieldKeys.DispatchList);
+  // A pending call's recipients are decided when it is dispatched, so they are not required here.
+  const isPendingCall = isCallPending(call.State);
+  const attachedProtocols = callExtraData?.Protocols ?? [];
+  // Labelled inputs get the form control's own asterisk; section titles get this one.
+  const requiredMark = (key: NewCallFieldKey) => (fieldPolicy.isRequired(key) ? <Text className="text-red-500"> *</Text> : null);
+
+  // A location lookup input with its search button (what3words, plus code), as on the new-call screen.
+  const renderLookupField = (name: 'what3words' | 'plusCode', key: NewCallFieldKey, label: string, placeholder: string, testID: string, isSearching: boolean, onSearch: (value: string) => void) => (
+    <FormControl className="mb-4" isRequired={fieldPolicy.isRequired(key)}>
+      <FormControlLabel>
+        <FormControlLabelText>{label}</FormControlLabelText>
+      </FormControlLabel>
+      <Controller
+        control={control}
+        name={name}
+        render={({ field: { onChange, onBlur, value } }) => (
+          <Box className="flex-row items-center space-x-2">
+            <Box className="flex-1">
+              <Input>
+                <InputField testID={`${testID}-input`} placeholder={placeholder} value={value} onChangeText={onChange} onBlur={onBlur} />
+              </Input>
+            </Box>
+            <Button testID={`${testID}-search-button`} size="sm" variant="outline" className="ml-2" onPress={() => onSearch(value || '')} disabled={isSearching || !value?.trim()}>
+              {isSearching ? <Text>...</Text> : <SearchIcon size={16} color={colorScheme === 'dark' ? '#ffffff' : '#000000'} />}
+            </Button>
+          </Box>
+        )}
+      />
+    </FormControl>
+  );
+
+  // The call's own identifiers: plain text inputs, each gated and marked by the policy.
+  const renderIdentifierField = (name: 'externalId' | 'incidentId' | 'referenceId', key: NewCallFieldKey, label: string, testID: string) => (
+    <FormControl className="mb-3" isRequired={fieldPolicy.isRequired(key)}>
+      <FormControlLabel>
+        <FormControlLabelText>{label}</FormControlLabelText>
+      </FormControlLabel>
+      <Controller
+        control={control}
+        name={name}
+        render={({ field: { onChange, onBlur, value } }) => (
+          <Input>
+            <InputField testID={testID} placeholder={label} value={value} onChangeText={onChange} onBlur={onBlur} />
+          </Input>
+        )}
+      />
+    </FormControl>
+  );
 
   return (
     <>
@@ -628,123 +879,202 @@ export default function EditCall() {
               </FormControl>
             </Card>
 
-            <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
-              <FormControl>
-                <FormControlLabel>
-                  <FormControlLabelText>{t('calls.note')}</FormControlLabelText>
-                </FormControlLabel>
-                <Controller
-                  control={control}
-                  name="note"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <Textarea>
-                      <TextareaInput value={value} onChangeText={onChange} onBlur={onBlur} numberOfLines={4} placeholder={t('calls.note_placeholder')} />
-                    </Textarea>
-                  )}
-                />
-              </FormControl>
-            </Card>
+            {showNote ? (
+              <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
+                <FormControl isRequired={fieldPolicy.isRequired(NewCallFieldKeys.Note)}>
+                  <FormControlLabel>
+                    <FormControlLabelText>{t('calls.note')}</FormControlLabelText>
+                  </FormControlLabel>
+                  <Controller
+                    control={control}
+                    name="note"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <Textarea>
+                        <TextareaInput value={value} onChangeText={onChange} onBlur={onBlur} numberOfLines={4} placeholder={t('calls.note_placeholder')} />
+                      </Textarea>
+                    )}
+                  />
+                </FormControl>
+              </Card>
+            ) : null}
 
-            <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
-              <Text className="mb-4 text-lg font-semibold">{t('calls.call_location')}</Text>
+            {showLocationCard ? (
+              <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
+                <Text className="mb-4 text-lg font-semibold">{t('calls.call_location')}</Text>
 
-              {/* Address Field */}
-              <FormControl className="mb-4">
-                <FormControlLabel>
-                  <FormControlLabelText>{t('calls.address')}</FormControlLabelText>
-                </FormControlLabel>
-                <Controller
-                  control={control}
-                  name="address"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <Box className="flex-row items-center space-x-2">
-                      <Box className="flex-1">
-                        <Input>
-                          <InputField testID="address-input" placeholder={t('calls.address_placeholder')} value={value} onChangeText={onChange} onBlur={onBlur} />
-                        </Input>
-                      </Box>
-                      <Button testID="address-search-button" size="sm" variant="outline" className="ml-2" onPress={() => handleAddressSearch(value || '')} disabled={isGeocodingAddress || !value?.trim()}>
-                        {isGeocodingAddress ? <Text>...</Text> : <SearchIcon size={16} color={colorScheme === 'dark' ? '#ffffff' : '#000000'} />}
+                {/* Address Field */}
+                {showAddress ? (
+                  <FormControl className="mb-4" isRequired={fieldPolicy.isRequired(NewCallFieldKeys.Address)}>
+                    <FormControlLabel>
+                      <FormControlLabelText>{t('calls.address')}</FormControlLabelText>
+                    </FormControlLabel>
+                    <Controller
+                      control={control}
+                      name="address"
+                      render={({ field: { onChange, onBlur, value } }) => (
+                        <Box className="flex-row items-center space-x-2">
+                          <Box className="flex-1">
+                            <Input>
+                              <InputField testID="address-input" placeholder={t('calls.address_placeholder')} value={value} onChangeText={onChange} onBlur={onBlur} />
+                            </Input>
+                          </Box>
+                          <Button testID="address-search-button" size="sm" variant="outline" className="ml-2" onPress={() => handleAddressSearch(value || '')} disabled={isGeocodingAddress || !value?.trim()}>
+                            {isGeocodingAddress ? <Text>...</Text> : <SearchIcon size={16} color={colorScheme === 'dark' ? '#ffffff' : '#000000'} />}
+                          </Button>
+                        </Box>
+                      )}
+                    />
+                  </FormControl>
+                ) : null}
+
+                {showWhat3Words
+                  ? renderLookupField('what3words', NewCallFieldKeys.What3Words, t('calls.what3words'), t('calls.what3words_placeholder'), 'what3words', isGeocodingWhat3Words, handleWhat3WordsSearch)
+                  : null}
+                {showPlusCode ? renderLookupField('plusCode', NewCallFieldKeys.PlusCode, t('calls.plus_code'), t('calls.plus_code_placeholder'), 'plus-code', isGeocodingPlusCode, handlePlusCodeSearch) : null}
+
+                {/* Map Preview — the map is how a dispatcher sets the geolocation. */}
+                {showGeolocation ? (
+                  <FormControl className="mb-4" isRequired={fieldPolicy.isRequired(NewCallFieldKeys.Geolocation)}>
+                    <FormControlLabel>
+                      <FormControlLabelText>{t('calls.coordinates')}</FormControlLabelText>
+                    </FormControlLabel>
+                    {selectedLocation ? (
+                      <LocationPicker initialLocation={selectedLocation} onLocationSelected={handleLocationSelected} height={200} />
+                    ) : (
+                      <Button onPress={() => setShowLocationPicker(true)} className="w-full">
+                        <ButtonText>{t('calls.select_location')}</ButtonText>
                       </Button>
-                    </Box>
-                  )}
-                />
-              </FormControl>
+                    )}
+                  </FormControl>
+                ) : null}
 
-              {/* Map Preview */}
-              <Box className="mb-4">
-                {selectedLocation ? (
-                  <LocationPicker initialLocation={selectedLocation} onLocationSelected={handleLocationSelected} height={200} />
-                ) : (
-                  <Button onPress={() => setShowLocationPicker(true)} className="w-full">
-                    <ButtonText>{t('calls.select_location')}</ButtonText>
-                  </Button>
-                )}
-              </Box>
+                {showDestinationPoi ? (
+                  <FormControl isRequired={fieldPolicy.isRequired(NewCallFieldKeys.DestinationPoi)}>
+                    <FormControlLabel>
+                      <FormControlLabelText>{t('calls.destination_poi')}</FormControlLabelText>
+                    </FormControlLabel>
+                    <Controller
+                      control={control}
+                      name="destinationPoiId"
+                      render={({ field: { onChange, value } }) => (
+                        <Select selectedValue={value || NO_DESTINATION_VALUE} onValueChange={(selectedValue) => onChange(selectedValue === NO_DESTINATION_VALUE ? '' : selectedValue)}>
+                          <SelectTrigger>
+                            <SelectInput placeholder={t('calls.select_destination_poi')} />
+                            <SelectIcon as={ChevronDownIcon} />
+                          </SelectTrigger>
+                          <SelectPortal>
+                            <SelectBackdrop />
+                            <SelectContent>
+                              <SelectItem label={t('calls.no_destination')} value={NO_DESTINATION_VALUE} />
+                              {destinationPois.map((poi) => (
+                                <SelectItem key={poi.PoiId} label={getPoiDestinationOptionLabel(poi)} value={poi.PoiId.toString()} />
+                              ))}
+                            </SelectContent>
+                          </SelectPortal>
+                        </Select>
+                      )}
+                    />
+                    {isLoadingDestinationPois ? <Text className="mt-2 text-xs text-gray-500 dark:text-gray-400">{t('calls.loading_destination_pois')}</Text> : null}
+                    {!isLoadingDestinationPois && destinationPois.length === 0 ? <Text className="mt-2 text-xs text-gray-500 dark:text-gray-400">{t('calls.no_destination_pois_available')}</Text> : null}
+                  </FormControl>
+                ) : null}
+              </Card>
+            ) : null}
 
-              <FormControl>
-                <FormControlLabel>
-                  <FormControlLabelText>{t('calls.destination_poi')}</FormControlLabelText>
-                </FormControlLabel>
-                <Controller
-                  control={control}
-                  name="destinationPoiId"
-                  render={({ field: { onChange, value } }) => (
-                    <Select selectedValue={value || NO_DESTINATION_VALUE} onValueChange={(selectedValue) => onChange(selectedValue === NO_DESTINATION_VALUE ? '' : selectedValue)}>
-                      <SelectTrigger>
-                        <SelectInput placeholder={t('calls.select_destination_poi')} />
-                        <SelectIcon as={ChevronDownIcon} />
-                      </SelectTrigger>
-                      <SelectPortal>
-                        <SelectBackdrop />
-                        <SelectContent>
-                          <SelectItem label={t('calls.no_destination')} value={NO_DESTINATION_VALUE} />
-                          {destinationPois.map((poi) => (
-                            <SelectItem key={poi.PoiId} label={getPoiDestinationOptionLabel(poi)} value={poi.PoiId.toString()} />
-                          ))}
-                        </SelectContent>
-                      </SelectPortal>
-                    </Select>
-                  )}
-                />
-                {isLoadingDestinationPois ? <Text className="mt-2 text-xs text-gray-500 dark:text-gray-400">{t('calls.loading_destination_pois')}</Text> : null}
-                {!isLoadingDestinationPois && destinationPois.length === 0 ? <Text className="mt-2 text-xs text-gray-500 dark:text-gray-400">{t('calls.no_destination_pois_available')}</Text> : null}
-              </FormControl>
-            </Card>
+            {showContactName ? (
+              <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
+                <FormControl isRequired={fieldPolicy.isRequired(NewCallFieldKeys.ContactName)}>
+                  <FormControlLabel>
+                    <FormControlLabelText>{t('calls.contact_name')}</FormControlLabelText>
+                  </FormControlLabel>
+                  <Controller
+                    control={control}
+                    name="contactName"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <Input>
+                        <InputField placeholder={t('calls.contact_name_placeholder')} value={value} onChangeText={onChange} onBlur={onBlur} />
+                      </Input>
+                    )}
+                  />
+                </FormControl>
+              </Card>
+            ) : null}
 
-            <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
-              <FormControl>
-                <FormControlLabel>
-                  <FormControlLabelText>{t('calls.contact_name')}</FormControlLabelText>
-                </FormControlLabel>
-                <Controller
-                  control={control}
-                  name="contactName"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <Input>
-                      <InputField placeholder={t('calls.contact_name_placeholder')} value={value} onChangeText={onChange} onBlur={onBlur} />
-                    </Input>
-                  )}
-                />
-              </FormControl>
-            </Card>
+            {showContactInfo ? (
+              <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
+                <FormControl isRequired={fieldPolicy.isRequired(NewCallFieldKeys.ContactInfo)}>
+                  <FormControlLabel>
+                    <FormControlLabelText>{t('calls.contact_info')}</FormControlLabelText>
+                  </FormControlLabel>
+                  <Controller
+                    control={control}
+                    name="contactInfo"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <Input>
+                        <InputField placeholder={t('calls.contact_info_placeholder')} value={value} onChangeText={onChange} onBlur={onBlur} />
+                      </Input>
+                    )}
+                  />
+                </FormControl>
+              </Card>
+            ) : null}
 
-            <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
-              <FormControl>
-                <FormControlLabel>
-                  <FormControlLabelText>{t('calls.contact_info')}</FormControlLabelText>
-                </FormControlLabel>
-                <Controller
-                  control={control}
-                  name="contactInfo"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <Input>
-                      <InputField placeholder={t('calls.contact_info_placeholder')} value={value} onChangeText={onChange} onBlur={onBlur} />
-                    </Input>
-                  )}
-                />
-              </FormControl>
-            </Card>
+            {/* The call's identifiers. A blank input keeps what the call already has. */}
+            {showExternalId || showIncidentId || showReferenceId ? (
+              <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
+                {showExternalId ? renderIdentifierField('externalId', NewCallFieldKeys.ExternalId, t('call_detail.external_id'), 'external-id-input') : null}
+                {showIncidentId ? renderIdentifierField('incidentId', NewCallFieldKeys.IncidentId, t('calls.incident_id'), 'incident-id-input') : null}
+                {showReferenceId ? renderIdentifierField('referenceId', NewCallFieldKeys.ReferenceId, t('call_detail.reference_id'), 'reference-id-input') : null}
+              </Card>
+            ) : null}
+
+            {/* Protocols: added to the ones already on the call, which an edit cannot remove. */}
+            {showProtocols ? (
+              <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
+                <View className="mb-4 flex-row items-center">
+                  <BookOpenIcon size={16} color={colorScheme === 'dark' ? '#e5e7eb' : '#374151'} />
+                  <Text className="ml-2 text-lg font-semibold">
+                    {t('calls.protocols.title', 'Protocols')}
+                    {requiredMark(NewCallFieldKeys.Protocols)}
+                  </Text>
+                </View>
+                {attachedProtocols.length > 0 ? (
+                  <Text className="mb-3 text-sm text-gray-500 dark:text-gray-400">{t('calls.protocols.attached', { names: attachedProtocols.map((protocol) => protocol.Name).join(', ') })}</Text>
+                ) : null}
+                <Button variant="outline" className="w-full" onPress={() => setShowProtocolSelector(true)}>
+                  <BookOpenIcon size={16} color={colorScheme === 'dark' ? '#ffffff' : '#374151'} />
+                  <ButtonText className="ml-2">{selectedProtocols.length > 0 ? `${selectedProtocols.length} ${t('calls.protocols.selected_count', 'selected')}` : t('calls.protocols.add')}</ButtonText>
+                </Button>
+              </Card>
+            ) : null}
+
+            {/* Linked Call: adds a link; links the call already has are kept. */}
+            {showLinkedCall ? (
+              <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
+                <View className="mb-2 flex-row items-center">
+                  <LinkIcon size={16} color={colorScheme === 'dark' ? '#e5e7eb' : '#374151'} />
+                  <Text className="ml-2 text-lg font-semibold">
+                    {t('calls.linked_calls.title', 'Linked Call')}
+                    {requiredMark(NewCallFieldKeys.LinkedCall)}
+                  </Text>
+                </View>
+                <Text className="mb-3 text-sm text-gray-500 dark:text-gray-400">{t('calls.linked_calls.edit_hint')}</Text>
+                {linkedCall ? (
+                  <Box className="mb-3 rounded-md bg-gray-50 p-3 dark:bg-gray-700">
+                    <Text className="text-sm font-medium">
+                      #{linkedCall.number} — {linkedCall.name}
+                    </Text>
+                    <Button size="sm" variant="link" onPress={() => setLinkedCall(null)}>
+                      <ButtonText className="text-red-500">{t('common.remove', 'Remove')}</ButtonText>
+                    </Button>
+                  </Box>
+                ) : null}
+                <Button variant="outline" className="w-full" onPress={() => setShowLinkedCallsModal(true)}>
+                  <LinkIcon size={16} color={colorScheme === 'dark' ? '#ffffff' : '#374151'} />
+                  <ButtonText className="ml-2">{linkedCall ? t('calls.linked_calls.change', 'Change linked call') : t('calls.linked_calls.select', 'Link to existing call')}</ButtonText>
+                </Button>
+              </Card>
+            ) : null}
 
             {/* Additional Fields (UDF) */}
             <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
@@ -759,28 +1089,55 @@ export default function EditCall() {
               ) : null}
             </Card>
 
-            <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
-              <Text className="mb-4 text-lg font-semibold">{t('calls.dispatch_to')}</Text>
-              <Button onPress={() => setShowDispatchModal(true)} className="w-full">
-                <ButtonText>{getDispatchSummary()}</ButtonText>
-              </Button>
-            </Card>
+            {/* Scheduled dispatch: never required on an edit; blank keeps whatever schedule the call has. A scheduled call's time can be moved but not cleared (EditCall cannot remove a schedule, so clearing would only look like it worked). */}
+            {fieldPolicy.isVisible(NewCallFieldKeys.DispatchOn) ? (
+              <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
+                <FormControl>
+                  <FormControlLabel>
+                    <FormControlLabelText>{t('calls.scheduled_on')}</FormControlLabelText>
+                  </FormControlLabel>
+                  <Controller
+                    control={control}
+                    name="dispatchOn"
+                    render={({ field: { onChange, value } }) => (
+                      <DateTimeField value={value || ''} onChange={onChange} label={t('calls.scheduled_on')} mode="datetime" clearable={!initialDispatchOn} testID="scheduled-on-input" />
+                    )}
+                  />
+                  <Text className="mt-2 text-xs text-gray-500 dark:text-gray-400">{t('calls.scheduled_on_edit_hint')}</Text>
+                </FormControl>
+              </Card>
+            ) : null}
 
-            <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
-              <View className="flex-row items-center justify-between">
-                <View className="mr-3 flex-1">
-                  <Text className="text-base font-semibold">{t('calls.notify_cancelled_entities')}</Text>
-                  <Text className="text-sm text-gray-500">{t('calls.notify_cancelled_entities_description')}</Text>
-                </View>
-                <Controller control={control} name="notifyCancelledEntities" render={({ field: { onChange, value } }) => <Switch size="md" value={!!value} onValueChange={onChange} />} />
-              </View>
-            </Card>
+            {/* With the dispatch list hidden its recipients cannot change, so there is nobody to notify of removal either. */}
+            {showDispatchList ? (
+              <>
+                <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
+                  <Text className="mb-4 text-lg font-semibold">
+                    {t('calls.dispatch_to')}
+                    {!isPendingCall ? requiredMark(NewCallFieldKeys.DispatchList) : null}
+                  </Text>
+                  <Button onPress={() => setShowDispatchModal(true)} className="w-full">
+                    <ButtonText>{getDispatchSummary()}</ButtonText>
+                  </Button>
+                </Card>
+
+                <Card className="mb-4 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
+                  <View className="flex-row items-center justify-between">
+                    <View className="mr-3 flex-1">
+                      <Text className="text-base font-semibold">{t('calls.notify_cancelled_entities')}</Text>
+                      <Text className="text-sm text-gray-500">{t('calls.notify_cancelled_entities_description')}</Text>
+                    </View>
+                    <Controller control={control} name="notifyCancelledEntities" render={({ field: { onChange, value } }) => <Switch size="md" value={!!value} onValueChange={onChange} />} />
+                  </View>
+                </Card>
+              </>
+            ) : null}
 
             <Box className="mb-6 flex-row space-x-4">
               <Button className="mr-10 flex-1" variant="outline" onPress={() => router.back()}>
                 <ButtonText>{t('common.cancel')}</ButtonText>
               </Button>
-              <Button className="ml-10 flex-1" variant="solid" action="primary" onPress={handleSubmit(onSubmit)}>
+              <Button className="ml-10 flex-1" variant="solid" action="primary" isDisabled={!fieldPolicy.isLoaded} onPress={handleSubmit(onSubmit)}>
                 <ButtonText>{t('common.save')}</ButtonText>
               </Button>
             </Box>
@@ -811,6 +1168,12 @@ export default function EditCall() {
 
       {/* Dispatch selection modal */}
       <DispatchSelectionModal isVisible={showDispatchModal} onClose={() => setShowDispatchModal(false)} onConfirm={handleDispatchSelection} initialSelection={dispatchSelection} />
+
+      {/* Protocol Selector modal */}
+      <ProtocolSelectorModal isVisible={showProtocolSelector} onClose={() => setShowProtocolSelector(false)} onConfirm={setSelectedProtocols} initialSelected={selectedProtocols} />
+
+      {/* Linked Calls modal */}
+      <LinkedCallsModal isVisible={showLinkedCallsModal} onClose={() => setShowLinkedCallsModal(false)} onSelect={handleLinkedCallSelect} selectedCallId={linkedCall?.callId} excludeCallId={callId} />
 
       {/* Address selection bottom sheet */}
       <CustomBottomSheet isOpen={showAddressSelection} onClose={() => setShowAddressSelection(false)} isLoading={false}>
