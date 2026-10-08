@@ -1790,6 +1790,7 @@
     "notes_section": "Cómo se decidió",
     "apply": "Aplicar recomendación",
     "applied": "Recomendación aplicada",
+    "covered_on_call": "Los recursos de esta llamada ya cubren el plan de respuesta (alarma {{level}}). Añada más manualmente si hace falta.",
     "stale_location": "Ubicación desactualizada",
     "auto_dispatch": "Despacho automático",
     "auto_dispatch_explainer": "Este departamento despacha automáticamente los planes de respuesta coincidentes; estos recursos se alertan al crear la llamada.",

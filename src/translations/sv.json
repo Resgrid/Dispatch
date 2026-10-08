@@ -1790,6 +1790,7 @@
     "notes_section": "Så här beslutades det",
     "apply": "Använd rekommendationen",
     "applied": "Rekommendationen har tillämpats",
+    "covered_on_call": "Resurserna på det här larmet täcker redan insatsplanen (larm {{level}}). Lägg till fler manuellt vid behov.",
     "stale_location": "Gammal position",
     "auto_dispatch": "Automatiskt larm",
     "auto_dispatch_explainer": "Den här avdelningen larmar matchande insatsplaner automatiskt; dessa resurser larmas när ärendet skapas.",

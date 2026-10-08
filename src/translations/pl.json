@@ -1790,6 +1790,7 @@
     "notes_section": "Jak to ustalono",
     "apply": "Zastosuj rekomendację",
     "applied": "Rekomendacja zastosowana",
+    "covered_on_call": "Zasoby tego zgłoszenia już spełniają plan zadysponowania (alarm {{level}}). W razie potrzeby dodaj więcej ręcznie.",
     "stale_location": "Nieaktualna lokalizacja",
     "auto_dispatch": "Automatyczne zadysponowanie",
     "auto_dispatch_explainer": "Ten departament automatycznie wysyła pasujące plany; te zasoby są alarmowane przy tworzeniu zdarzenia.",

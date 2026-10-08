@@ -40,6 +40,11 @@ jest.mock('@/stores/dispatch/store', () => ({
       units: [],
     }),
   }),
+  filterDispatchData: (data: any) => data,
+}));
+
+jest.mock('@/components/runcards/use-add-resources-recommendation', () => ({
+  useAddResourcesRecommendation: () => ({ isRunCardsEnabled: false, recommendation: null, isLoading: false, error: null, hasFetched: false, isApplied: false, refresh: jest.fn(), applyToSelection: (s: any) => s }),
 }));
 
 jest.mock('nativewind', () => ({
@@ -89,9 +94,7 @@ describe('DispatchSelectionModal', () => {
   });
 
   it('should not render when not visible', () => {
-    const { queryByText } = render(
-      <DispatchSelectionModal {...mockProps} isVisible={false} />
-    );
+    const { queryByText } = render(<DispatchSelectionModal {...mockProps} isVisible={false} />);
 
     expect(queryByText('calls.select_dispatch_recipients')).toBeNull();
   });
@@ -108,4 +111,4 @@ describe('DispatchSelectionModal', () => {
     expect(screen.getByText('common.confirm')).toBeTruthy();
     expect(screen.getByText('common.cancel')).toBeTruthy();
   });
-}); 
+});

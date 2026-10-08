@@ -83,7 +83,12 @@ const mockGetSetUnitStatusData = getSetUnitStatusData as jest.MockedFunction<typ
 const mockSaveUnitStatus = saveUnitStatus as jest.MockedFunction<typeof saveUnitStatus>;
 
 const status = (Id: number, Text: string, Detail: number): StatusesResultData => ({ Id, Type: 3, StateId: 0, Text, BColor: '#123456', Color: '', Gps: false, Note: 0, Detail }) as StatusesResultData;
-const statuses = [status(0, 'Available', CustomStateDetailType.Stations), status(3, 'Responding', CustomStateDetailType.Calls), status(6, 'On Scene', CustomStateDetailType.Calls), status(8, 'Out of Service', CustomStateDetailType.None)];
+const statuses = [
+  status(0, 'Available', CustomStateDetailType.Stations),
+  status(3, 'Responding', CustomStateDetailType.Calls),
+  status(6, 'On Scene', CustomStateDetailType.Calls),
+  status(8, 'Out of Service', CustomStateDetailType.None),
+];
 
 const unit = (UnitId: string, CurrentDestinationId = ''): UnitInfoResultData => ({ UnitId, Name: `Unit ${UnitId}`, Type: 'Engine', CustomStatusSetId: '', CurrentDestinationId }) as UnitInfoResultData;
 
@@ -117,6 +122,21 @@ describe('UnitActionsPanel destination defaults', () => {
     await renderOpenPanel(unit('u1', 'A'));
 
     await waitFor(() => expect(selectedCallInStore()).toBe('A'));
+  });
+
+  // Belgian EMS, 2026-10-07: the dispatcher had to pick the unit's incident for every status entered.
+  it('defaults to the call the server says the unit is working, even when its last status went to the hospital', async () => {
+    useDispatchConsoleStore.setState({ selectedCallId: 'A', isCallFilterActive: true });
+    await renderOpenPanel({ ...unit('u1', '9'), CurrentDestinationType: DestinationEntityType.Poi, ActiveCallId: 'B' } as UnitInfoResultData);
+
+    await waitFor(() => expect(selectedCallInStore()).toBe('B'));
+  });
+
+  it('never takes a station destination for the call with the same id', async () => {
+    await renderOpenPanel({ ...unit('u1', 'A'), CurrentDestinationType: DestinationEntityType.Station } as UnitInfoResultData);
+
+    await waitFor(() => expect(useUnitActionsStore.getState().destinationInitializedSessionId).toBe(useUnitActionsStore.getState().actionsSessionId));
+    expect(selectedCallInStore()).toBeNull();
   });
 
   it("falls back to the console's selected call when the unit's destination is not an active call", async () => {

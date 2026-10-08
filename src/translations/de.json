@@ -1790,6 +1790,7 @@
     "notes_section": "Wie das entschieden wurde",
     "apply": "Empfehlung übernehmen",
     "applied": "Empfehlung übernommen",
+    "covered_on_call": "Die Kräfte dieses Einsatzes decken den Alarmierungsplan bereits ab (Alarmstufe {{level}}). Bei Bedarf weitere manuell hinzufügen.",
     "stale_location": "Veralteter Standort",
     "auto_dispatch": "Automatische Alarmierung",
     "auto_dispatch_explainer": "Diese Abteilung alarmiert passende Alarmierungspläne automatisch; diese Kräfte werden beim Anlegen des Einsatzes alarmiert.",

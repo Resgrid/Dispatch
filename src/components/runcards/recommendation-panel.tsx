@@ -25,6 +25,11 @@ interface RecommendationPanelProps {
   isApplied: boolean;
   onApply: () => void;
   onRefresh: () => void;
+  /**
+   * Shown when a card matched but there is nothing to add (adding resources to a call that already covers its run card).
+   * Without it that case renders nothing, as on a new call.
+   */
+  coveredMessage?: string;
   testID?: string;
 }
 
@@ -39,7 +44,7 @@ interface RecommendationPanelProps {
  * renders nothing on its own when there is no recommendation, but it should not even be mounted for
  * a department that does not use run cards.
  */
-export const RecommendationPanel: React.FC<RecommendationPanelProps> = ({ recommendation, isLoading, error, hasFetched, isApplied, onApply, onRefresh, testID = 'run-card-recommendation-panel' }) => {
+export const RecommendationPanel: React.FC<RecommendationPanelProps> = ({ recommendation, isLoading, error, hasFetched, isApplied, onApply, onRefresh, coveredMessage, testID = 'run-card-recommendation-panel' }) => {
   const { t } = useTranslation();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -77,6 +82,25 @@ export const RecommendationPanel: React.FC<RecommendationPanelProps> = ({ recomm
               <RefreshCwIcon size={14} color={isDark ? '#60a5fa' : '#2563eb'} />
               <Text className="text-sm font-semibold text-blue-500">{t('common.retry')}</Text>
             </HStack>
+          </TouchableOpacity>
+        </HStack>
+      </Card>
+    );
+  }
+
+  if (hasFetched && !hasContent && coveredMessage && recommendation?.MatchedRunCardId) {
+    return (
+      <Card className={cardClass} testID={`${testID}-covered`}>
+        <HStack className="items-center justify-between gap-3">
+          <HStack className="flex-1 items-center gap-2">
+            <ClipboardListIcon size={18} color={isDark ? '#60a5fa' : '#2563eb'} />
+            <VStack className="flex-1">
+              <Text className="font-semibold">{recommendation.MatchedRunCardName || t('run_cards.title')}</Text>
+              <Text className="text-xs text-neutral-500">{coveredMessage}</Text>
+            </VStack>
+          </HStack>
+          <TouchableOpacity onPress={onRefresh} testID={`${testID}-refresh`}>
+            <RefreshCwIcon size={18} color={isDark ? '#a3a3a3' : '#737373'} />
           </TouchableOpacity>
         </HStack>
       </Card>

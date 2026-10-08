@@ -228,8 +228,15 @@ export const getStatusDestinationPayload = (selection: DestinationSelectionState
 export interface DefaultDestinationCallInput {
   /** Explicit call context (the dashboard "+" set-status-for-call action). Always wins. */
   callContext?: CallResultData | null;
+  /** The call the server says the unit is working (`UnitInfoResultData.ActiveCallId`). */
+  workingCallId?: string | null;
   /** The unit's `CurrentDestinationId` / the person's `StatusDestinationId`. */
   currentDestinationId?: string | null;
+  /**
+   * What `currentDestinationId` is (`DestinationEntityType`), when known. A station or POI id is never matched against
+   * the calls: the numbers can collide. Null/undefined is a legacy untyped destination and is still tried as a call.
+   */
+  currentDestinationType?: number | null;
   /** The call currently selected on the dispatch console. */
   selectedCallId?: string | null;
   /** Active calls only — a closed or cancelled call is never a default destination. */
@@ -238,15 +245,24 @@ export interface DefaultDestinationCallInput {
 
 /**
  * Picks the call a status change for a unit/person should default to:
- * (a) the explicit call context; (b) the unit's/person's current destination when it is a call that
- * is still active; (c) the console's selected call when it is active; otherwise none.
+ * (a) the explicit call context; (b) the call the server says the unit is working (its latest status's
+ * open call, or its one open dispatch); (c) the unit's/person's current destination when it is a call
+ * that is still active; (d) the console's selected call when it is active; otherwise none.
  */
-export const resolveDefaultDestinationCall = ({ callContext, currentDestinationId, selectedCallId, activeCalls }: DefaultDestinationCallInput): CallResultData | null => {
+export const resolveDefaultDestinationCall = ({ callContext, workingCallId, currentDestinationId, currentDestinationType, selectedCallId, activeCalls }: DefaultDestinationCallInput): CallResultData | null => {
   if (callContext) {
     return callContext;
   }
 
-  if (currentDestinationId) {
+  if (workingCallId) {
+    const workingCall = activeCalls.find((call) => call.CallId === workingCallId);
+    if (workingCall) {
+      return workingCall;
+    }
+  }
+
+  const currentIsCall = currentDestinationType === null || currentDestinationType === undefined || currentDestinationType === DestinationEntityType.Call;
+  if (currentDestinationId && currentIsCall) {
     const currentCall = activeCalls.find((call) => call.CallId === currentDestinationId);
     if (currentCall) {
       return currentCall;

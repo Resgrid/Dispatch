@@ -42,6 +42,12 @@ const mockDispatchStore = {
 
 jest.mock('@/stores/dispatch/store', () => ({
   useDispatchStore: jest.fn(() => mockDispatchStore),
+  filterDispatchData: (data: any) => data,
+}));
+
+// Adding-resources recommendations are covered in dispatch-selection-recommendation.test.tsx.
+jest.mock('@/components/runcards/use-add-resources-recommendation', () => ({
+  useAddResourcesRecommendation: () => ({ isRunCardsEnabled: false, recommendation: null, isLoading: false, error: null, hasFetched: false, isApplied: false, refresh: jest.fn(), applyToSelection: (s: any) => s }),
 }));
 
 // Mock the color scheme and cssInterop
@@ -105,9 +111,7 @@ describe('DispatchSelectionModal', () => {
   });
 
   it('should not render when not visible', () => {
-    const { queryByText } = render(
-      <DispatchSelectionModal {...mockProps} isVisible={false} />
-    );
+    const { queryByText } = render(<DispatchSelectionModal {...mockProps} isVisible={false} />);
 
     expect(queryByText('calls.select_dispatch_recipients')).toBeNull();
   });
@@ -163,4 +167,4 @@ describe('DispatchSelectionModal', () => {
     // Should show 0 selected by default
     expect(getByText('0 calls.selected')).toBeTruthy();
   });
-}); 
+});

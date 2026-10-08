@@ -905,7 +905,7 @@ export default function CallDetail() {
       <StatusBottomSheet />
 
       {/* Dispatch additional resources */}
-      <DispatchSelectionModal isVisible={isDispatchModalOpen} onClose={() => setIsDispatchModalOpen(false)} onConfirm={handleDispatchAdditional} initialSelection={EMPTY_DISPATCH_SELECTION} />
+      <DispatchSelectionModal isVisible={isDispatchModalOpen} onClose={() => setIsDispatchModalOpen(false)} onConfirm={handleDispatchAdditional} initialSelection={EMPTY_DISPATCH_SELECTION} callId={callId} />
 
       {/* Dispatch a pending call (picker preselected with its proposed recipients) */}
       {dispatchPicker}

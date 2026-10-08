@@ -1790,6 +1790,7 @@
     "notes_section": "Come è stato deciso",
     "apply": "Applica la raccomandazione",
     "applied": "Raccomandazione applicata",
+    "covered_on_call": "Le risorse di questa chiamata coprono già il piano di risposta (allarme {{level}}). Aggiungine altre manualmente se necessario.",
     "stale_location": "Posizione non aggiornata",
     "auto_dispatch": "Invio automatico",
     "auto_dispatch_explainer": "Questo dipartimento invia automaticamente i piani di risposta corrispondenti; queste risorse vengono allertate alla creazione della chiamata.",

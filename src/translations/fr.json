@@ -1790,6 +1790,7 @@
     "notes_section": "Comment cela a été décidé",
     "apply": "Appliquer la recommandation",
     "applied": "Recommandation appliquée",
+    "covered_on_call": "Les ressources de cet appel couvrent déjà le plan de réponse (alerte {{level}}). Ajoutez-en d'autres manuellement si nécessaire.",
     "stale_location": "Position obsolète",
     "auto_dispatch": "Envoi automatique",
     "auto_dispatch_explainer": "Ce service envoie automatiquement les plans de réponse correspondants ; ces ressources sont alertées à la création de l'intervention.",

@@ -118,5 +118,25 @@ describe('destination-helpers', () => {
       expect(resolveDefaultDestinationCall({ currentDestinationId: 'X', selectedCallId: 'Y', activeCalls: [callA, callB] })).toBeNull();
       expect(resolveDefaultDestinationCall({ activeCalls: [] })).toBeNull();
     });
+
+    // Belgian EMS, 2026-10-07: dispatchers had to pick the unit's incident for every status they entered.
+    it('starts on the call the server says the unit is working, ahead of its last destination and the console selection', () => {
+      expect(resolveDefaultDestinationCall({ workingCallId: 'B', currentDestinationId: 'A', selectedCallId: 'A', activeCalls: [callA, callB] })).toBe(callB);
+    });
+
+    it('still lets an explicit call context win over the working call', () => {
+      expect(resolveDefaultDestinationCall({ callContext: contextCall, workingCallId: 'B', activeCalls: [callA, callB] })).toBe(contextCall);
+    });
+
+    it('ignores a working call that is no longer active', () => {
+      expect(resolveDefaultDestinationCall({ workingCallId: 'closed', currentDestinationId: 'A', activeCalls: [callA, callB] })).toBe(callA);
+    });
+
+    it('never matches a station or POI destination against the calls, whose ids can collide', () => {
+      expect(resolveDefaultDestinationCall({ currentDestinationId: 'A', currentDestinationType: DestinationEntityType.Station, activeCalls: [callA] })).toBeNull();
+      expect(resolveDefaultDestinationCall({ currentDestinationId: 'A', currentDestinationType: DestinationEntityType.Poi, activeCalls: [callA] })).toBeNull();
+      expect(resolveDefaultDestinationCall({ currentDestinationId: 'A', currentDestinationType: DestinationEntityType.Call, activeCalls: [callA] })).toBe(callA);
+      expect(resolveDefaultDestinationCall({ currentDestinationId: 'A', currentDestinationType: null, activeCalls: [callA] })).toBe(callA);
+    });
   });
 });

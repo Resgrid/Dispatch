@@ -13,7 +13,7 @@ import { Icon } from '@/components/ui/icon';
 import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
-import { type DestinationTab, getDefaultDestinationTab, getEffectiveDestinationType, getStatusDestinationCapabilities, resolveDefaultDestinationCall } from '@/lib/destination-helpers';
+import { DestinationEntityType, type DestinationTab, getDefaultDestinationTab, getEffectiveDestinationType, getStatusDestinationCapabilities, resolveDefaultDestinationCall } from '@/lib/destination-helpers';
 import { getPoiSelectionLabel } from '@/lib/poi-display';
 import { resolveUnitStatusOptions } from '@/lib/unit-status-helpers';
 import { invertColor, isCallActive } from '@/lib/utils';
@@ -114,6 +114,7 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
 
   // Get calls directly from calls store using selector
   const calls = useCallsStore((state) => state.calls);
+  const isLoadingCalls = useCallsStore((state) => state.isLoadingCalls);
   const fetchCalls = useCallsStore((state) => state.fetchCalls);
 
   // Local state for action sheets
@@ -259,10 +260,19 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
     if (storeSelectedUnit?.UnitId !== selectedUnit.UnitId) return;
     if (destinationInitializedSessionId === actionsSessionId) return;
 
-    // (a) explicit call context, (b) the unit's current destination if it is an active call, (c) the console's selected call
+    // The dispatcher picked a destination before the default could be worked out: theirs stands.
+    if (!callContext && statusDestinationType !== 'none') {
+      markDestinationInitialized(actionsSessionId);
+      return;
+    }
+
+    // (a) explicit call context, (b) the call the server says the unit is working, (c) the unit's current destination if
+    // it is an active call, (d) the console's selected call
     const defaultCall = resolveDefaultDestinationCall({
       callContext,
+      workingCallId: selectedUnit.ActiveCallId,
       currentDestinationId: selectedUnit.CurrentDestinationId,
+      currentDestinationType: selectedUnit.CurrentDestinationType,
       selectedCallId,
       activeCalls,
     });
@@ -272,12 +282,19 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
       return;
     }
 
+    // The unit is on a call the calls list has not loaded yet: wait for it rather than settle on no destination, which
+    // left dispatchers picking the call by hand for every status (Belgian EMS, 2026-10-07).
+    if (selectedUnit.ActiveCallId && isLoadingCalls) return;
+
     // Stations and POIs come from the per-unit options load; wait for it before settling on a default.
     if (optionsLoadedForUnitId !== selectedUnit.UnitId) return;
 
+    const destinationType = selectedUnit.CurrentDestinationType;
     const destinationId = selectedUnit.CurrentDestinationId;
-    const matchingStation = destinationId ? availableStations.find((s) => s.GroupId === destinationId) : undefined;
-    const matchingPoi = destinationId && !matchingStation ? availablePois.find((poi) => poi.PoiId.toString() === destinationId) : undefined;
+    const canBeStation = destinationType === null || destinationType === undefined || destinationType === DestinationEntityType.Station;
+    const canBePoi = destinationType === null || destinationType === undefined || destinationType === DestinationEntityType.Poi;
+    const matchingStation = destinationId && canBeStation ? availableStations.find((s) => s.GroupId === destinationId) : undefined;
+    const matchingPoi = destinationId && canBePoi && !matchingStation ? availablePois.find((poi) => poi.PoiId.toString() === destinationId) : undefined;
 
     if (matchingStation) {
       setStatusSelectedStation(matchingStation);
@@ -293,6 +310,8 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
     destinationInitializedSessionId,
     selectedCallId,
     activeCalls,
+    isLoadingCalls,
+    statusDestinationType,
     optionsLoadedForUnitId,
     availableStations,
     availablePois,

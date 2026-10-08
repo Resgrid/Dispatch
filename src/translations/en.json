@@ -1790,6 +1790,7 @@
     "notes_section": "How this was decided",
     "apply": "Apply recommendation",
     "applied": "Recommendation applied",
+    "covered_on_call": "The resources on this call already cover the run card (alarm {{level}}). Add more by hand if needed.",
     "stale_location": "Stale location",
     "auto_dispatch": "Auto dispatch",
     "auto_dispatch_explainer": "This department auto-dispatches matching run cards; these resources are alerted when the call is created.",
