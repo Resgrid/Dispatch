@@ -112,6 +112,17 @@ describe('DispatchSelectionModal with live data', () => {
     expect(useDispatchStore.getState().selection.everyone).toBe(false);
   });
 
+  it('does not claim the recommended resources were auto-dispatched on a call already out', async () => {
+    mockGetCallRecommendation.mockResolvedValue(recommendation({ AutoDispatch: true }));
+
+    const { findByTestId, getByTestId, queryByTestId, queryByText } = render(<DispatchSelectionModal {...props} callId="40" />);
+
+    expect(await findByTestId('add-resources-recommendation')).toBeTruthy();
+    expect(getByTestId('add-resources-recommendation-apply')).toBeTruthy();
+    expect(queryByTestId('add-resources-recommendation-auto')).toBeNull();
+    expect(queryByText('run_cards.auto_dispatch_explainer')).toBeNull();
+  });
+
   it('says so when the call already covers its run card', async () => {
     mockGetCallRecommendation.mockResolvedValue(recommendation({ Units: [], Notes: [] }));
 

@@ -36,9 +36,13 @@ const mockCalls: CallResultData[] = [
   { CallId: 'B', Number: '26-B', Name: 'Medical Aid', State: 0 } as CallResultData,
   { CallId: 'CLOSED', Number: '26-C', Name: 'Old Call', State: 4 } as CallResultData,
 ];
+const mockCallsWithD: CallResultData[] = [...mockCalls, { CallId: 'D', Number: '26-D', Name: 'Traffic Collision', State: 0 } as CallResultData];
+let mockCallList = mockCalls;
+let mockIsLoadingCalls = false;
 const mockFetchCalls = jest.fn();
 jest.mock('@/stores/calls/store', () => ({
-  useCallsStore: (selector: (state: { calls: CallResultData[]; fetchCalls: () => void }) => unknown) => selector({ calls: mockCalls, fetchCalls: mockFetchCalls }),
+  useCallsStore: (selector: (state: { calls: CallResultData[]; isLoadingCalls: boolean; fetchCalls: () => void }) => unknown) =>
+    selector({ calls: mockCallList, isLoadingCalls: mockIsLoadingCalls, fetchCalls: mockFetchCalls }),
 }));
 
 jest.mock('@/stores/units/store', () => ({
@@ -115,6 +119,8 @@ describe('UnitActionsPanel destination defaults', () => {
     mockSaveUnitStatus.mockResolvedValue({} as any);
     useUnitActionsStore.getState().reset();
     useDispatchConsoleStore.setState({ selectedCallId: null, isCallFilterActive: false });
+    mockCallList = mockCalls;
+    mockIsLoadingCalls = false;
   });
 
   it("defaults to the unit's current destination when it is an active call", async () => {
@@ -130,6 +136,22 @@ describe('UnitActionsPanel destination defaults', () => {
     await renderOpenPanel({ ...unit('u1', '9'), CurrentDestinationType: DestinationEntityType.Poi, ActiveCallId: 'B' } as UnitInfoResultData);
 
     await waitFor(() => expect(selectedCallInStore()).toBe('B'));
+  });
+
+  it('waits for a working call the calls list is still loading instead of settling on the selected call', async () => {
+    useDispatchConsoleStore.setState({ selectedCallId: 'A', isCallFilterActive: true });
+    mockIsLoadingCalls = true;
+    const target = { ...unit('u1', 'A'), CurrentDestinationType: DestinationEntityType.Call, ActiveCallId: 'D' } as UnitInfoResultData;
+    const view = await renderOpenPanel(target);
+
+    expect(useUnitActionsStore.getState().destinationInitializedSessionId).not.toBe(useUnitActionsStore.getState().actionsSessionId);
+    expect(selectedCallInStore()).toBeNull();
+
+    mockCallList = mockCallsWithD;
+    mockIsLoadingCalls = false;
+    view.rerender(<UnitActionsPanel unit={target} />);
+
+    await waitFor(() => expect(selectedCallInStore()).toBe('D'));
   });
 
   it('never takes a station destination for the call with the same id', async () => {

@@ -30,6 +30,11 @@ interface RecommendationPanelProps {
    * Without it that case renders nothing, as on a new call.
    */
   coveredMessage?: string;
+  /**
+   * Set when adding resources to a call already out. Auto-dispatch only fires at call creation, so its badge and
+   * explainer are left out: they would read as if the resources shown here had already been alerted.
+   */
+  isExistingCall?: boolean;
   testID?: string;
 }
 
@@ -44,11 +49,23 @@ interface RecommendationPanelProps {
  * renders nothing on its own when there is no recommendation, but it should not even be mounted for
  * a department that does not use run cards.
  */
-export const RecommendationPanel: React.FC<RecommendationPanelProps> = ({ recommendation, isLoading, error, hasFetched, isApplied, onApply, onRefresh, coveredMessage, testID = 'run-card-recommendation-panel' }) => {
+export const RecommendationPanel: React.FC<RecommendationPanelProps> = ({
+  recommendation,
+  isLoading,
+  error,
+  hasFetched,
+  isApplied,
+  onApply,
+  onRefresh,
+  coveredMessage,
+  isExistingCall = false,
+  testID = 'run-card-recommendation-panel',
+}) => {
   const { t } = useTranslation();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
   const [isExpanded, setIsExpanded] = useState(true);
+  const showAutoDispatch = !isExistingCall && !!recommendation?.AutoDispatch;
 
   const toggleExpanded = useCallback(() => setIsExpanded((previous) => !previous), []);
 
@@ -144,7 +161,7 @@ export const RecommendationPanel: React.FC<RecommendationPanelProps> = ({ recomm
                 <BadgeText>{t('run_cards.alarm_level', { level: recommendation.AlarmLevel })}</BadgeText>
               </Badge>
             ) : null}
-            {recommendation.AutoDispatch ? (
+            {showAutoDispatch ? (
               <Badge action="success" testID={`${testID}-auto`}>
                 <BadgeText>{t('run_cards.auto_dispatch')}</BadgeText>
               </Badge>
@@ -153,7 +170,7 @@ export const RecommendationPanel: React.FC<RecommendationPanelProps> = ({ recomm
 
           {/* Auto-dispatch happens server-side at call creation; saying so avoids the dispatcher
               wondering why applying is optional. */}
-          {recommendation.AutoDispatch ? <Text className="text-xs text-neutral-500">{t('run_cards.auto_dispatch_explainer')}</Text> : null}
+          {showAutoDispatch ? <Text className="text-xs text-neutral-500">{t('run_cards.auto_dispatch_explainer')}</Text> : null}
 
           {unitCount > 0 ? (
             <VStack className="gap-1">

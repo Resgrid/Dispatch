@@ -135,6 +135,7 @@ export const DispatchSelectionModal: React.FC<DispatchSelectionModalProps> = ({ 
                 onApply={handleApplyRecommendation}
                 onRefresh={() => void addResources.refresh()}
                 coveredMessage={t('run_cards.covered_on_call', { level: addResources.recommendation?.AlarmLevel ?? 1 })}
+                isExistingCall
                 testID="add-resources-recommendation"
               />
             ) : null}

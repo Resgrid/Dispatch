@@ -266,11 +266,16 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
       return;
     }
 
+    // The unit is on a call the calls list has not loaded yet: wait for it rather than settle on a fallback (another call,
+    // or no destination), which left dispatchers picking the call by hand for every status (Belgian EMS, 2026-10-07).
+    const workingCallId = selectedUnit.ActiveCallId;
+    if (!callContext && workingCallId && isLoadingCalls && !activeCalls.some((call) => call.CallId === workingCallId)) return;
+
     // (a) explicit call context, (b) the call the server says the unit is working, (c) the unit's current destination if
     // it is an active call, (d) the console's selected call
     const defaultCall = resolveDefaultDestinationCall({
       callContext,
-      workingCallId: selectedUnit.ActiveCallId,
+      workingCallId,
       currentDestinationId: selectedUnit.CurrentDestinationId,
       currentDestinationType: selectedUnit.CurrentDestinationType,
       selectedCallId,
@@ -281,10 +286,6 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
       markDestinationInitialized(actionsSessionId);
       return;
     }
-
-    // The unit is on a call the calls list has not loaded yet: wait for it rather than settle on no destination, which
-    // left dispatchers picking the call by hand for every status (Belgian EMS, 2026-10-07).
-    if (selectedUnit.ActiveCallId && isLoadingCalls) return;
 
     // Stations and POIs come from the per-unit options load; wait for it before settling on a default.
     if (optionsLoadedForUnitId !== selectedUnit.UnitId) return;
