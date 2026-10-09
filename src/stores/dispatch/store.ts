@@ -56,6 +56,25 @@ interface DispatchState {
   getFilteredData: () => DispatchData;
 }
 
+/**
+ * The recipients matching a search, by name. Pure so a component can memoise it on `data` and the query: memoising on
+ * the store's stable `getFilteredData` action computed the list once, at mount, so a picker opened before the data
+ * arrived showed only "Everyone" for the rest of the session.
+ */
+export const filterDispatchData = (data: DispatchData, searchQuery: string): DispatchData => {
+  if (!searchQuery.trim()) {
+    return data;
+  }
+
+  const query = searchQuery.toLowerCase();
+  return {
+    users: data.users.filter((user) => user.Name.toLowerCase().includes(query)),
+    groups: data.groups.filter((group) => group.Name.toLowerCase().includes(query)),
+    roles: data.roles.filter((role) => role.Name.toLowerCase().includes(query)),
+    units: data.units.filter((unit) => unit.Name.toLowerCase().includes(query)),
+  };
+};
+
 const initialSelection: DispatchSelection = {
   everyone: false,
   users: [],
@@ -232,16 +251,6 @@ export const useDispatchStore = create<DispatchState>((set, get) => ({
 
   getFilteredData: () => {
     const { data, searchQuery } = get();
-    if (!searchQuery.trim()) {
-      return data;
-    }
-
-    const query = searchQuery.toLowerCase();
-    return {
-      users: data.users.filter((user) => user.Name.toLowerCase().includes(query)),
-      groups: data.groups.filter((group) => group.Name.toLowerCase().includes(query)),
-      roles: data.roles.filter((role) => role.Name.toLowerCase().includes(query)),
-      units: data.units.filter((unit) => unit.Name.toLowerCase().includes(query)),
-    };
+    return filterDispatchData(data, searchQuery);
   },
 }));

@@ -83,6 +83,16 @@ describe('useNewCallFieldPolicy', () => {
     expect(result.current.missingRequired({})).toEqual([]);
   });
 
+  it('never requires a plus code', async () => {
+    // A plus code is never stored on a call, so requiring one could not be met; an older policy that
+    // still says Required must not block the form.
+    const result = await renderPolicy([{ Key: NewCallFieldKeys.PlusCode, Visible: true, Required: true }]);
+
+    expect(result.current.isVisible(NewCallFieldKeys.PlusCode)).toBe(true);
+    expect(result.current.isRequired(NewCallFieldKeys.PlusCode)).toBe(false);
+    expect(result.current.missingRequired({})).toEqual([]);
+  });
+
   it('falls open when the policy cannot be loaded', async () => {
     // Hiding fields a dispatcher needs is far worse than showing one they were told to hide, and the
     // server enforces the real policy on save regardless.

@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { ScrollView, TouchableOpacity } from 'react-native';
 
 import { Loading } from '@/components/common/loading';
+import { RecommendationPanel } from '@/components/runcards/recommendation-panel';
+import { useAddResourcesRecommendation } from '@/components/runcards/use-add-resources-recommendation';
 import { Actionsheet, ActionsheetBackdrop, ActionsheetContent, ActionsheetDragIndicator, ActionsheetDragIndicatorWrapper } from '@/components/ui/actionsheet';
 import { Box } from '@/components/ui/box';
 import { Button, ButtonText } from '@/components/ui/button';
@@ -13,40 +15,35 @@ import { Input, InputField } from '@/components/ui/input';
 import { CheckIcon, SearchIcon, UsersIcon, X } from '@/components/ui/lucide-icons';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
-import { type DispatchSelection, useDispatchStore } from '@/stores/dispatch/store';
+import { type DispatchSelection, filterDispatchData, useDispatchStore } from '@/stores/dispatch/store';
 
 interface DispatchSelectionModalProps {
   isVisible: boolean;
   onClose: () => void;
   onConfirm: (selection: DispatchSelection) => void;
   initialSelection?: DispatchSelection;
+  /**
+   * Set when adding resources to a call already out: the picker then offers the run card's recommendation for what the
+   * call still needs, counted against what it already has.
+   */
+  callId?: string | null;
 }
 
-export const DispatchSelectionModal: React.FC<DispatchSelectionModalProps> = ({ isVisible, onClose, onConfirm, initialSelection }) => {
+export const DispatchSelectionModal: React.FC<DispatchSelectionModalProps> = ({ isVisible, onClose, onConfirm, initialSelection, callId }) => {
   const { t } = useTranslation();
   const { colorScheme } = useColorScheme();
-  const {
-    data,
-    selection,
-    isLoading,
-    error,
-    loadFailures,
-    searchQuery,
-    fetchDispatchData,
-    setSelection,
-    toggleEveryone,
-    toggleUser,
-    toggleGroup,
-    toggleRole,
-    toggleUnit,
-    setSearchQuery,
-    clearSelection,
-    getFilteredData,
-  } = useDispatchStore();
+  const { data, selection, isLoading, error, loadFailures, searchQuery, fetchDispatchData, setSelection, toggleEveryone, toggleUser, toggleGroup, toggleRole, toggleUnit, setSearchQuery, clearSelection } =
+    useDispatchStore();
 
   const hasLoadFailure = loadFailures.users || loadFailures.groups || loadFailures.roles || loadFailures.units;
 
-  const filteredData = useMemo(() => getFilteredData(), [getFilteredData]);
+  const filteredData = useMemo(() => filterDispatchData(data, searchQuery), [data, searchQuery]);
+
+  const addResources = useAddResourcesRecommendation({ callId, enabled: isVisible && !!callId });
+
+  const handleApplyRecommendation = () => {
+    setSelection(addResources.applyToSelection(selection));
+  };
 
   useEffect(() => {
     if (isVisible) {
@@ -126,6 +123,22 @@ export const DispatchSelectionModal: React.FC<DispatchSelectionModalProps> = ({ 
                 </HStack>
               </Card>
             )}
+
+            {/* Run card recommendation for what the call still needs (adding resources only). */}
+            {callId && addResources.isRunCardsEnabled ? (
+              <RecommendationPanel
+                recommendation={addResources.recommendation}
+                isLoading={addResources.isLoading}
+                error={addResources.error}
+                hasFetched={addResources.hasFetched}
+                isApplied={addResources.isApplied}
+                onApply={handleApplyRecommendation}
+                onRefresh={() => void addResources.refresh()}
+                coveredMessage={t('run_cards.covered_on_call', { level: addResources.recommendation?.AlarmLevel ?? 1 })}
+                isExistingCall
+                testID="add-resources-recommendation"
+              />
+            ) : null}
 
             {/* Everyone Option */}
             <Card className="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">

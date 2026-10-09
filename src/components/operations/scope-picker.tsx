@@ -7,7 +7,7 @@ import { HStack } from '@/components/ui/hstack';
 import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
-import { dateOf, reportScope, scopeKey, scopeName, sumHours, type TimeScope } from '@/lib/operations/time';
+import { dateOf, documentNumberLabel, reportNumberText, reportScope, scopeKey, scopeName, sumHours, type TimeScope } from '@/lib/operations/time';
 import type { Deployment, TimeReport } from '@/models/v4/operations';
 
 export const useScopeLabel = () => {
@@ -63,7 +63,7 @@ export const DayReports = ({ deployment, reports, openId, onOpen }: DayReportsPr
         <Pressable key={report.Id} onPress={() => onOpen(report)} testID={`operations-day-report-${report.Id}`} className={`rounded-lg border p-2 ${report.Id === openId ? 'border-primary-500' : 'border-outline-200'}`}>
           <HStack className="items-center justify-between">
             <Text className="flex-1">
-              #{report.ReportNumber} · {label(deployment, reportScope(report))}
+              {documentNumberLabel(reportNumberText(report))} · {label(deployment, reportScope(report))}
             </Text>
             <Text className="text-typography-500">
               {t(`operations.reportStatus.${report.Status}`)} · {t('operations.time.hours', { hours: sumHours(report.Entries) })}
@@ -93,7 +93,7 @@ export const AwaitingApproval = ({ deployment, reports, onOpen }: AwaitingApprov
       {reports.map((report) => (
         <Pressable key={report.Id} onPress={() => onOpen(report)} testID={`operations-awaiting-${report.Id}`}>
           <Text className="text-primary-600">
-            {dateOf(report.ReportDate)} · #{report.ReportNumber} · {label(deployment, reportScope(report))}
+            {dateOf(report.ReportDate)} · {documentNumberLabel(reportNumberText(report))} · {label(deployment, reportScope(report))}
           </Text>
         </Pressable>
       ))}

@@ -230,6 +230,12 @@ export const hoursBySubject = (entries: TimeEntry[]) =>
     return totals;
   }, {});
 
+/** A time report's number as issued (the department's numbering pattern); a server without DisplayNumber sends only the plain number. */
+export const reportNumberText = (report: Pick<TimeReport, 'ReportNumber' | 'DisplayNumber'>) => report.DisplayNumber || String(report.ReportNumber);
+
+/** How a document number reads on its own: "#3" for a plain number, as reports always showed, and the issued text otherwise ("DTR-2026-0003"). */
+export const documentNumberLabel = (number: string) => (/^\d+$/.test(number) ? `#${number}` : number);
+
 export const isReportEditable = (report: TimeReport | null) => !!report && report.Status === TimeReportStatus.Draft && report.CanAct;
 
 export const operationsError = (error: unknown): string => {

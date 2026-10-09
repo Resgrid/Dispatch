@@ -100,7 +100,9 @@ export function buildAddResourcesUpdateRequest(
     destinationPoiId: call.DestinationPoiId,
     referenceId: call.ReferenceId,
     externalId: call.ExternalId,
-    linkedCallId: call.IncidentId,
+    // The incident number, not a linked call. linkedCallId and protocolIds stay unset: this flow has no
+    // picker for them, and leaving them out tells EditCall it neither adds nor enforces them.
+    incidentId: call.IncidentId,
     dispatchUsers: merged.users,
     dispatchGroups: merged.groups,
     dispatchRoles: merged.roles,

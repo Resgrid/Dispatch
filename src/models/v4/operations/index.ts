@@ -117,6 +117,8 @@ export interface TimeReport {
   Id: string;
   DeploymentId: string;
   ReportNumber: number;
+  /** The number as issued: the department's numbering pattern, or ReportNumber as text when it keeps the built-in numbers. Older servers leave it out. */
+  DisplayNumber?: string | null;
   ReportDate: string;
   /** TimeReportScope value. */
   Scope: number;

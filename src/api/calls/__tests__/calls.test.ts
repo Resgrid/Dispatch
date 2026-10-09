@@ -111,18 +111,38 @@ describe('createCall / updateCall dispatch list and pending flag', () => {
     expect(sent(mockPut).DispatchList).toBe('P:u1|G:3|R:7|U:5');
   });
 
-  it('is not pending unless asked, and keeps the scheduled time', async () => {
-    await createCall({ name: 'Welfare check', nature: 'Follow-up', priority: 1, scheduledOn: '2026-10-07T09:00:00.000Z' });
+  it('is not pending unless asked, and sends the scheduled time as DispatchOnUtc', async () => {
+    await createCall({ name: 'Welfare check', nature: 'Follow-up', priority: 1, dispatchOnUtc: '2026-10-07T09:00:00.000Z' });
 
     expect(sent(mockPost).IsPending).toBe(false);
-    expect(sent(mockPost).ScheduledOn).toBe('2026-10-07T09:00:00.000Z');
+    expect(sent(mockPost).DispatchOnUtc).toBe('2026-10-07T09:00:00.000Z');
+    // The server has no ScheduledOn; sending it dropped every scheduled time.
+    expect(sent(mockPost)).not.toHaveProperty('ScheduledOn');
+  });
+
+  it('sends no dispatch time when none was picked', async () => {
+    await createCall({ name: 'Welfare check', nature: 'Follow-up', priority: 1 });
+    await createCall({ name: 'Welfare check', nature: 'Follow-up', priority: 1, dispatchOnUtc: '' });
+
+    expect(mockPost.mock.calls[0][0]).not.toHaveProperty('DispatchOnUtc');
+    expect(mockPost.mock.calls[1][0]).not.toHaveProperty('DispatchOnUtc');
+  });
+
+  it('sends a new dispatch time on edit only when one was picked', async () => {
+    await updateCall({ callId: '9', name: 'Welfare check', nature: 'Follow-up', priority: 1, dispatchOnUtc: '2026-10-09T14:30:00.000Z' });
+    await updateCall({ callId: '9', name: 'Welfare check', nature: 'Follow-up', priority: 1 });
+
+    expect(mockPut.mock.calls[0][0].DispatchOnUtc).toBe('2026-10-09T14:30:00.000Z');
+    // Left out, the call keeps its schedule.
+    expect(mockPut.mock.calls[1][0]).not.toHaveProperty('DispatchOnUtc');
+    expect(mockPut.mock.calls[0][0]).not.toHaveProperty('ScheduledOn');
   });
 
   it('sends IsPending and drops the scheduled time for a pending call', async () => {
-    await createCall({ name: 'Welfare check', nature: 'Follow-up', priority: 1, isPending: true, scheduledOn: '2026-10-07T09:00:00.000Z', dispatchUnits: ['5'] });
+    await createCall({ name: 'Welfare check', nature: 'Follow-up', priority: 1, isPending: true, dispatchOnUtc: '2026-10-07T09:00:00.000Z', dispatchUnits: ['5'] });
 
     expect(sent(mockPost).IsPending).toBe(true);
-    expect(sent(mockPost).ScheduledOn).toBe('');
+    expect(sent(mockPost)).not.toHaveProperty('DispatchOnUtc');
     // The picked recipients still go up, as the proposed dispatch.
     expect(sent(mockPost).DispatchList).toBe('U:5');
     expect(mockEndpoint).toHaveBeenCalledWith('/Calls/SaveCall');
@@ -168,5 +188,56 @@ describe('dispatchCallNow', () => {
 
     expect(mockPut).toHaveBeenNthCalledWith(1, { CallId: '12' });
     expect(mockPut).toHaveBeenNthCalledWith(2, { CallId: '13' });
+  });
+});
+
+describe('createCall / updateCall linked call, protocols and incident id', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockPost.mockResolvedValue({ data: { Id: 'call-1' } });
+    mockPut.mockResolvedValue({ data: { Id: 'call-1' } });
+  });
+
+  const sent = (mock: jest.Mock) => mock.mock.calls[0][0] as Record<string, unknown>;
+
+  it('sends the linked call as LinkedCallId, not as the incident number, on create', async () => {
+    await createCall({ name: 'Structure Fire', nature: 'Smoke showing', priority: 1, linkedCallId: '17', protocolIds: [3, 7] });
+
+    expect(sent(mockPost).LinkedCallId).toBe('17');
+    expect(sent(mockPost).ProtocolIds).toEqual([3, 7]);
+    expect(sent(mockPost).IncidentId).toBe('');
+  });
+
+  it('sends a blank linked call and an empty protocol list, so the server enforces them', async () => {
+    await createCall({ name: 'Structure Fire', nature: 'Smoke showing', priority: 1, linkedCallId: '', protocolIds: [] });
+
+    expect(sent(mockPost)).toHaveProperty('LinkedCallId', '');
+    expect(sent(mockPost)).toHaveProperty('ProtocolIds', []);
+  });
+
+  it('leaves LinkedCallId and ProtocolIds out when the caller has no picker for them', async () => {
+    await createCall({ name: 'Structure Fire', nature: 'Smoke showing', priority: 1 });
+    await updateCall({ callId: '9', name: 'Structure Fire', nature: 'Smoke showing', priority: 1 });
+
+    expect(sent(mockPost)).not.toHaveProperty('LinkedCallId');
+    expect(sent(mockPost)).not.toHaveProperty('ProtocolIds');
+    expect(sent(mockPut)).not.toHaveProperty('LinkedCallId');
+    expect(sent(mockPut)).not.toHaveProperty('ProtocolIds');
+  });
+
+  it('sends the incident number as IncidentId', async () => {
+    await createCall({ name: 'Structure Fire', nature: 'Smoke showing', priority: 1, incidentId: 'INC-2026-12' });
+    await updateCall({ callId: '9', name: 'Structure Fire', nature: 'Smoke showing', priority: 1, incidentId: 'INC-2026-12' });
+
+    expect(sent(mockPost).IncidentId).toBe('INC-2026-12');
+    expect(sent(mockPut).IncidentId).toBe('INC-2026-12');
+  });
+
+  it('sends an added link and protocols on edit without touching the incident number', async () => {
+    await updateCall({ callId: '9', name: 'Structure Fire', nature: 'Smoke showing', priority: 1, linkedCallId: '17', protocolIds: [4] });
+
+    expect(sent(mockPut).LinkedCallId).toBe('17');
+    expect(sent(mockPut).ProtocolIds).toEqual([4]);
+    expect(sent(mockPut).IncidentId).toBe('');
   });
 });

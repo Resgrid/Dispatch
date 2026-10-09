@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import type { EntrySubject } from '@/lib/operations/time';
-import { applyToCrew, combineDateTime, dateOf, endLocalFor, entryHours, hoursBySubject, isReportEditable, newEntry, subjectIdOf, sumHours, timeOf } from '@/lib/operations/time';
+import { applyToCrew, combineDateTime, dateOf, documentNumberLabel, endLocalFor, entryHours, hoursBySubject, isReportEditable, newEntry, reportNumberText, subjectIdOf, sumHours, timeOf } from '@/lib/operations/time';
 import type { TimeEntry, TimeReport, TimeReportIssue } from '@/models/v4/operations';
 import { TimeEntryType, TimeReportScope, TimeReportStatus, TimeSubjectType } from '@/models/v4/operations';
 
@@ -105,16 +105,16 @@ export const TimeReportEditor = ({
   const title = !report
     ? ''
     : report.Scope === TimeReportScope.Crew
-      ? t('operations.time.crewReport', { number: report.ReportNumber, name: scopeLabel })
+      ? t('operations.time.crewReport', { number: documentNumberLabel(reportNumberText(report)), name: scopeLabel })
       : report.Scope === TimeReportScope.Individual
-        ? t('operations.time.individualReport', { number: report.ReportNumber, name: scopeLabel })
-        : t('operations.time.report', { number: report.ReportNumber });
+        ? t('operations.time.individualReport', { number: documentNumberLabel(reportNumberText(report)), name: scopeLabel })
+        : t('operations.time.report', { number: documentNumberLabel(reportNumberText(report)) });
 
   if (!report) {
     return (
       <VStack space="sm">
         <Text className="text-typography-500">{isCrew ? t('operations.time.noCrewReport', { name: scopeLabel }) : t('operations.time.noReport')}</Text>
-        {coveredBy ? <Text className="text-typography-500">{t('operations.time.coveredBy', { number: coveredBy.ReportNumber })}</Text> : null}
+        {coveredBy ? <Text className="text-typography-500">{t('operations.time.coveredBy', { number: documentNumberLabel(reportNumberText(coveredBy)) })}</Text> : null}
         {canCreate && !coveredBy ? (
           <Button onPress={onStart} isDisabled={busy} testID="operations-start-report">
             <ButtonText>{isCrew ? t('operations.time.startCrew') : t('operations.time.start')}</ButtonText>

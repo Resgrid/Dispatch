@@ -4,6 +4,7 @@ import {
   combineDateTime,
   coveringReport,
   defaultScope,
+  documentNumberLabel,
   endLocalFor,
   entryHours,
   hoursBySubject,
@@ -12,6 +13,7 @@ import {
   newEntry,
   operationsError,
   reportForScope,
+  reportNumberText,
   scopeKey,
   scopeSubjects,
   shiftDateKey,
@@ -138,4 +140,17 @@ it('maps server failures to short reason codes', () => {
   expect(operationsError({ response: { status: 400 } })).toBe('validation');
   expect(operationsError({ response: { status: 200, data: { type: 'protected_data_required' } } })).toBe('locked');
   expect(operationsError(new Error('boom'))).toBe('retry');
+});
+
+it('shows a time report by its number as issued, falling back to the plain number', () => {
+  expect(reportNumberText(report({ ReportNumber: 3, DisplayNumber: 'DTR-2026-0003' }))).toBe('DTR-2026-0003');
+  expect(reportNumberText(report({ ReportNumber: 3, DisplayNumber: '3' }))).toBe('3');
+  expect(reportNumberText(report({ ReportNumber: 3 }))).toBe('3');
+  expect(reportNumberText(report({ ReportNumber: 3, DisplayNumber: '' }))).toBe('3');
+});
+
+it('writes a plain document number with # and any other number as issued', () => {
+  expect(documentNumberLabel('3')).toBe('#3');
+  expect(documentNumberLabel('00042')).toBe('#00042');
+  expect(documentNumberLabel('DTR-2026-0003')).toBe('DTR-2026-0003');
 });

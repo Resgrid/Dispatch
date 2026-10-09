@@ -10,6 +10,7 @@ import { isRunningInExpoGo } from 'expo';
 import { useFonts } from 'expo-font';
 import * as Notifications from 'expo-notifications';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider, useNavigationContainerRef } from 'expo-router';
+import Head from 'expo-router/head';
 import * as SplashScreen from 'expo-splash-screen';
 import * as WebBrowser from 'expo-web-browser';
 import React, { useEffect } from 'react';
@@ -216,6 +217,13 @@ function RootLayout() {
 
   return (
     <Providers>
+      {/* expo-router turns off react-navigation's document title, so the web tab title only comes from Head. On iOS
+          Head registers a Handoff/Spotlight activity instead, so it is rendered on web only. */}
+      {Platform.OS === 'web' ? (
+        <Head>
+          <title>Resgrid Dispatch</title>
+        </Head>
+      ) : null}
       <Stack>
         <Stack.Screen name="(app)" options={{ headerShown: false }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />

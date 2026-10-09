@@ -197,10 +197,10 @@ export const useCallDetailStore = create<CallDetailState>((set, get) => ({
       // Refresh call details after successful update
       await get().fetchCallDetail(callData.callId);
     } catch (error) {
-      set({
-        error: error instanceof Error ? error.message : 'Failed to update call',
-        isLoading: false,
-      });
+      // A refused save is not a failed load: `error` is what the call screens swap their content for, so
+      // setting it here replaced the edit form (and the dispatcher's changes) with an error page. The
+      // call that was loaded is still valid; callers report the failure and the form stays usable.
+      set({ isLoading: false });
       throw error;
     }
   },

@@ -13,7 +13,7 @@ import { Icon } from '@/components/ui/icon';
 import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
-import { type DestinationTab, getDefaultDestinationTab, getEffectiveDestinationType, getStatusDestinationCapabilities, resolveDefaultDestinationCall } from '@/lib/destination-helpers';
+import { DestinationEntityType, type DestinationTab, getDefaultDestinationTab, getEffectiveDestinationType, getStatusDestinationCapabilities, resolveDefaultDestinationCall } from '@/lib/destination-helpers';
 import { getPoiSelectionLabel } from '@/lib/poi-display';
 import { resolveUnitStatusOptions } from '@/lib/unit-status-helpers';
 import { invertColor, isCallActive } from '@/lib/utils';
@@ -114,6 +114,7 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
 
   // Get calls directly from calls store using selector
   const calls = useCallsStore((state) => state.calls);
+  const isLoadingCalls = useCallsStore((state) => state.isLoadingCalls);
   const fetchCalls = useCallsStore((state) => state.fetchCalls);
 
   // Local state for action sheets
@@ -132,6 +133,9 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
 
   // Whether the per-unit options (stations/POIs) have finished loading for the given unit
   const [optionsLoadedForUnitId, setOptionsLoadedForUnitId] = useState<string | null>(null);
+
+  // The calls re-fetch for a working call the calls list did not have (keyed by open session and call), so it runs once
+  const [workingCallLookup, setWorkingCallLookup] = useState<{ key: string; settled: boolean } | null>(null);
 
   // Store state
   const {
@@ -259,10 +263,34 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
     if (storeSelectedUnit?.UnitId !== selectedUnit.UnitId) return;
     if (destinationInitializedSessionId === actionsSessionId) return;
 
-    // (a) explicit call context, (b) the unit's current destination if it is an active call, (c) the console's selected call
+    // The dispatcher picked a destination before the default could be worked out: theirs stands.
+    if (!callContext && statusDestinationType !== 'none') {
+      markDestinationInitialized(actionsSessionId);
+      return;
+    }
+
+    // The unit is on a call the calls list does not have (still loading, or loaded before the call was created): look it
+    // up once for this open and wait, rather than settle on a fallback (another call, or no destination), which left
+    // dispatchers picking the call by hand for every status (Belgian EMS, 2026-10-07).
+    const workingCallId = selectedUnit.ActiveCallId;
+    if (!callContext && workingCallId && !activeCalls.some((call) => call.CallId === workingCallId)) {
+      if (isLoadingCalls) return;
+      const lookupKey = `${actionsSessionId}:${workingCallId}`;
+      if (workingCallLookup?.key !== lookupKey) {
+        setWorkingCallLookup({ key: lookupKey, settled: false });
+        void fetchCalls().finally(() => setWorkingCallLookup((current) => (current?.key === lookupKey ? { key: lookupKey, settled: true } : current)));
+        return;
+      }
+      if (!workingCallLookup.settled) return;
+    }
+
+    // (a) explicit call context, (b) the call the server says the unit is working, (c) the unit's current destination if
+    // it is an active call, (d) the console's selected call
     const defaultCall = resolveDefaultDestinationCall({
       callContext,
+      workingCallId,
       currentDestinationId: selectedUnit.CurrentDestinationId,
+      currentDestinationType: selectedUnit.CurrentDestinationType,
       selectedCallId,
       activeCalls,
     });
@@ -275,9 +303,12 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
     // Stations and POIs come from the per-unit options load; wait for it before settling on a default.
     if (optionsLoadedForUnitId !== selectedUnit.UnitId) return;
 
+    const destinationType = selectedUnit.CurrentDestinationType;
     const destinationId = selectedUnit.CurrentDestinationId;
-    const matchingStation = destinationId ? availableStations.find((s) => s.GroupId === destinationId) : undefined;
-    const matchingPoi = destinationId && !matchingStation ? availablePois.find((poi) => poi.PoiId.toString() === destinationId) : undefined;
+    const canBeStation = destinationType === null || destinationType === undefined || destinationType === DestinationEntityType.Station;
+    const canBePoi = destinationType === null || destinationType === undefined || destinationType === DestinationEntityType.Poi;
+    const matchingStation = destinationId && canBeStation ? availableStations.find((s) => s.GroupId === destinationId) : undefined;
+    const matchingPoi = destinationId && canBePoi && !matchingStation ? availablePois.find((poi) => poi.PoiId.toString() === destinationId) : undefined;
 
     if (matchingStation) {
       setStatusSelectedStation(matchingStation);
@@ -293,6 +324,10 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
     destinationInitializedSessionId,
     selectedCallId,
     activeCalls,
+    isLoadingCalls,
+    fetchCalls,
+    workingCallLookup,
+    statusDestinationType,
     optionsLoadedForUnitId,
     availableStations,
     availablePois,
@@ -360,13 +395,25 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
     };
   }, [selectedStatus]);
 
+  // The default destination is still waiting on the unit's working call (calls loading, or the one-off lookup in flight).
+  // A status that takes any destination is held until the default lands (the call, or the station/POI it falls back to)
+  // or the dispatcher picks a destination, so it is not sent without it.
+  const isAwaitingWorkingCall = useMemo(() => {
+    const workingCallId = selectedUnit?.ActiveCallId;
+    if (!workingCallId || callContext || storeSelectedUnit?.UnitId !== selectedUnit?.UnitId) return false;
+    if (destinationInitializedSessionId === actionsSessionId) return false;
+    return !activeCalls.some((call) => call.CallId === workingCallId);
+  }, [selectedUnit, callContext, storeSelectedUnit, destinationInitializedSessionId, actionsSessionId, activeCalls]);
+  const isHeldForWorkingCall = isAwaitingWorkingCall && destinationConfig.supportsDestination;
+
   // Validate status can be submitted
   const canSubmitStatus = useMemo(() => {
     if (!selectedStatus) return false;
     // Check if note is required and not provided
     if (selectedStatus.Note === 2 && !statusNote.trim()) return false;
+    if (isHeldForWorkingCall) return false;
     return true;
-  }, [selectedStatus, statusNote]);
+  }, [selectedStatus, statusNote, isHeldForWorkingCall]);
 
   useEffect(() => {
     if (selectedStatus) {
@@ -409,6 +456,9 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
     } else if (type === 'poi' && item) {
       setStatusSelectedPoi(item as PoiResultData);
     }
+    // An explicit choice, "No destination" included, ends the default for this open: a working-call lookup still in
+    // flight must not replace it when it lands.
+    markDestinationInitialized(actionsSessionId);
     setIsDestinationSheetOpen(false);
   };
 
@@ -504,7 +554,7 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
               <>
                 {statusError ? <Text className="text-xs text-red-500">{statusError}</Text> : null}
                 <Button size="sm" onPress={handleSubmitStatus} isDisabled={!canSubmitStatus || isSubmittingStatus} className="bg-blue-600">
-                  {isSubmittingStatus ? <ButtonSpinner color="white" /> : <Icon as={Send} size="xs" color="white" />}
+                  {isSubmittingStatus || isHeldForWorkingCall ? <ButtonSpinner color="white" /> : <Icon as={Send} size="xs" color="white" />}
                   <ButtonText className="ml-1 text-xs">{t('dispatch.unit_actions_panel.update_status')}</ButtonText>
                 </Button>
               </>

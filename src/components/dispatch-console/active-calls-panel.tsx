@@ -512,7 +512,13 @@ const ActiveCallsPanelComponent: React.FC<ActiveCallsPanelProps> = ({ selectedCa
 
       {/* Dispatch additional resources — RN Modal portals above the panel's overflow-hidden container. */}
       <Modal visible={!!dispatchTargetCall} transparent animationType="slide" onRequestClose={() => setDispatchTargetCall(null)}>
-        <DispatchSelectionModal isVisible={!!dispatchTargetCall} onClose={() => setDispatchTargetCall(null)} onConfirm={handleDispatchAdditional} initialSelection={EMPTY_DISPATCH_SELECTION} />
+        <DispatchSelectionModal
+          isVisible={!!dispatchTargetCall}
+          onClose={() => setDispatchTargetCall(null)}
+          onConfirm={handleDispatchAdditional}
+          initialSelection={EMPTY_DISPATCH_SELECTION}
+          callId={dispatchTargetCall?.CallId}
+        />
       </Modal>
     </Box>
   );

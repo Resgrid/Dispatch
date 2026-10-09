@@ -95,14 +95,30 @@ export interface CreateCallRequest {
   dispatchUnits?: string[];
   dispatchEveryone?: boolean;
   callFormData?: string;
+  /**
+   * Existing call (numeric id) to link the new call to; the server records a proper call link. Leave it
+   * undefined only from a screen with no linked-call picker: the property is then omitted and the server
+   * does not enforce a "linked call" requirement. A screen with a picker sends '' when nothing is picked.
+   */
   linkedCallId?: string;
+  /**
+   * Dispatch protocols (numeric ids) to attach. Undefined omits the property (a screen with no protocol
+   * picker; the "protocols" requirement is not enforced); an array, even empty, is sent and enforced.
+   */
+  protocolIds?: number[];
+  /** The call's incident number (Call.IncidentNumber). Not the linked call. */
+  incidentId?: string;
   externalId?: string;
   referenceId?: string;
-  scheduledOn?: string;
+  /**
+   * When to dispatch the call, as an ISO 8601 UTC instant (sent as `DispatchOnUtc`). Undefined or blank
+   * dispatches now; a time already past also dispatches now.
+   */
+  dispatchOnUtc?: string;
   destinationPoiId?: number | null;
   /**
-   * Saves the call as Pending (State 8) instead of dispatching it: nobody is notified, `scheduledOn` is
-   * ignored, and the dispatch list is optional and kept as the proposed dispatch for whoever dispatches
+   * Saves the call as Pending (State 8) instead of dispatching it: nobody is notified, `dispatchOnUtc` is
+   * not sent, and the dispatch list is optional and kept as the proposed dispatch for whoever dispatches
    * it later. The department's "dispatch list required" rule does not apply.
    */
   isPending?: boolean;
@@ -132,9 +148,27 @@ export interface UpdateCallRequest {
   dispatchUnits?: string[];
   dispatchEveryone?: boolean;
   callFormData?: string;
+  /**
+   * Another call (numeric id) to link this one to. Links already on the call are kept; one cannot be removed
+   * here. Undefined omits the property (no picker; the "linked call" requirement is not enforced on this
+   * edit); '' is sent and enforced against the links the call already has.
+   */
   linkedCallId?: string;
+  /**
+   * Dispatch protocols (numeric ids) to add. Protocols already attached are kept; one cannot be removed here.
+   * Undefined omits the property (no picker; not enforced); an array, even empty, is sent and enforced
+   * against the attached protocols plus these.
+   */
+  protocolIds?: number[];
+  /** The call's incident number (Call.IncidentNumber). Blank keeps the stored value. Not the linked call. */
+  incidentId?: string;
   externalId?: string;
   referenceId?: string;
+  /**
+   * New dispatch time, as an ISO 8601 UTC instant (sent as `DispatchOnUtc`). Undefined or blank leaves the
+   * schedule as it is; EditCall has no way to clear one. A future time on a pending call schedules it.
+   */
+  dispatchOnUtc?: string;
   destinationPoiId?: number | null;
   /** When true, re-sends the dispatch to all currently dispatched entities. */
   rebroadcastCall?: boolean;
@@ -198,6 +232,16 @@ const dispatchListFor = (callData: CreateCallRequest | UpdateCallRequest): strin
     units: callData.dispatchUnits,
   });
 
+/**
+ * LinkedCallId and ProtocolIds, each only when the caller set it. The server reads a missing property as
+ * "this client has no picker for it" and does not enforce that field's requirement, so a screen without
+ * the picker must leave it out rather than send it blank.
+ */
+const linkAndProtocolsFor = (callData: CreateCallRequest | UpdateCallRequest): { LinkedCallId?: string; ProtocolIds?: number[] } => ({
+  ...(typeof callData.linkedCallId === 'string' ? { LinkedCallId: callData.linkedCallId } : {}),
+  ...(Array.isArray(callData.protocolIds) ? { ProtocolIds: callData.protocolIds } : {}),
+});
+
 export const createCall = async (callData: CreateCallRequest) => {
   const dispatchList = dispatchListFor(callData);
 
@@ -218,11 +262,14 @@ export const createCall = async (callData: CreateCallRequest) => {
     PlusCode: callData.plusCode || '',
     DispatchList: dispatchList,
     CallFormData: callData.callFormData || '',
-    IncidentId: callData.linkedCallId || '',
+    IncidentId: callData.incidentId || '',
+    ...linkAndProtocolsFor(callData),
     ExternalId: callData.externalId || '',
     ReferenceId: callData.referenceId || '',
-    // A pending call has no dispatch time; the server ignores one anyway.
-    ScheduledOn: callData.isPending ? '' : callData.scheduledOn || '',
+    // Only when a time was picked. The server has no ScheduledOn (what this used to send, so every scheduled
+    // time was dropped and the call went out at once). A pending call has no dispatch time; the server ignores
+    // one anyway.
+    ...(!callData.isPending && callData.dispatchOnUtc ? { DispatchOnUtc: callData.dispatchOnUtc } : {}),
     IsPending: callData.isPending === true,
   };
 
@@ -251,9 +298,12 @@ export const updateCall = async (callData: UpdateCallRequest) => {
     PlusCode: callData.plusCode || '',
     DispatchList: dispatchList,
     CallFormData: callData.callFormData || '',
-    IncidentId: callData.linkedCallId || '',
+    IncidentId: callData.incidentId || '',
+    ...linkAndProtocolsFor(callData),
     ExternalId: callData.externalId || '',
     ReferenceId: callData.referenceId || '',
+    // Only when a new time was picked: leaving it out keeps the call's schedule.
+    ...(callData.dispatchOnUtc ? { DispatchOnUtc: callData.dispatchOnUtc } : {}),
     RebroadcastCall: callData.rebroadcastCall ?? false,
     NotifyCancelledEntities: callData.notifyCancelledEntities ?? false,
   };

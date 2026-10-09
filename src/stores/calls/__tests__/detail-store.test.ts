@@ -508,6 +508,9 @@ describe('useCallDetailStore - Notes', () => {
       ).rejects.toThrow(errorMessage);
 
       expect(mockUpdateCall).toHaveBeenCalled();
+      // A refused save is reported by the caller; it must not turn the loaded call into an error page.
+      expect(result.current.error).toBeNull();
+      expect(result.current.isLoading).toBe(false);
     });
 
     it('should handle partial update data', async () => {

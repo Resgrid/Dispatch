@@ -1,18 +1,21 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { ChevronDownIcon, ChevronUpIcon, MapPinIcon, SaveIcon, SearchIcon, XIcon } from 'lucide-react-native';
+import { BookOpenIcon, ChevronDownIcon, ChevronUpIcon, LinkIcon, MapPinIcon, SaveIcon, SearchIcon, XIcon } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import * as z from 'zod';
 
 import { getNewCallData } from '@/api/dispatch/dispatch';
-import { forwardGeocode } from '@/api/geocoding/geocoding';
+import { forwardGeocode, plusCodeLookup, what3WordsLookup } from '@/api/geocoding/geocoding';
 import { saveUdfValues } from '@/api/userDefinedFields/userDefinedFields';
 import { DispatchSelectionModal } from '@/components/calls/dispatch-selection-modal';
+import { LinkedCallsModal } from '@/components/calls/linked-calls-modal';
+import { ProtocolSelectorModal, type SelectedProtocol } from '@/components/calls/protocol-selector-modal';
 import { UdfFieldsRenderer } from '@/components/calls/udf-fields-renderer';
+import { DateTimeField } from '@/components/common/date-time-field';
 import { Loading } from '@/components/common/loading';
 import FullScreenLocationPicker from '@/components/maps/full-screen-location-picker';
 import LocationPicker from '@/components/maps/location-picker';
@@ -21,7 +24,13 @@ import { Card } from '@/components/ui/card';
 import { Text } from '@/components/ui/text';
 import { useToast } from '@/components/ui/toast';
 import { useAnalytics } from '@/hooks/use-analytics';
+import { useNewCallFieldPolicy } from '@/hooks/use-new-call-field-policy';
+import { describeCallFields, getEditCallMissingFields, getMissingCallFieldsFromError, keepHiddenEditFieldsUnchanged, toProtocolIds } from '@/lib/call-field-policy';
+import { getScheduledDispatchPrefill, isDispatchTimeTooSoon, toDispatchOnUtc } from '@/lib/call-schedule';
 import { getPoiDestinationOptionLabel } from '@/lib/poi-display';
+import { isCallPending } from '@/lib/utils';
+import { type CallResultData } from '@/models/v4/calls/callResultData';
+import { type NewCallFieldKey, NewCallFieldKeys } from '@/models/v4/calls/newCallFieldPolicyResultData';
 import { type PoiResultData } from '@/models/v4/mapping/poiResultData';
 import { type UdfFieldValueInput } from '@/models/v4/userDefinedFields/udfFieldValueInput';
 import { useCoreStore } from '@/stores/app/core-store';
@@ -45,6 +54,11 @@ const formSchema = z.object({
   type: z.string().min(1, 'Type is required'),
   contactName: z.string().optional(),
   contactInfo: z.string().optional(),
+  externalId: z.string().optional(),
+  incidentId: z.string().optional(),
+  referenceId: z.string().optional(),
+  // New dispatch time, as the picker's ISO UTC instant. Pre-filled only while the call is still scheduled.
+  dispatchOn: z.string().optional(),
   dispatchSelection: z.object({
     everyone: z.boolean(),
     users: z.array(z.string()),
@@ -199,6 +213,8 @@ export default function EditCallWeb() {
   const [showDispatchModal, setShowDispatchModal] = useState(false);
   const [showAddressSelection, setShowAddressSelection] = useState(false);
   const [isGeocodingAddress, setIsGeocodingAddress] = useState(false);
+  const [isGeocodingWhat3Words, setIsGeocodingWhat3Words] = useState(false);
+  const [isGeocodingPlusCode, setIsGeocodingPlusCode] = useState(false);
   const [addressResults, setAddressResults] = useState<GeocodingResult[]>([]);
   const [destinationPois, setDestinationPois] = useState<PoiResultData[]>([]);
   const [isLoadingDestinationPois, setIsLoadingDestinationPois] = useState(false);
@@ -217,6 +233,19 @@ export default function EditCallWeb() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [udfValues, setUdfValues] = useState<UdfFieldValueInput[]>([]);
   const [isAdditionalFieldsExpanded, setIsAdditionalFieldsExpanded] = useState(false);
+  // Protocols and a linked call this edit adds. EditCall keeps what the call already has and cannot
+  // remove either, so these start empty rather than pre-filled from the call.
+  const [selectedProtocols, setSelectedProtocols] = useState<SelectedProtocol[]>([]);
+  const [linkedCall, setLinkedCall] = useState<{ callId: string; number: string; name: string } | null>(null);
+  // The dispatch time the form started with. Only a different one is sent (and checked), so saving other
+  // changes to a scheduled call neither resends its time nor trips the lead-time rule as it gets closer.
+  const [initialDispatchOn, setInitialDispatchOn] = useState('');
+  const [showProtocolSelector, setShowProtocolSelector] = useState(false);
+  const [showLinkedCallsModal, setShowLinkedCallsModal] = useState(false);
+
+  // The department's call field policy applies to edits too: hidden fields are not offered (and keep
+  // their stored value), required ones must still have a value once the edit is saved.
+  const fieldPolicy = useNewCallFieldPolicy();
 
   const isDark = colorScheme === 'dark';
   const isWideScreen = width >= 1024;
@@ -245,6 +274,10 @@ export default function EditCallWeb() {
       type: '',
       contactName: '',
       contactInfo: '',
+      externalId: '',
+      incidentId: '',
+      referenceId: '',
+      dispatchOn: '',
       dispatchSelection: {
         everyone: false,
         users: [],
@@ -320,6 +353,10 @@ export default function EditCallWeb() {
 
       setDispatchSelection(initialDispatch);
 
+      // The stored dispatch time, while it is still ahead; a call that already went out starts blank.
+      const scheduledDispatchOn = getScheduledDispatchPrefill(call.DispatchedOnUtc);
+      setInitialDispatchOn(scheduledDispatchOn);
+
       reset({
         name: call.Name || '',
         nature: call.Nature || '',
@@ -327,7 +364,8 @@ export default function EditCallWeb() {
         destinationPoiId: call.DestinationPoiId ? call.DestinationPoiId.toString() : '',
         address: call.Address || '',
         coordinates: call.Geolocation || '',
-        what3words: '',
+        what3words: call.What3Words || '',
+        // Never stored on a call: it only locates the call while it is entered.
         plusCode: '',
         latitude: call.Latitude ? parseFloat(call.Latitude) : undefined,
         longitude: call.Longitude ? parseFloat(call.Longitude) : undefined,
@@ -335,6 +373,10 @@ export default function EditCallWeb() {
         type: type?.Name || '',
         contactName: call.ContactName || '',
         contactInfo: call.ContactInfo || '',
+        externalId: call.ExternalId || '',
+        incidentId: call.IncidentId || '',
+        referenceId: call.ReferenceId || '',
+        dispatchOn: scheduledDispatchOn,
         dispatchSelection: initialDispatch,
       });
 
@@ -358,12 +400,17 @@ export default function EditCallWeb() {
     }
   }, [trackEvent, call]);
 
+  // The Ctrl+S listener below is only re-bound when a modal opens or closes, so it submits through this
+  // ref to the latest onSubmit; calling onSubmit directly kept the first render's copy, whose policy had
+  // not loaded yet and whose call and location were stale.
+  const onSubmitRef = useRef<(data: FormValues) => Promise<void>>(async () => undefined);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
-        handleSubmit(onSubmit)();
+        handleSubmit((data) => onSubmitRef.current(data))();
       }
       if (e.key === 'Escape') {
         if (showLocationPicker) {
@@ -383,16 +430,31 @@ export default function EditCallWeb() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showLocationPicker, showAddressSelection, showDispatchModal]);
 
+  const showErrorToast = (message: string) => {
+    toast.show({
+      placement: 'top',
+      render: () => (
+        <Box className="rounded-lg bg-red-500 p-4 shadow-lg">
+          <Text className="text-white">{message}</Text>
+        </Box>
+      ),
+    });
+  };
+
   const onSubmit = async (data: FormValues) => {
     if (!callId) {
-      toast.show({
-        placement: 'top',
-        render: () => (
-          <Box className="rounded-lg bg-red-500 p-4 shadow-lg">
-            <Text className="text-white">{t('call_detail.missing_call_id')}</Text>
-          </Box>
-        ),
-      });
+      showErrorToast(t('call_detail.missing_call_id'));
+      return;
+    }
+
+    if (!call) {
+      return;
+    }
+
+    // The policy arrives asynchronously and reads as "nothing required" until it lands; hold the save
+    // back rather than skip every requirement. Fail-open only applies once the lookup has finished.
+    if (!fieldPolicy.isLoaded) {
+      showErrorToast(t('calls.field_policy_loading'));
       return;
     }
 
@@ -404,31 +466,88 @@ export default function EditCallWeb() {
         data.longitude = selectedLocation.longitude;
       }
 
+      const destinationPoiId = data.destinationPoiId ? Number(data.destinationPoiId) : null;
+      const addedProtocolIds = toProtocolIds(selectedProtocols);
+
+      // Checked against the call as this save leaves it, the way EditCall checks it, so a field the
+      // department requires cannot be emptied by an edit. The server enforces the same rules.
+      const missingFields = getEditCallMissingFields(
+        fieldPolicy.missingRequired,
+        {
+          note: data.note,
+          address: data.address,
+          latitude: data.latitude,
+          longitude: data.longitude,
+          what3words: data.what3words,
+          plusCode: data.plusCode,
+          contactName: data.contactName,
+          contactInfo: data.contactInfo,
+          externalId: data.externalId,
+          incidentId: data.incidentId,
+          referenceId: data.referenceId,
+          destinationPoiId,
+          dispatch: data.dispatchSelection,
+          addedProtocolIds,
+          storedProtocolCount: callExtraData ? (callExtraData.Protocols?.length ?? 0) : null,
+          linkedCallId: linkedCall?.callId,
+        },
+        call
+      );
+
+      if (missingFields.length > 0) {
+        showErrorToast(t('calls.required_fields_missing_edit', { fields: describeCallFields(missingFields, t) }));
+        return;
+      }
+
+      // A newly picked dispatch time has to be far enough ahead to be worth scheduling. Clearing the
+      // field sends nothing, which keeps the call's schedule (EditCall cannot remove one).
+      const dispatchOnChanged = !!data.dispatchOn && data.dispatchOn !== initialDispatchOn;
+
+      if (dispatchOnChanged && isDispatchTimeTooSoon(data.dispatchOn)) {
+        showErrorToast(t('calls.scheduled_on_too_soon'));
+        return;
+      }
+
       const priority = callPriorities.find((p) => p.Name === data.priority);
       const type = callTypes.find((t) => t.Name === data.type);
 
-      await useCallDetailStore.getState().updateCall({
-        callId: callId,
-        name: data.name,
-        nature: data.nature,
-        priority: priority?.Id || 0,
-        // The API matches the call type by its text, not its id.
-        type: type?.Name || '',
-        note: data.note,
-        destinationPoiId: data.destinationPoiId ? Number(data.destinationPoiId) : null,
-        address: data.address,
-        latitude: data.latitude,
-        longitude: data.longitude,
-        what3words: data.what3words,
-        plusCode: data.plusCode,
-        contactName: data.contactName,
-        contactInfo: data.contactInfo,
-        dispatchUsers: data.dispatchSelection?.users,
-        dispatchGroups: data.dispatchSelection?.groups,
-        dispatchRoles: data.dispatchSelection?.roles,
-        dispatchUnits: data.dispatchSelection?.units,
-        dispatchEveryone: data.dispatchSelection?.everyone,
-      });
+      // A field the policy hides goes up as "unchanged", so the value the call already has is kept
+      // rather than overwritten by an input nobody could see.
+      await useCallDetailStore.getState().updateCall(
+        keepHiddenEditFieldsUnchanged(
+          {
+            callId: callId,
+            name: data.name,
+            nature: data.nature,
+            priority: priority?.Id || 0,
+            // The API matches the call type by its text, not its id.
+            type: type?.Name || '',
+            note: data.note,
+            destinationPoiId,
+            address: data.address,
+            latitude: data.latitude,
+            longitude: data.longitude,
+            what3words: data.what3words,
+            plusCode: data.plusCode,
+            contactName: data.contactName,
+            contactInfo: data.contactInfo,
+            externalId: data.externalId,
+            incidentId: data.incidentId,
+            referenceId: data.referenceId,
+            dispatchOnUtc: dispatchOnChanged ? toDispatchOnUtc(data.dispatchOn) : undefined,
+            // Added to the call; blank/empty still goes up so the server checks the requirement.
+            protocolIds: addedProtocolIds,
+            linkedCallId: linkedCall?.callId ?? '',
+            dispatchUsers: data.dispatchSelection?.users,
+            dispatchGroups: data.dispatchSelection?.groups,
+            dispatchRoles: data.dispatchSelection?.roles,
+            dispatchUnits: data.dispatchSelection?.units,
+            dispatchEveryone: data.dispatchSelection?.everyone,
+          },
+          fieldPolicy.isVisible,
+          call
+        )
+      );
 
       if (udfValues.length > 0 && callId) {
         try {
@@ -450,18 +569,22 @@ export default function EditCallWeb() {
       router.back();
     } catch (err) {
       console.error('Error updating call:', err);
-      toast.show({
-        placement: 'top',
-        render: () => (
-          <Box className="rounded-lg bg-red-500 p-4 shadow-lg">
-            <Text className="text-white">{t('call_detail.update_call_error')}</Text>
-          </Box>
-        ),
-      });
+      // The server refuses an edit that would leave a required field blank and names the fields (it
+      // also sees what this screen cannot, such as the links already on the call).
+      const missingOnServer = getMissingCallFieldsFromError(err);
+      showErrorToast(missingOnServer ? t('calls.required_fields_missing_edit', { fields: describeCallFields(missingOnServer, t) }) : t('call_detail.update_call_error'));
     } finally {
       setIsSubmitting(false);
     }
   };
+  // Updated after commit, not during render: a render React discards must not leave its onSubmit behind.
+  useLayoutEffect(() => {
+    onSubmitRef.current = onSubmit;
+  });
+
+  const handleLinkedCallSelect = useCallback((selected: CallResultData) => {
+    setLinkedCall({ callId: selected.CallId, number: selected.Number, name: selected.Name });
+  }, []);
 
   const handleLocationSelected = useCallback(
     (location: { latitude: number; longitude: number; address?: string }) => {
@@ -558,6 +681,74 @@ export default function EditCallWeb() {
     }
   };
 
+  const showToast = (className: string, message: string) => {
+    toast.show({
+      placement: 'top',
+      render: () => (
+        <Box className={`rounded-lg ${className} p-4 shadow-lg`}>
+          <Text className="text-white">{message}</Text>
+        </Box>
+      ),
+    });
+  };
+
+  // what3words search (same as New Call): the three words locate the call and are stored on it.
+  const handleWhat3WordsSearch = async (what3words: string) => {
+    if (!what3words.trim()) {
+      showToast('bg-orange-500', t('calls.what3words_required'));
+      return;
+    }
+
+    if (!/^[a-z]+\.[a-z]+\.[a-z]+$/.test(what3words.trim().toLowerCase())) {
+      showToast('bg-orange-500', t('calls.what3words_invalid_format'));
+      return;
+    }
+
+    setIsGeocodingWhat3Words(true);
+    try {
+      const lookup = await what3WordsLookup(what3words);
+
+      if (lookup.candidates.length > 0) {
+        const result = lookup.candidates[0];
+        handleLocationSelected({ latitude: result.geometry.location.lat, longitude: result.geometry.location.lng, address: result.formatted_address });
+        showToast('bg-green-500', t('calls.what3words_found'));
+      } else {
+        showToast('bg-red-500', t(lookup.succeeded ? 'calls.what3words_not_found' : 'calls.what3words_geocoding_error'));
+      }
+    } catch (err) {
+      console.error('Error geocoding what3words:', err);
+      showToast('bg-red-500', t('calls.what3words_geocoding_error'));
+    } finally {
+      setIsGeocodingWhat3Words(false);
+    }
+  };
+
+  // Plus code search (same as New Call): locates the call; the code itself is not stored.
+  const handlePlusCodeSearch = async (plusCode: string) => {
+    if (!plusCode.trim()) {
+      showToast('bg-orange-500', t('calls.plus_code_required'));
+      return;
+    }
+
+    setIsGeocodingPlusCode(true);
+    try {
+      const lookup = await plusCodeLookup(plusCode);
+
+      if (lookup.candidates.length > 0) {
+        const result = lookup.candidates[0];
+        handleLocationSelected({ latitude: result.geometry.location.lat, longitude: result.geometry.location.lng, address: result.formatted_address });
+        showToast('bg-green-500', t('calls.plus_code_found'));
+      } else {
+        showToast('bg-red-500', t(lookup.succeeded ? 'calls.plus_code_not_found' : 'calls.plus_code_geocoding_error'));
+      }
+    } catch (err) {
+      console.error('Error geocoding plus code:', err);
+      showToast('bg-red-500', t('calls.plus_code_geocoding_error'));
+    } finally {
+      setIsGeocodingPlusCode(false);
+    }
+  };
+
   const handleAddressSelected = (result: GeocodingResult) => {
     handleLocationSelected({
       latitude: result.geometry.location.lat,
@@ -598,6 +789,70 @@ export default function EditCallWeb() {
       </>
     );
   }
+
+  // Every field the department's policy controls drives its own control, as on the new-call screen.
+  const showNote = fieldPolicy.isVisible(NewCallFieldKeys.Note);
+  const showAddress = fieldPolicy.isVisible(NewCallFieldKeys.Address);
+  const showGeolocation = fieldPolicy.isVisible(NewCallFieldKeys.Geolocation);
+  const showDestinationPoi = fieldPolicy.isVisible(NewCallFieldKeys.DestinationPoi);
+  const showWhat3Words = fieldPolicy.isVisible(NewCallFieldKeys.What3Words);
+  const showPlusCode = fieldPolicy.isVisible(NewCallFieldKeys.PlusCode);
+  const showLocationCard = showAddress || showGeolocation || showWhat3Words || showPlusCode || showDestinationPoi;
+  const showExternalId = fieldPolicy.isVisible(NewCallFieldKeys.ExternalId);
+  const showIncidentId = fieldPolicy.isVisible(NewCallFieldKeys.IncidentId);
+  const showReferenceId = fieldPolicy.isVisible(NewCallFieldKeys.ReferenceId);
+  const showContactName = fieldPolicy.isVisible(NewCallFieldKeys.ContactName);
+  const showContactInfo = fieldPolicy.isVisible(NewCallFieldKeys.ContactInfo);
+  const showProtocols = fieldPolicy.isVisible(NewCallFieldKeys.Protocols);
+  const showLinkedCall = fieldPolicy.isVisible(NewCallFieldKeys.LinkedCall);
+  const showDispatchList = fieldPolicy.isVisible(NewCallFieldKeys.DispatchList);
+  // A pending call's recipients are decided when it is dispatched, so they are not required here.
+  const isPendingCall = isCallPending(call.State);
+  const attachedProtocols = callExtraData?.Protocols ?? [];
+  // Inputs take `required`; section titles get this asterisk.
+  const isFieldRequired = (key: NewCallFieldKey) => fieldPolicy.isRequired(key);
+  const requiredMark = (key: NewCallFieldKey) => (isFieldRequired(key) ? <Text style={styles.required}> *</Text> : null);
+
+  // A location lookup input with its search button (what3words, plus code), as on the new-call screen.
+  const renderLookupField = (name: 'what3words' | 'plusCode', key: NewCallFieldKey, label: string, placeholder: string, testID: string, isSearching: boolean, onSearch: (value: string) => void) => (
+    <Controller
+      control={control}
+      name={name}
+      render={({ field: { onChange, onBlur, value } }) => (
+        <WebInput
+          label={label}
+          placeholder={placeholder}
+          value={value || ''}
+          onChange={onChange}
+          onBlur={onBlur}
+          required={isFieldRequired(key)}
+          testID={testID}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              onSearch(value || '');
+            }
+          }}
+          rightElement={
+            <Pressable onPress={() => onSearch(value || '')} style={StyleSheet.flatten([styles.searchButton, isSearching ? styles.searchButtonDisabled : {}])} disabled={isSearching || !value?.trim()}>
+              {isSearching ? <Text style={styles.searchButtonText}>...</Text> : <SearchIcon size={16} color={isDark ? '#fff' : '#000'} />}
+            </Pressable>
+          }
+        />
+      )}
+    />
+  );
+
+  // The call's own identifiers. A blank input keeps what the call already has.
+  const renderIdentifierField = (name: 'externalId' | 'incidentId' | 'referenceId', key: NewCallFieldKey, label: string, testID: string) => (
+    <View style={styles.halfWidth}>
+      <Controller
+        control={control}
+        name={name}
+        render={({ field: { onChange, onBlur, value } }) => <WebInput label={label} placeholder={label} value={value || ''} onChange={onChange} onBlur={onBlur} required={isFieldRequired(key)} testID={testID} />}
+      />
+    </View>
+  );
 
   return (
     <>
@@ -692,40 +947,83 @@ export default function EditCallWeb() {
                   </View>
                 </View>
 
-                <Controller
-                  control={control}
-                  name="note"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <WebInput label={t('calls.note')} placeholder={t('calls.note_placeholder')} value={value || ''} onChange={onChange} onBlur={onBlur} multiline rows={4} testID="note-input" />
-                  )}
-                />
+                {showNote ? (
+                  <Controller
+                    control={control}
+                    name="note"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <WebInput
+                        label={t('calls.note')}
+                        placeholder={t('calls.note_placeholder')}
+                        value={value || ''}
+                        onChange={onChange}
+                        onBlur={onBlur}
+                        multiline
+                        rows={4}
+                        required={isFieldRequired(NewCallFieldKeys.Note)}
+                        testID="note-input"
+                      />
+                    )}
+                  />
+                ) : null}
               </Card>
 
-              {/* Contact Information */}
-              <Card style={StyleSheet.flatten([styles.card, isDark ? styles.cardDark : styles.cardLight])}>
-                <Text style={StyleSheet.flatten([styles.sectionTitle, isDark ? styles.sectionTitleDark : styles.sectionTitleLight])}>{t('calls.contact_information')}</Text>
+              {/* Contact Information — shows when either contact field is enabled; each still guards itself. */}
+              {showContactName || showContactInfo || showExternalId || showIncidentId || showReferenceId ? (
+                <Card style={StyleSheet.flatten([styles.card, isDark ? styles.cardDark : styles.cardLight])}>
+                  <Text style={StyleSheet.flatten([styles.sectionTitle, isDark ? styles.sectionTitleDark : styles.sectionTitleLight])}>{t('calls.contact_information')}</Text>
 
-                <View style={styles.twoInputRow}>
-                  <View style={styles.halfWidth}>
-                    <Controller
-                      control={control}
-                      name="contactName"
-                      render={({ field: { onChange, onBlur, value } }) => (
-                        <WebInput label={t('calls.contact_name')} placeholder={t('calls.contact_name_placeholder')} value={value || ''} onChange={onChange} onBlur={onBlur} testID="contact-name-input" />
-                      )}
-                    />
+                  <View style={styles.twoInputRow}>
+                    {showContactName ? (
+                      <View style={styles.halfWidth}>
+                        <Controller
+                          control={control}
+                          name="contactName"
+                          render={({ field: { onChange, onBlur, value } }) => (
+                            <WebInput
+                              label={t('calls.contact_name')}
+                              placeholder={t('calls.contact_name_placeholder')}
+                              value={value || ''}
+                              onChange={onChange}
+                              onBlur={onBlur}
+                              required={isFieldRequired(NewCallFieldKeys.ContactName)}
+                              testID="contact-name-input"
+                            />
+                          )}
+                        />
+                      </View>
+                    ) : null}
+                    {showContactInfo ? (
+                      <View style={styles.halfWidth}>
+                        <Controller
+                          control={control}
+                          name="contactInfo"
+                          render={({ field: { onChange, onBlur, value } }) => (
+                            <WebInput
+                              label={t('calls.contact_info')}
+                              placeholder={t('calls.contact_info_placeholder')}
+                              value={value || ''}
+                              onChange={onChange}
+                              onBlur={onBlur}
+                              required={isFieldRequired(NewCallFieldKeys.ContactInfo)}
+                              testID="contact-info-input"
+                            />
+                          )}
+                        />
+                      </View>
+                    ) : null}
                   </View>
-                  <View style={styles.halfWidth}>
-                    <Controller
-                      control={control}
-                      name="contactInfo"
-                      render={({ field: { onChange, onBlur, value } }) => (
-                        <WebInput label={t('calls.contact_info')} placeholder={t('calls.contact_info_placeholder')} value={value || ''} onChange={onChange} onBlur={onBlur} testID="contact-info-input" />
-                      )}
-                    />
-                  </View>
-                </View>
-              </Card>
+
+                  {showExternalId || showReferenceId ? (
+                    <View style={styles.twoInputRow}>
+                      {showExternalId ? renderIdentifierField('externalId', NewCallFieldKeys.ExternalId, t('call_detail.external_id'), 'external-id-input') : null}
+                      {showReferenceId ? renderIdentifierField('referenceId', NewCallFieldKeys.ReferenceId, t('call_detail.reference_id'), 'reference-id-input') : null}
+                    </View>
+                  ) : null}
+
+                  {showIncidentId ? <View style={styles.twoInputRow}>{renderIdentifierField('incidentId', NewCallFieldKeys.IncidentId, t('calls.incident_id'), 'incident-id-input')}</View> : null}
+                </Card>
+              ) : null}
 
               {/* Additional Fields (UDF) */}
               <Card style={StyleSheet.flatten([styles.card, isDark ? styles.cardDark : styles.cardLight])}>
@@ -743,100 +1041,225 @@ export default function EditCallWeb() {
 
             {/* Right Column - Location & Dispatch */}
             <View style={isWideScreen ? styles.rightColumn : styles.fullWidth}>
-              {/* Location Card */}
-              <Card style={StyleSheet.flatten([styles.card, isDark ? styles.cardDark : styles.cardLight])}>
-                <Text style={StyleSheet.flatten([styles.sectionTitle, isDark ? styles.sectionTitleDark : styles.sectionTitleLight])}>{t('calls.call_location')}</Text>
+              {/* Location Card — hidden only once the policy hides every location field it holds. */}
+              {showLocationCard ? (
+                <Card style={StyleSheet.flatten([styles.card, isDark ? styles.cardDark : styles.cardLight])}>
+                  <Text style={StyleSheet.flatten([styles.sectionTitle, isDark ? styles.sectionTitleDark : styles.sectionTitleLight])}>{t('calls.call_location')}</Text>
 
-                <Controller
-                  control={control}
-                  name="address"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <WebInput
-                      label={t('calls.address')}
-                      placeholder={t('calls.address_placeholder')}
-                      value={value || ''}
-                      onChange={onChange}
-                      onBlur={onBlur}
-                      testID="address-input"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleAddressSearch(value || '');
-                        }
-                      }}
-                      rightElement={
-                        <Pressable
-                          onPress={() => handleAddressSearch(value || '')}
-                          style={StyleSheet.flatten([styles.searchButton, isGeocodingAddress ? styles.searchButtonDisabled : {}])}
-                          disabled={isGeocodingAddress || !value?.trim()}
-                        >
-                          {isGeocodingAddress ? <Text style={styles.searchButtonText}>...</Text> : <SearchIcon size={16} color={isDark ? '#fff' : '#000'} />}
-                        </Pressable>
-                      }
+                  {showAddress ? (
+                    <Controller
+                      control={control}
+                      name="address"
+                      render={({ field: { onChange, onBlur, value } }) => (
+                        <WebInput
+                          label={t('calls.address')}
+                          placeholder={t('calls.address_placeholder')}
+                          value={value || ''}
+                          onChange={onChange}
+                          onBlur={onBlur}
+                          required={isFieldRequired(NewCallFieldKeys.Address)}
+                          testID="address-input"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddressSearch(value || '');
+                            }
+                          }}
+                          rightElement={
+                            <Pressable
+                              onPress={() => handleAddressSearch(value || '')}
+                              style={StyleSheet.flatten([styles.searchButton, isGeocodingAddress ? styles.searchButtonDisabled : {}])}
+                              disabled={isGeocodingAddress || !value?.trim()}
+                            >
+                              {isGeocodingAddress ? <Text style={styles.searchButtonText}>...</Text> : <SearchIcon size={16} color={isDark ? '#fff' : '#000'} />}
+                            </Pressable>
+                          }
+                        />
+                      )}
                     />
-                  )}
-                />
+                  ) : null}
 
-                <Controller
-                  control={control}
-                  name="coordinates"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <WebInput label={t('calls.coordinates')} placeholder={t('calls.coordinates_placeholder')} value={value || ''} onChange={onChange} onBlur={onBlur} testID="coordinates-input" disabled />
-                  )}
-                />
-
-                {/* Map Preview */}
-                <View style={styles.mapContainer}>
-                  {selectedLocation ? (
-                    <View style={styles.mapWrapper}>
-                      <LocationPicker initialLocation={selectedLocation} onLocationSelected={handleLocationSelected} height={200} />
-                      <Pressable style={styles.expandMapButton} onPress={() => setShowLocationPicker(true)}>
-                        <MapPinIcon size={16} color="#fff" />
-                        <Text style={styles.expandMapText}>{t('calls.expand_map')}</Text>
-                      </Pressable>
+                  {showWhat3Words || showPlusCode ? (
+                    <View style={styles.twoInputRow}>
+                      {showWhat3Words ? (
+                        <View style={styles.halfWidth}>
+                          {renderLookupField('what3words', NewCallFieldKeys.What3Words, t('calls.what3words'), t('calls.what3words_placeholder'), 'what3words-input', isGeocodingWhat3Words, handleWhat3WordsSearch)}
+                        </View>
+                      ) : null}
+                      {showPlusCode ? (
+                        <View style={styles.halfWidth}>
+                          {renderLookupField('plusCode', NewCallFieldKeys.PlusCode, t('calls.plus_code'), t('calls.plus_code_placeholder'), 'plus-code-input', isGeocodingPlusCode, handlePlusCodeSearch)}
+                        </View>
+                      ) : null}
                     </View>
-                  ) : (
-                    <Pressable style={StyleSheet.flatten([styles.selectLocationButton, isDark ? styles.selectLocationButtonDark : styles.selectLocationButtonLight])} onPress={() => setShowLocationPicker(true)}>
-                      <MapPinIcon size={24} color={isDark ? '#9ca3af' : '#6b7280'} />
-                      <Text style={StyleSheet.flatten([styles.selectLocationText, isDark ? styles.selectLocationTextDark : styles.selectLocationTextLight])}>{t('calls.select_location')}</Text>
-                    </Pressable>
-                  )}
-                </View>
+                  ) : null}
 
-                <Controller
-                  control={control}
-                  name="destinationPoiId"
-                  render={({ field: { onChange, value } }) => (
-                    <WebSelect
-                      label={t('calls.destination_poi')}
-                      placeholder={t('calls.select_destination_poi')}
-                      value={value || NO_DESTINATION_VALUE}
-                      onChange={(selectedValue) => onChange(selectedValue === NO_DESTINATION_VALUE ? '' : selectedValue)}
-                      useIdValue
-                      options={[
-                        { id: NO_DESTINATION_VALUE, name: t('calls.no_destination') },
-                        ...destinationPois.map((poi) => ({
-                          id: poi.PoiId,
-                          name: getPoiDestinationOptionLabel(poi),
-                        })),
-                      ]}
+                  {showGeolocation ? (
+                    <>
+                      <Controller
+                        control={control}
+                        name="coordinates"
+                        render={({ field: { onChange, onBlur, value } }) => (
+                          <WebInput
+                            label={t('calls.coordinates')}
+                            placeholder={t('calls.coordinates_placeholder')}
+                            value={value || ''}
+                            onChange={onChange}
+                            onBlur={onBlur}
+                            required={isFieldRequired(NewCallFieldKeys.Geolocation)}
+                            testID="coordinates-input"
+                            disabled
+                          />
+                        )}
+                      />
+
+                      {/* Map Preview — the map is how a dispatcher sets the geolocation. */}
+                      <View style={styles.mapContainer}>
+                        {selectedLocation ? (
+                          <View style={styles.mapWrapper}>
+                            <LocationPicker initialLocation={selectedLocation} onLocationSelected={handleLocationSelected} height={200} />
+                            <Pressable style={styles.expandMapButton} onPress={() => setShowLocationPicker(true)}>
+                              <MapPinIcon size={16} color="#fff" />
+                              <Text style={styles.expandMapText}>{t('calls.expand_map')}</Text>
+                            </Pressable>
+                          </View>
+                        ) : (
+                          <Pressable style={StyleSheet.flatten([styles.selectLocationButton, isDark ? styles.selectLocationButtonDark : styles.selectLocationButtonLight])} onPress={() => setShowLocationPicker(true)}>
+                            <MapPinIcon size={24} color={isDark ? '#9ca3af' : '#6b7280'} />
+                            <Text style={StyleSheet.flatten([styles.selectLocationText, isDark ? styles.selectLocationTextDark : styles.selectLocationTextLight])}>{t('calls.select_location')}</Text>
+                          </Pressable>
+                        )}
+                      </View>
+                    </>
+                  ) : null}
+
+                  {showDestinationPoi ? (
+                    <>
+                      <Controller
+                        control={control}
+                        name="destinationPoiId"
+                        render={({ field: { onChange, value } }) => (
+                          <WebSelect
+                            label={t('calls.destination_poi')}
+                            placeholder={t('calls.select_destination_poi')}
+                            value={value || NO_DESTINATION_VALUE}
+                            onChange={(selectedValue) => onChange(selectedValue === NO_DESTINATION_VALUE ? '' : selectedValue)}
+                            required={isFieldRequired(NewCallFieldKeys.DestinationPoi)}
+                            useIdValue
+                            options={[
+                              { id: NO_DESTINATION_VALUE, name: t('calls.no_destination') },
+                              ...destinationPois.map((poi) => ({
+                                id: poi.PoiId,
+                                name: getPoiDestinationOptionLabel(poi),
+                              })),
+                            ]}
+                          />
+                        )}
+                      />
+                      {isLoadingDestinationPois ? (
+                        <Text style={StyleSheet.flatten([styles.webLabel, isDark ? styles.webLabelDark : styles.webLabelLight, { marginTop: -4 }])}>{t('calls.loading_destination_pois')}</Text>
+                      ) : null}
+                      {!isLoadingDestinationPois && destinationPois.length === 0 ? (
+                        <Text style={StyleSheet.flatten([styles.webLabel, isDark ? styles.webLabelDark : styles.webLabelLight, { marginTop: -4 }])}>{t('calls.no_destination_pois_available')}</Text>
+                      ) : null}
+                    </>
+                  ) : null}
+                </Card>
+              ) : null}
+
+              {/* Scheduled dispatch: never required on an edit; blank keeps whatever schedule the call has. A scheduled call's time can be moved but not cleared (EditCall cannot remove a schedule, so clearing would only look like it worked). */}
+              {fieldPolicy.isVisible(NewCallFieldKeys.DispatchOn) ? (
+                <Card style={StyleSheet.flatten([styles.card, isDark ? styles.cardDark : styles.cardLight])}>
+                  <Text style={StyleSheet.flatten([styles.sectionTitle, isDark ? styles.sectionTitleDark : styles.sectionTitleLight])}>{t('calls.schedule_dispatch')}</Text>
+                  <View style={styles.webInputContainer}>
+                    <Text style={StyleSheet.flatten([styles.webLabel, isDark ? styles.webLabelDark : styles.webLabelLight])}>{t('calls.scheduled_on')}</Text>
+                    <Controller
+                      control={control}
+                      name="dispatchOn"
+                      render={({ field: { onChange, value } }) => (
+                        <DateTimeField value={value || ''} onChange={onChange} label={t('calls.scheduled_on')} mode="datetime" clearable={!initialDispatchOn} testID="scheduled-on-input" />
+                      )}
                     />
-                  )}
-                />
-                {isLoadingDestinationPois ? <Text style={StyleSheet.flatten([styles.webLabel, isDark ? styles.webLabelDark : styles.webLabelLight, { marginTop: -4 }])}>{t('calls.loading_destination_pois')}</Text> : null}
-                {!isLoadingDestinationPois && destinationPois.length === 0 ? (
-                  <Text style={StyleSheet.flatten([styles.webLabel, isDark ? styles.webLabelDark : styles.webLabelLight, { marginTop: -4 }])}>{t('calls.no_destination_pois_available')}</Text>
-                ) : null}
-              </Card>
+                    <Text style={StyleSheet.flatten([styles.webLabel, { color: isDark ? '#9ca3af' : '#6b7280', fontWeight: '400', marginTop: 4, marginBottom: 0 }])}>{t('calls.scheduled_on_edit_hint')}</Text>
+                  </View>
+                </Card>
+              ) : null}
 
               {/* Dispatch Card */}
-              <Card style={StyleSheet.flatten([styles.card, isDark ? styles.cardDark : styles.cardLight])}>
-                <Text style={StyleSheet.flatten([styles.sectionTitle, isDark ? styles.sectionTitleDark : styles.sectionTitleLight])}>{t('calls.dispatch_to')}</Text>
-                <Pressable style={StyleSheet.flatten([styles.dispatchButton, isDark ? styles.dispatchButtonDark : styles.dispatchButtonLight])} onPress={() => setShowDispatchModal(true)}>
-                  <Text style={StyleSheet.flatten([styles.dispatchButtonText, isDark ? styles.dispatchButtonTextDark : styles.dispatchButtonTextLight])}>{getDispatchSummary()}</Text>
-                  <ChevronDownIcon size={20} color={isDark ? '#9ca3af' : '#6b7280'} />
-                </Pressable>
-              </Card>
+              {showDispatchList ? (
+                <Card style={StyleSheet.flatten([styles.card, isDark ? styles.cardDark : styles.cardLight])}>
+                  <Text style={StyleSheet.flatten([styles.sectionTitle, isDark ? styles.sectionTitleDark : styles.sectionTitleLight])}>
+                    {t('calls.dispatch_to')}
+                    {!isPendingCall ? requiredMark(NewCallFieldKeys.DispatchList) : null}
+                  </Text>
+                  <Pressable style={StyleSheet.flatten([styles.dispatchButton, isDark ? styles.dispatchButtonDark : styles.dispatchButtonLight])} onPress={() => setShowDispatchModal(true)}>
+                    <Text style={StyleSheet.flatten([styles.dispatchButtonText, isDark ? styles.dispatchButtonTextDark : styles.dispatchButtonTextLight])}>{getDispatchSummary()}</Text>
+                    <ChevronDownIcon size={20} color={isDark ? '#9ca3af' : '#6b7280'} />
+                  </Pressable>
+                </Card>
+              ) : null}
+
+              {/* Protocols: added to the ones already on the call, which an edit cannot remove. */}
+              {showProtocols ? (
+                <Card style={StyleSheet.flatten([styles.card, isDark ? styles.cardDark : styles.cardLight])}>
+                  <View style={styles.collapsibleHeaderLeft}>
+                    <Text style={StyleSheet.flatten([styles.sectionTitle, isDark ? styles.sectionTitleDark : styles.sectionTitleLight, { marginBottom: 0 }])}>
+                      {t('calls.protocols.title', 'Protocols')}
+                      {requiredMark(NewCallFieldKeys.Protocols)}
+                    </Text>
+                    {selectedProtocols.length > 0 ? (
+                      <View style={styles.countBadge}>
+                        <Text style={styles.countBadgeText}>{selectedProtocols.length}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  {attachedProtocols.length > 0 ? (
+                    <Text style={StyleSheet.flatten([styles.webLabel, { color: isDark ? '#9ca3af' : '#6b7280', fontWeight: '400', marginTop: 12, marginBottom: 0 }])}>
+                      {t('calls.protocols.attached', { names: attachedProtocols.map((protocol) => protocol.Name).join(', ') })}
+                    </Text>
+                  ) : null}
+                  <Pressable style={StyleSheet.flatten([styles.dispatchButton, isDark ? styles.dispatchButtonDark : styles.dispatchButtonLight, { marginTop: 16 }])} onPress={() => setShowProtocolSelector(true)}>
+                    <BookOpenIcon size={16} color={isDark ? '#9ca3af' : '#6b7280'} />
+                    <Text style={StyleSheet.flatten([styles.dispatchButtonText, isDark ? styles.dispatchButtonTextDark : styles.dispatchButtonTextLight, { marginLeft: 8 }])}>
+                      {selectedProtocols.length > 0 ? `${selectedProtocols.length} ${t('calls.protocols.selected_count', 'selected')}` : t('calls.protocols.add')}
+                    </Text>
+                  </Pressable>
+                </Card>
+              ) : null}
+
+              {/* Linked Call: adds a link; links the call already has are kept. */}
+              {showLinkedCall ? (
+                <Card style={StyleSheet.flatten([styles.card, isDark ? styles.cardDark : styles.cardLight])}>
+                  <View style={styles.collapsibleHeaderLeft}>
+                    <Text style={StyleSheet.flatten([styles.sectionTitle, isDark ? styles.sectionTitleDark : styles.sectionTitleLight, { marginBottom: 0 }])}>
+                      {t('calls.linked_calls.title', 'Linked Call')}
+                      {requiredMark(NewCallFieldKeys.LinkedCall)}
+                    </Text>
+                    {linkedCall ? (
+                      <View style={styles.countBadge}>
+                        <Text style={styles.countBadgeText}>#{linkedCall.number}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  <Text style={StyleSheet.flatten([styles.webLabel, { color: isDark ? '#9ca3af' : '#6b7280', fontWeight: '400', marginTop: 12, marginBottom: 12 }])}>{t('calls.linked_calls.edit_hint')}</Text>
+                  {linkedCall ? (
+                    <View style={StyleSheet.flatten([styles.linkedCallBadge, isDark ? styles.linkedCallBadgeDark : styles.linkedCallBadgeLight])}>
+                      <Text style={StyleSheet.flatten([styles.linkedCallText, isDark ? styles.linkedCallTextDark : styles.linkedCallTextLight])}>
+                        #{linkedCall.number} — {linkedCall.name}
+                      </Text>
+                      <Pressable onPress={() => setLinkedCall(null)} accessibilityLabel={t('common.remove', 'Remove')}>
+                        <XIcon size={16} color="#ef4444" />
+                      </Pressable>
+                    </View>
+                  ) : null}
+                  <Pressable style={StyleSheet.flatten([styles.dispatchButton, isDark ? styles.dispatchButtonDark : styles.dispatchButtonLight])} onPress={() => setShowLinkedCallsModal(true)}>
+                    <LinkIcon size={16} color={isDark ? '#9ca3af' : '#6b7280'} />
+                    <Text style={StyleSheet.flatten([styles.dispatchButtonText, isDark ? styles.dispatchButtonTextDark : styles.dispatchButtonTextLight, { marginLeft: 8 }])}>
+                      {linkedCall ? t('calls.linked_calls.change', 'Change linked call') : t('calls.linked_calls.select', 'Link to existing call')}
+                    </Text>
+                  </Pressable>
+                </Card>
+              ) : null}
             </View>
           </View>
 
@@ -845,7 +1268,11 @@ export default function EditCallWeb() {
             <Pressable style={StyleSheet.flatten([styles.cancelButton, isDark ? styles.cancelButtonDark : styles.cancelButtonLight])} onPress={() => router.back()}>
               <Text style={StyleSheet.flatten([styles.cancelButtonText, isDark ? styles.cancelButtonTextDark : styles.cancelButtonTextLight])}>{t('common.cancel')}</Text>
             </Pressable>
-            <Pressable style={StyleSheet.flatten([styles.submitButton, isSubmitting ? styles.submitButtonDisabled : {}])} onPress={handleSubmit(onSubmit)} disabled={isSubmitting}>
+            <Pressable
+              style={StyleSheet.flatten([styles.submitButton, isSubmitting || !fieldPolicy.isLoaded ? styles.submitButtonDisabled : {}])}
+              onPress={handleSubmit(onSubmit)}
+              disabled={isSubmitting || !fieldPolicy.isLoaded}
+            >
               <SaveIcon size={18} color="#fff" />
               <Text style={styles.submitButtonText}>{isSubmitting ? t('common.saving') : t('common.save')}</Text>
             </Pressable>
@@ -867,6 +1294,12 @@ export default function EditCallWeb() {
 
       {/* Dispatch selection modal */}
       <DispatchSelectionModal isVisible={showDispatchModal} onClose={() => setShowDispatchModal(false)} onConfirm={handleDispatchSelection} initialSelection={dispatchSelection} />
+
+      {/* Protocol Selector modal */}
+      <ProtocolSelectorModal isVisible={showProtocolSelector} onClose={() => setShowProtocolSelector(false)} onConfirm={setSelectedProtocols} initialSelected={selectedProtocols} />
+
+      {/* Linked Calls modal */}
+      <LinkedCallsModal isVisible={showLinkedCallsModal} onClose={() => setShowLinkedCallsModal(false)} onSelect={handleLinkedCallSelect} selectedCallId={linkedCall?.callId} excludeCallId={callId} />
 
       {/* Address selection modal */}
       {showAddressSelection ? (
@@ -1133,6 +1566,50 @@ const styles = StyleSheet.create({
   },
   selectLocationTextLight: {
     color: '#6b7280',
+  },
+  collapsibleHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  countBadge: {
+    marginLeft: 8,
+    backgroundColor: '#2563eb',
+    borderRadius: 10,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  countBadgeText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  linkedCallBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 10,
+    borderWidth: 1,
+  },
+  linkedCallBadgeDark: {
+    backgroundColor: '#262626',
+    borderColor: '#404040',
+  },
+  linkedCallBadgeLight: {
+    backgroundColor: '#f3f4f6',
+    borderColor: '#e5e7eb',
+  },
+  linkedCallText: {
+    fontSize: 13,
+    flex: 1,
+    marginRight: 8,
+  },
+  linkedCallTextDark: {
+    color: '#d1d5db',
+  },
+  linkedCallTextLight: {
+    color: '#374151',
   },
   dispatchButton: {
     flexDirection: 'row',
