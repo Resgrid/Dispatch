@@ -209,6 +209,23 @@ describe('UnitActionsPanel destination defaults', () => {
       expect(mockSaveUnitStatus.mock.calls[0][0]).toMatchObject({ Id: 'u1', Type: '3', RespondingTo: 'D', RespondingToType: DestinationEntityType.Call });
     });
 
+    it("holds a station status too, then sends it to the unit's station when the lookup finds no call", async () => {
+      useDispatchConsoleStore.setState({ selectedCallId: null, isCallFilterActive: false });
+      mockGetSetUnitStatusData.mockResolvedValue({ Data: { Statuses: statuses, Calls: [], Stations: [{ GroupId: 'S1', Name: 'Station 1' }], DestinationPois: [] } } as any);
+      await renderOpenPanel({ ...unit('u1', 'S1'), CurrentDestinationType: DestinationEntityType.Station, ActiveCallId: 'D' } as UnitInfoResultData);
+      await pickStatus('Available');
+
+      fireEvent.press(screen.getByTestId('update-status-button'));
+      expect(mockSaveUnitStatus).not.toHaveBeenCalled();
+
+      await act(async () => finishLookup());
+      await waitFor(() => expect(useUnitActionsStore.getState().statusSelectedStation?.GroupId).toBe('S1'));
+
+      fireEvent.press(screen.getByTestId('update-status-button'));
+      await waitFor(() => expect(mockSaveUnitStatus).toHaveBeenCalledTimes(1));
+      expect(mockSaveUnitStatus.mock.calls[0][0]).toMatchObject({ Id: 'u1', Type: '0', RespondingTo: 'S1', RespondingToType: DestinationEntityType.Station });
+    });
+
     it('does not hold a status that takes no destination', async () => {
       await renderOpenPanel(target);
       await pickStatus('Out of Service');

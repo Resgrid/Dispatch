@@ -396,15 +396,15 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
   }, [selectedStatus]);
 
   // The default destination is still waiting on the unit's working call (calls loading, or the one-off lookup in flight).
-  // A status that takes a call is held until the call lands or the dispatcher picks a destination, so it is not sent
-  // without it.
+  // A status that takes any destination is held until the default lands (the call, or the station/POI it falls back to)
+  // or the dispatcher picks a destination, so it is not sent without it.
   const isAwaitingWorkingCall = useMemo(() => {
     const workingCallId = selectedUnit?.ActiveCallId;
     if (!workingCallId || callContext || storeSelectedUnit?.UnitId !== selectedUnit?.UnitId) return false;
     if (destinationInitializedSessionId === actionsSessionId) return false;
     return !activeCalls.some((call) => call.CallId === workingCallId);
   }, [selectedUnit, callContext, storeSelectedUnit, destinationInitializedSessionId, actionsSessionId, activeCalls]);
-  const isHeldForWorkingCall = isAwaitingWorkingCall && destinationConfig.showCalls;
+  const isHeldForWorkingCall = isAwaitingWorkingCall && destinationConfig.supportsDestination;
 
   // Validate status can be submitted
   const canSubmitStatus = useMemo(() => {
