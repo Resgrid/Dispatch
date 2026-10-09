@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 import React from 'react';
 
 import { getSetUnitStatusData } from '@/api/dispatch/dispatch';
@@ -65,8 +65,9 @@ jest.mock('@/components/ui/actionsheet', () => {
 jest.mock('@/components/ui/button', () => {
   const { Text, TouchableOpacity } = require('react-native');
   return {
+    // `disabled` (not a dropped onPress): fireEvent would otherwise bubble the press up to this mock's own onPress prop
     Button: ({ children, onPress, isDisabled }: any) => (
-      <TouchableOpacity onPress={isDisabled ? undefined : onPress} testID="update-status-button">
+      <TouchableOpacity onPress={onPress} disabled={!!isDisabled} testID="update-status-button">
         {children}
       </TouchableOpacity>
     ),
@@ -190,6 +191,48 @@ describe('UnitActionsPanel destination defaults', () => {
 
       await waitFor(() => expect(selectedCallInStore()).toBe('A'));
       expect(mockFetchCalls).toHaveBeenCalledTimes(1);
+    });
+
+    it('holds a status that takes a call until the lookup lands, then sends it to the working call', async () => {
+      await renderOpenPanel(target);
+      await pickStatus('Responding');
+
+      fireEvent.press(screen.getByTestId('update-status-button'));
+      expect(mockSaveUnitStatus).not.toHaveBeenCalled();
+
+      mockCallList = mockCallsWithD;
+      await act(async () => finishLookup());
+      await waitFor(() => expect(selectedCallInStore()).toBe('D'));
+
+      fireEvent.press(screen.getByTestId('update-status-button'));
+      await waitFor(() => expect(mockSaveUnitStatus).toHaveBeenCalledTimes(1));
+      expect(mockSaveUnitStatus.mock.calls[0][0]).toMatchObject({ Id: 'u1', Type: '3', RespondingTo: 'D', RespondingToType: DestinationEntityType.Call });
+    });
+
+    it('does not hold a status that takes no destination', async () => {
+      await renderOpenPanel(target);
+      await pickStatus('Out of Service');
+
+      fireEvent.press(screen.getByTestId('update-status-button'));
+      await waitFor(() => expect(mockSaveUnitStatus).toHaveBeenCalledTimes(1));
+      expect(mockSaveUnitStatus.mock.calls[0][0]).toMatchObject({ Id: 'u1', Type: '8', RespondingTo: '' });
+    });
+
+    it("keeps the dispatcher's explicit No destination when the lookup lands", async () => {
+      await renderOpenPanel(target);
+      await pickStatus('Responding');
+
+      // Nothing applies yet, so the destination sheet opens; the dispatcher sends this one without a destination
+      fireEvent.press(within(await screen.findByTestId('actionsheet')).getByText('dispatch.unit_actions_panel.no_destination'));
+
+      mockCallList = mockCallsWithD;
+      await act(async () => finishLookup());
+      expect(selectedCallInStore()).toBeNull();
+      expect(useUnitActionsStore.getState().statusDestinationType).toBe('none');
+
+      fireEvent.press(screen.getByTestId('update-status-button'));
+      await waitFor(() => expect(mockSaveUnitStatus).toHaveBeenCalledTimes(1));
+      expect(mockSaveUnitStatus.mock.calls[0][0]).toMatchObject({ Id: 'u1', Type: '3', RespondingTo: '' });
     });
   });
 

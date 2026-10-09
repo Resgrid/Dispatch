@@ -395,13 +395,25 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
     };
   }, [selectedStatus]);
 
+  // The default destination is still waiting on the unit's working call (calls loading, or the one-off lookup in flight).
+  // A status that takes a call is held until the call lands or the dispatcher picks a destination, so it is not sent
+  // without it.
+  const isAwaitingWorkingCall = useMemo(() => {
+    const workingCallId = selectedUnit?.ActiveCallId;
+    if (!workingCallId || callContext || storeSelectedUnit?.UnitId !== selectedUnit?.UnitId) return false;
+    if (destinationInitializedSessionId === actionsSessionId) return false;
+    return !activeCalls.some((call) => call.CallId === workingCallId);
+  }, [selectedUnit, callContext, storeSelectedUnit, destinationInitializedSessionId, actionsSessionId, activeCalls]);
+  const isHeldForWorkingCall = isAwaitingWorkingCall && destinationConfig.showCalls;
+
   // Validate status can be submitted
   const canSubmitStatus = useMemo(() => {
     if (!selectedStatus) return false;
     // Check if note is required and not provided
     if (selectedStatus.Note === 2 && !statusNote.trim()) return false;
+    if (isHeldForWorkingCall) return false;
     return true;
-  }, [selectedStatus, statusNote]);
+  }, [selectedStatus, statusNote, isHeldForWorkingCall]);
 
   useEffect(() => {
     if (selectedStatus) {
@@ -444,6 +456,9 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
     } else if (type === 'poi' && item) {
       setStatusSelectedPoi(item as PoiResultData);
     }
+    // An explicit choice, "No destination" included, ends the default for this open: a working-call lookup still in
+    // flight must not replace it when it lands.
+    markDestinationInitialized(actionsSessionId);
     setIsDestinationSheetOpen(false);
   };
 
@@ -539,7 +554,7 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
               <>
                 {statusError ? <Text className="text-xs text-red-500">{statusError}</Text> : null}
                 <Button size="sm" onPress={handleSubmitStatus} isDisabled={!canSubmitStatus || isSubmittingStatus} className="bg-blue-600">
-                  {isSubmittingStatus ? <ButtonSpinner color="white" /> : <Icon as={Send} size="xs" color="white" />}
+                  {isSubmittingStatus || isHeldForWorkingCall ? <ButtonSpinner color="white" /> : <Icon as={Send} size="xs" color="white" />}
                   <ButtonText className="ml-1 text-xs">{t('dispatch.unit_actions_panel.update_status')}</ButtonText>
                 </Button>
               </>
