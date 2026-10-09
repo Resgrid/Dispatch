@@ -96,8 +96,8 @@ describe('DispatchSelectionModal with live data', () => {
     expect(queryByText('Ambulance Zottegem')).toBeTruthy();
   });
 
-  it('offers the run card recommendation for what the call still needs, and applying it selects those units', async () => {
-    mockGetCallRecommendation.mockResolvedValue(recommendation());
+  it('offers the run card recommendation for what the call still needs, and applying it selects those units and people', async () => {
+    mockGetCallRecommendation.mockResolvedValue(recommendation({ Personnel: [{ UserId: '7', Name: 'A. Smith', SelectionReason: 3, LocationIsStale: false, SatisfiesRequirementId: 2 }] }));
 
     const { findByTestId, getByTestId } = render(<DispatchSelectionModal {...props} callId="40" />);
 
@@ -109,6 +109,7 @@ describe('DispatchSelectionModal with live data', () => {
     });
 
     expect(useDispatchStore.getState().selection.units).toEqual(['22']);
+    expect(useDispatchStore.getState().selection.users).toEqual(['7']);
     expect(useDispatchStore.getState().selection.everyone).toBe(false);
   });
 

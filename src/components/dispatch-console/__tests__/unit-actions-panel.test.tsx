@@ -39,7 +39,7 @@ const mockCalls: CallResultData[] = [
 const mockCallsWithD: CallResultData[] = [...mockCalls, { CallId: 'D', Number: '26-D', Name: 'Traffic Collision', State: 0 } as CallResultData];
 let mockCallList = mockCalls;
 let mockIsLoadingCalls = false;
-const mockFetchCalls = jest.fn();
+const mockFetchCalls = jest.fn(() => Promise.resolve());
 jest.mock('@/stores/calls/store', () => ({
   useCallsStore: (selector: (state: { calls: CallResultData[]; isLoadingCalls: boolean; fetchCalls: () => void }) => unknown) =>
     selector({ calls: mockCallList, isLoadingCalls: mockIsLoadingCalls, fetchCalls: mockFetchCalls }),
@@ -152,6 +152,45 @@ describe('UnitActionsPanel destination defaults', () => {
     view.rerender(<UnitActionsPanel unit={target} />);
 
     await waitFor(() => expect(selectedCallInStore()).toBe('D'));
+  });
+
+  describe('when the working call is missing from a loaded calls list', () => {
+    let finishLookup: () => void;
+    const target = { ...unit('u1'), ActiveCallId: 'D' } as UnitInfoResultData;
+
+    beforeEach(() => {
+      useDispatchConsoleStore.setState({ selectedCallId: 'A', isCallFilterActive: true });
+      mockFetchCalls.mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            finishLookup = resolve;
+          })
+      );
+    });
+
+    it('looks the call up once before settling on the selected call', async () => {
+      await renderOpenPanel(target);
+
+      expect(mockFetchCalls).toHaveBeenCalledTimes(1);
+      expect(useUnitActionsStore.getState().destinationInitializedSessionId).not.toBe(useUnitActionsStore.getState().actionsSessionId);
+      expect(selectedCallInStore()).toBeNull();
+
+      mockCallList = mockCallsWithD;
+      await act(async () => finishLookup());
+
+      await waitFor(() => expect(selectedCallInStore()).toBe('D'));
+      expect(mockFetchCalls).toHaveBeenCalledTimes(1);
+    });
+
+    it('falls back once the lookup settles without it', async () => {
+      await renderOpenPanel(target);
+      expect(selectedCallInStore()).toBeNull();
+
+      await act(async () => finishLookup());
+
+      await waitFor(() => expect(selectedCallInStore()).toBe('A'));
+      expect(mockFetchCalls).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('never takes a station destination for the call with the same id', async () => {

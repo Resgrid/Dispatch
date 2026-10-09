@@ -134,6 +134,9 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
   // Whether the per-unit options (stations/POIs) have finished loading for the given unit
   const [optionsLoadedForUnitId, setOptionsLoadedForUnitId] = useState<string | null>(null);
 
+  // The calls re-fetch for a working call the calls list did not have (keyed by open session and call), so it runs once
+  const [workingCallLookup, setWorkingCallLookup] = useState<{ key: string; settled: boolean } | null>(null);
+
   // Store state
   const {
     selectedUnit: storeSelectedUnit,
@@ -266,10 +269,20 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
       return;
     }
 
-    // The unit is on a call the calls list has not loaded yet: wait for it rather than settle on a fallback (another call,
-    // or no destination), which left dispatchers picking the call by hand for every status (Belgian EMS, 2026-10-07).
+    // The unit is on a call the calls list does not have (still loading, or loaded before the call was created): look it
+    // up once for this open and wait, rather than settle on a fallback (another call, or no destination), which left
+    // dispatchers picking the call by hand for every status (Belgian EMS, 2026-10-07).
     const workingCallId = selectedUnit.ActiveCallId;
-    if (!callContext && workingCallId && isLoadingCalls && !activeCalls.some((call) => call.CallId === workingCallId)) return;
+    if (!callContext && workingCallId && !activeCalls.some((call) => call.CallId === workingCallId)) {
+      if (isLoadingCalls) return;
+      const lookupKey = `${actionsSessionId}:${workingCallId}`;
+      if (workingCallLookup?.key !== lookupKey) {
+        setWorkingCallLookup({ key: lookupKey, settled: false });
+        void fetchCalls().finally(() => setWorkingCallLookup((current) => (current?.key === lookupKey ? { key: lookupKey, settled: true } : current)));
+        return;
+      }
+      if (!workingCallLookup.settled) return;
+    }
 
     // (a) explicit call context, (b) the call the server says the unit is working, (c) the unit's current destination if
     // it is an active call, (d) the console's selected call
@@ -312,6 +325,8 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
     selectedCallId,
     activeCalls,
     isLoadingCalls,
+    fetchCalls,
+    workingCallLookup,
     statusDestinationType,
     optionsLoadedForUnitId,
     availableStations,

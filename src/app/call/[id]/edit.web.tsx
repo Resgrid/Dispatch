@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { BookOpenIcon, ChevronDownIcon, ChevronUpIcon, LinkIcon, MapPinIcon, SaveIcon, SearchIcon, XIcon } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
@@ -577,7 +577,10 @@ export default function EditCallWeb() {
       setIsSubmitting(false);
     }
   };
-  onSubmitRef.current = onSubmit;
+  // Updated after commit, not during render: a render React discards must not leave its onSubmit behind.
+  useLayoutEffect(() => {
+    onSubmitRef.current = onSubmit;
+  });
 
   const handleLinkedCallSelect = useCallback((selected: CallResultData) => {
     setLinkedCall({ callId: selected.CallId, number: selected.Number, name: selected.Name });
