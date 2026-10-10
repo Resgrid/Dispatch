@@ -12,8 +12,8 @@ import { HStack } from '@/components/ui/hstack';
 import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
-import { dispatchModeKey, hasRecommendationContent, personnelDetailParts, selectionReasonKey, shortfallReasonKey, unitDetailParts } from '@/lib/run-cards';
-import { type DispatchRecommendationResultData } from '@/models/v4/runcards/dispatchRecommendationResultData';
+import { dispatchModeKey, hasRecommendationContent, personnelDetailParts, selectionReasonKey, shortfallReasonKey, unitDetailParts, unitStatusColors } from '@/lib/run-cards';
+import { type DispatchRecommendationResultData, type UnitRecommendationData } from '@/models/v4/runcards/dispatchRecommendationResultData';
 
 interface RecommendationPanelProps {
   recommendation: DispatchRecommendationResultData | null;
@@ -37,6 +37,31 @@ interface RecommendationPanelProps {
   isExistingCall?: boolean;
   testID?: string;
 }
+
+/**
+ * A recommended unit's status in the status's own colours, as it shows everywhere else, so the dispatcher reads it at a
+ * glance. A status with no colour (or from a server that predates the field) gets a plain outlined badge. The border
+ * keeps a white or very light status visible on the card.
+ */
+const UnitStatusBadge: React.FC<{ unit: UnitRecommendationData; isDark: boolean; testID: string }> = ({ unit, isDark, testID }) => {
+  if (!unit.CurrentStatusText) {
+    return null;
+  }
+
+  const colors = unitStatusColors(unit);
+
+  return (
+    <Box
+      className={`rounded border px-1.5 py-0.5 ${colors ? 'border-black/20' : isDark ? 'border-neutral-700' : 'border-neutral-300'}`}
+      style={colors ? { backgroundColor: colors.backgroundColor } : undefined}
+      testID={testID}
+    >
+      <Text className={`text-xs font-medium ${colors ? '' : 'text-neutral-500'}`} style={colors ? { color: colors.color } : undefined}>
+        {unit.CurrentStatusText}
+      </Text>
+    </Box>
+  );
+};
 
 /**
  * Explainability panel for a run card recommendation.
@@ -181,7 +206,10 @@ export const RecommendationPanel: React.FC<RecommendationPanelProps> = ({
                   <Box key={`rc-unit-${unit.UnitId}`} className={`rounded border p-2 ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
                     <HStack className="items-center justify-between gap-2">
                       <VStack className="flex-1">
-                        <Text className="text-sm font-medium">{unit.UnitName}</Text>
+                        <HStack className="flex-wrap items-center gap-2">
+                          <Text className="text-sm font-medium">{unit.UnitName}</Text>
+                          <UnitStatusBadge unit={unit} isDark={isDark} testID={`${testID}-unit-${unit.UnitId}-status`} />
+                        </HStack>
                         {details.length > 0 ? <Text className="text-xs text-neutral-500">{details.join(' · ')}</Text> : null}
                       </VStack>
                       <VStack className="items-end">

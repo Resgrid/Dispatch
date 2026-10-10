@@ -9,6 +9,7 @@ import {
   selectionReasonKey,
   shortfallReasonKey,
   unitDetailParts,
+  unitStatusColors,
 } from '@/lib/run-cards';
 import {
   DispatchRecommendationMode,
@@ -190,12 +191,54 @@ describe('recommended id extraction', () => {
 
 describe('detail lines', () => {
   it('includes only the facts the engine actually knew', () => {
-    expect(unitDetailParts(unit({ StationGroupName: 'Station 3', DistanceMeters: 1500, EtaSeconds: 200, CurrentStatusText: 'Available' }))).toEqual(['Station 3', '1.5 km', '4 min', 'Available']);
+    expect(unitDetailParts(unit({ StationGroupName: 'Station 3', DistanceMeters: 1500, EtaSeconds: 200 }))).toEqual(['Station 3', '1.5 km', '4 min']);
 
     expect(unitDetailParts(unit({ StationGroupName: null, DistanceMeters: null, EtaSeconds: null, CurrentStatusText: null }))).toEqual([]);
   });
 
+  it('leaves a unit status to its badge', () => {
+    expect(unitDetailParts(unit({ StationGroupName: 'Station 3', CurrentStatusText: 'Standplaats' }))).toEqual(['Station 3']);
+  });
+
   it('leads with the role for personnel', () => {
     expect(personnelDetailParts(person({ RoleName: 'Paramedic', StationGroupName: 'Station 3', DistanceMeters: 300 }))).toEqual(['Paramedic', 'Station 3', '300 m']);
+  });
+});
+
+describe('unitStatusColors', () => {
+  it('uses the status colours the department set up', () => {
+    expect(unitStatusColors(unit({ CurrentStatusText: 'Standplaats', CurrentStatusColor: '#FF0000', CurrentStatusTextColor: '#000000' }))).toEqual({
+      backgroundColor: '#FF0000',
+      color: '#000000',
+    });
+  });
+
+  it('picks black or white text by contrast when the status has no text colour', () => {
+    expect(unitStatusColors(unit({ CurrentStatusColor: '#FFFF00', CurrentStatusTextColor: null }))?.color).toBe('#000000');
+    expect(unitStatusColors(unit({ CurrentStatusColor: '#0000FF', CurrentStatusTextColor: '' }))?.color).toBe('#FFFFFF');
+    expect(unitStatusColors(unit({ CurrentStatusColor: '#800080', CurrentStatusTextColor: 'label-default' }))?.color).toBe('#FFFFFF');
+  });
+
+  it('picks black or white text by contrast when the text colour is the background colour', () => {
+    expect(unitStatusColors(unit({ CurrentStatusColor: '#FFFFFF', CurrentStatusTextColor: '#FFFFFF' }))).toEqual({ backgroundColor: '#FFFFFF', color: '#000000' });
+    expect(unitStatusColors(unit({ CurrentStatusColor: '#000', CurrentStatusTextColor: '#000000' }))?.color).toBe('#FFFFFF');
+    expect(unitStatusColors(unit({ CurrentStatusColor: '#ff0000', CurrentStatusTextColor: ' #FF0000 ' }))?.color).toBe('#FFFFFF');
+  });
+
+  it('accepts short hex colours', () => {
+    expect(unitStatusColors(unit({ CurrentStatusColor: '#F00', CurrentStatusTextColor: '#FFF' }))).toEqual({ backgroundColor: '#F00', color: '#FFF' });
+  });
+
+  it('ignores alpha hex colours, whose rendered colour depends on what they sit on', () => {
+    expect(unitStatusColors(unit({ CurrentStatusColor: '#000F' }))).toBeNull();
+    expect(unitStatusColors(unit({ CurrentStatusColor: '#00000001' }))).toBeNull();
+    expect(unitStatusColors(unit({ CurrentStatusColor: '#0000FF', CurrentStatusTextColor: '#FFFFFF80' }))?.color).toBe('#FFFFFF');
+  });
+
+  it('has no colours when the status has none or the server predates the field', () => {
+    expect(unitStatusColors(unit({ CurrentStatusColor: null }))).toBeNull();
+    expect(unitStatusColors(unit())).toBeNull();
+    expect(unitStatusColors(unit({ CurrentStatusColor: 'label-danger' }))).toBeNull();
+    expect(unitStatusColors(unit({ CurrentStatusColor: 'red;display:none' }))).toBeNull();
   });
 });
