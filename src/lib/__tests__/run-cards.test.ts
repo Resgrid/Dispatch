@@ -219,6 +219,22 @@ describe('unitStatusColors', () => {
     expect(unitStatusColors(unit({ CurrentStatusColor: '#800080', CurrentStatusTextColor: 'label-default' }))?.color).toBe('#FFFFFF');
   });
 
+  it('picks black or white text by contrast when the text colour is the background colour', () => {
+    expect(unitStatusColors(unit({ CurrentStatusColor: '#FFFFFF', CurrentStatusTextColor: '#FFFFFF' }))).toEqual({ backgroundColor: '#FFFFFF', color: '#000000' });
+    expect(unitStatusColors(unit({ CurrentStatusColor: '#000', CurrentStatusTextColor: '#000000' }))?.color).toBe('#FFFFFF');
+    expect(unitStatusColors(unit({ CurrentStatusColor: '#ff0000', CurrentStatusTextColor: ' #FF0000 ' }))?.color).toBe('#FFFFFF');
+  });
+
+  it('accepts short hex colours', () => {
+    expect(unitStatusColors(unit({ CurrentStatusColor: '#F00', CurrentStatusTextColor: '#FFF' }))).toEqual({ backgroundColor: '#F00', color: '#FFF' });
+  });
+
+  it('ignores alpha hex colours, whose rendered colour depends on what they sit on', () => {
+    expect(unitStatusColors(unit({ CurrentStatusColor: '#000F' }))).toBeNull();
+    expect(unitStatusColors(unit({ CurrentStatusColor: '#00000001' }))).toBeNull();
+    expect(unitStatusColors(unit({ CurrentStatusColor: '#0000FF', CurrentStatusTextColor: '#FFFFFF80' }))?.color).toBe('#FFFFFF');
+  });
+
   it('has no colours when the status has none or the server predates the field', () => {
     expect(unitStatusColors(unit({ CurrentStatusColor: null }))).toBeNull();
     expect(unitStatusColors(unit())).toBeNull();

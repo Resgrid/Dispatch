@@ -136,12 +136,24 @@ export const unitDetailParts = (unit: UnitRecommendationData): string[] => {
   return parts;
 };
 
-const HEX_COLOR = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+/**
+ * Opaque hex colours only. Alpha formats are left out: a translucent badge's real colour depends on what it sits on,
+ * so `invertColor` could not pick readable text for it.
+ */
+const HEX_COLOR = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+
+/** `#RGB` or `#RRGGBB` as lowercase `rrggbb`, so two spellings of the same colour compare equal. */
+const normalizeHex = (hex: string): string => {
+  const digits = hex.slice(1).toLowerCase();
+
+  return digits.length === 3 ? digits.replace(/./g, (digit) => digit + digit) : digits;
+};
 
 /**
  * The unit's status colours as the department set them up, the same colours the status shows everywhere else, so a
  * dispatcher can read a recommended unit's status at a glance. The text colour falls back to black or white by
- * contrast when the status has none. Null when the status has no colour (or the server predates the field).
+ * contrast when the status has none, or when it is the background colour (the text would be invisible). Null when
+ * the status has no colour (or the server predates the field).
  */
 export const unitStatusColors = (unit: UnitRecommendationData): { backgroundColor: string; color: string } | null => {
   const backgroundColor = unit.CurrentStatusColor?.trim();
@@ -154,7 +166,7 @@ export const unitStatusColors = (unit: UnitRecommendationData): { backgroundColo
 
   return {
     backgroundColor,
-    color: textColor && HEX_COLOR.test(textColor) ? textColor : invertColor(backgroundColor, true),
+    color: textColor && HEX_COLOR.test(textColor) && normalizeHex(textColor) !== normalizeHex(backgroundColor) ? textColor : invertColor(backgroundColor, true),
   };
 };
 
