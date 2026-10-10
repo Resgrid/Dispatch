@@ -55,6 +55,10 @@ export interface UnitRecommendationData {
   LocationTimestamp: string | null;
   LocationIsStale: boolean;
   CurrentStatusText: string | null;
+  /** The status's button colour as the department set it up (hex); null when it has none or the server predates it. */
+  CurrentStatusColor?: string | null;
+  /** The status's text colour (hex), drawn on `CurrentStatusColor`; null when the status has none. */
+  CurrentStatusTextColor?: string | null;
   StaffingLevel: number | null;
   SatisfiesRequirementId: number;
 }

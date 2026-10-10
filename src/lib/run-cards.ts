@@ -1,3 +1,4 @@
+import { invertColor } from '@/lib/utils';
 import {
   DispatchRecommendationMode,
   type DispatchRecommendationResultData,
@@ -111,7 +112,10 @@ export const recommendedUnitIds = (recommendation: DispatchRecommendationResultD
 /** User ids the recommendation selected. */
 export const recommendedUserIds = (recommendation: DispatchRecommendationResultData | null): string[] => (recommendation?.Personnel ?? []).filter((person) => !!person.UserId).map((person) => person.UserId);
 
-/** Secondary line for a unit row: station, distance, ETA and staleness, whichever the engine knew. */
+/**
+ * Secondary line for a unit row: station, distance and ETA, whichever the engine knew. The unit's status is not
+ * part of it: the row shows it as a badge in the status's own colours (see `unitStatusColors`).
+ */
 export const unitDetailParts = (unit: UnitRecommendationData): string[] => {
   const parts: string[] = [];
 
@@ -129,11 +133,29 @@ export const unitDetailParts = (unit: UnitRecommendationData): string[] => {
     parts.push(eta);
   }
 
-  if (unit.CurrentStatusText) {
-    parts.push(unit.CurrentStatusText);
+  return parts;
+};
+
+const HEX_COLOR = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+
+/**
+ * The unit's status colours as the department set them up, the same colours the status shows everywhere else, so a
+ * dispatcher can read a recommended unit's status at a glance. The text colour falls back to black or white by
+ * contrast when the status has none. Null when the status has no colour (or the server predates the field).
+ */
+export const unitStatusColors = (unit: UnitRecommendationData): { backgroundColor: string; color: string } | null => {
+  const backgroundColor = unit.CurrentStatusColor?.trim();
+
+  if (!backgroundColor || !HEX_COLOR.test(backgroundColor)) {
+    return null;
   }
 
-  return parts;
+  const textColor = unit.CurrentStatusTextColor?.trim();
+
+  return {
+    backgroundColor,
+    color: textColor && HEX_COLOR.test(textColor) ? textColor : invertColor(backgroundColor, true),
+  };
 };
 
 /** Secondary line for a personnel row. */
