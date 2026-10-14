@@ -12,10 +12,11 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { isPersonnelDispatch } from '@/lib/dispatch-types';
-import { isPersonnelAvailable } from '@/lib/resource-availability';
+import { isPersonnelAvailable, isPersonnelOnDuty } from '@/lib/resource-availability';
 import { type DispatchedEventResultData } from '@/models/v4/calls/dispatchedEventResultData';
 import { type PersonnelInfoResultData } from '@/models/v4/personnel/personnelInfoResultData';
 import { selectCardCollapsed, useDashboardViewStore } from '@/stores/dispatch/dashboard-view-store';
+import { TermKeys, useTerm } from '@/stores/terminology/store';
 
 import { AnimatedRefreshIcon } from './animated-refresh-icon';
 import { PanelHeader } from './panel-header';
@@ -135,6 +136,7 @@ const PersonnelPanelComponent: React.FC<PersonnelPanelProps> = ({
   onSetPersonnelStatusForCall,
 }) => {
   const { t } = useTranslation();
+  const personnelTitle = useTerm(TermKeys.Personnel, t('dispatch.personnel'));
   const isCollapsed = useDashboardViewStore(selectCardCollapsed('personnel'));
   const setCardCollapsed = useDashboardViewStore((s) => s.setCardCollapsed);
   const [searchQuery, setSearchQuery] = useState('');
@@ -231,8 +233,8 @@ const PersonnelPanelComponent: React.FC<PersonnelPanelProps> = ({
     return byType;
   }, [callDispatches]);
 
-  // Count on-duty personnel
-  const onDutyCount = displayedPersonnel.filter((p) => p.Staffing && p.Staffing.toLowerCase() !== 'off duty').length;
+  // Count on-duty personnel (by staffing base type when the server sends one; see isPersonnelOnDuty)
+  const onDutyCount = displayedPersonnel.filter(isPersonnelOnDuty).length;
 
   const renderPersonnelItem = useCallback(
     ({ item }: { item: PersonnelInfoResultData }) => {
@@ -261,7 +263,7 @@ const PersonnelPanelComponent: React.FC<PersonnelPanelProps> = ({
   return (
     <Box className={`overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 ${isCollapsed ? '' : 'flex-1'}`}>
       <PanelHeader
-        title={isCallFilterActive ? t('dispatch.personnel_on_call') : t('dispatch.personnel')}
+        title={isCallFilterActive ? t('dispatch.personnel_on_call') : personnelTitle}
         icon={Users}
         iconColor="#8b5cf6"
         count={displayedPersonnel.length}

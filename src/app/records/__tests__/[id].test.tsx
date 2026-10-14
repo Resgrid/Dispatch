@@ -4,6 +4,7 @@ import React from 'react';
 import { getRecord } from '@/api/records/records';
 import { RmsRecordState } from '@/models/v4/records';
 import { useRecordsStore } from '@/stores/records/store';
+import { terminologyStore } from '@/stores/terminology/store';
 
 import RecordScreen from '../[id]';
 
@@ -170,6 +171,21 @@ describe('RecordScreen', () => {
     await waitFor(() => expect(store.submitForReview).toHaveBeenCalledWith('r1', 4));
     expect(store.pushDraft).not.toHaveBeenCalled();
     unmount();
+  });
+
+  it("heads a built-in record with the department's name for its type, never the raw definition key", async () => {
+    terminologyStore.setState({ names: { 'record-type.run': 'Incident Report' } });
+    mockGetRecord.mockReset();
+    mockGetRecord.mockResolvedValue({ Data: { ...record(4), DefinitionKey: 'system.run' } } as never);
+    try {
+      const { unmount } = render(<RecordScreen />);
+
+      expect(await screen.findByText('Incident Report')).toBeTruthy();
+      expect(screen.queryByText('system.run')).toBeNull();
+      unmount();
+    } finally {
+      terminologyStore.setState({ names: {} });
+    }
   });
 
   it('saves unsaved edits before submitting, and submits the version that save produced', async () => {

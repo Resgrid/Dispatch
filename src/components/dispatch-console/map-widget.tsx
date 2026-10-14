@@ -12,6 +12,7 @@ import { Text } from '@/components/ui/text';
 import { MapLayerType, useMapLayers } from '@/hooks/use-map-layers';
 import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersData';
 import { selectCardCollapsed, useDashboardViewStore } from '@/stores/dispatch/dashboard-view-store';
+import { TermKeys, useTerm } from '@/stores/terminology/store';
 
 import { PanelHeader } from './panel-header';
 
@@ -34,6 +35,7 @@ interface MapWidgetProps {
 
 const MapWidgetComponent: React.FC<MapWidgetProps> = ({ pins, onExpandMap, onRefresh, onCenterOnLocation, onPinPress, autoFetchPins = true, children }) => {
   const { t } = useTranslation();
+  const mapTitle = useTerm(TermKeys.Mapping, t('dispatch.map'));
   const { colorScheme } = useColorScheme();
   const isCollapsed = useDashboardViewStore(selectCardCollapsed('map'));
   const setCardCollapsed = useDashboardViewStore((s) => s.setCardCollapsed);
@@ -98,7 +100,7 @@ const MapWidgetComponent: React.FC<MapWidgetProps> = ({ pins, onExpandMap, onRef
     <>
       <Box className={`overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 ${isCollapsed ? '' : 'flex-1'}`}>
         <PanelHeader
-          title={t('dispatch.map')}
+          title={mapTitle}
           icon={MapIcon}
           iconColor="#14b8a6"
           isCollapsed={isCollapsed}

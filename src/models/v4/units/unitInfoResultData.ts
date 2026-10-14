@@ -26,6 +26,11 @@ export class UnitInfoResultData {
   public CurrentStatusId: string = '';
   public CurrentStatus: string = '';
   public CurrentStatusColor: string = '';
+  /**
+   * What the current status means (ActionBaseTypes, see lib/base-types), for built-in and department statuses alike;
+   * null or -1 when it has no meaning, undefined from older servers. Decide availability from this, not the status text.
+   */
+  public CurrentStatusBaseType?: number | null;
   public CurrentStatusTimestampUtc: string = '';
   public Latitude: string = '';
   public Longitude: string = '';

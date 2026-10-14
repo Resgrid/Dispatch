@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import React from 'react';
 
+import { terminologyStore } from '@/stores/terminology/store';
+
 import SideMenu from '../side-menu';
 
 // Mock react-i18next
@@ -169,6 +171,23 @@ describe('SideMenu', () => {
 
     const container = screen.getByTestId('side-menu-scroll-view');
     expect(container).toBeTruthy();
+  });
+
+  it("should label modules with the department's own names", () => {
+    terminologyStore.setState({ names: { 'module.calls': 'Incidents', 'module.units': 'Apparatus' } });
+    try {
+      const { unmount } = render(<SideMenu />);
+
+      expect(screen.getByText('Incidents')).toBeTruthy();
+      expect(screen.getByText('Apparatus')).toBeTruthy();
+      expect(screen.queryByText('Calls')).toBeNull();
+      expect(screen.queryByText('Units')).toBeNull();
+      // Modules the department did not rename keep the app's own label.
+      expect(screen.getByText('Personnel')).toBeTruthy();
+      unmount();
+    } finally {
+      terminologyStore.setState({ names: {} });
+    }
   });
 
   it('should accept colorScheme prop for dark mode', () => {

@@ -25,6 +25,7 @@ import { type UnitInfoResultData } from '@/models/v4/units/unitInfoResultData';
 import { useCallsStore } from '@/stores/calls/store';
 import { useDispatchConsoleStore } from '@/stores/dispatch/dispatch-console-store';
 import { useUnitActionsStore } from '@/stores/dispatch/unit-actions-store';
+import { TermKeys, useTerm } from '@/stores/terminology/store';
 import { useUnitsStore } from '@/stores/units/store';
 
 interface UnitActionsPanelProps {
@@ -111,6 +112,7 @@ const DestinationSheetOption: React.FC<{
 
 export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitProp, onStatusUpdated }) => {
   const { t } = useTranslation();
+  const callsLabel = useTerm(TermKeys.Calls, t('dispatch.calls'));
 
   // Get calls directly from calls store using selector
   const calls = useCallsStore((state) => state.calls);
@@ -615,7 +617,7 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
                   {destinationConfig.showCalls ? (
                     <Pressable onPress={() => setDestinationTab('calls')} className={`flex-1 rounded-md px-3 py-2 ${destinationTab === 'calls' ? 'bg-white shadow-xs dark:bg-gray-700' : ''}`}>
                       <Text className={`text-center text-sm font-medium ${destinationTab === 'calls' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
-                        {t('dispatch.calls')} ({activeCalls.length})
+                        {callsLabel} ({activeCalls.length})
                       </Text>
                     </Pressable>
                   ) : null}

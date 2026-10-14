@@ -48,6 +48,7 @@ import useLockscreenStore from '@/stores/lockscreen/store';
 import { useRolesStore } from '@/stores/roles/store';
 import { securityStore } from '@/stores/security/store';
 import { useSignalRStore } from '@/stores/signalr/signalr-store';
+import { terminologyStore } from '@/stores/terminology/store';
 import { useToastStore } from '@/stores/toast/store';
 import { useWeatherAlertsStore } from '@/stores/weatherAlerts/store';
 
@@ -233,9 +234,10 @@ export default function TabLayout() {
           context: { platform: Platform.OS },
         });
 
-        // Both must land before the shell finishes initializing: a comma here would await only
-        // the flags and leave the capability request racing the first protected screen.
-        await Promise.all([featureFlagsStore.getState().fetchFlags(), dataProtectionStore.getState().fetchCapabilities()]);
+        // All must land before the shell finishes initializing: a comma here would await only
+        // the flags and leave the capability request racing the first protected screen. Terminology
+        // is keyed to the rights just loaded and never rejects, so a failure keeps the app's own labels.
+        await Promise.all([featureFlagsStore.getState().fetchFlags(), dataProtectionStore.getState().fetchCapabilities(), terminologyStore.getState().fetchTerminology()]);
 
         logger.info({
           message: 'Feature flags fetched, connecting SignalR',
@@ -675,7 +677,15 @@ export default function TabLayout() {
   return (
     <>
       {userId && config && rights?.DepartmentCode ? (
-        <NovuProvider subscriberId={`${rights?.DepartmentCode}_User_${userId}`} applicationIdentifier={config.NovuApplicationId} backendUrl={config.NovuBackendApiUrl} socketUrl={config.NovuSocketUrl}>
+        // subscriberHash: issued by the server for this user's own subscriber; Novu refuses the session
+        // without it once HMAC is enforced. Absent from older servers, which is fine until then.
+        <NovuProvider
+          subscriberId={`${rights?.DepartmentCode}_User_${userId}`}
+          subscriberHash={rights?.NovuSubscriberHash ?? undefined}
+          applicationIdentifier={config.NovuApplicationId}
+          backendUrl={config.NovuBackendApiUrl}
+          socketUrl={config.NovuSocketUrl}
+        >
           {/* NotificationInbox at the root level */}
           <NotificationInbox isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} />
           <StepUpPromptHost />

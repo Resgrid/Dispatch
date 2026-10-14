@@ -23,12 +23,14 @@ import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersD
 import { type GetMapLayersData } from '@/models/v4/mapping/getMapLayersResultData';
 import { type PoiLayerData } from '@/models/v4/mapping/poiLayerData';
 import { useLocationStore } from '@/stores/app/location-store';
+import { TermKeys, useTerm } from '@/stores/terminology/store';
 
 // Mapbox GL CSS needs to be injected for web
 const MAPBOX_GL_CSS_URL = 'https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.css';
 
 export default function MapWeb() {
   const { t } = useTranslation();
+  const mapTitle = useTerm(TermKeys.Mapping, t('tabs.map'));
   const { trackEvent } = useAnalytics();
   const { colorScheme } = useColorScheme();
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -570,7 +572,7 @@ export default function MapWeb() {
     <>
       <Stack.Screen
         options={{
-          title: t('tabs.map'),
+          title: mapTitle,
           headerTitle: t('app.title'),
           headerShown: true,
           headerBackTitle: '',

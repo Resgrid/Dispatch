@@ -16,6 +16,7 @@ import { type DispatchedEventResultData } from '@/models/v4/calls/dispatchedEven
 import { type PersonnelInfoResultData } from '@/models/v4/personnel/personnelInfoResultData';
 import { type UnitInfoResultData } from '@/models/v4/units/unitInfoResultData';
 import { selectCardCollapsed, useDashboardViewStore } from '@/stores/dispatch/dashboard-view-store';
+import { TermKeys, useTerm } from '@/stores/terminology/store';
 
 import { AnimatedRefreshIcon } from './animated-refresh-icon';
 import { PanelHeader } from './panel-header';
@@ -155,6 +156,7 @@ const UnitsPanelComponent: React.FC<UnitsPanelProps> = ({
   onSetPersonnelStatusForCall,
 }) => {
   const { t } = useTranslation();
+  const unitsTitle = useTerm(TermKeys.Units, t('dispatch.units'));
   const isCollapsed = useDashboardViewStore(selectCardCollapsed('units'));
   const setCardCollapsed = useDashboardViewStore((s) => s.setCardCollapsed);
   const [searchQuery, setSearchQuery] = useState('');
@@ -200,8 +202,8 @@ const UnitsPanelComponent: React.FC<UnitsPanelProps> = ({
     return new Set(callDispatches.filter(isUnitDispatch).map((d) => d.Name.toLowerCase()));
   }, [callDispatches]);
 
-  // Count available units
-  const availableUnits = displayedUnits.filter((u) => !u.CurrentStatusId || u.CurrentStatusId === 'available').length;
+  // Count available units (by status base type when the server sends one; see isUnitAvailable)
+  const availableUnits = displayedUnits.filter(isUnitAvailable).length;
 
   const handleSelectUnit = useCallback(
     (unitId: string) => {
@@ -246,7 +248,7 @@ const UnitsPanelComponent: React.FC<UnitsPanelProps> = ({
   return (
     <Box className={`overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 ${isCollapsed ? '' : 'flex-1'}`}>
       <PanelHeader
-        title={isCallFilterActive ? t('dispatch.units_on_call') : t('dispatch.units')}
+        title={isCallFilterActive ? t('dispatch.units_on_call') : unitsTitle}
         icon={Truck}
         iconColor="#3b82f6"
         count={displayedUnits.length}

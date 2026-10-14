@@ -50,7 +50,10 @@ jest.mock('@/stores/calls/store', () => {
   // One state object for every render, as zustand hands back: the screen's pre-fill effect depends on these lists.
   const state = {
     callPriorities: [{ Id: 1, Name: 'High', Color: '#f00' }],
-    callTypes: [{ Id: 1, Name: 'Fire' }],
+    callTypes: [
+      { Id: 1, Name: 'Fire' },
+      { Id: '7', Name: 'Structure Fire' },
+    ],
     isLoadingPriorities: false,
     isLoadingTypes: false,
     prioritiesError: null,
@@ -288,6 +291,24 @@ describe('Edit call screen and the call field policy', () => {
     expect(mockUpdateCall.mock.calls[0][0].incidentId).toBe('INC-2026-99');
     // The incident number is never sent as a linked call.
     expect(mockUpdateCall.mock.calls[0][0].linkedCallId).toBe('');
+  });
+
+  it("pre-fills the call type by the call's TypeId, which survives a rename of the type", async () => {
+    const { getByText } = await renderEdit([], makeCall({ Type: 'Fire', TypeId: '7' }));
+
+    fireEvent.press(getByText('common.save'));
+
+    await waitFor(() => expect(mockUpdateCall).toHaveBeenCalledTimes(1));
+    expect(mockUpdateCall.mock.calls[0][0].type).toBe('Structure Fire');
+  });
+
+  it('pre-fills the call type by name when the server sends no TypeId', async () => {
+    const { getByText } = await renderEdit([], makeCall({ Type: 'Fire' }));
+
+    fireEvent.press(getByText('common.save'));
+
+    await waitFor(() => expect(mockUpdateCall).toHaveBeenCalledTimes(1));
+    expect(mockUpdateCall.mock.calls[0][0].type).toBe('Fire');
   });
 
   it('keeps hidden fields as stored and sends the protocols and link it adds', async () => {

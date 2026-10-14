@@ -27,6 +27,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { usePendingCallsStore } from '@/stores/calls/pending-store';
 import { useIsChatEnabled, useIsDeploymentsEnabled, useIsRecordsFieldEnabled } from '@/stores/feature-flags/store';
+import { terminologyStore, TermKeys } from '@/stores/terminology/store';
 
 interface SideMenuProps {
   onNavigate?: () => void;
@@ -43,11 +44,12 @@ interface MenuItem {
   badgeCount?: number;
 }
 
-const getMenuItems = (t: (key: string) => string, pendingCallsCount: number): MenuItem[] => [
+// termNames: the department's own words for modules (Department -> Terminology); unrenamed ones keep the app's label.
+const getMenuItems = (t: (key: string) => string, pendingCallsCount: number, termNames: Record<string, string>): MenuItem[] => [
   { id: 'home', label: t('menu.home'), icon: Home, route: '/' },
   {
     id: 'calls',
-    label: t('menu.calls'),
+    label: termNames[TermKeys.Calls] || t('menu.calls'),
     icon: Phone,
     children: [
       { id: 'calls-list', label: t('menu.calls_list'), icon: List, route: '/calls' },
@@ -58,13 +60,13 @@ const getMenuItems = (t: (key: string) => string, pendingCallsCount: number): Me
     ],
   },
   { id: 'pois', label: t('menu.pois'), icon: MapPinned, route: '/pois' },
-  { id: 'map', label: t('menu.map'), icon: MapIcon, route: '/map' },
-  { id: 'personnel', label: t('menu.personnel'), icon: Users, route: '/personnel' },
-  { id: 'units', label: t('menu.units'), icon: Truck, route: '/units' },
+  { id: 'map', label: termNames[TermKeys.Mapping] || t('menu.map'), icon: MapIcon, route: '/map' },
+  { id: 'personnel', label: termNames[TermKeys.Personnel] || t('menu.personnel'), icon: Users, route: '/personnel' },
+  { id: 'units', label: termNames[TermKeys.Units] || t('menu.units'), icon: Truck, route: '/units' },
   { id: 'weather-alerts', label: t('menu.weatherAlerts'), icon: CloudLightning, route: '/weather-alerts' },
   { id: 'protocols', label: t('menu.protocols'), icon: FileText, route: '/protocols' },
-  { id: 'contacts', label: t('menu.contacts'), icon: Contact, route: '/contacts' },
-  { id: 'records', label: t('tabs.records'), icon: FileText, route: '/records' },
+  { id: 'contacts', label: termNames[TermKeys.Contacts] || t('menu.contacts'), icon: Contact, route: '/contacts' },
+  { id: 'records', label: termNames[TermKeys.Records] || t('tabs.records'), icon: FileText, route: '/records' },
   { id: 'operations', label: t('operations.title'), icon: Briefcase, route: '/operations' },
   { id: 'chat', label: t('menu.chat'), icon: MessagesSquare, route: '/chat' },
   { id: 'assistant', label: t('menu.assistant'), icon: Sparkles, route: '/chatbot' },
@@ -108,10 +110,11 @@ function SideMenu({ onNavigate, colorScheme: propColorScheme }: SideMenuProps): 
   const isDeploymentsEnabled = useIsDeploymentsEnabled();
   // Whatever the console last loaded; the menu itself does not fetch.
   const pendingCallsCount = usePendingCallsStore((s) => s.pendingCalls.length);
+  const termNames = terminologyStore((s) => s.names);
   // Chat and the assistant are gated by the Chat.System feature flag.
   // Chat.System off hides chat and the assistant; Field Records needs Records.System plus this app's
   // own child flag. Both fail closed, so an entry stays hidden until the server confirms it.
-  const menuItems = getMenuItems(t, pendingCallsCount).filter((item) => {
+  const menuItems = getMenuItems(t, pendingCallsCount, termNames).filter((item) => {
     if (item.id === 'chat' || item.id === 'assistant') {
       return isChatEnabled;
     }

@@ -33,6 +33,8 @@ export class CallResultData {
   public IncidentId: string = '';
   public AudioFileId: string = '';
   public Type: string = 'No Type';
+  /** Id of the department call type the call was logged with (survives a rename); null when it matches none, undefined from older servers. */
+  public TypeId?: string | null;
   /**
    * Current alarm level (1-based). Only moves above 1 when the call has been escalated through a
    * run card; the server normalises pre-run-card calls to 1.

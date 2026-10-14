@@ -22,6 +22,7 @@ import { useRecordsFieldStatus } from '@/stores/feature-flags/store';
 import { useDeploymentsStore, useOpenDeploymentCount, useReconciliationCount } from '@/stores/records/deployments-store';
 import { useRecordsStore } from '@/stores/records/store';
 import { securityStore } from '@/stores/security/store';
+import { TermKeys, useTerm } from '@/stores/terminology/store';
 
 // Field Records home (RMS plan RMS-1D): New, Assigned, Drafts, Returned and Recent. Everything shown
 // here came from the server's own filtering; this screen never decides what the person may author.
@@ -43,6 +44,7 @@ const Empty = ({ text }: { text: string }) => <Text className="px-4 py-3 text-sm
 export default function RecordsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const recordsTitle = useTerm(TermKeys.Records, t('records.title'));
   const flagStatus = useRecordsFieldStatus();
   const context = useRecordsContext();
 
@@ -97,7 +99,7 @@ export default function RecordsScreen() {
   return (
     <Box className="flex-1 bg-background-0">
       <FocusAwareStatusBar />
-      <Stack.Screen options={{ title: t('records.title') }} />
+      <Stack.Screen options={{ title: recordsTitle }} />
 
       <ScrollView refreshControl={<RefreshControl refreshing={isSyncing} onRefresh={() => void sync()} />}>
         {flagStatus === 'unknown' ? (

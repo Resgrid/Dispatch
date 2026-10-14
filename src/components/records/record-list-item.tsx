@@ -9,7 +9,8 @@ import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { type FieldRecordAssignmentData, type RecordSummaryData, RmsRecordState } from '@/models/v4/records';
-import { type PendingRecordDraft } from '@/stores/records/store';
+import { type PendingRecordDraft, useRecordsStore } from '@/stores/records/store';
+import { definitionTermKey, recordTypeTermKey, useTerm } from '@/stores/terminology/store';
 
 const stateAction = (state: number): 'muted' | 'info' | 'warning' | 'success' | 'error' => {
   switch (state) {
@@ -29,7 +30,11 @@ const stateAction = (state: number): 'muted' | 'info' | 'warning' | 'success' | 
 
 export const RecordListItem: React.FC<{ record: RecordSummaryData; onPress: () => void; testID?: string }> = ({ record, onPress, testID }) => {
   const { t } = useTranslation();
-  const title = record.RecordNumber || record.DraftReference || record.DefinitionKey || t('records.untitled');
+  const catalogName = useRecordsStore((state) => (record.DefinitionKey ? state.entryFor(record.DefinitionKey)?.Name : undefined));
+  // A built-in type shows the department's own word for it; the raw definition key is only the last resort.
+  const departmentName = useTerm(definitionTermKey(record.DefinitionKey) ?? recordTypeTermKey(record.RecordType), '');
+  const typeName = departmentName || catalogName || record.DefinitionKey || '';
+  const title = record.RecordNumber || record.DraftReference || typeName || t('records.untitled');
 
   return (
     <Pressable onPress={onPress} className="px-4 py-3" testID={testID}>
@@ -42,7 +47,7 @@ export const RecordListItem: React.FC<{ record: RecordSummaryData; onPress: () =
             {title}
           </Text>
           <Text className="text-xs text-typography-500" numberOfLines={1}>
-            {record.DisplaySummary || record.DefinitionKey || ''}
+            {record.DisplaySummary || typeName}
           </Text>
         </VStack>
         <Badge action={stateAction(record.State)} size="sm">
