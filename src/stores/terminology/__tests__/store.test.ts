@@ -91,6 +91,19 @@ describe('Terminology store', () => {
     expect(terminologyStore.getState().names).toEqual({});
   });
 
+  it('discards a response that lands after the user switched departments', async () => {
+    getTerminology.mockImplementation(async () => {
+      setIdentity('user-1', 'dept-2');
+      return { Data: [{ Key: TermKeys.Units, Category: 'Module', DefaultName: 'Units', Name: 'Apparatus' }] };
+    });
+
+    await terminologyStore.getState().fetchTerminology();
+
+    const state = terminologyStore.getState();
+    expect(state.names).toEqual({});
+    expect(state.identityKey).toBeNull();
+  });
+
   it('maps record type numbers and built-in definition keys to term keys', () => {
     expect(recordTypeTermKey(1)).toBe('record-type.run');
     expect(recordTypeTermKey(8)).toBe('record-type.unit-activity');

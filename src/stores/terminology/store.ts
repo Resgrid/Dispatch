@@ -101,6 +101,10 @@ export const terminologyStore = create<TerminologyState>()(
         }
         try {
           const response = await getTerminology();
+          if (getCurrentIdentityKey() !== identityKey) {
+            // Signed out or switched departments while the request was out: these names belong to the previous one.
+            return;
+          }
           const names: Record<string, string> = {};
           for (const term of response?.Data ?? []) {
             const name = term?.Name?.trim();

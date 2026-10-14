@@ -302,6 +302,15 @@ describe('Edit call screen and the call field policy', () => {
     expect(mockUpdateCall.mock.calls[0][0].type).toBe('Structure Fire');
   });
 
+  it("matches the call's text TypeId to a numeric catalog id after the type was renamed", async () => {
+    const { getByText } = await renderEdit([], makeCall({ Type: 'Fire Call', TypeId: '1' }));
+
+    fireEvent.press(getByText('common.save'));
+
+    await waitFor(() => expect(mockUpdateCall).toHaveBeenCalledTimes(1));
+    expect(mockUpdateCall.mock.calls[0][0].type).toBe('Fire');
+  });
+
   it('pre-fills the call type by name when the server sends no TypeId', async () => {
     const { getByText } = await renderEdit([], makeCall({ Type: 'Fire' }));
 
