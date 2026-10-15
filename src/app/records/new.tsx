@@ -19,11 +19,18 @@ import { useRecordsContext } from '@/hooks/use-records-context';
 import { canAuthorOffline, cellKey, toValueList, unsupportedFieldKeys, validate, type ValidationIssue, type ValueMap } from '@/lib/records/schema';
 import { type FieldRecordCatalogEntry, type RecordDefinitionSchema } from '@/models/v4/records';
 import { useRecordsStore } from '@/stores/records/store';
+import { definitionTermKey, terminologyStore } from '@/stores/terminology/store';
 
 // Contextual create: pick a definition the server offered for this context, then author it. The
 // catalog is the only source of what may be started here — nothing is inferred locally.
 
 const clientId = () => `draft-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+// A built-in type shows the department's own word for it (Department -> Terminology), else the catalog's name.
+const displayName = (definition: FieldRecordCatalogEntry, termNames: Record<string, string>): string => {
+  const key = definitionTermKey(definition.DefinitionKey);
+  return (key ? termNames[key] : undefined) || definition.Name;
+};
 
 export default function NewRecordScreen() {
   const { t } = useTranslation();
@@ -40,6 +47,7 @@ export default function NewRecordScreen() {
   const discardDraft = useRecordsStore((state) => state.discardDraft);
   const pushDraft = useRecordsStore((state) => state.pushDraft);
   const report = useRecordsStore((state) => state.report);
+  const termNames = terminologyStore((state) => state.names);
 
   const resumed = params.draft ? pendingDrafts[params.draft] : undefined;
   const [entry, setEntry] = useState<FieldRecordCatalogEntry | null>(null);
@@ -130,7 +138,7 @@ export default function NewRecordScreen() {
         recordId: resumed?.recordId ?? null,
         definitionKey: entry.DefinitionKey,
         definitionVersion: entry.Version,
-        name: entry.Name,
+        name: displayName(entry, termNames),
         values: toValueList(values),
         callId: context.CallId ?? null,
         stationGroupId: context.GroupId ?? null,
@@ -162,7 +170,7 @@ export default function NewRecordScreen() {
         setIsBusy(false);
       }
     },
-    [entry, schema, values, resumed, context, stageDraft, offlineCapable, pushDraft, discardDraft, router, t]
+    [entry, schema, values, resumed, context, termNames, stageDraft, offlineCapable, pushDraft, discardDraft, router, t]
   );
 
   if (!entry) {
@@ -179,7 +187,7 @@ export default function NewRecordScreen() {
                 <Pressable className="px-4 py-4" onPress={() => void choose(definition)} testID={`records-choose-${definition.DefinitionKey}`}>
                   <HStack className="items-center" space="md">
                     <VStack className="flex-1">
-                      <Text className="font-medium text-typography-900">{definition.Name}</Text>
+                      <Text className="font-medium text-typography-900">{displayName(definition, termNames)}</Text>
                       <HStack space="xs" className="mt-1 flex-wrap items-center">
                         {definition.Category ? <Text className="text-xs text-typography-500">{definition.Category}</Text> : null}
                         {definition.RequiresProtectedGrant ? (
@@ -208,7 +216,7 @@ export default function NewRecordScreen() {
 
   return (
     <Box className="flex-1 bg-background-0">
-      <Stack.Screen options={{ title: entry.Name }} />
+      <Stack.Screen options={{ title: displayName(entry, termNames) }} />
       <ScrollView contentContainerClassName="p-4">
         {unsupported.length > 0 ? (
           <Box className="mb-4 rounded-md border border-warning-300 bg-background-warning p-3">

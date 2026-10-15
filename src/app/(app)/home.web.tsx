@@ -29,6 +29,7 @@ import { VStack } from '@/components/ui/vstack';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { useSetStatusForCall } from '@/hooks/use-set-status-for-call';
 import { logger } from '@/lib/logging';
+import { isPersonnelAvailableForDashboard, isPersonnelOnDutyForDashboard, isUnitAvailableForDashboard } from '@/lib/resource-availability';
 import { isCallActive, isCallAwaitingScheduledDispatch } from '@/lib/utils';
 import { type PersonnelInfoResultData } from '@/models/v4/personnel/personnelInfoResultData';
 import { type UnitInfoResultData } from '@/models/v4/units/unitInfoResultData';
@@ -348,21 +349,11 @@ export default function DispatchConsoleWeb() {
     const now = Date.now();
     const scheduledCalls = calls.filter((c) => isCallAwaitingScheduledDispatch(c, now)).length;
     const activeCalls = calls.filter((c) => isCallActive(c.State)).length - scheduledCalls;
-    // Only count units/personnel with explicit 'available' or 'standing by' status (case-insensitive)
-    // Missing or null statuses are NOT considered available for safety in dispatch scenarios
-    const availableUnits = units.filter((u) => {
-      const status = (u.CurrentStatus || '').toLowerCase();
-      return status === 'available' || status === 'standing by';
-    }).length;
-    // Personnel with Available or Standing By status
-    const availablePersonnel = personnel.filter((p) => {
-      const status = (p.Status || '').toLowerCase();
-      return status === 'available' || status === 'standing by';
-    }).length;
-    const onDutyPersonnel = personnel.filter((p) => {
-      const staffing = (p.Staffing || '').toLowerCase();
-      return staffing && staffing !== 'off duty' && staffing !== 'unavailable';
-    }).length;
+    // Decided by the status/staffing base type when the server sends one. Without one, only an explicit 'available' or
+    // 'standing by' status counts: missing or null statuses are NOT considered available for safety in dispatch scenarios
+    const availableUnits = units.filter(isUnitAvailableForDashboard).length;
+    const availablePersonnel = personnel.filter(isPersonnelAvailableForDashboard).length;
+    const onDutyPersonnel = personnel.filter(isPersonnelOnDutyForDashboard).length;
 
     return {
       activeCalls,

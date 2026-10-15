@@ -13,12 +13,18 @@ export class PersonnelInfoResultData {
   public StatusId: string = '';
   public Status: string = '';
   public StatusColor: string = '';
+  /** What the current status means (ActionBaseTypes, see lib/base-types); -1 when it has none, undefined from older servers. */
+  public StatusBaseType?: number | null;
   public StatusTimestamp: string = '';
   public StatusDestinationId: string = '';
   public StatusDestinationName: string = '';
+  /** What StatusDestinationId names: 1 station, 2 call, 3 POI; null when the status did not record it. */
+  public StatusDestinationType?: number | null;
   public StaffingId: string = '';
   public Staffing: string = '';
   public StaffingColor: string = '';
+  /** What the current staffing level means (StaffingBaseTypes, see lib/base-types); -1 when it has none, undefined from older servers. */
+  public StaffingBaseType?: number | null;
   public StaffingTimestamp: string = '';
   public Roles: string[] = [];
   public UdfValues: UdfFieldValueResultData[] = [];

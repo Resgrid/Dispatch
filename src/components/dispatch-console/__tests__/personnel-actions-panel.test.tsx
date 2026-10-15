@@ -137,6 +137,18 @@ describe('PersonnelActionsPanel destination defaults', () => {
     await waitFor(() => expect(selectedCallInStore()).toBe('B'));
   });
 
+  it('matches a typed destination only against its own kind, even when a station id collides with a call id', async () => {
+    (getAllGroups as jest.Mock).mockResolvedValue({ Data: [{ GroupId: 'A', Name: 'Station A', GroupType: 'Station' }] });
+    const target = { ...person('p1', 'A'), StatusDestinationType: DestinationEntityType.Station } as PersonnelInfoResultData;
+    act(() => {
+      usePersonnelActionsStore.getState().openActions(target);
+    });
+    render(<PersonnelActionsPanel personnel={target} />);
+
+    await waitFor(() => expect(usePersonnelActionsStore.getState().statusSelectedStation?.GroupId).toBe('A'));
+    expect(selectedCallInStore()).toBeNull();
+  });
+
   it("waits for the next person's options before settling on their station", async () => {
     // The first person's load fails, so their panel finishes loading with no stations at all.
     (getAllGroups as jest.Mock).mockRejectedValueOnce(new Error('offline')).mockResolvedValue({ Data: [{ GroupId: 'g-5', Name: 'Station 5', GroupType: 'Station' }] });

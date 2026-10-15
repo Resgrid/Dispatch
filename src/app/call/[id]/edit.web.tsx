@@ -324,8 +324,10 @@ export default function EditCallWeb() {
   useEffect(() => {
     if (call) {
       const priority = callPriorities.find((p) => p.Id === call.Priority);
-      // Call.Type is the type's text, not its id -- matching on Id left the picker blank on every edit.
-      const type = callTypes.find((t) => t.Name === call.Type);
+      // Call.Type is the type's text, not its id -- matching on Id left the picker blank on every edit. Newer servers also
+      // send TypeId, which still finds the type after a rename; the name match covers older servers. Ids compare as text:
+      // a catalog id can arrive as a number.
+      const type = (call.TypeId ? callTypes.find((t) => String(t.Id) === String(call.TypeId)) : undefined) ?? callTypes.find((t) => t.Name === call.Type);
 
       // Build dispatch selection from existing dispatches
       const initialDispatch: DispatchSelection = {

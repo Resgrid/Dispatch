@@ -14,6 +14,7 @@ import { formatDateForDisplay, parseDateISOString, stripHtmlTags } from '@/lib/u
 import { type CallNoteResultData } from '@/models/v4/callNotes/callNoteResultData';
 import { type NoteResultData } from '@/models/v4/notes/noteResultData';
 import { selectCardCollapsed, useDashboardViewStore } from '@/stores/dispatch/dashboard-view-store';
+import { TermKeys, useTerm } from '@/stores/terminology/store';
 
 import { AnimatedRefreshIcon } from './animated-refresh-icon';
 import { PanelHeader } from './panel-header';
@@ -82,6 +83,7 @@ const CallNoteItem: React.FC<{
 
 const NotesPanelComponent: React.FC<NotesPanelProps> = ({ notes, isLoading, onRefresh, onSelectNote, onNewNote, isCallFilterActive, callNotes, onAddCallNote, isAddingNote, flexWeight }) => {
   const { t } = useTranslation();
+  const notesTitle = useTerm(TermKeys.Notes, t('dispatch.notes'));
   const isCollapsed = useDashboardViewStore(selectCardCollapsed('notes'));
   const setCardCollapsed = useDashboardViewStore((s) => s.setCardCollapsed);
   const [newNoteText, setNewNoteText] = useState('');
@@ -127,7 +129,7 @@ const NotesPanelComponent: React.FC<NotesPanelProps> = ({ notes, isLoading, onRe
       style={!isCollapsed && flexWeight !== undefined ? { flex: flexWeight } : undefined}
     >
       <PanelHeader
-        title={isCallFilterActive ? t('dispatch.call_notes') : t('dispatch.notes')}
+        title={isCallFilterActive ? t('dispatch.call_notes') : notesTitle}
         icon={FileText}
         iconColor={isCallFilterActive ? '#f59e0b' : '#f59e0b'}
         count={notesCount}

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 import { getPersonnelInfo } from '@/api/personnel/personnel';
 import { getAllPersonnelStatuses } from '@/api/satuses';
+import { isPersonnelInService } from '@/lib/resource-availability';
 import { isCallActive } from '@/lib/utils';
 import { type PersonnelInfoResultData } from '@/models/v4/personnel/personnelInfoResultData';
 import { type GetCurrentStaffingResultData } from '@/models/v4/personnelStaffing/getCurrentStaffingResultData';
@@ -70,9 +71,9 @@ export const useHomeStore = create<HomeState>((set, get) => ({
       const calls = useCallsStore.getState().calls;
       const openCalls = calls.filter((call) => isCallActive(call.State)).length;
 
-      // Get personnel in service count
+      // Get personnel in service count (by status/staffing base type when the server sends one; see isPersonnelInService)
       const users = useRolesStore.getState().users;
-      const personnelInService = users.filter((user) => user.Status && user.Status !== 'Available' && user.Status !== 'Off Duty').length;
+      const personnelInService = users.filter(isPersonnelInService).length;
 
       // Get units in service count
       const units = useUnitsStore.getState().units;

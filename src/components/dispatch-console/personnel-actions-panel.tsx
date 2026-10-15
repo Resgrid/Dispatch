@@ -15,7 +15,7 @@ import { Icon } from '@/components/ui/icon';
 import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
-import { type DestinationTab, getDefaultDestinationTab, getEffectiveDestinationType, getStatusDestinationCapabilities, resolveDefaultDestinationCall } from '@/lib/destination-helpers';
+import { DestinationEntityType, type DestinationTab, getDefaultDestinationTab, getEffectiveDestinationType, getStatusDestinationCapabilities, resolveDefaultDestinationCall } from '@/lib/destination-helpers';
 import { getPoiSelectionLabel } from '@/lib/poi-display';
 import { invertColor, isCallActive } from '@/lib/utils';
 import { type CallResultData } from '@/models/v4/calls/callResultData';
@@ -26,6 +26,7 @@ import { type StatusesResultData } from '@/models/v4/statuses/statusesResultData
 import { useCallsStore } from '@/stores/calls/store';
 import { useDispatchConsoleStore } from '@/stores/dispatch/dispatch-console-store';
 import { usePersonnelActionsStore } from '@/stores/dispatch/personnel-actions-store';
+import { TermKeys, useTerm } from '@/stores/terminology/store';
 
 interface PersonnelActionsPanelProps {
   personnel?: PersonnelInfoResultData | null;
@@ -107,6 +108,7 @@ const DestinationSheetOption: React.FC<{
 
 export const PersonnelActionsPanel: React.FC<PersonnelActionsPanelProps> = ({ personnel: personnelProp, onStatusUpdated, onStaffingUpdated }) => {
   const { t } = useTranslation();
+  const callsLabel = useTerm(TermKeys.Calls, t('dispatch.calls'));
 
   // Get calls directly from calls store using selector
   const calls = useCallsStore((state) => state.calls);
@@ -286,6 +288,7 @@ export const PersonnelActionsPanel: React.FC<PersonnelActionsPanelProps> = ({ pe
     const defaultCall = resolveDefaultDestinationCall({
       callContext,
       currentDestinationId: selectedPersonnel.StatusDestinationId,
+      currentDestinationType: selectedPersonnel.StatusDestinationType,
       selectedCallId,
       activeCalls,
     });
@@ -298,9 +301,13 @@ export const PersonnelActionsPanel: React.FC<PersonnelActionsPanelProps> = ({ pe
     // Stations and POIs come from the options load; wait for it before settling on a default.
     if (optionsLoadedForUserId !== selectedPersonnel.UserId) return;
 
+    // A typed destination (newer servers) is only matched against its own kind: station, call and POI ids can collide.
+    const destinationType = selectedPersonnel.StatusDestinationType;
     const destinationId = selectedPersonnel.StatusDestinationId;
-    const matchingStation = destinationId ? availableStations.find((s) => s.GroupId === destinationId) : undefined;
-    const matchingPoi = destinationId && !matchingStation ? availablePois.find((poi) => poi.PoiId.toString() === destinationId) : undefined;
+    const canBeStation = destinationType === null || destinationType === undefined || destinationType === DestinationEntityType.Station;
+    const canBePoi = destinationType === null || destinationType === undefined || destinationType === DestinationEntityType.Poi;
+    const matchingStation = destinationId && canBeStation ? availableStations.find((s) => s.GroupId === destinationId) : undefined;
+    const matchingPoi = destinationId && canBePoi && !matchingStation ? availablePois.find((poi) => poi.PoiId.toString() === destinationId) : undefined;
 
     if (matchingStation) {
       setStatusSelectedStation(matchingStation);
@@ -688,7 +695,7 @@ export const PersonnelActionsPanel: React.FC<PersonnelActionsPanelProps> = ({ pe
                   {destinationConfig.showCalls ? (
                     <Pressable onPress={() => setDestinationTab('calls')} className={`flex-1 rounded-md px-3 py-2 ${destinationTab === 'calls' ? 'bg-white shadow-xs dark:bg-gray-700' : ''}`}>
                       <Text className={`text-center text-sm font-medium ${destinationTab === 'calls' ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400'}`}>
-                        {t('dispatch.calls')} ({activeCalls.length})
+                        {callsLabel} ({activeCalls.length})
                       </Text>
                     </Pressable>
                   ) : null}
