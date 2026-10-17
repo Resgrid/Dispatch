@@ -101,6 +101,13 @@ jest.mock('@/components/ui/icon', () => ({
   },
 }));
 
+jest.mock('@/components/calls/dispatch-selection-modal', () => ({
+  DispatchSelectionModal: ({ isVisible, callId }: any) => {
+    const { View } = require('react-native');
+    return isVisible ? <View testID="dispatch-selection-modal" accessibilityLabel={callId} /> : null;
+  },
+}));
+
 jest.mock('../panel-header', () => ({
   PanelHeader: ({ title, icon, iconColor, count, isCollapsed, onToggleCollapse, rightContent }: any) => {
     const { View, Text, Pressable } = require('react-native');
@@ -506,5 +513,22 @@ describe('ActiveCallsPanel', () => {
 
     // The fetchCalls function should have been called on mount
     expect(localFetchCalls).toHaveBeenCalled();
+  });
+
+  it('opens the dispatch picker for the call without wrapping it in an RN Modal', async () => {
+    const { Modal } = require('react-native');
+    render(<ActiveCallsPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('dispatch-more-call-1')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByTestId('dispatch-more-call-1'), { stopPropagation: jest.fn() });
+
+    const picker = await screen.findByTestId('dispatch-selection-modal');
+    expect(picker.props.accessibilityLabel).toBe('call-1');
+    // The picker is an Actionsheet that portals itself; an RN Modal around it is left as an empty
+    // transparent layer above the sheet that blocks scrolling and selection.
+    expect(screen.UNSAFE_queryAllByType(Modal)).toHaveLength(0);
   });
 });

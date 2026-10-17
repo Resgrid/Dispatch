@@ -2,7 +2,7 @@ import { type Href, router } from 'expo-router';
 import { AlertTriangle, Clock, ExternalLink, MapPin, Navigation, Plus, Radio, Search, UserPlus, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, Modal, Platform, Pressable, ScrollView, StyleSheet, Text as RNText, TextInput, View } from 'react-native';
+import { FlatList, Platform, Pressable, ScrollView, StyleSheet, Text as RNText, TextInput, View } from 'react-native';
 
 import { getCallExtraData, updateCall } from '@/api/calls/calls';
 import { DispatchSelectionModal } from '@/components/calls/dispatch-selection-modal';
@@ -510,16 +510,16 @@ const ActiveCallsPanelComponent: React.FC<ActiveCallsPanelProps> = ({ selectedCa
         </View>
       ) : null}
 
-      {/* Dispatch additional resources — RN Modal portals above the panel's overflow-hidden container. */}
-      <Modal visible={!!dispatchTargetCall} transparent animationType="slide" onRequestClose={() => setDispatchTargetCall(null)}>
-        <DispatchSelectionModal
-          isVisible={!!dispatchTargetCall}
-          onClose={() => setDispatchTargetCall(null)}
-          onConfirm={handleDispatchAdditional}
-          initialSelection={EMPTY_DISPATCH_SELECTION}
-          callId={dispatchTargetCall?.CallId}
-        />
-      </Modal>
+      {/* Dispatch additional resources. The picker is an Actionsheet, which already portals to the app-root overlay host
+          above the panel's overflow-hidden container. Do not wrap it in an RN Modal: the sheet would portal out of it,
+          leaving the Modal as an empty, transparent full-screen layer on top that swallows every tap and scroll. */}
+      <DispatchSelectionModal
+        isVisible={!!dispatchTargetCall}
+        onClose={() => setDispatchTargetCall(null)}
+        onConfirm={handleDispatchAdditional}
+        initialSelection={EMPTY_DISPATCH_SELECTION}
+        callId={dispatchTargetCall?.CallId}
+      />
     </Box>
   );
 };
