@@ -74,9 +74,13 @@ export const getDispatchRecommendation = async (request: RecommendationRequest, 
  * Recommendation for adding resources to a call already out: the run card for the call's priority, type and location at
  * its current alarm level, with the units and people already on the call counted toward the requirements, so only what
  * is still missing is recommended. Nothing is dispatched. Returns null when no card matches the call.
+ *
+ * Conditional run cards pin the decision taken when the call was saved, so this answers from that pin (Decision.Pinned)
+ * unless `reevaluate` asks the server to walk the decision graph fresh against the resources available now.
  */
-export const getCallRecommendation = async (callId: string, signal?: AbortSignal): Promise<DispatchRecommendationResultData | null> => {
-  const response = await getCallRecommendationApi.get<RunCardRecommendationResult>({ callId }, signal);
+export const getCallRecommendation = async (callId: string, signal?: AbortSignal, options?: { reevaluate?: boolean }): Promise<DispatchRecommendationResultData | null> => {
+  // Only sent when asked for, so a server that predates conditional run cards sees the request it always did.
+  const response = await getCallRecommendationApi.get<RunCardRecommendationResult>({ callId, ...(options?.reevaluate ? { reevaluate: true } : {}) }, signal);
 
   const data = response.data?.Data ?? null;
 

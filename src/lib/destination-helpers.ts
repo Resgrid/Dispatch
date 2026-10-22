@@ -1,6 +1,8 @@
+import { ActionBaseTypes } from '@/lib/base-types';
 import { type CallResultData } from '@/models/v4/calls/callResultData';
 import { type GroupResultData } from '@/models/v4/groups/groupsResultData';
 import { type PoiResultData } from '@/models/v4/mapping/poiResultData';
+import { type StatusesResultData } from '@/models/v4/statuses/statusesResultData';
 
 export enum DestinationEntityType {
   None = 0,
@@ -57,6 +59,32 @@ export const getDestinationCapabilities = (detail?: number | null): DestinationC
     default:
       return { showCalls: false, showStations: false, showPois: false, supportsDestination: false };
   }
+};
+
+/** The `CustomStateDetailType` that offers exactly the given destination kinds. */
+export const getDetailFromCapabilities = ({ showCalls, showStations, showPois }: Pick<DestinationCapabilities, 'showCalls' | 'showStations' | 'showPois'>): CustomStateDetailType => {
+  if (showCalls && showStations && showPois) return CustomStateDetailType.CallsStationsAndPois;
+  if (showCalls && showStations) return CustomStateDetailType.CallsAndStations;
+  if (showCalls && showPois) return CustomStateDetailType.CallsAndPois;
+  if (showStations && showPois) return CustomStateDetailType.StationsAndPois;
+  if (showCalls) return CustomStateDetailType.Calls;
+  if (showStations) return CustomStateDetailType.Stations;
+  if (showPois) return CustomStateDetailType.Pois;
+  return CustomStateDetailType.None;
+};
+
+/**
+ * One `Detail` covering every destination kind any of the given statuses accepts. Used when one status change is
+ * applied to several units whose status sets give the same status different destination types: each unit is still
+ * only sent the destination its own status supports (see {@link getStatusDestinationPayload}).
+ */
+export const mergeStatusDestinationDetails = (details: (number | null | undefined)[]): CustomStateDetailType => {
+  const capabilities = details.map(getDestinationCapabilities);
+  return getDetailFromCapabilities({
+    showCalls: capabilities.some((c) => c.showCalls),
+    showStations: capabilities.some((c) => c.showStations),
+    showPois: capabilities.some((c) => c.showPois),
+  });
 };
 
 export const getDestinationSelectionTypeValue = (type: DestinationSelectionType): DestinationEntityType | null => {
@@ -273,6 +301,60 @@ export const resolveDefaultDestinationCall = ({ callContext, workingCallId, curr
     const selectedCall = activeCalls.find((call) => call.CallId === selectedCallId);
     if (selectedCall) {
       return selectedCall;
+    }
+  }
+
+  return null;
+};
+
+/** Statuses that take the patient to the receiving facility, so the call's destination (its hospital) is where they go. */
+const TRANSPORT_STATUS_BASE_TYPES: readonly number[] = [ActionBaseTypes.Transporting, ActionBaseTypes.AtHospital];
+
+export const isTransportStatus = (baseType?: number | null): boolean => baseType !== null && baseType !== undefined && TRANSPORT_STATUS_BASE_TYPES.includes(baseType);
+
+export interface TransportDestinationPoiInput {
+  /** The status being picked: its `Detail` (what it takes) and `BaseType` (what it means). */
+  status: Pick<StatusesResultData, 'Detail' | 'BaseType'>;
+  /** The destination selected before the status was picked. */
+  selection: DestinationSelectionState;
+  hasCallContext?: boolean;
+  /** The destination POI the unit's call was logged with (`CallResultData.DestinationPoiId`). */
+  callDestinationPoiId?: number | null;
+  /** The POI the unit is already transporting to (its current destination while its status is Transporting). */
+  transportPoiId?: number | string | null;
+  /** The destination POIs the status can go to. */
+  availablePois: PoiResultData[];
+}
+
+/**
+ * The POI a status change should default to from the unit's call, so a "departing to hospital" status goes to the
+ * hospital the call was logged with without the dispatcher picking it (Belgian EMS, 2026-10-21):
+ * - a status that takes no POIs, or a POI already chosen (a crew's change of hospital stands): none;
+ * - a transport status (Transporting, At Hospital): the POI the unit is already transporting to, else the call's;
+ * - a status the department has given no meaning, when it would otherwise go without a destination: the same;
+ * - any other status (Responding, On Scene...): none, so it keeps its call.
+ * A POI that is not among the status's destination POIs is never picked.
+ */
+export const resolveTransportDestinationPoi = ({ status, selection, hasCallContext = false, callDestinationPoiId, transportPoiId, availablePois }: TransportDestinationPoiInput): PoiResultData | null => {
+  if (!getStatusDestinationCapabilities(status.Detail, hasCallContext).showPois) {
+    return null;
+  }
+
+  const effectiveType = getEffectiveDestinationType(selection, status.Detail, hasCallContext);
+  if (effectiveType === 'poi') {
+    return null;
+  }
+
+  const hasMeaning = status.BaseType !== null && status.BaseType !== undefined && status.BaseType !== ActionBaseTypes.None;
+  if (hasMeaning ? !isTransportStatus(status.BaseType) : effectiveType !== 'none') {
+    return null;
+  }
+
+  for (const poiId of [transportPoiId, callDestinationPoiId]) {
+    if (poiId === null || poiId === undefined || poiId === '') continue;
+    const poi = availablePois.find((candidate) => candidate.PoiId.toString() === poiId.toString());
+    if (poi) {
+      return poi;
     }
   }
 

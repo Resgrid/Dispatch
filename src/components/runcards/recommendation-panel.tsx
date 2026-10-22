@@ -4,6 +4,8 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TouchableOpacity } from 'react-native';
 
+import { ResponseCodeChip } from '@/components/runcards/response-code-chip';
+import { RunCardDecisionSection } from '@/components/runcards/run-card-decision-section';
 import { Badge, BadgeText } from '@/components/ui/badge';
 import { Box } from '@/components/ui/box';
 import { Button, ButtonText } from '@/components/ui/button';
@@ -12,8 +14,27 @@ import { HStack } from '@/components/ui/hstack';
 import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
+import { effectiveUnitResponseCodeId, type UnitResponseCodeChoices } from '@/lib/run-card-conditions';
 import { dispatchModeKey, hasRecommendationContent, personnelDetailParts, selectionReasonKey, shortfallReasonKey, unitDetailParts, unitStatusColors } from '@/lib/run-cards';
+import { type DispatchResponseCodeData } from '@/models/v4/awaitingResources/awaitingResourcesResultData';
 import { type DispatchRecommendationResultData, type UnitRecommendationData } from '@/models/v4/runcards/dispatchRecommendationResultData';
+
+/**
+ * Conditional run cards (Dispatch.RunCardConditions) on the panel: the decision explanation, the row each resource fills,
+ * response codes and re-evaluating a pinned decision. Left out (or `enabled` false), the panel shows what a fixed run
+ * card shows and nothing more.
+ */
+export interface RecommendationConditionsProps {
+  enabled: boolean;
+  /** The department's pickable response codes. Empty hides the per-unit picker; codes the proposal carries still show. */
+  responseCodes?: DispatchResponseCodeData[];
+  /** The dispatcher's code choices over the proposal (unit id to code id, null for none). */
+  unitResponseCodes?: UnitResponseCodeChoices;
+  onUnitResponseCodeChange?: (unitId: number, codeId: number | null) => void;
+  /** Offered when the decision is pinned (a call already out): walks the decision graph again. */
+  onReevaluate?: () => void;
+  isReevaluating?: boolean;
+}
 
 interface RecommendationPanelProps {
   recommendation: DispatchRecommendationResultData | null;
@@ -35,8 +56,74 @@ interface RecommendationPanelProps {
    * explainer are left out: they would read as if the resources shown here had already been alerted.
    */
   isExistingCall?: boolean;
+  /** Conditional run cards; see {@link RecommendationConditionsProps}. */
+  conditions?: RecommendationConditionsProps;
   testID?: string;
 }
+
+/**
+ * The response code a recommended unit goes with, and (when the department has codes) a picker to change it. The chip
+ * opens an inline row of the department's codes plus "No code"; picking one closes it.
+ */
+const UnitResponseCodePicker: React.FC<{ unit: UnitRecommendationData; conditions: RecommendationConditionsProps; testID: string }> = ({ unit, conditions, testID }) => {
+  const { t } = useTranslation();
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const [isOpen, setIsOpen] = useState(false);
+
+  const codes = conditions.responseCodes ?? [];
+  const canPick = codes.length > 0 && !!conditions.onUnitResponseCodeChange;
+  const effectiveId = effectiveUnitResponseCodeId(unit, conditions.unitResponseCodes);
+  // A proposed code the catalog no longer lists (retired since) still shows as the proposal named it.
+  const picked = effectiveId !== null ? codes.find((code) => code.Id === effectiveId) : undefined;
+  const isProposal = effectiveId !== null && effectiveId === (unit.ResponseCodeId ?? null);
+  const chipCode = picked?.Code ?? (isProposal ? unit.ResponseCode : null);
+  const chipName = picked?.Name ?? (isProposal ? unit.ResponseCodeName : null);
+  const chipColor = picked?.Color ?? (isProposal ? unit.ResponseCodeColor : null);
+
+  if (!canPick) {
+    return chipCode ? <ResponseCodeChip code={chipCode} name={chipName} color={chipColor} testID={`${testID}-code`} /> : null;
+  }
+
+  const choose = (codeId: number | null) => {
+    conditions.onUnitResponseCodeChange?.(unit.UnitId, codeId);
+    setIsOpen(false);
+  };
+
+  return (
+    <VStack className="items-end gap-1">
+      {chipCode ? (
+        <ResponseCodeChip code={chipCode} name={chipName} color={chipColor} onPress={() => setIsOpen((open) => !open)} testID={`${testID}-code`} />
+      ) : (
+        <TouchableOpacity onPress={() => setIsOpen((open) => !open)} accessibilityRole="button" testID={`${testID}-code-add`}>
+          <Box className={`rounded border border-dashed px-1.5 py-0.5 ${isDark ? 'border-neutral-600' : 'border-neutral-400'}`}>
+            <Text className="text-xs text-neutral-500">{t('run_cards.conditions.response_code_add')}</Text>
+          </Box>
+        </TouchableOpacity>
+      )}
+      {isOpen ? (
+        <HStack className="flex-wrap justify-end gap-1" testID={`${testID}-code-options`}>
+          {codes.map((code) => (
+            <ResponseCodeChip
+              key={`rc-code-${unit.UnitId}-${code.Id}`}
+              code={code.Code}
+              name={code.Name}
+              color={code.Color}
+              isSelected={code.Id === effectiveId}
+              onPress={() => choose(code.Id)}
+              testID={`${testID}-code-option-${code.Id}`}
+            />
+          ))}
+          <TouchableOpacity onPress={() => choose(null)} accessibilityRole="button" testID={`${testID}-code-option-none`}>
+            <Box className={`rounded px-1.5 py-0.5 ${effectiveId === null ? 'border-2 border-blue-500' : `border ${isDark ? 'border-neutral-600' : 'border-neutral-300'}`}`}>
+              <Text className="text-xs text-neutral-500">{t('run_cards.conditions.response_code_none')}</Text>
+            </Box>
+          </TouchableOpacity>
+        </HStack>
+      ) : null}
+    </VStack>
+  );
+};
 
 /**
  * A recommended unit's status in the status's own colours, as it shows everywhere else, so the dispatcher reads it at a
@@ -84,6 +171,7 @@ export const RecommendationPanel: React.FC<RecommendationPanelProps> = ({
   onRefresh,
   coveredMessage,
   isExistingCall = false,
+  conditions,
   testID = 'run-card-recommendation-panel',
 }) => {
   const { t } = useTranslation();
@@ -91,6 +179,10 @@ export const RecommendationPanel: React.FC<RecommendationPanelProps> = ({
   const isDark = colorScheme === 'dark';
   const [isExpanded, setIsExpanded] = useState(true);
   const showAutoDispatch = !isExistingCall && !!recommendation?.AutoDispatch;
+  // Conditional run card extras only with the flag on; a fixed card's recommendation never carries them anyway.
+  const showConditions = !!conditions?.enabled;
+  const decision = showConditions ? (recommendation?.Decision ?? null) : null;
+  const canReevaluate = !!decision?.Pinned && !!conditions?.onReevaluate;
 
   const toggleExpanded = useCallback(() => setIsExpanded((previous) => !previous), []);
 
@@ -145,6 +237,15 @@ export const RecommendationPanel: React.FC<RecommendationPanelProps> = ({
             <RefreshCwIcon size={18} color={isDark ? '#a3a3a3' : '#737373'} />
           </TouchableOpacity>
         </HStack>
+        {/* Covered against the decision pinned at save time; things may have changed since, so a fresh walk stays one tap away. */}
+        {canReevaluate ? (
+          <Box className="mt-2">
+            <Button size="xs" variant="outline" action="secondary" onPress={conditions?.onReevaluate} isDisabled={!!conditions?.isReevaluating} testID={`${testID}-decision-reevaluate`}>
+              {conditions?.isReevaluating ? <Spinner size="small" /> : <RefreshCwIcon size={12} color={isDark ? '#e5e5e5' : '#404040'} />}
+              <ButtonText>{t('run_cards.conditions.reevaluate')}</ButtonText>
+            </Button>
+          </Box>
+        ) : null}
       </Card>
     );
   }
@@ -197,6 +298,8 @@ export const RecommendationPanel: React.FC<RecommendationPanelProps> = ({
               wondering why applying is optional. */}
           {showAutoDispatch ? <Text className="text-xs text-neutral-500">{t('run_cards.auto_dispatch_explainer')}</Text> : null}
 
+          {decision ? <RunCardDecisionSection decision={decision} onReevaluate={canReevaluate ? conditions?.onReevaluate : undefined} isReevaluating={conditions?.isReevaluating} testID={testID} /> : null}
+
           {unitCount > 0 ? (
             <VStack className="gap-1">
               <Text className="text-xs font-semibold uppercase text-neutral-500">{t('run_cards.units_section', { count: unitCount })}</Text>
@@ -210,9 +313,15 @@ export const RecommendationPanel: React.FC<RecommendationPanelProps> = ({
                           <Text className="text-sm font-medium">{unit.UnitName}</Text>
                           <UnitStatusBadge unit={unit} isDark={isDark} testID={`${testID}-unit-${unit.UnitId}-status`} />
                         </HStack>
+                        {showConditions && unit.RowLabel ? (
+                          <Text className="text-xs font-medium text-blue-600 dark:text-blue-400" testID={`${testID}-unit-${unit.UnitId}-row`}>
+                            {t('run_cards.conditions.fills_row', { row: unit.RowLabel })}
+                          </Text>
+                        ) : null}
                         {details.length > 0 ? <Text className="text-xs text-neutral-500">{details.join(' · ')}</Text> : null}
                       </VStack>
-                      <VStack className="items-end">
+                      <VStack className="items-end gap-1">
+                        {showConditions && conditions ? <UnitResponseCodePicker unit={unit} conditions={conditions} testID={`${testID}-unit-${unit.UnitId}`} /> : null}
                         <Text className="text-xs text-neutral-500">{t(selectionReasonKey(unit.SelectionReason))}</Text>
                         {unit.LocationIsStale ? <Text className="text-xs text-amber-600">{t('run_cards.stale_location')}</Text> : null}
                       </VStack>
@@ -233,9 +342,16 @@ export const RecommendationPanel: React.FC<RecommendationPanelProps> = ({
                     <HStack className="items-center justify-between gap-2">
                       <VStack className="flex-1">
                         <Text className="text-sm font-medium">{person.Name}</Text>
+                        {showConditions && person.RowLabel ? (
+                          <Text className="text-xs font-medium text-blue-600 dark:text-blue-400" testID={`${testID}-person-${person.UserId}-row`}>
+                            {t('run_cards.conditions.fills_row', { row: person.RowLabel })}
+                          </Text>
+                        ) : null}
                         {details.length > 0 ? <Text className="text-xs text-neutral-500">{details.join(' · ')}</Text> : null}
                       </VStack>
-                      <VStack className="items-end">
+                      <VStack className="items-end gap-1">
+                        {/* Codes are posted per unit only, so a person's proposed code is shown, not picked. */}
+                        {showConditions ? <ResponseCodeChip code={person.ResponseCode} name={person.ResponseCodeName} color={person.ResponseCodeColor} testID={`${testID}-person-${person.UserId}-code`} /> : null}
                         <Text className="text-xs text-neutral-500">{t(selectionReasonKey(person.SelectionReason))}</Text>
                         {person.LocationIsStale ? <Text className="text-xs text-amber-600">{t('run_cards.stale_location')}</Text> : null}
                       </VStack>
@@ -255,14 +371,22 @@ export const RecommendationPanel: React.FC<RecommendationPanelProps> = ({
                 <Text className="text-xs font-semibold uppercase text-amber-600">{t('run_cards.shortfalls_section')}</Text>
               </HStack>
               {recommendation.Shortfalls.map((shortfall) => (
-                <Text key={`rc-short-${shortfall.IsUnitRequirement ? 'u' : 'p'}-${shortfall.RequirementId}`} className="text-xs text-amber-600">
-                  {t('run_cards.shortfall_line', {
-                    name: shortfall.TypeOrRoleName,
-                    filled: shortfall.FilledCount,
-                    required: shortfall.RequiredCount,
-                    reason: t(shortfallReasonKey(shortfall.Reason)),
-                  })}
-                </Text>
+                <HStack key={`rc-short-${shortfall.IsUnitRequirement ? 'u' : 'p'}-${shortfall.RequirementScope ?? 0}-${shortfall.RequirementId}`} className="flex-wrap items-center gap-1">
+                  <Text className="text-xs text-amber-600">
+                    {t('run_cards.shortfall_line', {
+                      name: shortfall.TypeOrRoleName,
+                      filled: shortfall.FilledCount,
+                      required: shortfall.RequiredCount,
+                      reason: t(shortfallReasonKey(shortfall.Reason)),
+                    })}
+                  </Text>
+                  {/* Kept on the call once saved: it shows on the Awaiting Resources list until a matching resource goes. */}
+                  {showConditions && shortfall.Outstanding ? (
+                    <Badge action="warning" testID={`${testID}-shortfall-${shortfall.RequirementId}-awaiting`}>
+                      <BadgeText>{t('run_cards.conditions.awaiting_marker')}</BadgeText>
+                    </Badge>
+                  ) : null}
+                </HStack>
               ))}
             </VStack>
           ) : null}

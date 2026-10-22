@@ -5,12 +5,14 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import { TypeIcon } from '@/components/common/type-icon';
 import { Badge } from '@/components/ui/badge';
 import { Box } from '@/components/ui/box';
 import { HStack } from '@/components/ui/hstack';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
+import { useReadableColor } from '@/hooks/use-readable-color';
 import { isPersonnelDispatch } from '@/lib/dispatch-types';
 import { isPersonnelAvailable, isPersonnelOnDuty } from '@/lib/resource-availability';
 import { type DispatchedEventResultData } from '@/models/v4/calls/dispatchedEventResultData';
@@ -42,8 +44,11 @@ const PersonnelItem: React.FC<{
   onSetStatusForPersonnel?: (personnelId: string, personnelName: string) => void;
 }> = React.memo(({ person, isSelected, isOnCall, onSelect, onSetStatusForPersonnel }) => {
   const { t } = useTranslation();
-  const statusColor = person.StatusColor || '#6b7280';
-  const staffingColor = person.StaffingColor || '#6b7280';
+  // Department colours drawn on the theme's surface, adjusted so a black status reads in dark mode and a pale one in light mode
+  const readable = useReadableColor();
+  const statusColor = readable.mark(person.StatusColor);
+  const statusTextColor = readable.text(person.StatusColor);
+  const staffingColor = readable.mark(person.StaffingColor);
   const hasDestination = person.StatusDestinationName && person.StatusDestinationName.trim() !== '';
 
   return (
@@ -52,7 +57,9 @@ const PersonnelItem: React.FC<{
         <HStack className="items-center justify-between">
           <HStack className="flex-1 items-center" space="sm">
             <View style={StyleSheet.flatten([styles.avatar, { borderColor: statusColor }])}>
-              <Icon as={User} size="sm" color={statusColor} />
+              {/* The person's role icon (the same one as their map pin) inside the status-colored ring; the status-colored
+                  person icon when none of their roles has one or it fails to load. */}
+              <TypeIcon iconUrl={person.RoleIconUrl} size={20} fallback={<Icon as={User} size="sm" color={statusColor} />} testID={`personnel-role-icon-${person.UserId}`} />
             </View>
             <VStack className="flex-1">
               <HStack className="items-center" space="xs">
@@ -96,7 +103,7 @@ const PersonnelItem: React.FC<{
                 <ExternalLink size={12} color="#6b7280" />
               </Pressable>
               <Circle size={8} fill={statusColor} color={statusColor} />
-              <Text style={{ color: statusColor }} className="text-xs font-medium">
+              <Text style={{ color: statusTextColor }} className="text-xs font-medium">
                 {person.Status || t('dispatch.unknown')}
               </Text>
             </HStack>

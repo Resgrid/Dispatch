@@ -28,12 +28,14 @@ import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import WebView from 'react-native-webview';
 
+import { CallOutstandingRequirements } from '@/components/awaiting-resources/call-outstanding-requirements';
 import { ActivityLinkLegend, ActivityLinkMarker } from '@/components/calls/activity-link-marker';
 import { CallSiteInfoTabPanel } from '@/components/calls/call-site-info-tab-panel';
 import { LocationHistoryPanel } from '@/components/calls/location-history-panel';
 import { VideoFeedsTab } from '@/components/callVideoFeeds/video-feeds-tab';
 import { CheckInTab } from '@/components/checkIn/check-in-tab';
 import { Loading } from '@/components/common/loading';
+import { TypeIcon } from '@/components/common/type-icon';
 import ZeroState from '@/components/common/zero-state';
 import { ProtectedRevealBar } from '@/components/data-protection/protected-reveal-bar';
 import { ProtectedText } from '@/components/data-protection/protected-text';
@@ -43,6 +45,8 @@ import StaticMap from '@/components/maps/static-map';
 import { RecordsQuickCreate } from '@/components/records/records-quick-create';
 import { AlarmLevelBadge } from '@/components/runcards/alarm-level-badge';
 import { EscalateAlarmButton } from '@/components/runcards/escalate-alarm-button';
+import { ResponseCodeChip } from '@/components/runcards/response-code-chip';
+import { withUnitResponseCodes } from '@/components/runcards/run-card-save-fields';
 import { FocusAwareStatusBar, SafeAreaView } from '@/components/ui';
 import { Box } from '@/components/ui/box';
 import { Button, ButtonIcon, ButtonText } from '@/components/ui/button';
@@ -52,7 +56,9 @@ import { SharedTabs, type TabItem } from '@/components/ui/shared-tabs';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useAnalytics } from '@/hooks/use-analytics';
+import { useReadableColor } from '@/hooks/use-readable-color';
 import { isFieldRedacted, ProtectedFieldIds } from '@/lib/data-protection/redacted';
+import { callLocationOf } from '@/lib/dispatch-board';
 import { buildAddResourcesUpdateRequest, EMPTY_DISPATCH_SELECTION } from '@/lib/dispatch-helpers';
 import { logger } from '@/lib/logging';
 import { openMapsWithDirections } from '@/lib/navigation';
@@ -75,7 +81,7 @@ import CallFilesModal from '../../components/calls/call-files-modal';
 import CallImagesModal from '../../components/calls/call-images-modal';
 import CallNotesModal from '../../components/calls/call-notes-modal';
 import { CloseCallBottomSheet } from '../../components/calls/close-call-bottom-sheet';
-import { DispatchSelectionModal } from '../../components/calls/dispatch-selection-modal';
+import { type DispatchSelectionConfirmExtras, DispatchSelectionModal } from '../../components/calls/dispatch-selection-modal';
 import { RescheduleCallSheet } from '../../components/calls/reschedule-call-sheet';
 import { useCallDispatchNow } from '../../components/calls/use-call-dispatch-now';
 import { StatusBottomSheet } from '../../components/status/status-bottom-sheet';
@@ -112,6 +118,8 @@ export default function CallDetail() {
   const showToast = useToastStore((state) => state.showToast);
 
   const { colorScheme } = useColorScheme();
+  // Department colours (priority, statuses) drawn on the theme's surface: a black one reads in dark mode, a pale one in light mode
+  const readable = useReadableColor();
   const textColor = colorScheme === 'dark' ? '#FFFFFF' : '#000000';
 
   // Get current user location from the location store
@@ -205,11 +213,12 @@ export default function CallDetail() {
   // Dispatch additional resources to this (active) call. The picked resources are unioned with the
   // call's existing dispatches so nothing is ever un-dispatched — the server then notifies only the
   // newly-added resources (RebroadcastCall stays false).
-  const handleDispatchAdditional = async (selection: DispatchSelection) => {
+  const handleDispatchAdditional = async (selection: DispatchSelection, extras?: DispatchSelectionConfirmExtras) => {
     if (!call) return;
 
     try {
-      await useCallDetailStore.getState().updateCall(buildAddResourcesUpdateRequest(call, callExtraData?.Dispatches, selection, callExtraData?.CallFormData));
+      // extras: response codes picked on the run card proposal (conditional run cards), when there are any.
+      await useCallDetailStore.getState().updateCall(withUnitResponseCodes(buildAddResourcesUpdateRequest(call, callExtraData?.Dispatches, selection, callExtraData?.CallFormData), extras));
       showToast('success', t('call_detail.dispatch_more_success'));
     } catch (error) {
       logger.error({ message: 'Failed to dispatch additional resources', context: { error, callId: call.CallId } });
@@ -383,7 +392,7 @@ export default function CallDetail() {
             <VStack className="space-y-3">
               <Box className="border-b border-outline-100 pb-2">
                 <Text className="text-sm text-gray-500">{t('call_detail.priority')}</Text>
-                <Text className="font-medium" style={{ color: callPriority?.Color }}>
+                <Text className="font-medium" style={{ color: readable.text(callPriority?.Color) }}>
                   {callPriority?.Name}
                 </Text>
               </Box>
@@ -566,6 +575,8 @@ export default function CallDetail() {
         icon: <UsersIcon size={16} />,
         content: (
           <Box className="p-4">
+            {/* Conditional run cards: what the call is still awaiting (renders nothing otherwise). */}
+            {isCallActive(call.State) ? <CallOutstandingRequirements callId={call.CallId} canDismiss={!!canUserCreateCalls} /> : null}
             {canUserCreateCalls && isCallActive(call.State) ? (
               <Box className="mb-4">
                 <EscalateAlarmButton
@@ -587,7 +598,12 @@ export default function CallDetail() {
               <VStack className="space-y-3">
                 {callExtraData.Dispatches.map((dispatched, index) => (
                   <Box key={index} className="rounded-lg bg-gray-50 p-3 dark:bg-gray-700">
-                    <Text className="font-semibold">{dispatched.Name}</Text>
+                    <HStack className="items-center gap-2">
+                      <TypeIcon iconUrl={dispatched.TypeIconUrl} mapIcon={dispatched.TypeMapIcon} size={20} />
+                      <Text className="font-semibold">{dispatched.Name}</Text>
+                      {/* The response code the unit was sent with (conditional run cards); only sent when the department shows codes to crews. */}
+                      <ResponseCodeChip code={dispatched.ResponseCode} name={dispatched.ResponseCodeName} color={dispatched.ResponseCodeColor} testID={`dispatched-code-${index}`} />
+                    </HStack>
                     <HStack className="mt-1">
                       <Text className="mr-2 text-sm text-gray-600">
                         {t('call_detail.group')}: {dispatched.Group}
@@ -617,7 +633,7 @@ export default function CallDetail() {
                 {callExtraData.Activity.map((event, index) => (
                   <Box key={index} className="border-l-4 border-blue-500 py-1 pl-3">
                     <HStack className="flex-wrap items-center" space="xs">
-                      <Text className="font-semibold" style={{ color: event.StatusColor }}>
+                      <Text className="font-semibold" style={{ color: readable.text(event.StatusColor) }}>
                         {event.StatusText}
                       </Text>
                       <ActivityLinkMarker source={event.DestinationSource} />
@@ -722,17 +738,20 @@ export default function CallDetail() {
         {/* Header */}
         <Box className="mx-4 mt-3 rounded-xl bg-white p-4 shadow-xs dark:bg-gray-800">
           <HStack className="mb-2 items-center justify-between">
-            {/* The call NUMBER is not cataloged, so it stays visible and the record stays findable. */}
-            {isFieldRedacted(call.RedactedFields, ProtectedFieldIds.callName, call.Name) ? (
-              <HStack space="xs" className="items-center">
-                <ProtectedText value={call.Name} fieldId={ProtectedFieldIds.callName} redactedFields={call.RedactedFields} />
-                <Heading size="md">({call.Number})</Heading>
-              </HStack>
-            ) : (
-              <Heading size="md">
-                {call.Name} ({call.Number})
-              </Heading>
-            )}
+            <HStack space="sm" className="shrink items-center">
+              <TypeIcon iconUrl={call.TypeIconUrl} mapIcon={call.TypeMapIcon} size={28} />
+              {/* The call NUMBER is not cataloged, so it stays visible and the record stays findable. */}
+              {isFieldRedacted(call.RedactedFields, ProtectedFieldIds.callName, call.Name) ? (
+                <HStack space="xs" className="items-center">
+                  <ProtectedText value={call.Name} fieldId={ProtectedFieldIds.callName} redactedFields={call.RedactedFields} />
+                  <Heading size="md">({call.Number})</Heading>
+                </HStack>
+              ) : (
+                <Heading size="md" className="shrink">
+                  {call.Name} ({call.Number})
+                </Heading>
+              )}
+            </HStack>
             {/* Show "Set Active" button if this call is not the active call and there is an active unit */}
             {activeUnit && activeCall?.CallId !== call.CallId && !isPendingCall && (
               <Button variant="solid" size="sm" onPress={handleSetActive} disabled={isSettingActive} className={`${isSettingActive ? 'bg-primary-400 opacity-80' : 'bg-primary-500'} shadow-lg`}>
@@ -804,7 +823,7 @@ export default function CallDetail() {
                 size="sm"
                 className="mt-3 self-start"
                 isDisabled={isDispatchingNow}
-                onPress={() => (isPendingCall ? void openDispatchPicker(call.CallId, callExtraData?.Dispatches) : confirmDispatchNow(call.CallId))}
+                onPress={() => (isPendingCall ? void openDispatchPicker(call.CallId, callExtraData?.Dispatches, callLocationOf(call)) : confirmDispatchNow(call.CallId))}
                 testID={isPendingCall ? 'pending-call-dispatch-button' : 'scheduled-call-dispatch-now-button'}
               >
                 <ButtonIcon as={isDispatchingNow ? LoaderIcon : SendIcon} className="mr-2" />
@@ -905,7 +924,14 @@ export default function CallDetail() {
       <StatusBottomSheet />
 
       {/* Dispatch additional resources */}
-      <DispatchSelectionModal isVisible={isDispatchModalOpen} onClose={() => setIsDispatchModalOpen(false)} onConfirm={handleDispatchAdditional} initialSelection={EMPTY_DISPATCH_SELECTION} callId={callId} />
+      <DispatchSelectionModal
+        isVisible={isDispatchModalOpen}
+        onClose={() => setIsDispatchModalOpen(false)}
+        onConfirm={handleDispatchAdditional}
+        initialSelection={EMPTY_DISPATCH_SELECTION}
+        callId={callId}
+        callLocation={callLocationOf(call)}
+      />
 
       {/* Dispatch a pending call (picker preselected with its proposed recipients) */}
       {dispatchPicker}

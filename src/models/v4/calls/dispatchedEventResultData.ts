@@ -20,4 +20,17 @@ export class DispatchedEventResultData {
    * read time). Null/absent on older rows and non-status entries.
    */
   public DestinationSource?: number | null = null;
+
+  /** Unit rows only: the department's uploaded icon for the unit's type (absolute URL); null otherwise or from older servers. */
+  public TypeIconUrl?: string | null = null;
+  /** Unit rows only: the built-in map icon the unit's type picked (lowercase MAP_ICONS key); null otherwise or from older servers. */
+  public TypeMapIcon?: string | null = null;
+
+  /**
+   * Unit dispatch rows only (conditional run cards): the response code the unit was sent with ("C3"), its name and badge
+   * colour (hex). Null unless the department shows response codes to crews, and absent from older servers.
+   */
+  public ResponseCode?: string | null = null;
+  public ResponseCodeName?: string | null = null;
+  public ResponseCodeColor?: string | null = null;
 }

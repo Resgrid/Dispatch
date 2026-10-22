@@ -16,6 +16,7 @@ import { ScrollView } from '@/components/ui/scroll-view';
 import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
+import { UnitTypeIcon } from '@/components/units/unit-type-icon';
 import { logger } from '@/lib/logging';
 import { getAvatarUrl } from '@/lib/utils';
 import { type RecipientsResultData } from '@/models/v4/messages/recipientsResultData';
@@ -193,7 +194,7 @@ export function NewConversationSheet({ isOpen, onClose, mode, onCreated }: NewCo
                       <HStack className="flex-1 items-center" space="sm">
                         {isUnit ? (
                           <Center className="size-8 rounded-full bg-secondary-200">
-                            <Truck size={16} color="#6b7280" />
+                            <UnitTypeIcon iconUrl={recipient.TypeIconUrl} mapIcon={recipient.TypeMapIcon} size={22} fallback={<Truck size={16} color="#6b7280" />} />
                           </Center>
                         ) : (
                           <Avatar size="sm">

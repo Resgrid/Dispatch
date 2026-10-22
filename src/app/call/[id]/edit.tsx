@@ -31,6 +31,7 @@ import { Text } from '@/components/ui/text';
 import { Textarea, TextareaInput } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/toast';
 import { useAnalytics } from '@/hooks/use-analytics';
+import { useDispatchMapOverlay } from '@/hooks/use-dispatch-map-overlay';
 import { useNewCallFieldPolicy } from '@/hooks/use-new-call-field-policy';
 import { describeCallFields, getEditCallMissingFields, getMissingCallFieldsFromError, keepHiddenEditFieldsUnchanged, toProtocolIds } from '@/lib/call-field-policy';
 import { getScheduledDispatchPrefill, isDispatchTimeTooSoon, toDispatchOnUtc } from '@/lib/call-schedule';
@@ -134,6 +135,8 @@ export default function EditCall() {
     longitude: number;
     address?: string;
   } | null>(null);
+  // Units, personnel and group boundaries around the call, from the nearest-unit board the picker ranks with too.
+  const dispatchMapOverlay = useDispatchMapOverlay(selectedLocation);
   // Protocols and a linked call this edit adds. EditCall keeps what the call already has and cannot
   // remove either, so these start empty rather than pre-filled from the call.
   const [selectedProtocols, setSelectedProtocols] = useState<SelectedProtocol[]>([]);
@@ -941,7 +944,7 @@ export default function EditCall() {
                       <FormControlLabelText>{t('calls.coordinates')}</FormControlLabelText>
                     </FormControlLabel>
                     {selectedLocation ? (
-                      <LocationPicker initialLocation={selectedLocation} onLocationSelected={handleLocationSelected} height={200} />
+                      <LocationPicker initialLocation={selectedLocation} onLocationSelected={handleLocationSelected} height={240} overlay={dispatchMapOverlay} />
                     ) : (
                       <Button onPress={() => setShowLocationPicker(true)} className="w-full">
                         <ButtonText>{t('calls.select_location')}</ButtonText>
@@ -1169,7 +1172,7 @@ export default function EditCall() {
       )}
 
       {/* Dispatch selection modal */}
-      <DispatchSelectionModal isVisible={showDispatchModal} onClose={() => setShowDispatchModal(false)} onConfirm={handleDispatchSelection} initialSelection={dispatchSelection} />
+      <DispatchSelectionModal isVisible={showDispatchModal} onClose={() => setShowDispatchModal(false)} onConfirm={handleDispatchSelection} initialSelection={dispatchSelection} callLocation={selectedLocation} />
 
       {/* Protocol Selector modal */}
       <ProtocolSelectorModal isVisible={showProtocolSelector} onClose={() => setShowProtocolSelector(false)} onConfirm={setSelectedProtocols} initialSelected={selectedProtocols} />

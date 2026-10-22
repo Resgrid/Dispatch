@@ -1,9 +1,11 @@
 import { useColorScheme } from 'nativewind';
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
 
+import { DispatchUnitRow, DispatchUserRow } from '@/components/calls/dispatch-recipient-rows';
 import { Loading } from '@/components/common/loading';
+import { TypeIcon } from '@/components/common/type-icon';
 import { RecommendationPanel } from '@/components/runcards/recommendation-panel';
 import { useAddResourcesRecommendation } from '@/components/runcards/use-add-resources-recommendation';
 import { Actionsheet, ActionsheetBackdrop, ActionsheetContent, ActionsheetDragIndicator, ActionsheetDragIndicatorWrapper } from '@/components/ui/actionsheet';
@@ -15,31 +17,114 @@ import { Input, InputField } from '@/components/ui/input';
 import { CheckIcon, SearchIcon, UsersIcon, X } from '@/components/ui/lucide-icons';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
-import { type DispatchSelection, filterDispatchData, useDispatchStore } from '@/stores/dispatch/store';
+import { isDispatchUnitAvailable, isDispatchUserAvailable, NEAREST_BADGE_COUNT, orderRecipients, rankBoardPersonnel, rankBoardUnits, type RecipientSort } from '@/lib/dispatch-board';
+import { recommendedUnitIds, recommendedUserIds } from '@/lib/run-cards';
+import { type DispatchRecommendationResultData } from '@/models/v4/runcards/dispatchRecommendationResultData';
+import { boardKeyFor, type DispatchSelection, filterDispatchData, useDispatchStore } from '@/stores/dispatch/store';
+
+/** Extras that ride a confirmed selection when adding resources (conditional run cards). */
+export interface DispatchSelectionConfirmExtras {
+  /** UnitResponseCodes for the save: the recommended units being added, with the response codes picked for them. */
+  unitResponseCodes?: string;
+}
 
 interface DispatchSelectionModalProps {
   isVisible: boolean;
   onClose: () => void;
-  onConfirm: (selection: DispatchSelection) => void;
+  /** `extras` is passed only when there is something in it, so callers that ignore it see the call they always did. */
+  onConfirm: (selection: DispatchSelection, extras?: DispatchSelectionConfirmExtras) => void;
   initialSelection?: DispatchSelection;
   /**
    * Set when adding resources to a call already out: the picker then offers the run card's recommendation for what the
    * call still needs, counted against what it already has.
    */
   callId?: string | null;
+  /**
+   * The call's location. With it, personnel and units are ranked by response time to the call, with distance, ETA and a
+   * "Nearest" badge (the nearest-unit board); without it they are listed by name.
+   */
+  callLocation?: { latitude: number; longitude: number } | null;
+  /**
+   * New Call's run card recommendation, so the rows it proposes carry a "Run card" badge. When adding resources to a
+   * call (callId), the picker's own recommendation for what the call still needs is badged as well.
+   */
+  recommendation?: DispatchRecommendationResultData | null;
 }
 
-export const DispatchSelectionModal: React.FC<DispatchSelectionModalProps> = ({ isVisible, onClose, onConfirm, initialSelection, callId }) => {
+/** A usable call location: numbers, not 0,0 (what a call without a location carries). */
+const usableLocation = (location: DispatchSelectionModalProps['callLocation']) =>
+  location && Number.isFinite(location.latitude) && Number.isFinite(location.longitude) && !(location.latitude === 0 && location.longitude === 0) ? location : null;
+
+const SortChip: React.FC<{ label: string; active: boolean; onPress: () => void; testID: string }> = ({ label, active, onPress, testID }) => (
+  <TouchableOpacity onPress={onPress} testID={testID} accessibilityRole="button" accessibilityState={{ selected: active }}>
+    <Box className={`rounded-full border px-3 py-1 ${active ? 'border-blue-500 bg-blue-500' : 'border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800'}`}>
+      <Text className={`text-xs font-semibold ${active ? 'text-white' : 'text-gray-700 dark:text-gray-200'}`}>{label}</Text>
+    </Box>
+  </TouchableOpacity>
+);
+
+export const DispatchSelectionModal: React.FC<DispatchSelectionModalProps> = ({ isVisible, onClose, onConfirm, initialSelection, callId, callLocation, recommendation }) => {
   const { t } = useTranslation();
   const { colorScheme } = useColorScheme();
-  const { data, selection, isLoading, error, loadFailures, searchQuery, fetchDispatchData, setSelection, toggleEveryone, toggleUser, toggleGroup, toggleRole, toggleUnit, setSearchQuery, clearSelection } =
-    useDispatchStore();
+  const {
+    data,
+    selection,
+    isLoading,
+    error,
+    loadFailures,
+    searchQuery,
+    fetchDispatchData,
+    setSelection,
+    toggleEveryone,
+    toggleUser,
+    toggleGroup,
+    toggleRole,
+    toggleUnit,
+    setSearchQuery,
+    clearSelection,
+    board = null,
+    boardKey = null,
+    isBoardLoading = false,
+    boardError = false,
+    fetchNearestBoard,
+  } = useDispatchStore();
 
   const hasLoadFailure = loadFailures.users || loadFailures.groups || loadFailures.roles || loadFailures.units;
 
   const filteredData = useMemo(() => filterDispatchData(data, searchQuery), [data, searchQuery]);
 
+  const location = usableLocation(callLocation);
+  const locationLatitude = location?.latitude;
+  const locationLongitude = location?.longitude;
+  // Only a board built for this call's location ranks the rows.
+  const callBoard = location && boardKey === boardKeyFor(location.latitude, location.longitude) ? board : null;
+  const [sort, setSort] = useState<RecipientSort>('closest');
+  const [availableOnly, setAvailableOnly] = useState(false);
+
+  useEffect(() => {
+    if (isVisible && typeof locationLatitude === 'number' && typeof locationLongitude === 'number') {
+      void fetchNearestBoard?.(locationLatitude, locationLongitude);
+    }
+  }, [isVisible, locationLatitude, locationLongitude, fetchNearestBoard]);
+
+  const personnelRanks = useMemo(() => rankBoardPersonnel(callBoard), [callBoard]);
+  const unitRanks = useMemo(() => rankBoardUnits(callBoard), [callBoard]);
+
+  const orderedUsers = useMemo(
+    () => orderRecipients(filteredData.users, personnelRanks, { sort, availableOnly, selectedIds: selection.users, isAvailable: isDispatchUserAvailable }),
+    [filteredData.users, personnelRanks, sort, availableOnly, selection.users]
+  );
+  const orderedUnits = useMemo(
+    () => orderRecipients(filteredData.units, unitRanks, { sort, availableOnly, selectedIds: selection.units, isAvailable: isDispatchUnitAvailable }),
+    [filteredData.units, unitRanks, sort, availableOnly, selection.units]
+  );
+
   const addResources = useAddResourcesRecommendation({ callId, enabled: isVisible && !!callId });
+
+  // What the run card proposes: New Call's recommendation and, when adding resources, what the call still needs.
+  const addResourcesRecommendation = callId && addResources.isRunCardsEnabled ? addResources.recommendation : null;
+  const runCardUnits = useMemo(() => new Set([...recommendedUnitIds(recommendation ?? null), ...recommendedUnitIds(addResourcesRecommendation ?? null)]), [recommendation, addResourcesRecommendation]);
+  const runCardUsers = useMemo(() => new Set([...recommendedUserIds(recommendation ?? null), ...recommendedUserIds(addResourcesRecommendation ?? null)]), [recommendation, addResourcesRecommendation]);
 
   const handleApplyRecommendation = () => {
     setSelection(addResources.applyToSelection(selection));
@@ -55,7 +140,14 @@ export const DispatchSelectionModal: React.FC<DispatchSelectionModalProps> = ({ 
   }, [isVisible, initialSelection, fetchDispatchData, setSelection]);
 
   const handleConfirm = () => {
-    onConfirm(selection);
+    // Response codes the dispatcher saw on the run card proposal for the units being added (none unless the
+    // department has conditional run cards and a code catalog).
+    const unitResponseCodes = callId && !selection.everyone ? addResources.getUnitResponseCodes?.(selection.units) : undefined;
+    if (unitResponseCodes) {
+      onConfirm(selection, { unitResponseCodes });
+    } else {
+      onConfirm(selection);
+    }
     onClose();
   };
 
@@ -136,9 +228,33 @@ export const DispatchSelectionModal: React.FC<DispatchSelectionModalProps> = ({ 
                 onRefresh={() => void addResources.refresh()}
                 coveredMessage={t('run_cards.covered_on_call', { level: addResources.recommendation?.AlarmLevel ?? 1 })}
                 isExistingCall
+                conditions={addResources.conditions}
                 testID="add-resources-recommendation"
               />
             ) : null}
+
+            {/* How the people and units below are ordered: closest to the call (with a location) or by name. */}
+            <VStack className="mb-4 gap-2">
+              <HStack className="flex-wrap items-center gap-2">
+                {location ? (
+                  <>
+                    <SortChip label={t('calls.dispatch_board.sort_closest')} active={sort === 'closest'} onPress={() => setSort('closest')} testID="dispatch-sort-closest" />
+                    <SortChip label={t('calls.dispatch_board.sort_name')} active={sort === 'name'} onPress={() => setSort('name')} testID="dispatch-sort-name" />
+                  </>
+                ) : null}
+                <SortChip label={t('calls.dispatch_board.available_only')} active={availableOnly} onPress={() => setAvailableOnly(!availableOnly)} testID="dispatch-available-only" />
+                {location && isBoardLoading ? <ActivityIndicator size="small" testID="dispatch-board-loading" /> : null}
+              </HStack>
+              <Text className="text-xs text-gray-500 dark:text-gray-400" testID="dispatch-board-hint">
+                {!location
+                  ? t('calls.dispatch_board.set_location_to_rank')
+                  : boardError
+                    ? t('calls.dispatch_board.board_error')
+                    : isBoardLoading && !callBoard
+                      ? t('calls.dispatch_board.loading_board')
+                      : t('calls.dispatch_board.ranked_from_location')}
+              </Text>
+            </VStack>
 
             {/* Everyone Option */}
             <Card className="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
@@ -156,25 +272,26 @@ export const DispatchSelectionModal: React.FC<DispatchSelectionModalProps> = ({ 
             </Card>
 
             {/* Users Section */}
-            {filteredData.users.length > 0 && (
+            {orderedUsers.length > 0 && (
               <VStack className="mb-6">
                 <Text className="mb-3 text-lg font-semibold">
-                  {t('calls.users')} ({filteredData.users.length})
+                  {t('calls.users')} ({orderedUsers.length})
                 </Text>
-                {filteredData.users.map((user) => (
-                  <Card key={`user-${user.Id}`} className="mb-2 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800">
-                    <TouchableOpacity onPress={() => toggleUser(user.Id)}>
-                      <HStack className="items-center gap-3">
-                        <Box className={`size-5 items-center justify-center rounded border-2 ${selection.users.includes(user.Id) ? 'border-blue-500 bg-blue-500' : 'border-gray-300 dark:border-gray-600'}`}>
-                          {selection.users.includes(user.Id) ? <CheckIcon size={12} color="#ffffff" /> : null}
-                        </Box>
-                        <VStack className="flex-1">
-                          <Text className="pl-4 font-medium">{user.Name}</Text>
-                        </VStack>
-                      </HStack>
-                    </TouchableOpacity>
-                  </Card>
-                ))}
+                {orderedUsers.map((user) => {
+                  const rank = personnelRanks.get(user.Id);
+                  return (
+                    <DispatchUserRow
+                      key={`user-${user.Id}`}
+                      user={user}
+                      rank={rank}
+                      selected={selection.users.includes(user.Id)}
+                      available={isDispatchUserAvailable(user, rank)}
+                      showNearest={!!rank?.nearestRank && rank.nearestRank <= NEAREST_BADGE_COUNT}
+                      recommended={runCardUsers.has(user.Id)}
+                      onToggle={toggleUser}
+                    />
+                  );
+                })}
               </VStack>
             )}
 
@@ -215,7 +332,10 @@ export const DispatchSelectionModal: React.FC<DispatchSelectionModalProps> = ({ 
                           {selection.roles.includes(role.Id) ? <CheckIcon size={12} color="#ffffff" /> : null}
                         </Box>
                         <VStack className="flex-1">
-                          <Text className="pl-4 font-medium">{role.Name}</Text>
+                          <HStack className="items-center gap-2 pl-4">
+                            <TypeIcon iconUrl={role.TypeIconUrl} size={20} testID={`dispatch-role-icon-${role.Id}`} />
+                            <Text className="font-medium">{role.Name}</Text>
+                          </HStack>
                         </VStack>
                       </HStack>
                     </TouchableOpacity>
@@ -225,30 +345,31 @@ export const DispatchSelectionModal: React.FC<DispatchSelectionModalProps> = ({ 
             )}
 
             {/* Units Section */}
-            {filteredData.units.length > 0 && (
+            {orderedUnits.length > 0 && (
               <VStack className="mb-6">
                 <Text className="mb-3 text-lg font-semibold">
-                  {t('calls.units')} ({filteredData.units.length})
+                  {t('calls.units')} ({orderedUnits.length})
                 </Text>
-                {filteredData.units.map((unit) => (
-                  <Card key={`unit-${unit.Id}`} className="mb-2 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800">
-                    <TouchableOpacity onPress={() => toggleUnit(unit.Id)}>
-                      <HStack className="items-center gap-3">
-                        <Box className={`size-5 items-center justify-center rounded border-2 ${selection.units.includes(unit.Id) ? 'border-blue-500 bg-blue-500' : 'border-gray-300 dark:border-gray-600'}`}>
-                          {selection.units.includes(unit.Id) ? <CheckIcon size={12} color="#ffffff" /> : null}
-                        </Box>
-                        <VStack className="flex-1">
-                          <Text className="pl-4 font-medium">{unit.Name}</Text>
-                        </VStack>
-                      </HStack>
-                    </TouchableOpacity>
-                  </Card>
-                ))}
+                {orderedUnits.map((unit) => {
+                  const rank = unitRanks.get(unit.Id);
+                  return (
+                    <DispatchUnitRow
+                      key={`unit-${unit.Id}`}
+                      unit={unit}
+                      rank={rank}
+                      selected={selection.units.includes(unit.Id)}
+                      available={isDispatchUnitAvailable(unit, rank)}
+                      showNearest={!!rank?.nearestRank && rank.nearestRank <= NEAREST_BADGE_COUNT}
+                      recommended={runCardUnits.has(unit.Id)}
+                      onToggle={toggleUnit}
+                    />
+                  );
+                })}
               </VStack>
             )}
 
             {/* No Results */}
-            {searchQuery && filteredData.users.length === 0 && filteredData.groups.length === 0 && filteredData.roles.length === 0 && filteredData.units.length === 0 && (
+            {!!searchQuery && orderedUsers.length === 0 && filteredData.groups.length === 0 && filteredData.roles.length === 0 && orderedUnits.length === 0 && (
               <Box className="items-center justify-center py-8">
                 <Text className="text-center text-neutral-500">{t('common.no_results_found')}</Text>
               </Box>

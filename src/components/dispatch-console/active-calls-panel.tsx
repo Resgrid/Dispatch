@@ -5,7 +5,9 @@ import { useTranslation } from 'react-i18next';
 import { FlatList, Platform, Pressable, ScrollView, StyleSheet, Text as RNText, TextInput, View } from 'react-native';
 
 import { getCallExtraData, updateCall } from '@/api/calls/calls';
-import { DispatchSelectionModal } from '@/components/calls/dispatch-selection-modal';
+import { type DispatchSelectionConfirmExtras, DispatchSelectionModal } from '@/components/calls/dispatch-selection-modal';
+import { TypeIcon } from '@/components/common/type-icon';
+import { withUnitResponseCodes } from '@/components/runcards/run-card-save-fields';
 import { Badge } from '@/components/ui/badge';
 import { Box } from '@/components/ui/box';
 import { HStack } from '@/components/ui/hstack';
@@ -13,6 +15,7 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useCheckInTimerPolling } from '@/hooks/use-check-in-timer-polling';
+import { callLocationOf } from '@/lib/dispatch-board';
 import { buildAddResourcesUpdateRequest, EMPTY_DISPATCH_SELECTION } from '@/lib/dispatch-helpers';
 import { logger } from '@/lib/logging';
 import { getTimeAgoUtc, invertColor, isCallActive, stripHtmlTags } from '@/lib/utils';
@@ -67,10 +70,13 @@ const DashboardCallCard: React.FC<{
         </View>
       </View>
 
-      {/* Call Name - Main Title */}
-      <RNText style={StyleSheet.flatten([styles.cardTitle, { color: textColor }])} numberOfLines={1} ellipsizeMode="tail">
-        {call.Name}
-      </RNText>
+      {/* Call Name - Main Title, after the call type's icon when it has one */}
+      <View style={styles.cardTitleRow}>
+        <TypeIcon iconUrl={call.TypeIconUrl} mapIcon={call.TypeMapIcon} size={18} style={styles.cardTypeIcon} />
+        <RNText style={StyleSheet.flatten([styles.cardTitle, { color: textColor }])} numberOfLines={1} ellipsizeMode="tail">
+          {call.Name}
+        </RNText>
+      </View>
 
       {/* Bottom Row: Location & Nature */}
       <View style={styles.cardDetailsGroup}>
@@ -361,7 +367,7 @@ const ActiveCallsPanelComponent: React.FC<ActiveCallsPanelProps> = ({ selectedCa
 
   // Dispatch additional resources to the targeted call. Picked resources are unioned with the call's
   // existing dispatches so nothing is un-dispatched; the server notifies only the newly-added resources.
-  const handleDispatchAdditional = async (selection: DispatchSelection) => {
+  const handleDispatchAdditional = async (selection: DispatchSelection, extras?: DispatchSelectionConfirmExtras) => {
     const call = dispatchTargetCall;
     if (!call) return;
 
@@ -377,7 +383,8 @@ const ActiveCallsPanelComponent: React.FC<ActiveCallsPanelProps> = ({ selectedCa
         return;
       }
 
-      await updateCall(buildAddResourcesUpdateRequest(call, latest.Data.Dispatches, selection, latest.Data.CallFormData));
+      // extras: response codes picked on the run card proposal (conditional run cards), when there are any.
+      await updateCall(withUnitResponseCodes(buildAddResourcesUpdateRequest(call, latest.Data.Dispatches, selection, latest.Data.CallFormData), extras));
 
       // Refresh this call's dispatches so the resource ticker reflects the new assignment.
       const res = await getCallExtraData(call.CallId).catch(() => null);
@@ -519,6 +526,7 @@ const ActiveCallsPanelComponent: React.FC<ActiveCallsPanelProps> = ({ selectedCa
         onConfirm={handleDispatchAdditional}
         initialSelection={EMPTY_DISPATCH_SELECTION}
         callId={dispatchTargetCall?.CallId}
+        callLocation={callLocationOf(dispatchTargetCall)}
       />
     </Box>
   );
@@ -624,10 +632,21 @@ const styles = StyleSheet.create({
     fontSize: 10,
     marginLeft: 3,
   },
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  // A light tile behind the call type icon so it reads on any priority color
+  cardTypeIcon: {
+    backgroundColor: '#ffffff',
+    borderRadius: 3,
+  },
   cardTitle: {
     fontSize: 13,
     fontWeight: '600' as const,
-    marginBottom: 4,
+    flexShrink: 1,
   },
   cardDetailsGroup: {
     marginTop: 2,

@@ -47,11 +47,16 @@ export const getPendingCalls = async () => {
  * Without a dispatch list (or with an empty one) the server uses the recipients already stored on the
  * call (a pending call's proposed dispatch, a scheduled call's list). A non-empty list ("0" = everyone,
  * otherwise the P:/G:/R:/U: entries from {@link buildDispatchList}) replaces the call's list first.
+ *
+ * `unitResponseCodes` (conditional run cards, see {@link CreateCallRequest.unitResponseCodes}) is sent only when set.
  */
-export const dispatchCallNow = async (callId: string, dispatchList?: string) => {
-  const data: { CallId: string; DispatchList?: string } = { CallId: callId };
+export const dispatchCallNow = async (callId: string, dispatchList?: string, unitResponseCodes?: string) => {
+  const data: { CallId: string; DispatchList?: string; UnitResponseCodes?: string } = { CallId: callId };
   if (dispatchList) {
     data.DispatchList = dispatchList;
+  }
+  if (unitResponseCodes) {
+    data.UnitResponseCodes = unitResponseCodes;
   }
 
   const response = await dispatchCallNowApi.put<DispatchCallNowResult>(data);
@@ -122,6 +127,17 @@ export interface CreateCallRequest {
    * it later. The department's "dispatch list required" rule does not apply.
    */
   isPending?: boolean;
+  /**
+   * Conditional run cards: per-unit response codes from the department's catalog, "unitId:codeId" joined by "|";
+   * "unitId:" clears a unit's code. Units not listed keep the code the run card proposed. Built by
+   * `buildUnitResponseCodes` in `@/lib/run-card-conditions`; sent only when set.
+   */
+  unitResponseCodes?: string;
+  /**
+   * Conditional run cards: the Decision.OutcomeNodeKey of the recommendation the dispatcher reviewed, so the saved call
+   * keeps that proposal instead of walking the decision graph again. Sent only when set.
+   */
+  runCardOutcomeNodeKey?: string;
 }
 
 export interface UpdateCallRequest {
@@ -174,6 +190,8 @@ export interface UpdateCallRequest {
   rebroadcastCall?: boolean;
   /** When true, notifies entities that were removed from the dispatch list on this edit. */
   notifyCancelledEntities?: boolean;
+  /** Conditional run cards: per-unit response codes, as on {@link CreateCallRequest.unitResponseCodes}. Sent only when set. */
+  unitResponseCodes?: string;
 }
 
 export interface CloseCallRequest {
@@ -271,6 +289,9 @@ export const createCall = async (callData: CreateCallRequest) => {
     // one anyway.
     ...(!callData.isPending && callData.dispatchOnUtc ? { DispatchOnUtc: callData.dispatchOnUtc } : {}),
     IsPending: callData.isPending === true,
+    // Conditional run cards only; left out otherwise so older servers see the request they always did.
+    ...(callData.unitResponseCodes ? { UnitResponseCodes: callData.unitResponseCodes } : {}),
+    ...(callData.runCardOutcomeNodeKey ? { RunCardOutcomeNodeKey: callData.runCardOutcomeNodeKey } : {}),
   };
 
   const response = await createCallApi.post<SaveCallResult>(data);
@@ -306,6 +327,7 @@ export const updateCall = async (callData: UpdateCallRequest) => {
     ...(callData.dispatchOnUtc ? { DispatchOnUtc: callData.dispatchOnUtc } : {}),
     RebroadcastCall: callData.rebroadcastCall ?? false,
     NotifyCancelledEntities: callData.notifyCancelledEntities ?? false,
+    ...(callData.unitResponseCodes ? { UnitResponseCodes: callData.unitResponseCodes } : {}),
   };
 
   const response = await updateCallApi.put<SaveCallResult>(data);

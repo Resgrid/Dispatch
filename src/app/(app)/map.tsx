@@ -9,6 +9,7 @@ import { Animated, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, Touch
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getMapDataAndMarkers } from '@/api/mapping/mapping';
+import { TypeIcon } from '@/components/common/type-icon';
 import MapPins from '@/components/maps/map-pins';
 import PinDetailModal from '@/components/maps/pin-detail-modal';
 import { FocusAwareStatusBar } from '@/components/ui/focus-aware-status-bar';
@@ -164,8 +165,8 @@ export default function Map() {
 
   const combinedLayers = useMemo(
     () => [
-      ...layers.map((layer) => ({ Id: layer.Id, Name: layer.Name, Color: layer.Color, kind: 'custom' as const })),
-      ...poiLayers.map((layer) => ({ Id: getPoiMapLayerId(layer.PoiTypeId), Name: layer.Name, Color: layer.Color, kind: 'poi' as const })),
+      ...layers.map((layer) => ({ Id: layer.Id, Name: layer.Name, Color: layer.Color, IconUrl: null, kind: 'custom' as const })),
+      ...poiLayers.map((layer) => ({ Id: getPoiMapLayerId(layer.PoiTypeId), Name: layer.Name, Color: layer.Color, IconUrl: layer.IconUrl ?? null, kind: 'poi' as const })),
     ],
     [layers, poiLayers]
   );
@@ -592,7 +593,7 @@ export default function Map() {
                 combinedLayers.map((layer) => (
                   <Pressable key={layer.Id} style={[styles.layerItem, { borderBottomColor: isDark ? '#374151' : '#e5e7eb' }]} onPress={() => (layer.kind === 'custom' ? toggleLayer(layer.Id) : togglePoiLayer(layer.Id))}>
                     <View style={styles.layerInfo}>
-                      <View style={[styles.layerColorIndicator, { backgroundColor: layer.Color || '#3b82f6' }]} />
+                      <TypeIcon iconUrl={layer.IconUrl} size={20} containerStyle={styles.layerTypeIcon} fallback={<View style={[styles.layerColorIndicator, { backgroundColor: layer.Color || '#3b82f6' }]} />} />
                       <Text style={[styles.layerName, { color: isDark ? '#ffffff' : '#000000' }]} numberOfLines={1}>
                         {layer.Name}
                       </Text>
@@ -815,6 +816,10 @@ const styles = StyleSheet.create({
     height: 16,
     borderRadius: 4,
     marginRight: 12,
+  },
+  // A POI layer's uploaded type icon, in place of the color swatch
+  layerTypeIcon: {
+    marginRight: 10,
   },
   layerName: {
     fontSize: 14,

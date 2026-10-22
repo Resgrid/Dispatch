@@ -1,6 +1,7 @@
 import { getMapIconWebUrl, MAP_ICONS } from '@/constants/map-icons';
 import { isPoiMarker } from '@/lib/destination-helpers';
 import { getMapMarkerColor, getMapPinSummary, getPoiMarkerIconChar, getPoiMarkerShapePath, resolveMapMarkerIconKey } from '@/lib/map-markers';
+import { getTypeIconUrl } from '@/lib/type-icons';
 import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersData';
 import { escapeHtml } from '@/utils/html-entities';
 
@@ -49,6 +50,11 @@ const POI_MARKER_WIDTH = 36;
 const POI_MARKER_HEIGHT = 48;
 const POI_ICON_TOP_OFFSET = 10;
 const POI_ICON_FONT_SIZE = 14;
+/**
+ * The square 48x48 shape viewBox is fitted (default xMidYMid meet) into the 36x48 box, so every shape is drawn 36px tall
+ * and ends this far above the box's bottom edge.
+ */
+const POI_SHAPE_BOTTOM_INSET = (POI_MARKER_HEIGHT - POI_MARKER_WIDTH) / 2;
 
 /**
  * Creates the POI marker DOM element matching the web app's structure:
@@ -75,6 +81,9 @@ const createPoiMarkerElement = (pin: MapMakerInfoData): HTMLElement => {
   wrapper.style.alignItems = 'center';
   wrapper.style.justifyContent = 'flex-start';
   wrapper.style.flexDirection = 'column';
+  // Ends the marker's box at the shape's tip rather than the empty strip under it, so the bottom-anchored marker puts
+  // the tip on the coordinate.
+  wrapper.style.marginBottom = `-${POI_SHAPE_BOTTOM_INSET}px`;
 
   // SVG shape
   const svgNS = 'http://www.w3.org/2000/svg';
@@ -128,19 +137,69 @@ export const buildMapPinPopupHtml = (pin: MapMakerInfoData): string => {
     </div>`;
 };
 
+// ---------------------------------------------------------------------------
+// Pin marker placement
+// ---------------------------------------------------------------------------
+
+/** Edge of the square box a non-POI pin's icon (bundled 32x37 PNG or uploaded 128x128 icon) is fitted into. */
+const PIN_ICON_SIZE = 32;
+/** Room below the coordinate taken by the title label hanging under the icon (2px gap + one 10px line). */
+const PIN_LABEL_CLEARANCE = 16;
+/** Gap between a popup's tip and the pin it belongs to. */
+const PIN_POPUP_GAP = 4;
+
 /**
- * Creates a marker DOM element that can be used with Mapbox GL JS.
- * Handles both POI markers (SVG shape + map-icons font) and
- * non-POI legacy markers (PNG images).
+ * The mapbox-gl `Marker` anchor for elements from `createMapMarkerElement`: bottom-center, as the native map's
+ * `MarkerView` uses. The element's own box is just the icon (the title label hangs below it, outside the box), so the
+ * bottom of the icon (the tip of a bundled pin, the bottom edge of an uploaded square icon) sits on the coordinate.
  */
-export const createMapMarkerElement = (pin: MapMakerInfoData, colorScheme: 'dark' | 'light' = 'light', onClick?: () => void): HTMLElement => {
-  const isPoi = isPoiMarker({
+export const MAP_MARKER_ANCHOR = 'bottom' as const;
+
+const isPoiMapPin = (pin: MapMakerInfoData): boolean =>
+  isPoiMarker({
     type: pin.Type,
     poiTypeId: pin.PoiTypeId,
     layerId: pin.LayerId,
     imagePath: pin.ImagePath,
     poiImage: pin.PoiImage,
   });
+
+type PopupAnchor = 'center' | 'top' | 'bottom' | 'left' | 'right' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+
+/**
+ * The mapbox-gl `Popup` offset for a pin anchored with `MAP_MARKER_ANCHOR`, per popup anchor, so the popup opens clear
+ * of the icon above the coordinate (or of the label below it when it flips under the pin). Sized for the tallest thing
+ * the pin can show: a POI's shape (its uploaded icon is shorter), otherwise the 32px icon box.
+ */
+export const getMapMarkerPopupOffset = (pin: MapMakerInfoData): Record<PopupAnchor, [number, number]> => {
+  const isPoi = isPoiMapPin(pin);
+  const height = isPoi ? POI_MARKER_HEIGHT - POI_SHAPE_BOTTOM_INSET : PIN_ICON_SIZE;
+  const halfWidth = (isPoi ? POI_MARKER_WIDTH : PIN_ICON_SIZE) / 2;
+  const above = -(height + PIN_POPUP_GAP);
+
+  return {
+    center: [0, -height / 2],
+    top: [0, PIN_LABEL_CLEARANCE],
+    'top-left': [0, PIN_LABEL_CLEARANCE],
+    'top-right': [0, PIN_LABEL_CLEARANCE],
+    bottom: [0, above],
+    'bottom-left': [0, above],
+    'bottom-right': [0, above],
+    left: [halfWidth + PIN_POPUP_GAP, -height / 2],
+    right: [-(halfWidth + PIN_POPUP_GAP), -height / 2],
+  };
+};
+
+/**
+ * Creates a marker DOM element that can be used with Mapbox GL JS.
+ * Handles both POI markers (SVG shape + map-icons font) and
+ * non-POI legacy markers (PNG images).
+ *
+ * Add it with `anchor: MAP_MARKER_ANCHOR` and a popup offset from `getMapMarkerPopupOffset`: the element's box is the
+ * icon alone, with the title label positioned below it, so a bottom anchor puts the icon's bottom on the coordinate.
+ */
+export const createMapMarkerElement = (pin: MapMakerInfoData, colorScheme: 'dark' | 'light' = 'light', onClick?: () => void): HTMLElement => {
+  const isPoi = isPoiMapPin(pin);
 
   // Ensure map-icons font is loaded
   injectMapIconsFont();
@@ -152,38 +211,73 @@ export const createMapMarkerElement = (pin: MapMakerInfoData, colorScheme: 'dark
   el.style.alignItems = 'center';
   el.style.cursor = 'pointer';
 
+  // The icon a department uploaded for the pin (its unit, call or POI type, or a person's role) wins over the built-in
+  // marker; a failed load falls back to the built-in rendering.
+  const uploadedIconUrl = getTypeIconUrl(pin.IconUrl);
+
   if (isPoi) {
-    // POI marker: SVG shape + map-icons font icon
+    // POI marker: SVG shape + map-icons font icon, or the POI type's uploaded icon in the same width
     const poiEl = createPoiMarkerElement(pin);
-    el.appendChild(poiEl);
+    if (uploadedIconUrl) {
+      const img = document.createElement('img');
+      img.src = uploadedIconUrl;
+      img.style.width = `${POI_MARKER_WIDTH}px`;
+      img.style.height = `${POI_MARKER_WIDTH}px`;
+      img.style.objectFit = 'contain';
+      img.alt = pin.Title;
+      img.onerror = () => {
+        img.onerror = null;
+        img.replaceWith(poiEl);
+      };
+      el.appendChild(img);
+    } else {
+      el.appendChild(poiEl);
+    }
   } else {
     // Non-POI legacy marker: PNG image
     const iconContainer = document.createElement('div');
     iconContainer.style.display = 'flex';
     iconContainer.style.alignItems = 'center';
     iconContainer.style.justifyContent = 'center';
-    iconContainer.style.width = '32px';
-    iconContainer.style.height = '32px';
+    iconContainer.style.width = `${PIN_ICON_SIZE}px`;
+    iconContainer.style.height = `${PIN_ICON_SIZE}px`;
 
     const iconKey = resolveMapMarkerIconKey(pin) as MapIconKey;
     const iconData = MAP_ICONS[iconKey] || MAP_ICONS['flag'];
     const img = document.createElement('img');
-    const imgSrc = getMapIconWebUrl(iconData);
-    img.src = imgSrc;
-    img.style.width = '32px';
-    img.style.height = '32px';
+    // The uploaded type icon (when there is one) shows first; each failed load steps down to the bundled icon, then
+    // the flag, and stops there rather than retrying a broken image forever.
+    const sources = [uploadedIconUrl, getMapIconWebUrl(iconData), getMapIconWebUrl(MAP_ICONS['flag'])].filter((src, index, all): src is string => !!src && all.indexOf(src) === index);
+    let sourceIndex = 0;
+    img.src = sources[sourceIndex];
+    // Fitted, not cropped: a bundled 32x37 pin scales into the box with its tip on the box's bottom edge, and an
+    // uploaded square icon fills it.
+    img.style.width = `${PIN_ICON_SIZE}px`;
+    img.style.height = `${PIN_ICON_SIZE}px`;
     img.style.objectFit = 'contain';
+    img.style.objectPosition = 'center bottom';
     img.alt = pin.Title;
     img.onerror = () => {
-      img.src = getMapIconWebUrl(MAP_ICONS['flag']);
+      sourceIndex += 1;
+      if (sourceIndex < sources.length) {
+        img.src = sources[sourceIndex];
+      } else {
+        img.onerror = null;
+      }
     };
     iconContainer.appendChild(img);
     el.appendChild(iconContainer);
   }
 
-  // Title label
+  // Title label, hung below the icon outside the element's box so the bottom anchor lands on the icon, not the label.
+  // (mapbox-gl's .mapboxgl-marker class makes the element absolutely positioned, which is the label's containing block;
+  // the element itself must not set `position`, or it would override that class.)
   const title = document.createElement('div');
   title.textContent = pin.Title;
+  title.style.position = 'absolute';
+  title.style.top = '100%';
+  title.style.left = '50%';
+  title.style.transform = 'translateX(-50%)';
   title.style.fontSize = '10px';
   title.style.fontWeight = '600';
   title.style.textAlign = 'center';

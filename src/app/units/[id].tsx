@@ -18,7 +18,10 @@ import { HStack } from '@/components/ui/hstack';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
+import { UnitTypeIcon } from '@/components/units/unit-type-icon';
 import { useAnalytics } from '@/hooks/use-analytics';
+import { useReadableColor } from '@/hooks/use-readable-color';
+import { tintOf } from '@/lib/readable-color';
 import { type UnitInfoResultData } from '@/models/v4/units/unitInfoResultData';
 
 // The detail page only displays custom fields; nothing is edited here.
@@ -28,6 +31,8 @@ export default function UnitDetail() {
   const { id } = useLocalSearchParams();
   const unitId = Array.isArray(id) ? id[0] : id;
   const router = useRouter();
+  // Department colours drawn on the theme's surface: a black status reads in dark mode, a pale one in light mode
+  const readable = useReadableColor();
   const { t } = useTranslation();
   const { colorScheme } = useColorScheme();
   const { trackEvent } = useAnalytics();
@@ -145,7 +150,8 @@ export default function UnitDetail() {
     );
   }
 
-  const statusColor = unit.CurrentStatusColor || '#6b7280';
+  const statusColor = readable.mark(unit.CurrentStatusColor);
+  const statusTextColor = readable.text(unit.CurrentStatusColor);
 
   return (
     <>
@@ -162,8 +168,8 @@ export default function UnitDetail() {
           <Box className="w-full max-w-[600px] self-center">
             {/* Header card with icon and name */}
             <Box className="mx-4 mt-4 items-center rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
-              <View style={[styles.iconLarge, { borderColor: statusColor, backgroundColor: `${statusColor}18` }]}>
-                <Icon as={Truck} size="xl" color={statusColor} />
+              <View style={[styles.iconLarge, { borderColor: statusColor, backgroundColor: tintOf(statusColor) }]}>
+                <UnitTypeIcon iconUrl={unit.TypeIconUrl} mapIcon={unit.TypeMapIcon} size={48} fallback={<Icon as={Truck} size="xl" color={statusColor} />} />
               </View>
               <Heading size="lg" className="mt-3 text-gray-900 dark:text-gray-50">
                 {unit.Name}
@@ -186,9 +192,9 @@ export default function UnitDetail() {
               {/* Status row */}
               <HStack className="items-center justify-between border-b border-gray-100 py-3 dark:border-gray-700">
                 <Text className="text-sm text-gray-500 dark:text-gray-400">{t('units.status')}</Text>
-                <HStack className="items-center rounded-full px-3 py-1" space="sm" style={{ backgroundColor: `${statusColor}18` }}>
+                <HStack className="items-center rounded-full px-3 py-1" space="sm" style={{ backgroundColor: tintOf(statusColor) }}>
                   <Circle size={10} fill={statusColor} color={statusColor} />
-                  <Text style={{ color: statusColor }} className="text-sm font-semibold">
+                  <Text style={{ color: statusTextColor }} className="text-sm font-semibold">
                     {unit.CurrentStatus || t('units.unknown_status')}
                   </Text>
                 </HStack>

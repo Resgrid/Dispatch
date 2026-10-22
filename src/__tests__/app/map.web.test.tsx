@@ -14,6 +14,8 @@ import MapWeb from '../../app/(app)/map.web';
 // Minimal mapbox-gl stand-in that records what the screen does to the map and its markers.
 interface MockMarker {
   pinId: string;
+  anchor?: string;
+  popup?: { options: { offset?: unknown } };
   lngLat: [number, number];
   setLngLat: jest.Mock;
   remove: jest.Mock;
@@ -29,10 +31,15 @@ const mockMaps: MockMap[] = [];
 
 jest.mock('mapbox-gl', () => {
   class Popup {
+    options: { offset?: unknown };
     setHTML = jest.fn(() => this);
+    constructor(options: { offset?: unknown } = {}) {
+      this.options = options;
+    }
   }
   class Marker {
     pinId: string;
+    anchor: string | undefined;
     lngLat: [number, number] = [0, 0];
     popup: Popup | undefined;
     setLngLat = jest.fn((lngLat: [number, number]) => {
@@ -40,8 +47,9 @@ jest.mock('mapbox-gl', () => {
       return this;
     });
     remove = jest.fn();
-    constructor(options: { element: { pinId: string } }) {
+    constructor(options: { element: { pinId: string }; anchor?: string }) {
       this.pinId = options.element.pinId;
+      this.anchor = options.anchor;
       mockMarkers.push(this as unknown as MockMarker);
     }
     setPopup(popup: Popup) {
@@ -90,7 +98,12 @@ jest.mock('@/stores/signalr/signalr-store', () => {
 });
 
 jest.mock('@/api/mapping/mapping', () => ({ getMapDataAndMarkers: jest.fn() }));
-jest.mock('@/lib/map-markers-web', () => ({ buildMapPinPopupHtml: jest.fn(() => '<div></div>'), createMapMarkerElement: jest.fn((pin: { Id: string }) => ({ pinId: pin.Id })) }));
+jest.mock('@/lib/map-markers-web', () => ({
+  buildMapPinPopupHtml: jest.fn(() => '<div></div>'),
+  createMapMarkerElement: jest.fn((pin: { Id: string }) => ({ pinId: pin.Id })),
+  getMapMarkerPopupOffset: jest.fn(() => ({ bottom: [0, -36] })),
+  MAP_MARKER_ANCHOR: 'bottom',
+}));
 jest.mock('@/lib/map-center', () => ({ getDepartmentMapCenter: () => ({ latitude: 39, longitude: -119, zoomLevel: 9 }) }));
 jest.mock('@/lib/env', () => ({ Env: { MAPBOX_PUBKEY: 'pk.test' } }));
 jest.mock('@/lib/logging', () => ({ logger: { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() } }));
@@ -183,6 +196,34 @@ describe('Map screen (web) realtime locations', () => {
     });
     await waitFor(() => expect(mockGetMapDataAndMarkers).toHaveBeenCalledTimes(2));
     expect(mockMaps[0].flyTo).toHaveBeenCalledTimes(1);
+  });
+
+  it('bottom-anchors pin markers and rebuilds only the marker whose uploaded icon changed', async () => {
+    const ROLE_ICON_URL = 'https://api.resgrid.dev/api/v4/TypeIcons/r4.png';
+    const { createMapMarkerElement } = jest.requireMock('@/lib/map-markers-web') as { createMapMarkerElement: jest.Mock };
+    await renderLoadedMap();
+
+    const [personMarker] = liveMarker('pABC');
+    const [unitMarker] = liveMarker('u12');
+    expect(personMarker.anchor).toBe('bottom');
+    expect(personMarker.popup?.options.offset).toEqual({ bottom: [0, -36] });
+
+    // A background refetch brings the same pins, the person now carrying their role's icon.
+    mockGetMapDataAndMarkers.mockResolvedValue(mapResponse(REST_PINS.map((pin) => (pin.Id === 'pABC' ? ({ ...pin, IconUrl: ROLE_ICON_URL } as MapMakerInfoData) : pin))));
+    pushUnknownPin();
+    await act(async () => {
+      jest.advanceTimersByTime(LIVE_LOCATION_REFRESH_DELAY_MS);
+    });
+    await waitFor(() => expect(mockGetMapDataAndMarkers).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(personMarker.remove).toHaveBeenCalled());
+
+    const [rebuiltPersonMarker] = liveMarker('pABC');
+    expect(rebuiltPersonMarker).not.toBe(personMarker);
+    expect(rebuiltPersonMarker.anchor).toBe('bottom');
+    expect(createMapMarkerElement).toHaveBeenLastCalledWith(expect.objectContaining({ Id: 'pABC', IconUrl: ROLE_ICON_URL }), 'light');
+    // The pins that did not change keep their markers.
+    expect(liveMarker('u12')).toEqual([unitMarker]);
+    expect(mockMarkers).toHaveLength(REST_PINS.length + 1);
   });
 
   it("keeps the user's POI layer toggles across a background refetch", async () => {

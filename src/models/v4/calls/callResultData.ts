@@ -35,6 +35,10 @@ export class CallResultData {
   public Type: string = 'No Type';
   /** Id of the department call type the call was logged with (survives a rename); null when it matches none, undefined from older servers. */
   public TypeId?: string | null;
+  /** The department's uploaded icon for the call's type (absolute URL, anonymous GET, 128x128 PNG); null when none was uploaded or from older servers. */
+  public TypeIconUrl?: string | null = null;
+  /** The built-in map icon the call's type picked (lowercase MAP_ICONS key, e.g. "fire"); null when none or from older servers. */
+  public TypeMapIcon?: string | null = null;
   /**
    * Current alarm level (1-based). Only moves above 1 when the call has been escalated through a
    * run card; the server normalises pre-run-card calls to 1.

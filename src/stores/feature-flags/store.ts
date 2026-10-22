@@ -12,6 +12,8 @@ import { securityStore } from '../security/store';
 export const FeatureFlagKeys = {
   ChatSystem: 'Chat.System',
   DispatchRunCards: 'Dispatch.RunCards',
+  /** Conditional run cards (decision graphs, response packages, calls awaiting resources, response codes). Depends on Dispatch.RunCards. */
+  DispatchRunCardConditions: 'Dispatch.RunCardConditions',
   RecordsSystem: 'Records.System',
   /** Field Records in this app. Depends on Records.System and is seeded off (RMS plan RMS-1D). */
   RecordsFieldDispatch: 'Records.Field.Dispatch',
@@ -165,6 +167,24 @@ export const useRunCardsStatus = (): FeatureFlagStatus => useFeatureFlagStatus(F
 
 /** Non-reactive read for imperative paths (stores, effects) that must not fire a gated request. */
 export const isRunCardsEnabled = (): boolean => featureFlagsStore.getState().isEnabled(FeatureFlagKeys.DispatchRunCards);
+
+/**
+ * Conditional run cards: the decision explanation, response codes and calls awaiting resources. Needs Dispatch.RunCards
+ * as well, since every one of those surfaces hangs off a run card; the server answers 404 on the AwaitingResources
+ * actions when Dispatch.RunCardConditions is off.
+ */
+export const useIsRunCardConditionsEnabled = () => {
+  // Both hooks run unconditionally (rules of hooks), as in useIsRecordsFieldEnabled.
+  const runCards = useFeatureFlag(FeatureFlagKeys.DispatchRunCards);
+  const conditions = useFeatureFlag(FeatureFlagKeys.DispatchRunCardConditions);
+  return runCards && conditions;
+};
+
+/** Non-reactive counterpart of useIsRunCardConditionsEnabled for stores and effects. */
+export const isRunCardConditionsEnabled = (): boolean => {
+  const { isEnabled } = featureFlagsStore.getState();
+  return isEnabled(FeatureFlagKeys.DispatchRunCards) && isEnabled(FeatureFlagKeys.DispatchRunCardConditions);
+};
 
 // Deployments (DTR / usage / F-42) are gated by Operations.Deployments alone; the cost-recovery and
 // costing add-ons are answered per department by the server's access calls, not by a flag here.

@@ -9,7 +9,7 @@ import { useMapLiveLocations } from '@/hooks/use-map-live-locations';
 import { logger } from '@/lib/logging';
 import { getDepartmentMapCenter } from '@/lib/map-center';
 import { hasValidMapCoordinates } from '@/lib/map-markers';
-import { buildMapPinPopupHtml, createMapMarkerElement } from '@/lib/map-markers-web';
+import { buildMapPinPopupHtml, createMapMarkerElement, getMapMarkerPopupOffset, MAP_MARKER_ANCHOR } from '@/lib/map-markers-web';
 import { useDepartmentMapStyle } from '@/lib/map-style';
 import { applyMapboxGlAccessToken } from '@/lib/mapbox-gl-token-web';
 import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersData';
@@ -306,7 +306,9 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
       // instead of re-deriving its signature on every realtime update.
       if (existing && currentMeta && currentMeta.pin === pin && currentMeta.signature.startsWith(`${theme}:`)) return;
 
-      const signature = `${theme}:${pin.Title}:${pin.Type}:${pin.PoiTypeId}:${pin.LayerId}:${pin.ImagePath}:${pin.PoiImage}:${pin.Marker}:${pin.Color}:${pin.Address}:${pin.Note}:${pin.PoiTypeName}:${pin.InfoWindowContent}`;
+      // Everything the marker element or its popup is built from, so a change to any of it (an uploaded icon included)
+      // rebuilds the marker instead of keeping the old element.
+      const signature = `${theme}:${pin.Title}:${pin.Type}:${pin.PoiTypeId}:${pin.LayerId}:${pin.ImagePath}:${pin.PoiImage}:${pin.Marker}:${pin.Color}:${pin.Address}:${pin.Note}:${pin.PoiTypeName}:${pin.InfoWindowContent}:${pin.IconUrl ?? ''}`;
 
       if (existing) {
         const meta = currentMeta;
@@ -336,9 +338,10 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
       });
 
       // Create popup
-      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(buildMapPinPopupHtml(pin));
+      const popup = new mapboxgl.Popup({ offset: getMapMarkerPopupOffset(pin) }).setHTML(buildMapPinPopupHtml(pin));
 
-      const marker = new mapboxgl.Marker({ element: el }).setLngLat([pin.Longitude, pin.Latitude]).setPopup(popup).addTo(map.current!);
+      // Bottom-anchored like the native map's pins: the icon's bottom sits on the coordinate.
+      const marker = new mapboxgl.Marker({ element: el, anchor: MAP_MARKER_ANCHOR }).setLngLat([pin.Longitude, pin.Latitude]).setPopup(popup).addTo(map.current!);
 
       markersRef.current.set(pin.Id, marker);
       markerMetaRef.current.set(pin.Id, { signature, latitude: pin.Latitude, longitude: pin.Longitude, pin });

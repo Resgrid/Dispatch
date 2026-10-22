@@ -30,26 +30,33 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
+import { CallOutstandingRequirements } from '@/components/awaiting-resources/call-outstanding-requirements';
 import { ActivityLinkLegend, ActivityLinkMarker } from '@/components/calls/activity-link-marker';
 import { CallSiteInfoTabPanel } from '@/components/calls/call-site-info-tab-panel';
 import { LocationHistoryPanel } from '@/components/calls/location-history-panel';
 import { VideoFeedsTab } from '@/components/callVideoFeeds/video-feeds-tab';
 import { CheckInTab } from '@/components/checkIn/check-in-tab';
 import { Loading } from '@/components/common/loading';
+import { TypeIcon } from '@/components/common/type-icon';
 import ZeroState from '@/components/common/zero-state';
 import { IncidentCommandTab } from '@/components/incident-command/incident-command-tab';
 import StaticMap from '@/components/maps/static-map';
 import { AlarmLevelBadge } from '@/components/runcards/alarm-level-badge';
 import { EscalateAlarmButton } from '@/components/runcards/escalate-alarm-button';
+import { ResponseCodeChip } from '@/components/runcards/response-code-chip';
+import { withUnitResponseCodes } from '@/components/runcards/run-card-save-fields';
 import { Box } from '@/components/ui/box';
 import { Button, ButtonIcon, ButtonText } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { FocusAwareStatusBar } from '@/components/ui/focus-aware-status-bar';
 import { Text } from '@/components/ui/text';
 import { useAnalytics } from '@/hooks/use-analytics';
+import { useReadableColor } from '@/hooks/use-readable-color';
+import { callLocationOf } from '@/lib/dispatch-board';
 import { buildAddResourcesUpdateRequest, EMPTY_DISPATCH_SELECTION } from '@/lib/dispatch-helpers';
 import { logger } from '@/lib/logging';
 import { openMapsWithDirections } from '@/lib/navigation';
+import { tintOf } from '@/lib/readable-color';
 import { formatDateForDisplay, getCallScheduledDispatchTime, isCallActive, isCallAwaitingScheduledDispatch, isCallPending, parseDateISOString } from '@/lib/utils';
 import { CheckInTimerStatus } from '@/models/v4/checkIn/checkInEnums';
 import { useCoreStore } from '@/stores/app/core-store';
@@ -69,7 +76,7 @@ import CallFilesModal from '../../components/calls/call-files-modal';
 import CallImagesModal from '../../components/calls/call-images-modal';
 import CallNotesModal from '../../components/calls/call-notes-modal';
 import { CloseCallBottomSheet } from '../../components/calls/close-call-bottom-sheet';
-import { DispatchSelectionModal } from '../../components/calls/dispatch-selection-modal';
+import { type DispatchSelectionConfirmExtras, DispatchSelectionModal } from '../../components/calls/dispatch-selection-modal';
 import { RescheduleCallSheet } from '../../components/calls/reschedule-call-sheet';
 import { useCallDispatchNow } from '../../components/calls/use-call-dispatch-now';
 import { StatusBottomSheet } from '../../components/status/status-bottom-sheet';
@@ -87,6 +94,8 @@ export default function CallDetailWeb() {
 
   const isWideScreen = width >= 1024;
   const isDark = colorScheme === 'dark';
+  // Department colours (priority, statuses) drawn on the theme's surface: a black one reads in dark mode, a pale one in light mode
+  const readable = useReadableColor();
 
   const [coordinates, setCoordinates] = useState<{ latitude: number | null; longitude: number | null }>({
     latitude: null,
@@ -167,11 +176,12 @@ export default function CallDetailWeb() {
 
   // Dispatch additional resources to this (active) call. Picked resources are unioned with the call's
   // existing dispatches so nothing is un-dispatched; the server then notifies only the newly-added ones.
-  const handleDispatchAdditional = async (selection: DispatchSelection) => {
+  const handleDispatchAdditional = async (selection: DispatchSelection, extras?: DispatchSelectionConfirmExtras) => {
     if (!call) return;
 
     try {
-      await useCallDetailStore.getState().updateCall(buildAddResourcesUpdateRequest(call, callExtraData?.Dispatches, selection, callExtraData?.CallFormData));
+      // extras: response codes picked on the run card proposal (conditional run cards), when there are any.
+      await useCallDetailStore.getState().updateCall(withUnitResponseCodes(buildAddResourcesUpdateRequest(call, callExtraData?.Dispatches, selection, callExtraData?.CallFormData), extras));
       showToast('success', t('call_detail.dispatch_more_success'));
     } catch (err) {
       logger.error({ message: 'Failed to dispatch additional resources', context: { error: err, callId: call.CallId } });
@@ -323,7 +333,7 @@ export default function CallDetailWeb() {
       case 'info':
         return (
           <View style={styles.tabContent}>
-            <InfoRow label={t('call_detail.priority')} value={callPriority?.Name || '-'} valueColor={callPriority?.Color} isDark={isDark} />
+            <InfoRow label={t('call_detail.priority')} value={callPriority?.Name || '-'} valueColor={callPriority?.Color ? readable.text(callPriority.Color) : undefined} isDark={isDark} />
             <InfoRow label={t('call_detail.timestamp')} value={formatDateForDisplay(parseDateISOString(call.LoggedOn), 'MMM dd, yyyy hh:mm t')} isDark={isDark} />
             {getCallScheduledDispatchTime(call) ? (
               <InfoRow label={t('call_detail.scheduled_on')} value={formatDateForDisplay(parseDateISOString(getCallScheduledDispatchTime(call)), 'MMM dd, yyyy hh:mm t')} valueColor="#d97706" isDark={isDark} />
@@ -377,6 +387,8 @@ export default function CallDetailWeb() {
       case 'dispatched':
         return (
           <View style={styles.tabContent}>
+            {/* Conditional run cards: what the call is still awaiting (renders nothing otherwise). */}
+            {call && isCallActive(call.State) ? <CallOutstandingRequirements callId={call.CallId} canDismiss={!!canUserCreateCalls} /> : null}
             {canUserCreateCalls && call && isCallActive(call.State) ? (
               <View className="mb-4">
                 <EscalateAlarmButton
@@ -397,7 +409,12 @@ export default function CallDetailWeb() {
             {callExtraData?.Dispatches && callExtraData.Dispatches.length > 0 ? (
               callExtraData.Dispatches.map((dispatched, index) => (
                 <Card key={index} style={StyleSheet.flatten([styles.dispatchCard, isDark ? styles.dispatchCardDark : styles.dispatchCardLight])}>
-                  <Text style={StyleSheet.flatten([styles.dispatchName, isDark ? styles.dispatchNameDark : styles.dispatchNameLight])}>{dispatched.Name}</Text>
+                  <View style={styles.dispatchNameRow}>
+                    <TypeIcon iconUrl={dispatched.TypeIconUrl} mapIcon={dispatched.TypeMapIcon} size={20} />
+                    <Text style={StyleSheet.flatten([styles.dispatchName, isDark ? styles.dispatchNameDark : styles.dispatchNameLight])}>{dispatched.Name}</Text>
+                    {/* The response code the unit was sent with (conditional run cards); only sent when the department shows codes to crews. */}
+                    <ResponseCodeChip code={dispatched.ResponseCode} name={dispatched.ResponseCodeName} color={dispatched.ResponseCodeColor} testID={`dispatched-code-${index}`} />
+                  </View>
                   <View style={styles.dispatchMeta}>
                     <Text style={StyleSheet.flatten([styles.dispatchMetaText, isDark ? styles.dispatchMetaTextDark : styles.dispatchMetaTextLight])}>
                       {t('call_detail.group')}: {dispatched.Group}
@@ -432,10 +449,10 @@ export default function CallDetailWeb() {
               <View style={styles.timeline}>
                 {callExtraData.Activity.map((event, index) => (
                   <View key={index} style={styles.timelineItem}>
-                    <View style={StyleSheet.flatten([styles.timelineDot, { backgroundColor: event.StatusColor || '#3b82f6' }])} />
+                    <View style={StyleSheet.flatten([styles.timelineDot, { backgroundColor: readable.mark(event.StatusColor, '#3b82f6') }])} />
                     <View style={styles.timelineContent}>
                       <View style={styles.timelineStatusRow}>
-                        <Text style={StyleSheet.flatten([styles.timelineStatus, { color: event.StatusColor || (isDark ? '#d1d5db' : '#374151') }])}>{event.StatusText}</Text>
+                        <Text style={StyleSheet.flatten([styles.timelineStatus, { color: event.StatusColor ? readable.text(event.StatusColor) : isDark ? '#d1d5db' : '#374151' }])}>{event.StatusText}</Text>
                         <ActivityLinkMarker source={event.DestinationSource} />
                       </View>
                       <Text style={StyleSheet.flatten([styles.timelineInfo, isDark ? styles.timelineInfoDark : styles.timelineInfoLight])}>
@@ -491,6 +508,7 @@ export default function CallDetailWeb() {
           {/* Header Section */}
           <View style={styles.header}>
             <View style={styles.headerTop}>
+              <TypeIcon iconUrl={call.TypeIconUrl} mapIcon={call.TypeMapIcon} size={44} containerStyle={styles.headerTypeIcon} />
               <View style={styles.headerTitleContainer}>
                 <Text style={StyleSheet.flatten([styles.callNumber, isDark ? styles.callNumberDark : styles.callNumberLight])}>#{call.Number}</Text>
                 <Text style={StyleSheet.flatten([styles.callName, isDark ? styles.callNameDark : styles.callNameLight])}>{call.Name}</Text>
@@ -516,9 +534,9 @@ export default function CallDetailWeb() {
 
             {/* Priority Badge */}
             {callPriority ? (
-              <View style={StyleSheet.flatten([styles.priorityBadge, { backgroundColor: `${callPriority.Color}20`, borderColor: callPriority.Color }])}>
-                <View style={StyleSheet.flatten([styles.priorityDot, { backgroundColor: callPriority.Color }])} />
-                <Text style={StyleSheet.flatten([styles.priorityText, { color: callPriority.Color }])}>{callPriority.Name}</Text>
+              <View style={StyleSheet.flatten([styles.priorityBadge, { backgroundColor: tintOf(callPriority.Color, '20'), borderColor: readable.mark(callPriority.Color) }])}>
+                <View style={StyleSheet.flatten([styles.priorityDot, { backgroundColor: readable.mark(callPriority.Color) }])} />
+                <Text style={StyleSheet.flatten([styles.priorityText, { color: readable.text(callPriority.Color) }])}>{callPriority.Name}</Text>
               </View>
             ) : null}
 
@@ -542,7 +560,7 @@ export default function CallDetailWeb() {
               {canUserCreateCalls ? (
                 <Pressable
                   style={StyleSheet.flatten([styles.dispatchBannerButton, isDispatchingNow ? styles.setActiveButtonDisabled : {}])}
-                  onPress={() => (isPendingCall ? void openDispatchPicker(call.CallId, callExtraData?.Dispatches) : confirmDispatchNow(call.CallId))}
+                  onPress={() => (isPendingCall ? void openDispatchPicker(call.CallId, callExtraData?.Dispatches, callLocationOf(call)) : confirmDispatchNow(call.CallId))}
                   disabled={isDispatchingNow}
                   accessibilityRole="button"
                   testID={isPendingCall ? 'pending-call-dispatch-button' : 'scheduled-call-dispatch-now-button'}
@@ -645,7 +663,14 @@ export default function CallDetailWeb() {
       <CloseCallBottomSheet isOpen={isCloseCallModalOpen} onClose={() => setIsCloseCallModalOpen(false)} callId={callId} />
       <RescheduleCallSheet isOpen={isRescheduleModalOpen} onClose={() => setIsRescheduleModalOpen(false)} callId={callId} />
       <StatusBottomSheet />
-      <DispatchSelectionModal isVisible={isDispatchModalOpen} onClose={() => setIsDispatchModalOpen(false)} onConfirm={handleDispatchAdditional} initialSelection={EMPTY_DISPATCH_SELECTION} callId={callId} />
+      <DispatchSelectionModal
+        isVisible={isDispatchModalOpen}
+        onClose={() => setIsDispatchModalOpen(false)}
+        onConfirm={handleDispatchAdditional}
+        initialSelection={EMPTY_DISPATCH_SELECTION}
+        callId={callId}
+        callLocation={callLocationOf(call)}
+      />
       {dispatchPicker}
       <CallDetailActionSheet />
     </>
@@ -722,6 +747,9 @@ const styles = StyleSheet.create({
   },
   headerTitleContainer: {
     flex: 1,
+  },
+  headerTypeIcon: {
+    marginRight: 12,
   },
   callNumber: {
     fontSize: 14,
@@ -1172,10 +1200,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9fafb',
     borderColor: '#e5e7eb',
   },
+  dispatchNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
   dispatchName: {
     fontSize: 15,
     fontWeight: '600',
-    marginBottom: 4,
   },
   dispatchNameDark: {
     color: '#ffffff',

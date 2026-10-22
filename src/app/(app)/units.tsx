@@ -14,7 +14,10 @@ import { Icon } from '@/components/ui/icon';
 import { Input, InputField, InputIcon, InputSlot } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
+import { UnitTypeIcon } from '@/components/units/unit-type-icon';
 import { useAnalytics } from '@/hooks/use-analytics';
+import { useReadableColor } from '@/hooks/use-readable-color';
+import { tintOf } from '@/lib/readable-color';
 import { type UnitInfoResultData } from '@/models/v4/units/unitInfoResultData';
 import { useUnitsStore } from '@/stores/units/store';
 
@@ -23,16 +26,19 @@ const UnitCard: React.FC<{
   onPress: () => void;
 }> = React.memo(({ unit, onPress }) => {
   const { t } = useTranslation();
-  const statusColor = unit.CurrentStatusColor || '#6b7280';
+  // Department colours drawn on the theme's surface: a black status reads in dark mode, a pale one in light mode
+  const readable = useReadableColor();
+  const statusColor = readable.mark(unit.CurrentStatusColor);
+  const statusTextColor = readable.text(unit.CurrentStatusColor);
   const hasDestination = unit.CurrentDestinationName && unit.CurrentDestinationName.trim() !== '';
 
   return (
     <Pressable onPress={onPress} style={styles.cardPressable}>
       <Box className="mb-3 rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
         <HStack className="items-center" space="md">
-          {/* Icon */}
-          <View style={[styles.unitIcon, { backgroundColor: `${statusColor}18`, borderColor: statusColor }]}>
-            <Icon as={Truck} size="sm" color={statusColor} />
+          {/* Icon: the unit type's icon (Truck when it has none) inside the status-colored frame */}
+          <View style={[styles.unitIcon, { backgroundColor: tintOf(statusColor), borderColor: statusColor }]}>
+            <UnitTypeIcon iconUrl={unit.TypeIconUrl} mapIcon={unit.TypeMapIcon} size={30} fallback={<Icon as={Truck} size="sm" color={statusColor} />} />
           </View>
 
           {/* Info */}
@@ -60,9 +66,9 @@ const UnitCard: React.FC<{
 
           {/* Status */}
           <VStack className="items-end" space="xs">
-            <HStack className="items-center rounded-full px-2 py-0.5" space="xs" style={{ backgroundColor: `${statusColor}18` }}>
+            <HStack className="items-center rounded-full px-2 py-0.5" space="xs" style={{ backgroundColor: tintOf(statusColor) }}>
               <Circle size={8} fill={statusColor} color={statusColor} />
-              <Text style={{ color: statusColor }} className="text-xs font-semibold">
+              <Text style={{ color: statusTextColor }} className="text-xs font-semibold">
                 {unit.CurrentStatus || t('units.unknown_status')}
               </Text>
             </HStack>

@@ -7,6 +7,7 @@ import { getAllGroups } from '@/api/groups/groups';
 import { getPois } from '@/api/mapping/mapping';
 import { getAllPersonnelStaffings, getAllPersonnelStatuses } from '@/api/satuses';
 import { UdfFieldsRenderer } from '@/components/calls/udf-fields-renderer';
+import { TypeIcon } from '@/components/common/type-icon';
 import { Actionsheet, ActionsheetBackdrop, ActionsheetContent, ActionsheetDragIndicator, ActionsheetDragIndicatorWrapper } from '@/components/ui/actionsheet';
 import { Box } from '@/components/ui/box';
 import { Button, ButtonSpinner, ButtonText } from '@/components/ui/button';
@@ -94,7 +95,12 @@ const DestinationSheetOption: React.FC<{
           {isNone ? (
             <Icon as={X} size="sm" className={isSelected ? 'text-indigo-500' : 'text-gray-400'} />
           ) : (
-            <Icon as={isCall ? Phone : isPoi ? MapPinned : Building2} size="sm" className={isSelected ? 'text-indigo-500' : 'text-gray-500'} />
+            <TypeIcon
+              iconUrl={call?.TypeIconUrl ?? poi?.IconUrl}
+              mapIcon={call?.TypeMapIcon}
+              size={18}
+              fallback={<Icon as={isCall ? Phone : isPoi ? MapPinned : Building2} size="sm" className={isSelected ? 'text-indigo-500' : 'text-gray-500'} />}
+            />
           )}
           <Text className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-100" numberOfLines={1}>
             {isNone ? label : isCall ? `#${call?.Number} - ${call?.Name}` : isPoi ? getPoiSelectionLabel(poi!) : station?.Name}

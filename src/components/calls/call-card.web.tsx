@@ -1,6 +1,7 @@
 import { AlertTriangle, MapPin, Phone } from 'lucide-react-native';
 import React from 'react';
 
+import { TypeIcon } from '@/components/common/type-icon';
 import { Box } from '@/components/ui/box';
 import { HStack } from '@/components/ui/hstack';
 import { Icon } from '@/components/ui/icon';
@@ -23,6 +24,9 @@ function getColor(call: CallResultData, priority: CallPriorityResultData | undef
   return '#808080';
 }
 
+// A light tile behind the call type icon so it reads on any priority color
+const typeIconStyle = { backgroundColor: '#ffffff', borderRadius: 4 };
+
 interface CallCardProps {
   call: CallResultData;
   priority: CallPriorityResultData | undefined;
@@ -43,7 +47,7 @@ export const CallCard: React.FC<CallCardProps> = ({ call, priority }) => {
       {/* Header with Call Number and Priority */}
       <HStack className="mb-4 items-center justify-between">
         <HStack className="items-center space-x-2">
-          <AlertTriangle size={20} />
+          <TypeIcon iconUrl={call.TypeIconUrl} mapIcon={call.TypeMapIcon} size={24} style={typeIconStyle} fallback={<AlertTriangle size={20} />} />
           <Text
             style={{
               color: textColor,

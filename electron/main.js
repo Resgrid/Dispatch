@@ -243,23 +243,26 @@ app.whenReady().then(() => {
             // and hot-reload, blob: for dynamic chunks, ws: for HMR.
             // Mapbox GL loads its stylesheet from api.mapbox.com and uses
             // blob: workers. connect-src allows plain http/ws for
-            // self-hosted Resgrid servers without TLS.
+            // self-hosted Resgrid servers without TLS, and img-src allows
+            // plain http so such a server's uploaded type/role icons load.
             csp =
                 "default-src 'self' http://localhost:8081;" +
                 " script-src 'self' http://localhost:8081 'unsafe-inline' 'unsafe-eval' blob:;" +
                 " style-src 'self' http://localhost:8081 'unsafe-inline' https://api.mapbox.com;" +
-                " img-src 'self' http://localhost:8081 data: https: blob:;" +
+                " img-src 'self' http://localhost:8081 data: https: http: blob:;" +
                 " font-src 'self' http://localhost:8081 data:;" +
                 " connect-src 'self' http://localhost:8081 https: http: wss: ws:;" +
                 " media-src 'self' http://localhost:8081 data: blob:;" +
                 " worker-src 'self' blob:;" +
                 " child-src blob:;";
         } else {
+            // Same allowances as dev: plain http in connect-src and img-src
+            // for self-hosted Resgrid servers without TLS.
             csp =
                 "default-src 'self' app:;" +
                 " script-src 'self' app: 'unsafe-inline';" +
                 " style-src 'self' app: 'unsafe-inline' https://api.mapbox.com;" +
-                " img-src 'self' app: data: https: blob:;" +
+                " img-src 'self' app: data: https: http: blob:;" +
                 " font-src 'self' app: data:;" +
                 " connect-src 'self' app: https: http: wss: ws:;" +
                 " media-src 'self' app: data: blob:;" +

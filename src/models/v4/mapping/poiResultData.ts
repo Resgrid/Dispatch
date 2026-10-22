@@ -11,4 +11,8 @@ export class PoiResultData {
   public ImagePath: string = '';
   public Marker: string = '';
   public IsDestination: boolean = false;
+  /** The department's uploaded icon for the POI's type (absolute URL, anonymous GET, 128x128 PNG); null when none was uploaded or from older servers. */
+  public IconUrl?: string | null = null;
+  /** Names of the department capabilities the POI offers (e.g. "Cath Lab"); absent from servers before POI capabilities. */
+  public Capabilities?: string[];
 }

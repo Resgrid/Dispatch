@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { Loading } from '@/components/common/loading';
+import { TypeIcon } from '@/components/common/type-icon';
 import ZeroState from '@/components/common/zero-state';
 import { Box } from '@/components/ui/box';
 import { FlatList } from '@/components/ui/flat-list';
@@ -15,6 +16,8 @@ import { Input, InputField, InputIcon, InputSlot } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useAnalytics } from '@/hooks/use-analytics';
+import { useReadableColor } from '@/hooks/use-readable-color';
+import { tintOf } from '@/lib/readable-color';
 import { type PersonnelInfoResultData } from '@/models/v4/personnel/personnelInfoResultData';
 import { usePersonnelStore } from '@/stores/personnel/store';
 
@@ -23,8 +26,12 @@ const PersonnelCard: React.FC<{
   onPress: () => void;
 }> = React.memo(({ person, onPress }) => {
   const { t } = useTranslation();
-  const statusColor = person.StatusColor || '#6b7280';
-  const staffingColor = person.StaffingColor || '#6b7280';
+  // Department colours drawn on the theme's surface: a black status reads in dark mode, a pale one in light mode
+  const readable = useReadableColor();
+  const statusColor = readable.mark(person.StatusColor);
+  const statusTextColor = readable.text(person.StatusColor);
+  const staffingColor = readable.mark(person.StaffingColor);
+  const staffingTextColor = readable.text(person.StaffingColor);
 
   return (
     <Pressable onPress={onPress} style={styles.cardPressable}>
@@ -32,7 +39,8 @@ const PersonnelCard: React.FC<{
         <HStack className="items-center" space="md">
           {/* Avatar */}
           <View style={[styles.avatar, { borderColor: statusColor }]}>
-            <Icon as={User} size="sm" color={statusColor} />
+            {/* The person's role icon inside the status-colored ring; the status-colored person icon when there is none or it fails to load. */}
+            <TypeIcon iconUrl={person.RoleIconUrl} size={24} fallback={<Icon as={User} size="sm" color={statusColor} />} />
           </View>
 
           {/* Info */}
@@ -52,15 +60,15 @@ const PersonnelCard: React.FC<{
 
           {/* Status badges */}
           <VStack className="items-end" space="xs">
-            <HStack className="items-center rounded-full px-2 py-0.5" space="xs" style={{ backgroundColor: `${statusColor}18` }}>
+            <HStack className="items-center rounded-full px-2 py-0.5" space="xs" style={{ backgroundColor: tintOf(statusColor) }}>
               <Circle size={8} fill={statusColor} color={statusColor} />
-              <Text style={{ color: statusColor }} className="text-xs font-semibold">
+              <Text style={{ color: statusTextColor }} className="text-xs font-semibold">
                 {person.Status || t('personnel.unknown_status')}
               </Text>
             </HStack>
-            <HStack className="items-center rounded-full px-2 py-0.5" space="xs" style={{ backgroundColor: `${staffingColor}18` }}>
+            <HStack className="items-center rounded-full px-2 py-0.5" space="xs" style={{ backgroundColor: tintOf(staffingColor) }}>
               <Circle size={6} fill={staffingColor} color={staffingColor} />
-              <Text className="text-xs" style={{ color: staffingColor }}>
+              <Text className="text-xs" style={{ color: staffingTextColor }}>
                 {person.Staffing || t('personnel.unknown_status')}
               </Text>
             </HStack>

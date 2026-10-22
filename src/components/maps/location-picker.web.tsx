@@ -4,7 +4,10 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native';
 
+import { DispatchMapLegend } from '@/components/maps/dispatch-map-legend';
 import { Button, ButtonText } from '@/components/ui/button';
+import { boundsAround, type DispatchMapOverlay } from '@/lib/dispatch-board';
+import { applyDispatchOverlay, DISPATCH_POINTS_LAYER, dispatchFeatureAt } from '@/lib/dispatch-map-layers-web';
 import { getDepartmentMapCenter } from '@/lib/map-center';
 import { useDepartmentMapStyle } from '@/lib/map-style';
 import { applyMapboxGlAccessToken } from '@/lib/mapbox-gl-token-web';
@@ -19,9 +22,14 @@ interface LocationPickerProps {
   };
   onLocationSelected: (location: { latitude: number; longitude: number; address?: string }) => void;
   height?: number;
+  /**
+   * Units, personnel and group boundaries to show around the call (dispatching). Clicking a unit or person shows its
+   * status, distance and ETA instead of moving the call location.
+   */
+  overlay?: DispatchMapOverlay | null;
 }
 
-const LocationPicker: React.FC<LocationPickerProps> = ({ initialLocation, onLocationSelected, height = 200 }) => {
+const LocationPicker: React.FC<LocationPickerProps> = ({ initialLocation, onLocationSelected, height = 200, overlay }) => {
   const { t } = useTranslation();
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -41,6 +49,11 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ initialLocation, onLoca
   }, [mapStyle]);
   // The style the current map instance was built with or last switched to.
   const appliedMapStyleRef = useRef<string | null>(null);
+  // Read by the 'style.load' handler, which re-adds the overlay after a style switch drops it.
+  const overlayRef = useRef<DispatchMapOverlay | null | undefined>(overlay);
+  const popupRef = useRef<mapboxgl.Popup | null>(null);
+  // The call location the map was last framed for, so a refreshed board does not yank the view the dispatcher moved.
+  const framedForRef = useRef<string | null>(null);
 
   // Inject Mapbox GL CSS
   useEffect(() => {
@@ -121,6 +134,15 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ initialLocation, onLoca
 
     map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
+    const mapInstance = map.current;
+    mapInstance.on('style.load', () => applyDispatchOverlay(mapInstance, overlayRef.current));
+    mapInstance.on('mouseenter', DISPATCH_POINTS_LAYER, () => {
+      mapInstance.getCanvas().style.cursor = 'pointer';
+    });
+    mapInstance.on('mouseleave', DISPATCH_POINTS_LAYER, () => {
+      mapInstance.getCanvas().style.cursor = '';
+    });
+
     // Create initial marker if we have a location
     if (currentLocation) {
       marker.current = new mapboxgl.Marker({ color: '#FF0000' }).setLngLat([currentLocation.longitude, currentLocation.latitude]).addTo(map.current);
@@ -128,6 +150,23 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ initialLocation, onLoca
 
     // Handle map click
     map.current.on('click', (e) => {
+      // A unit or person: say who it is rather than moving the call there.
+      const resource = map.current ? dispatchFeatureAt(map.current, e.point) : null;
+      if (resource && map.current) {
+        popupRef.current?.remove();
+        const content = document.createElement('div');
+        const title = document.createElement('strong');
+        title.textContent = resource.name;
+        content.appendChild(title);
+        if (resource.detail) {
+          const detail = document.createElement('div');
+          detail.textContent = resource.detail;
+          content.appendChild(detail);
+        }
+        popupRef.current = new mapboxgl.Popup({ closeButton: false, offset: 12 }).setLngLat(resource.coordinates).setDOMContent(content).addTo(map.current);
+        return;
+      }
+
       const newLocation = {
         latitude: e.lngLat.lat,
         longitude: e.lngLat.lng,
@@ -148,6 +187,8 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ initialLocation, onLoca
     }
 
     return () => {
+      popupRef.current?.remove();
+      popupRef.current = null;
       marker.current?.remove();
       marker.current = null;
       map.current?.remove();
@@ -163,6 +204,27 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ initialLocation, onLoca
     map.current.setStyle(mapStyle);
     appliedMapStyleRef.current = mapStyle;
   }, [mapStyle]);
+
+  // Draw the units, personnel and boundaries; the first time there are resources around a call location, frame the
+  // call with the closest few so the dispatcher sees them in relation to it.
+  useEffect(() => {
+    overlayRef.current = overlay;
+    const mapInstance = map.current;
+    if (!mapInstance) return;
+
+    applyDispatchOverlay(mapInstance, overlay);
+
+    if (!currentLocation || !overlay?.nearest.length) return;
+    const framingKey = `${currentLocation.latitude.toFixed(5)},${currentLocation.longitude.toFixed(5)}`;
+    if (framedForRef.current === framingKey) return;
+
+    const bounds = boundsAround(currentLocation, overlay.nearest);
+    if (bounds) {
+      framedForRef.current = framingKey;
+      // Extra room at the bottom: the Confirm Location bar sits over the map there.
+      mapInstance.fitBounds([bounds.sw, bounds.ne], { padding: { top: 48, right: 48, bottom: 96, left: 48 }, maxZoom: 15, duration: 600 });
+    }
+  }, [overlay, currentLocation]);
 
   const handleConfirmLocation = () => {
     if (currentLocation) {
@@ -183,6 +245,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ initialLocation, onLoca
   return (
     <View style={StyleSheet.flatten([styles.container, { height }])}>
       <div ref={mapContainer} style={{ height: '100%', width: '100%' }} />
+      {overlay ? <DispatchMapLegend overlay={overlay} /> : null}
       {!currentLocation ? (
         <View style={styles.noLocationContainer}>
           <Text style={styles.noLocationText}>{t('common.no_location')}</Text>

@@ -28,6 +28,12 @@ export const selectionReasonKey = (reason: RecommendationSelectionReason): strin
       return 'run_cards.reason.closest_by_eta';
     case RecommendationSelectionReason.RestPeriodOverridden:
       return 'run_cards.reason.rest_period_overridden';
+    case RecommendationSelectionReason.RelaxedFill:
+      return 'run_cards.reason.relaxed_fill';
+    case RecommendationSelectionReason.SubstitutePackage:
+      return 'run_cards.reason.substitute_package';
+    case RecommendationSelectionReason.FirstArriving:
+      return 'run_cards.reason.first_arriving';
     default:
       return 'run_cards.reason.unknown';
   }
@@ -50,6 +56,8 @@ export const shortfallReasonKey = (reason: RequirementShortfallReason): string =
       return 'run_cards.shortfall.all_in_rest_period';
     case RequirementShortfallReason.StationsExhausted:
       return 'run_cards.shortfall.stations_exhausted';
+    case RequirementShortfallReason.NoUnitMatchingStatusFilter:
+      return 'run_cards.shortfall.no_unit_matching_status_filter';
     default:
       return 'run_cards.shortfall.unknown';
   }
@@ -96,14 +104,21 @@ export const formatEta = (seconds: number | null | undefined): string | null => 
 /**
  * True when the recommendation is worth putting on screen: a card matched and it either selected
  * something, could not fill something, or wants a move-up. A matched card that produced nothing at
- * all (manual-only mode with no shortfalls) has nothing to say.
+ * all (manual-only mode with no shortfalls) has nothing to say. A conditional run card whose outcome is
+ * advice for the dispatcher always has something to say, even with nothing selected.
  */
 export const hasRecommendationContent = (recommendation: DispatchRecommendationResultData | null): boolean => {
   if (!recommendation || !recommendation.MatchedRunCardId) {
     return false;
   }
 
-  return (recommendation.Units?.length ?? 0) > 0 || (recommendation.Personnel?.length ?? 0) > 0 || (recommendation.Shortfalls?.length ?? 0) > 0 || (recommendation.MoveUps?.length ?? 0) > 0;
+  return (
+    (recommendation.Units?.length ?? 0) > 0 ||
+    (recommendation.Personnel?.length ?? 0) > 0 ||
+    (recommendation.Shortfalls?.length ?? 0) > 0 ||
+    (recommendation.MoveUps?.length ?? 0) > 0 ||
+    !!recommendation.Decision?.AdviceText?.trim()
+  );
 };
 
 /** Unit ids the recommendation selected, as the strings the dispatch selection uses. */
