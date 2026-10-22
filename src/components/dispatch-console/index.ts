@@ -4,6 +4,7 @@ export { ActiveCallsPanel } from './active-calls-panel';
 export { type ActivityLogEntry, ActivityLogPanel } from './activity-log-panel';
 export { AddNoteBottomSheet } from './add-note-bottom-sheet';
 export { AnimatedRefreshIcon } from './animated-refresh-icon';
+export { BulkUnitActionsPanel } from './bulk-unit-actions-panel';
 export { DashboardViewToggles } from './dashboard-view-toggles';
 export { MapWidget } from './map-widget';
 export { NotesPanel } from './notes-panel';

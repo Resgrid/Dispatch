@@ -2,7 +2,7 @@ import { type Href, router } from 'expo-router';
 import { Circle, ExternalLink, Filter, MapPin, Plus, Search, Truck, X } from 'lucide-react-native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { FlatList, type GestureResponderEvent, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { Badge } from '@/components/ui/badge';
 import { Box } from '@/components/ui/box';
@@ -10,7 +10,10 @@ import { HStack } from '@/components/ui/hstack';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
+import { UnitTypeIcon } from '@/components/units/unit-type-icon';
+import { useReadableColor } from '@/hooks/use-readable-color';
 import { isUnitDispatch } from '@/lib/dispatch-types';
+import { contentOnFill } from '@/lib/readable-color';
 import { isUnitAvailable } from '@/lib/resource-availability';
 import { type DispatchedEventResultData } from '@/models/v4/calls/dispatchedEventResultData';
 import { type PersonnelInfoResultData } from '@/models/v4/personnel/personnelInfoResultData';
@@ -21,6 +24,7 @@ import { TermKeys, useTerm } from '@/stores/terminology/store';
 import { AnimatedRefreshIcon } from './animated-refresh-icon';
 import { PanelHeader } from './panel-header';
 import { ResourcesPanel } from './resources-panel';
+import { UnitMultiSelectToggle, UnitSelectionBar, UnitSelectionCheckbox, useUnitMultiSelect } from './unit-multi-select';
 
 interface UnitsPanelProps {
   units: UnitInfoResultData[];
@@ -59,20 +63,32 @@ const UnitItem: React.FC<{
   unit: UnitInfoResultData;
   isSelected: boolean;
   isOnCall?: boolean;
-  onSelect?: (unitId: string) => void;
+  // Multi-select: the row shows a check box, and isSelected means "in the selection"
+  isSelectionMode?: boolean;
+  onSelect?: (unitId: string, event?: GestureResponderEvent) => void;
+  onLongPress?: (unitId: string) => void;
   onSetStatusForUnit?: (unitId: string, unitName: string) => void;
-}> = React.memo(({ unit, isSelected, isOnCall, onSelect, onSetStatusForUnit }) => {
+}> = React.memo(({ unit, isSelected, isOnCall, isSelectionMode, onSelect, onLongPress, onSetStatusForUnit }) => {
   const { t } = useTranslation();
-  const statusColor = getStatusColor(unit.CurrentStatusColor, unit.CurrentStatusId);
+  // Department colours drawn on the theme's surface, adjusted so a black status reads in dark mode and a pale one in light mode
+  const readable = useReadableColor();
+  const rawStatusColor = getStatusColor(unit.CurrentStatusColor, unit.CurrentStatusId);
+  const statusColor = readable.mark(rawStatusColor);
+  const statusTextColor = readable.text(rawStatusColor);
   const hasDestination = unit.CurrentDestinationName && unit.CurrentDestinationName.trim() !== '';
 
   return (
-    <Pressable onPress={() => onSelect?.(unit.UnitId)}>
-      <Box className={`mb-2 rounded-lg border bg-white p-2 dark:bg-gray-800 ${isSelected ? 'border-indigo-500' : 'border-gray-200 dark:border-gray-700'}`}>
+    <Pressable onPress={(e) => onSelect?.(unit.UnitId, e)} onLongPress={onLongPress ? () => onLongPress(unit.UnitId) : undefined} testID={`unit-item-${unit.UnitId}`}>
+      <Box
+        className={`mb-2 rounded-lg border p-2 ${
+          isSelected ? (isSelectionMode ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950' : 'border-indigo-500 bg-white dark:bg-gray-800') : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800'
+        }`}
+      >
         <HStack className="items-center justify-between">
           <HStack className="flex-1 items-center" space="sm">
+            {isSelectionMode ? <UnitSelectionCheckbox isChecked={isSelected} /> : null}
             <View style={StyleSheet.flatten([styles.statusIndicator, { backgroundColor: statusColor }])}>
-              <Icon as={Truck} size="xs" color="#fff" />
+              <UnitTypeIcon iconUrl={unit.TypeIconUrl} mapIcon={unit.TypeMapIcon} size={22} style={styles.typeIconBackdrop} fallback={<Icon as={Truck} size="xs" color={contentOnFill(statusColor)} />} />
             </View>
             <VStack className="flex-1">
               <HStack className="items-center" space="xs">
@@ -111,7 +127,7 @@ const UnitItem: React.FC<{
                 <ExternalLink size={12} color="#6b7280" />
               </Pressable>
               <Circle size={8} fill={statusColor} color={statusColor} />
-              <Text style={{ color: statusColor }} className="text-xs font-medium">
+              <Text style={{ color: statusTextColor }} className="text-xs font-medium">
                 {unit.CurrentStatus || unit.Note || t('dispatch.available')}
               </Text>
             </HStack>
@@ -128,6 +144,7 @@ const UnitItem: React.FC<{
                   onSetStatusForUnit(unit.UnitId, unit.Name);
                 }}
                 style={styles.statusButton}
+                testID="unit-set-status-for-call"
               >
                 <Icon as={Plus} size="xs" className="text-indigo-500" />
               </Pressable>
@@ -205,24 +222,32 @@ const UnitsPanelComponent: React.FC<UnitsPanelProps> = ({
   // Count available units (by status base type when the server sends one; see isUnitAvailable)
   const availableUnits = displayedUnits.filter(isUnitAvailable).length;
 
+  const { isSelectionMode, selectedUnitIds, selectedUnitIdSet, toggleSelectionMode, handleUnitPress, handleUnitLongPress, addUnits, clearSelection, endSelection } = useUnitMultiSelect({ selectedUnitId, onSelectUnit });
+
   const handleSelectUnit = useCallback(
-    (unitId: string) => {
+    (unitId: string, event?: GestureResponderEvent) => {
+      if (handleUnitPress(unitId, event)) return;
       onSelectUnit?.(unitId);
     },
-    [onSelectUnit]
+    [handleUnitPress, onSelectUnit]
   );
+
+  // Select all adds the units the list shows (e.g. every unit on the filtered call)
+  const handleSelectAllUnits = useCallback(() => addUnits(displayedUnits.map((u) => u.UnitId)), [addUnits, displayedUnits]);
 
   const renderUnitItem = useCallback(
     ({ item }: { item: UnitInfoResultData }) => (
       <UnitItem
         unit={item}
-        isSelected={selectedUnitId === item.UnitId}
+        isSelected={isSelectionMode ? selectedUnitIdSet.has(item.UnitId) : selectedUnitId === item.UnitId}
         isOnCall={dispatchedUnitNames.has(item.Name.toLowerCase()) || Boolean(selectedCallId && item.CurrentDestinationId === selectedCallId)}
+        isSelectionMode={isSelectionMode}
         onSelect={handleSelectUnit}
-        onSetStatusForUnit={isCallFilterActive ? onSetUnitStatusForCall : undefined}
+        onLongPress={handleUnitLongPress}
+        onSetStatusForUnit={isCallFilterActive && !isSelectionMode ? onSetUnitStatusForCall : undefined}
       />
     ),
-    [selectedUnitId, dispatchedUnitNames, selectedCallId, handleSelectUnit, isCallFilterActive, onSetUnitStatusForCall]
+    [isSelectionMode, selectedUnitIdSet, selectedUnitId, dispatchedUnitNames, selectedCallId, handleSelectUnit, handleUnitLongPress, isCallFilterActive, onSetUnitStatusForCall]
   );
 
   const keyExtractor = useCallback((item: UnitInfoResultData) => item.UnitId, []);
@@ -268,6 +293,7 @@ const UnitsPanelComponent: React.FC<UnitsPanelProps> = ({
                 </HStack>
               </Badge>
             ) : null}
+            <UnitMultiSelectToggle isActive={isSelectionMode} onPress={toggleSelectionMode} />
             <Pressable onPress={onRefresh} style={styles.iconButton}>
               <AnimatedRefreshIcon isLoading={isLoading} />
             </Pressable>
@@ -296,6 +322,7 @@ const UnitsPanelComponent: React.FC<UnitsPanelProps> = ({
               </Pressable>
             ) : null}
           </HStack>
+          {isSelectionMode ? <UnitSelectionBar selectedCount={selectedUnitIds.length} onSelectAll={handleSelectAllUnits} onClear={clearSelection} onDone={endSelection} /> : null}
           <FlatList<UnitInfoResultData>
             style={styles.content}
             contentContainerStyle={styles.contentContainer}
@@ -348,6 +375,11 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // A light tile behind a unit-type icon so it reads on any status color, which stays visible as the frame
+  typeIconBackdrop: {
+    backgroundColor: '#ffffff',
+    borderRadius: 4,
   },
   emptyState: {
     alignItems: 'center',

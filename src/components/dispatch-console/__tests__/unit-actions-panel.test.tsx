@@ -3,6 +3,7 @@ import React from 'react';
 
 import { getSetUnitStatusData } from '@/api/dispatch/dispatch';
 import { saveUnitStatus } from '@/api/units/unitStatuses';
+import { ActionBaseTypes } from '@/lib/base-types';
 import { CustomStateDetailType, DestinationEntityType } from '@/lib/destination-helpers';
 import { type CallResultData } from '@/models/v4/calls/callResultData';
 import { type StatusesResultData } from '@/models/v4/statuses/statusesResultData';
@@ -37,6 +38,8 @@ const mockCalls: CallResultData[] = [
   { CallId: 'CLOSED', Number: '26-C', Name: 'Old Call', State: 4 } as CallResultData,
 ];
 const mockCallsWithD: CallResultData[] = [...mockCalls, { CallId: 'D', Number: '26-D', Name: 'Traffic Collision', State: 0 } as CallResultData];
+// A call logged with its receiving hospital (destination POI 11)
+const mockCallsWithHospital: CallResultData[] = [...mockCalls, { CallId: 'H', Number: '20-10-2026-4', Name: 'AGRESSIE', State: 0, DestinationPoiId: 11, DestinationName: 'AZ Zottegem' } as CallResultData];
 let mockCallList = mockCalls;
 let mockIsLoadingCalls = false;
 const mockFetchCalls = jest.fn(() => Promise.resolve());
@@ -358,5 +361,157 @@ describe('UnitActionsPanel destination defaults', () => {
     fireEvent.press(screen.getByTestId('update-status-button'));
     await waitFor(() => expect(mockSaveUnitStatus).toHaveBeenCalledTimes(1));
     expect(mockSaveUnitStatus.mock.calls[0][0]).toMatchObject({ Id: 'u1', Type: '8', RespondingTo: 'B', RespondingToType: DestinationEntityType.Call });
+  });
+});
+
+// Belgian EMS, 2026-10-21: "departing to hospital" should go to the hospital the call was logged with, without the
+// dispatcher picking it, and a crew's change of hospital should stand out.
+describe('UnitActionsPanel transport destination', () => {
+  const withMeaning = (s: StatusesResultData, BaseType: number): StatusesResultData => ({ ...s, BaseType });
+  const transportStatuses = [
+    ...statuses,
+    withMeaning(status(12, 'Vertrek ZH', CustomStateDetailType.CallsAndPois), ActionBaseTypes.Transporting),
+    withMeaning(status(13, 'Aankomst ZH', CustomStateDetailType.Pois), ActionBaseTypes.AtHospital),
+  ];
+  const hospitals = [
+    { PoiId: 11, Name: 'AZ Sint-Elisabeth Zottegem', Address: 'Godveerdegemstraat 69' },
+    { PoiId: 12, Name: 'UZ Gent', Address: '' },
+  ];
+  const onCallH = (overrides: Partial<UnitInfoResultData> = {}) => ({ ...unit('u1'), ActiveCallId: 'H', ...overrides }) as UnitInfoResultData;
+  const selectedPoiInStore = () => useUnitActionsStore.getState().statusSelectedPoi?.PoiId ?? null;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetSetUnitStatusData.mockResolvedValue({ Data: { Statuses: transportStatuses, Calls: [], Stations: [], DestinationPois: hospitals } } as any);
+    mockSaveUnitStatus.mockResolvedValue({} as any);
+    useUnitActionsStore.getState().reset();
+    useDispatchConsoleStore.setState({ selectedCallId: null, isCallFilterActive: false });
+    mockCallList = mockCallsWithHospital;
+    mockIsLoadingCalls = false;
+  });
+
+  it("defaults a Transporting status to the call's hospital and sends it without opening the destination picker", async () => {
+    await renderOpenPanel(onCallH());
+    await waitFor(() => expect(selectedCallInStore()).toBe('H'));
+
+    await pickStatus('Vertrek ZH');
+
+    expect(selectedPoiInStore()).toBe(11);
+    expect(screen.getByText('AZ Sint-Elisabeth Zottegem - Godveerdegemstraat 69')).toBeTruthy();
+    expect(screen.queryByText('dispatch.unit_actions_panel.differs_from_call_destination')).toBeNull();
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 350));
+    });
+    expect(screen.queryByTestId('actionsheet')).toBeNull();
+
+    fireEvent.press(screen.getByTestId('update-status-button'));
+    await waitFor(() => expect(mockSaveUnitStatus).toHaveBeenCalledTimes(1));
+    expect(mockSaveUnitStatus.mock.calls[0][0]).toMatchObject({ Id: 'u1', Type: '12', RespondingTo: '11', RespondingToType: DestinationEntityType.Poi });
+  });
+
+  it("keeps the call for a status that is not a transport status", async () => {
+    await renderOpenPanel(onCallH());
+    await waitFor(() => expect(selectedCallInStore()).toBe('H'));
+
+    await pickStatus('Responding');
+
+    expect(selectedCallInStore()).toBe('H');
+    expect(selectedPoiInStore()).toBeNull();
+  });
+
+  it("lists the call's hospital first, flags another hospital and keeps it for At Hospital", async () => {
+    await renderOpenPanel(onCallH());
+    await waitFor(() => expect(selectedCallInStore()).toBe('H'));
+    await pickStatus('Vertrek ZH');
+
+    // The crew asks for UZ Gent (e.g. a Cath Lab)
+    fireEvent.press(screen.getByText('AZ Sint-Elisabeth Zottegem - Godveerdegemstraat 69'));
+    const sheet = await screen.findByTestId('actionsheet');
+    expect(within(sheet).getByText('dispatch.unit_actions_panel.call_destination')).toBeTruthy();
+    fireEvent.press(within(sheet).getByText('UZ Gent'));
+
+    expect(selectedPoiInStore()).toBe(12);
+    expect(screen.getByText('dispatch.unit_actions_panel.differs_from_call_destination')).toBeTruthy();
+    expect(screen.getByPlaceholderText('dispatch.unit_actions_panel.destination_change_reason (common.optional)')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('update-status-button'));
+    await waitFor(() => expect(mockSaveUnitStatus).toHaveBeenCalledTimes(1));
+    expect(mockSaveUnitStatus.mock.calls[0][0]).toMatchObject({ Type: '12', RespondingTo: '12', RespondingToType: DestinationEntityType.Poi });
+
+    await waitFor(() => expect(useUnitActionsStore.getState().selectedStatus).toBeNull());
+    await pickStatus('Aankomst ZH');
+    expect(selectedPoiInStore()).toBe(12);
+  });
+
+  it('defaults At Hospital on a later open to the hospital the unit is transporting to', async () => {
+    await renderOpenPanel(onCallH({ CurrentStatusBaseType: ActionBaseTypes.Transporting, CurrentDestinationType: DestinationEntityType.Poi, CurrentDestinationId: '12' }));
+    await waitFor(() => expect(selectedCallInStore()).toBe('H'));
+
+    await pickStatus('Aankomst ZH');
+
+    expect(selectedPoiInStore()).toBe(12);
+    expect(screen.getByText('dispatch.unit_actions_panel.differs_from_call_destination')).toBeTruthy();
+  });
+
+  // A crew asks to divert a STEMI: the dispatcher filters the hospitals to those with a Cath Lab
+  it('filters the hospitals by capability and shows what each offers', async () => {
+    mockGetSetUnitStatusData.mockResolvedValue({
+      Data: {
+        Statuses: transportStatuses,
+        Calls: [],
+        Stations: [],
+        DestinationPois: [
+          { ...hospitals[0], Capabilities: ['Stroke Center', 'Maternity'] },
+          { ...hospitals[1], Capabilities: ['Cath Lab', 'Trauma Center'] },
+          { PoiId: 13, Name: 'UZ Brussel', Address: '', Capabilities: ['Burn Center', 'Cath Lab'] },
+        ],
+      },
+    } as any);
+    await renderOpenPanel(onCallH());
+    await waitFor(() => expect(selectedCallInStore()).toBe('H'));
+    await pickStatus('Vertrek ZH');
+
+    fireEvent.press(screen.getByText('AZ Sint-Elisabeth Zottegem - Godveerdegemstraat 69'));
+    const sheet = await screen.findByTestId('actionsheet');
+    expect(within(sheet).getByText('Stroke Center · Maternity')).toBeTruthy();
+
+    fireEvent.press(within(sheet).getByTestId('capability-chip-Cath Lab'));
+    expect(within(sheet).queryByText('AZ Sint-Elisabeth Zottegem - Godveerdegemstraat 69')).toBeNull();
+    expect(within(sheet).getByText('UZ Gent')).toBeTruthy();
+    expect(within(sheet).getByText('UZ Brussel')).toBeTruthy();
+
+    fireEvent.press(within(sheet).getByTestId('capability-chip-Burn Center'));
+    expect(within(sheet).queryByText('UZ Gent')).toBeNull();
+    fireEvent.press(within(sheet).getByText('UZ Brussel'));
+
+    expect(selectedPoiInStore()).toBe(13);
+    expect(screen.getByText('dispatch.unit_actions_panel.differs_from_call_destination')).toBeTruthy();
+  });
+
+  it('offers a way back when no hospital offers every selected capability', async () => {
+    mockGetSetUnitStatusData.mockResolvedValue({
+      Data: {
+        Statuses: transportStatuses,
+        Calls: [],
+        Stations: [],
+        DestinationPois: [
+          { ...hospitals[0], Capabilities: ['Stroke Center'] },
+          { ...hospitals[1], Capabilities: ['Cath Lab'] },
+        ],
+      },
+    } as any);
+    await renderOpenPanel(onCallH());
+    await waitFor(() => expect(selectedCallInStore()).toBe('H'));
+    await pickStatus('Vertrek ZH');
+
+    fireEvent.press(screen.getByText('AZ Sint-Elisabeth Zottegem - Godveerdegemstraat 69'));
+    const sheet = await screen.findByTestId('actionsheet');
+    fireEvent.press(within(sheet).getByTestId('capability-chip-Cath Lab'));
+    fireEvent.press(within(sheet).getByTestId('capability-chip-Stroke Center'));
+    expect(within(sheet).getByText('dispatch.unit_actions_panel.no_pois_match_capabilities')).toBeTruthy();
+
+    fireEvent.press(within(sheet).getByText('dispatch.unit_actions_panel.clear_capability_filter'));
+    expect(within(sheet).getByText('UZ Gent')).toBeTruthy();
+    expect(within(sheet).getByText('AZ Sint-Elisabeth Zottegem - Godveerdegemstraat 69')).toBeTruthy();
   });
 });

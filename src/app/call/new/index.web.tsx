@@ -23,6 +23,7 @@ import { Loading } from '@/components/common/loading';
 import FullScreenLocationPicker from '@/components/maps/full-screen-location-picker';
 import LocationPicker from '@/components/maps/location-picker';
 import { RecommendationPanel } from '@/components/runcards/recommendation-panel';
+import { newCallRunCardSaveFields } from '@/components/runcards/run-card-save-fields';
 import { useCallRecommendation } from '@/components/runcards/use-call-recommendation';
 import { Box } from '@/components/ui/box';
 import { Button, ButtonText } from '@/components/ui/button';
@@ -33,6 +34,7 @@ import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useAnalytics } from '@/hooks/use-analytics';
+import { useDispatchMapOverlay } from '@/hooks/use-dispatch-map-overlay';
 import { useNewCallFieldPolicy } from '@/hooks/use-new-call-field-policy';
 import { useToast } from '@/hooks/use-toast';
 import { describeCallFields, getMissingCallFieldsFromError, hasDispatchRecipients, toProtocolIds } from '@/lib/call-field-policy';
@@ -316,6 +318,8 @@ export default function NewCallWeb() {
     longitude: number;
     address?: string;
   } | null>(null);
+  // Units, personnel and group boundaries around the call, from the nearest-unit board the picker ranks with too.
+  const dispatchMapOverlay = useDispatchMapOverlay(selectedLocation);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sectionsExpanded, setSectionsExpanded] = useState({
     templates: false,
@@ -525,6 +529,8 @@ export default function NewCallWeb() {
           protocolIds: fieldPolicy.isVisible(NewCallFieldKeys.Protocols) ? toProtocolIds(selectedProtocols) : undefined,
           dispatchOnUtc: isPending ? undefined : toDispatchOnUtc(data.dispatchOn),
           isPending,
+          // Conditional run cards: the response codes and decision outcome the dispatcher reviewed (nothing otherwise).
+          ...newCallRunCardSaveFields(data.dispatchSelection?.units),
         });
 
         if (udfValues.length > 0 && response?.Id) {
@@ -1307,7 +1313,7 @@ export default function NewCallWeb() {
                         <View style={styles.mapContainer}>
                           {selectedLocation ? (
                             <View style={styles.mapWrapper}>
-                              <LocationPicker initialLocation={selectedLocation} onLocationSelected={handleLocationSelected} height={200} />
+                              <LocationPicker initialLocation={selectedLocation} onLocationSelected={handleLocationSelected} height={280} overlay={dispatchMapOverlay} />
                               <Pressable style={styles.expandMapButton} onPress={() => setShowLocationPicker(true)}>
                                 <MapPinIcon size={16} color="#fff" />
                                 <Text style={styles.expandMapText}>{t('calls.expand_map')}</Text>
@@ -1391,6 +1397,7 @@ export default function NewCallWeb() {
                           isApplied={runCardRecommendation.isApplied}
                           onApply={handleApplyRecommendation}
                           onRefresh={runCardRecommendation.refresh}
+                          conditions={runCardRecommendation.conditions}
                         />
                       ) : null}
                       <Pressable style={StyleSheet.flatten([styles.dispatchButton, isDark ? styles.dispatchButtonDark : styles.dispatchButtonLight])} onPress={() => setShowDispatchModal(true)}>
@@ -1502,7 +1509,14 @@ export default function NewCallWeb() {
       ) : null}
 
       {/* Dispatch selection modal */}
-      <DispatchSelectionModal isVisible={showDispatchModal} onClose={() => setShowDispatchModal(false)} onConfirm={handleDispatchSelection} initialSelection={dispatchSelection} />
+      <DispatchSelectionModal
+        isVisible={showDispatchModal}
+        onClose={() => setShowDispatchModal(false)}
+        onConfirm={handleDispatchSelection}
+        initialSelection={dispatchSelection}
+        callLocation={selectedLocation}
+        recommendation={runCardRecommendation.isRunCardsEnabled ? runCardRecommendation.recommendation : null}
+      />
 
       {/* Call Templates modal */}
       <CallTemplatesModal isVisible={showTemplatesModal} onClose={() => setShowTemplatesModal(false)} onSelect={handleTemplateSelect} />

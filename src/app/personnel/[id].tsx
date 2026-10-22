@@ -9,6 +9,7 @@ import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { getPersonnelInfo } from '@/api/personnel/personnel';
 import { UdfFieldsRenderer } from '@/components/calls/udf-fields-renderer';
 import { Loading } from '@/components/common/loading';
+import { TypeIcon } from '@/components/common/type-icon';
 import ZeroState from '@/components/common/zero-state';
 import { Box } from '@/components/ui/box';
 import { Button, ButtonText } from '@/components/ui/button';
@@ -19,6 +20,9 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useAnalytics } from '@/hooks/use-analytics';
+import { useReadableColor } from '@/hooks/use-readable-color';
+import { useRoleIcons } from '@/hooks/use-role-icons';
+import { tintOf } from '@/lib/readable-color';
 import { type PersonnelInfoResultData } from '@/models/v4/personnel/personnelInfoResultData';
 
 // The detail page only displays custom fields; nothing is edited here.
@@ -28,9 +32,12 @@ export default function PersonnelDetail() {
   const { id } = useLocalSearchParams();
   const userId = Array.isArray(id) ? id[0] : id;
   const router = useRouter();
+  // Department colours drawn on the theme's surface: a black status reads in dark mode, a pale one in light mode
+  const readable = useReadableColor();
   const { t } = useTranslation();
   const { colorScheme } = useColorScheme();
   const { trackEvent } = useAnalytics();
+  const roleIcons = useRoleIcons();
 
   const [person, setPerson] = useState<PersonnelInfoResultData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -150,8 +157,10 @@ export default function PersonnelDetail() {
     );
   }
 
-  const statusColor = person.StatusColor || '#6b7280';
-  const staffingColor = person.StaffingColor || '#6b7280';
+  const statusColor = readable.mark(person.StatusColor);
+  const statusTextColor = readable.text(person.StatusColor);
+  const staffingColor = readable.mark(person.StaffingColor);
+  const staffingTextColor = readable.text(person.StaffingColor);
 
   return (
     <>
@@ -169,7 +178,8 @@ export default function PersonnelDetail() {
             {/* Header card with avatar and name */}
             <Box className="mx-4 mt-4 items-center rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
               <View style={[styles.avatarLarge, { borderColor: statusColor }]}>
-                <Icon as={User} size="xl" color={statusColor} />
+                {/* The person's role icon inside the status-colored ring; the status-colored person icon when there is none or it fails to load. */}
+                <TypeIcon iconUrl={person.RoleIconUrl} size={44} fallback={<Icon as={User} size="xl" color={statusColor} />} testID="personnel-role-icon" />
               </View>
               <Heading size="lg" className="mt-3 text-gray-900 dark:text-gray-50">
                 {person.FirstName} {person.LastName}
@@ -212,9 +222,9 @@ export default function PersonnelDetail() {
               {/* Status row */}
               <HStack className="items-center justify-between border-b border-gray-100 py-3 dark:border-gray-700">
                 <Text className="text-sm text-gray-500 dark:text-gray-400">{t('personnel.status')}</Text>
-                <HStack className="items-center rounded-full px-3 py-1" space="sm" style={{ backgroundColor: `${statusColor}18` }}>
+                <HStack className="items-center rounded-full px-3 py-1" space="sm" style={{ backgroundColor: tintOf(statusColor) }}>
                   <Circle size={10} fill={statusColor} color={statusColor} />
-                  <Text style={{ color: statusColor }} className="text-sm font-semibold">
+                  <Text style={{ color: statusTextColor }} className="text-sm font-semibold">
                     {person.Status || t('personnel.unknown_status')}
                   </Text>
                 </HStack>
@@ -223,9 +233,9 @@ export default function PersonnelDetail() {
               {/* Staffing row */}
               <HStack className="items-center justify-between border-b border-gray-100 py-3 dark:border-gray-700">
                 <Text className="text-sm text-gray-500 dark:text-gray-400">{t('personnel.staffing')}</Text>
-                <HStack className="items-center rounded-full px-3 py-1" space="sm" style={{ backgroundColor: `${staffingColor}18` }}>
+                <HStack className="items-center rounded-full px-3 py-1" space="sm" style={{ backgroundColor: tintOf(staffingColor) }}>
                   <Circle size={10} fill={staffingColor} color={staffingColor} />
-                  <Text style={{ color: staffingColor }} className="text-sm font-semibold">
+                  <Text style={{ color: staffingTextColor }} className="text-sm font-semibold">
                     {person.Staffing || t('personnel.unknown_status')}
                   </Text>
                 </HStack>
@@ -275,7 +285,7 @@ export default function PersonnelDetail() {
                   {person.Roles.map((role) => (
                     <Box key={role} className="mb-2 rounded-full bg-indigo-50 px-3 py-1 dark:bg-indigo-900/30">
                       <HStack className="items-center" space="xs">
-                        <Icon as={Shield} size="xs" className="text-indigo-500" />
+                        <TypeIcon iconUrl={roleIcons.get(role.trim().toLowerCase())} size={16} fallback={<Icon as={Shield} size="xs" className="text-indigo-500" />} testID={`role-chip-icon-${role}`} />
                         <Text className="text-sm font-medium text-indigo-700 dark:text-indigo-300">{role}</Text>
                       </HStack>
                     </Box>

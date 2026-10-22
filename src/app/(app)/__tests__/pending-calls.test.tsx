@@ -125,7 +125,8 @@ describe('PendingCalls screen', () => {
     fireEvent.press(screen.getByTestId('pending-call-dispatch-12'), { stopPropagation: jest.fn() });
     fireEvent.press(screen.getByTestId('pending-call-cancel-11'), { stopPropagation: jest.fn() });
 
-    expect(mockOpenDispatchPicker).toHaveBeenCalledWith('12');
+    // The call's location rides along so the picker ranks by distance; this row has none.
+    expect(mockOpenDispatchPicker).toHaveBeenCalledWith('12', undefined, null);
     expect(mockConfirmCancelPending).toHaveBeenCalledWith('11');
   });
 

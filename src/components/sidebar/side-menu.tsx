@@ -8,6 +8,7 @@ import {
   Home,
   Hourglass,
   List,
+  ListChecks,
   type LucideIcon,
   Map as MapIcon,
   MapPinned,
@@ -25,8 +26,9 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { useAwaitingResourcesStore } from '@/stores/awaiting-resources/store';
 import { usePendingCallsStore } from '@/stores/calls/pending-store';
-import { useIsChatEnabled, useIsDeploymentsEnabled, useIsRecordsFieldEnabled } from '@/stores/feature-flags/store';
+import { useIsChatEnabled, useIsDeploymentsEnabled, useIsRecordsFieldEnabled, useIsRunCardConditionsEnabled } from '@/stores/feature-flags/store';
 import { terminologyStore, TermKeys } from '@/stores/terminology/store';
 
 interface SideMenuProps {
@@ -42,10 +44,13 @@ interface MenuItem {
   children?: MenuItem[];
   /** Count shown as a badge after the label; hidden when zero or absent. */
   badgeCount?: number;
+  /** Badge colour when it should not read as the amber Pending tile. */
+  badgeColor?: string;
 }
 
 // termNames: the department's own words for modules (Department -> Terminology); unrenamed ones keep the app's label.
-const getMenuItems = (t: (key: string) => string, pendingCallsCount: number, termNames: Record<string, string>): MenuItem[] => [
+// awaitingResourcesCount: null leaves the Awaiting Resources entry out (no Dispatch.RunCardConditions).
+const getMenuItems = (t: (key: string) => string, pendingCallsCount: number, termNames: Record<string, string>, awaitingResourcesCount: number | null = null): MenuItem[] => [
   { id: 'home', label: t('menu.home'), icon: Home, route: '/' },
   {
     id: 'calls',
@@ -54,6 +59,10 @@ const getMenuItems = (t: (key: string) => string, pendingCallsCount: number, ter
     children: [
       { id: 'calls-list', label: t('menu.calls_list'), icon: List, route: '/calls' },
       { id: 'pending-calls', label: t('menu.pending_calls'), icon: Hourglass, route: '/pending-calls', badgeCount: pendingCallsCount },
+      // Calls that went out short of a required resource (conditional run cards); orange, like the banner.
+      ...(awaitingResourcesCount !== null
+        ? [{ id: 'awaiting-resources', label: t('menu.awaiting_resources'), icon: ListChecks, route: '/awaiting-resources', badgeCount: awaitingResourcesCount, badgeColor: '#ea580c' }]
+        : []),
       { id: 'scheduled-calls', label: t('menu.scheduled_calls'), icon: CalendarClock, route: '/scheduled-calls' },
       { id: 'new-call', label: t('menu.new_call'), icon: Plus, route: '/call/new' },
       { id: 'incident-command', label: t('menu.incident_command'), icon: Network, route: '/incident-command' },
@@ -110,11 +119,14 @@ function SideMenu({ onNavigate, colorScheme: propColorScheme }: SideMenuProps): 
   const isDeploymentsEnabled = useIsDeploymentsEnabled();
   // Whatever the console last loaded; the menu itself does not fetch.
   const pendingCallsCount = usePendingCallsStore((s) => s.pendingCalls.length);
+  // Kept current by the layout's awaiting-resources sync; the entry only exists with Dispatch.RunCardConditions on.
+  const isRunCardConditionsEnabled = useIsRunCardConditionsEnabled();
+  const awaitingResourcesCount = useAwaitingResourcesStore((s) => s.calls.length);
   const termNames = terminologyStore((s) => s.names);
   // Chat and the assistant are gated by the Chat.System feature flag.
   // Chat.System off hides chat and the assistant; Field Records needs Records.System plus this app's
   // own child flag. Both fail closed, so an entry stays hidden until the server confirms it.
-  const menuItems = getMenuItems(t, pendingCallsCount, termNames).filter((item) => {
+  const menuItems = getMenuItems(t, pendingCallsCount, termNames, isRunCardConditionsEnabled ? awaitingResourcesCount : null).filter((item) => {
     if (item.id === 'chat' || item.id === 'assistant') {
       return isChatEnabled;
     }
@@ -170,7 +182,7 @@ function SideMenu({ onNavigate, colorScheme: propColorScheme }: SideMenuProps): 
           </View>
           <Text style={[styles.menuItemText, { color: theme.menuItemText }, isChild ? styles.childMenuItemText : null]}>{item.label}</Text>
           {item.badgeCount ? (
-            <View style={styles.badge} testID={`side-menu-badge-${item.id}`}>
+            <View style={[styles.badge, item.badgeColor ? { backgroundColor: item.badgeColor } : null]} testID={`side-menu-badge-${item.id}`}>
               <Text style={styles.badgeText}>{item.badgeCount > 99 ? '99+' : item.badgeCount}</Text>
             </View>
           ) : null}

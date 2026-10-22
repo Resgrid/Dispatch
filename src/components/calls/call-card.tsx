@@ -2,6 +2,7 @@ import { AlertTriangle, Clock, MapPin, ShieldCheck } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { TypeIcon } from '@/components/common/type-icon';
 import { Box } from '@/components/ui/box';
 import { HStack } from '@/components/ui/hstack';
 import { Text } from '@/components/ui/text';
@@ -49,7 +50,7 @@ export const CallCard: React.FC<CallCardProps> = React.memo(({ call, priority })
       {/* Header Row: Call Number, Name, and Time */}
       <HStack style={styles.headerRow}>
         <HStack style={styles.titleGroup}>
-          <AlertTriangle size={14} color={textColor} />
+          <TypeIcon iconUrl={call.TypeIconUrl} mapIcon={call.TypeMapIcon} size={20} style={styles.typeIcon} fallback={<AlertTriangle size={14} color={textColor} />} />
           <Text style={[styles.callNumber, { color: textColor }]}>#{call.Number}</Text>
           <Text style={[styles.callName, { color: textColor }]} numberOfLines={1} ellipsizeMode="tail">
             {call.Name}
@@ -112,6 +113,11 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 6,
     marginRight: 8,
+  },
+  // A light tile behind the call type icon so it reads on any priority color
+  typeIcon: {
+    backgroundColor: '#ffffff',
+    borderRadius: 4,
   },
   callNumber: {
     fontSize: 13,

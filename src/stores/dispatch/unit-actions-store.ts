@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 import { saveUnitStatus } from '@/api/units/unitStatuses';
-import { type DestinationSelectionType, getStatusDestinationPayload } from '@/lib/destination-helpers';
+import { type DestinationSelectionState, type DestinationSelectionType, getStatusDestinationPayload } from '@/lib/destination-helpers';
 import { type CallResultData } from '@/models/v4/calls/callResultData';
 import { type GroupResultData } from '@/models/v4/groups/groupsResultData';
 import { type PoiResultData } from '@/models/v4/mapping/poiResultData';
@@ -78,6 +78,46 @@ interface UnitActionsState {
   // Reset everything
   reset: () => void;
 }
+
+/** The status-change payload for one unit; shared by the single-unit and the multi-unit status actions. */
+export const buildSaveUnitStatusInput = ({
+  unitId,
+  status,
+  destination,
+  note,
+  hasCallContext = false,
+  date = new Date(),
+}: {
+  unitId: string;
+  status: StatusesResultData;
+  destination: DestinationSelectionState;
+  note: string;
+  hasCallContext?: boolean;
+  date?: Date;
+}): SaveUnitStatusInput => {
+  // Only send a destination the chosen status supports (an explicit call context always may carry its call)
+  const { respondingTo, respondingToType } = getStatusDestinationPayload(destination, status.Detail, hasCallContext);
+
+  const input = new SaveUnitStatusInput();
+  input.Id = unitId;
+  input.Type = status.Id.toString();
+  input.RespondingTo = respondingTo;
+  input.RespondingToType = respondingToType;
+  input.TimestampUtc = date.toUTCString().replace('UTC', 'GMT');
+  input.Timestamp = date.toISOString();
+  input.Note = note;
+  // GPS coordinates could be added here if available
+  input.Latitude = '';
+  input.Longitude = '';
+  input.Accuracy = '';
+  input.Altitude = '';
+  input.AltitudeAccuracy = '';
+  input.Speed = '';
+  input.Heading = '';
+  input.EventId = '';
+  input.Roles = [];
+  return input;
+};
 
 const initialState = {
   isActionsOpen: false,
@@ -194,37 +234,18 @@ export const useUnitActionsStore = create<UnitActionsState>((set, get) => ({
     set({ isSubmittingStatus: true, statusError: null });
 
     try {
-      const date = new Date();
-      // Only send a destination the chosen status supports (an explicit call context always may carry its call)
-      const { respondingTo, respondingToType } = getStatusDestinationPayload(
-        {
+      const input = buildSaveUnitStatusInput({
+        unitId: selectedUnit.UnitId,
+        status: selectedStatus,
+        destination: {
           selectedDestinationType: statusDestinationType,
           selectedCall: statusSelectedCall,
           selectedStation: statusSelectedStation,
           selectedPoi: statusSelectedPoi,
         },
-        selectedStatus.Detail,
-        !!callContext
-      );
-
-      const input = new SaveUnitStatusInput();
-      input.Id = selectedUnit.UnitId;
-      input.Type = selectedStatus.Id.toString();
-      input.RespondingTo = respondingTo;
-      input.RespondingToType = respondingToType;
-      input.TimestampUtc = date.toUTCString().replace('UTC', 'GMT');
-      input.Timestamp = date.toISOString();
-      input.Note = statusNote;
-      // GPS coordinates could be added here if available
-      input.Latitude = '';
-      input.Longitude = '';
-      input.Accuracy = '';
-      input.Altitude = '';
-      input.AltitudeAccuracy = '';
-      input.Speed = '';
-      input.Heading = '';
-      input.EventId = '';
-      input.Roles = [];
+        note: statusNote,
+        hasCallContext: !!callContext,
+      });
 
       await saveUnitStatus(input);
 

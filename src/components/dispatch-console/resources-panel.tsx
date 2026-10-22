@@ -4,13 +4,17 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
+import { TypeIcon } from '@/components/common/type-icon';
 import { Badge } from '@/components/ui/badge';
 import { Box } from '@/components/ui/box';
 import { HStack } from '@/components/ui/hstack';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
+import { UnitTypeIcon } from '@/components/units/unit-type-icon';
+import { useReadableColor } from '@/hooks/use-readable-color';
 import { isPersonnelDispatch, isUnitDispatch } from '@/lib/dispatch-types';
+import { contentOnFill } from '@/lib/readable-color';
 import { isPersonnelAvailable, isUnitAvailable } from '@/lib/resource-availability';
 import { type DispatchedEventResultData } from '@/models/v4/calls/dispatchedEventResultData';
 import { type PersonnelInfoResultData } from '@/models/v4/personnel/personnelInfoResultData';
@@ -21,6 +25,7 @@ import { useUnitsStore } from '@/stores/units/store';
 
 import { AnimatedRefreshIcon } from './animated-refresh-icon';
 import { PanelHeader } from './panel-header';
+import { UnitMultiSelectToggle, UnitSelectionBar, UnitSelectionCheckbox, useUnitMultiSelect } from './unit-multi-select';
 
 interface ResourcesPanelProps {
   selectedUnitId?: string;
@@ -70,6 +75,7 @@ const ResourcesPanelComponent: React.FC<ResourcesPanelProps> = ({
   onSetPersonnelStatusForCall,
 }) => {
   const { t } = useTranslation();
+  const readable = useReadableColor();
   const units = useUnitsStore((s) => s.units);
   const unitsLoading = useUnitsStore((s) => s.isLoading);
   const fetchUnits = useUnitsStore((s) => s.fetchUnits);
@@ -186,9 +192,15 @@ const ResourcesPanelComponent: React.FC<ResourcesPanelProps> = ({
     fetchPersonnel();
   };
 
+  const { isSelectionMode, selectedUnitIds, selectedUnitIdSet, toggleSelectionMode, handleUnitPress, handleUnitLongPress, addUnits, clearSelection, endSelection } = useUnitMultiSelect({ selectedUnitId, onSelectUnit });
+
+  // Select all adds the units the list shows; personnel are not part of a multi-unit selection
+  const handleSelectAllUnits = React.useCallback(() => addUnits(rows.filter((r) => r.kind === 'unit').map((r) => r.entityId)), [addUnits, rows]);
+
   const handleSelect = React.useCallback(
-    (r: ResourceRow) => {
+    (r: ResourceRow, event?: ResourcePressEvent) => {
       if (r.kind === 'unit') {
+        if (handleUnitPress(r.entityId, event)) return;
         if (onSelectUnit) {
           onSelectUnit(r.entityId);
           return;
@@ -200,21 +212,23 @@ const ResourcesPanelComponent: React.FC<ResourcesPanelProps> = ({
       // Fall back to opening the detail screen when no selection handler is wired.
       router.push(r.href as Href);
     },
-    [onSelectPersonnel, onSelectUnit]
+    [handleUnitPress, onSelectPersonnel, onSelectUnit]
   );
 
   const getSetStatusHandler = React.useCallback(
     (r: ResourceRow): (() => void) | undefined => {
-      if (!isCallFilterActive) return undefined;
+      if (!isCallFilterActive || (isSelectionMode && r.kind === 'unit')) return undefined;
       if (r.kind === 'unit') {
         return onSetUnitStatusForCall ? () => onSetUnitStatusForCall(r.entityId, r.name) : undefined;
       }
       return onSetPersonnelStatusForCall ? () => onSetPersonnelStatusForCall(r.entityId, r.name) : undefined;
     },
-    [isCallFilterActive, onSetPersonnelStatusForCall, onSetUnitStatusForCall]
+    [isCallFilterActive, isSelectionMode, onSetPersonnelStatusForCall, onSetUnitStatusForCall]
   );
 
-  const rowPressHandlers = useMemo(() => new Map(rows.map((r) => [r.id, () => handleSelect(r)])), [handleSelect, rows]);
+  const rowPressHandlers = useMemo(() => new Map(rows.map((r) => [r.id, (event: ResourcePressEvent) => handleSelect(r, event)])), [handleSelect, rows]);
+
+  const rowLongPressHandlers = useMemo(() => new Map(rows.filter((r) => r.kind === 'unit').map((r) => [r.id, () => handleUnitLongPress(r.entityId)])), [handleUnitLongPress, rows]);
 
   const detailPressHandlers = useMemo(
     () =>
@@ -264,6 +278,7 @@ const ResourcesPanelComponent: React.FC<ResourcesPanelProps> = ({
                 <Text className="text-xs font-medium text-indigo-700 dark:text-indigo-300">{t('dispatch.filtered')}</Text>
               </Badge>
             ) : null}
+            <UnitMultiSelectToggle isActive={isSelectionMode} onPress={toggleSelectionMode} />
             <Pressable onPress={handleRefresh} style={styles.iconButton}>
               <AnimatedRefreshIcon isLoading={unitsLoading || personnelLoading} />
             </Pressable>
@@ -291,6 +306,7 @@ const ResourcesPanelComponent: React.FC<ResourcesPanelProps> = ({
               </Pressable>
             ) : null}
           </HStack>
+          {isSelectionMode ? <UnitSelectionBar selectedCount={selectedUnitIds.length} onSelectAll={handleSelectAllUnits} onClear={clearSelection} onDone={endSelection} /> : null}
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
             {rows.length === 0 ? (
               <View style={styles.emptyState}>
@@ -300,14 +316,45 @@ const ResourcesPanelComponent: React.FC<ResourcesPanelProps> = ({
             ) : (
               rows.map((r) => {
                 const onSetStatus = statusPressHandlers.get(r.id);
-                const isSelected = (r.kind === 'unit' && selectedUnitId === r.entityId) || (r.kind === 'personnel' && selectedPersonnelId === r.entityId);
+                const isMultiSelectRow = isSelectionMode && r.kind === 'unit';
+                const isSelected = isMultiSelectRow
+                  ? selectedUnitIdSet.has(r.entityId)
+                  : (r.kind === 'unit' && !isSelectionMode && selectedUnitId === r.entityId) || (r.kind === 'personnel' && selectedPersonnelId === r.entityId);
+                // Department colours are drawn on the theme's surface: adjusted so a black status reads in dark mode and a pale one in light mode
+                const statusMark = readable.mark(r.statusColor);
+                const statusText = readable.text(r.statusColor);
                 return (
-                  <Pressable key={r.id} onPress={rowPressHandlers.get(r.id)}>
-                    <Box className={`mb-2 rounded-lg border bg-white p-2 dark:bg-gray-800 ${isSelected ? 'border-indigo-500' : 'border-gray-200 dark:border-gray-700'}`}>
+                  <Pressable key={r.id} onPress={rowPressHandlers.get(r.id)} onLongPress={rowLongPressHandlers.get(r.id)} testID={`resource-item-${r.id}`}>
+                    <Box
+                      className={`mb-2 rounded-lg border p-2 ${
+                        isSelected
+                          ? isMultiSelectRow
+                            ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950'
+                            : 'border-indigo-500 bg-white dark:bg-gray-800'
+                          : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800'
+                      }`}
+                    >
                       <HStack className="items-center justify-between">
                         <HStack className="flex-1 items-center" space="sm">
-                          <View style={StyleSheet.flatten([styles.icon, { backgroundColor: r.statusColor }])}>
-                            <Icon as={r.kind === 'unit' ? Truck : User} size="xs" color="#fff" />
+                          {isMultiSelectRow ? <UnitSelectionCheckbox isChecked={isSelected} /> : null}
+                          <View style={StyleSheet.flatten([styles.icon, { backgroundColor: statusMark }])}>
+                            {r.kind === 'unit' ? (
+                              <UnitTypeIcon
+                                iconUrl={r.unit?.TypeIconUrl}
+                                mapIcon={r.unit?.TypeMapIcon}
+                                size={22}
+                                style={styles.typeIconBackdrop}
+                                fallback={<Icon as={Truck} size="xs" color={contentOnFill(statusMark)} />}
+                              />
+                            ) : (
+                              <TypeIcon
+                                iconUrl={r.person?.RoleIconUrl}
+                                size={22}
+                                style={styles.typeIconBackdrop}
+                                fallback={<Icon as={User} size="xs" color={contentOnFill(statusMark)} />}
+                                testID={`resource-role-icon-${r.entityId}`}
+                              />
+                            )}
                           </View>
                           <VStack className="flex-1">
                             <HStack className="items-center" space="xs">
@@ -329,8 +376,8 @@ const ResourcesPanelComponent: React.FC<ResourcesPanelProps> = ({
                           <Pressable onPress={detailPressHandlers.get(r.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={styles.detailsButton}>
                             <ExternalLink size={12} color="#6b7280" />
                           </Pressable>
-                          <Circle size={8} fill={r.statusColor} color={r.statusColor} />
-                          <Text style={{ color: r.statusColor }} className="text-xs font-medium" numberOfLines={1}>
+                          <Circle size={8} fill={statusMark} color={statusMark} />
+                          <Text style={{ color: statusText }} className="text-xs font-medium" numberOfLines={1}>
                             {r.status}
                           </Text>
                           {onSetStatus ? (
@@ -377,6 +424,11 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // A light tile behind a unit-type icon so it reads on any status color, which stays visible as the frame
+  typeIconBackdrop: {
+    backgroundColor: '#ffffff',
+    borderRadius: 4,
   },
   emptyState: {
     alignItems: 'center',

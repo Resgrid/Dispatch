@@ -8,7 +8,8 @@ import { DispatchSelectionModal } from '../dispatch-selection-modal';
 
 // The real dispatch store, fed by mocked endpoints: the picker must show what loads after it opened.
 const mockGetUnits = jest.fn<(...args: any[]) => Promise<any>>();
-jest.mock('@/api/units/units', () => ({ getUnits: (...args: any[]) => mockGetUnits(...args) }));
+// The picker reads units with their status and crew (GetAllUnitsInfos).
+jest.mock('@/api/units/units', () => ({ getUnitsInfos: (...args: any[]) => mockGetUnits(...args) }));
 jest.mock('@/api/personnel/personnel', () => ({ getAllPersonnelInfos: jest.fn(async () => ({ Data: [] })) }));
 jest.mock('@/api/groups/groups', () => ({ getAllGroups: jest.fn(async () => ({ Data: [] })) }));
 jest.mock('@/api/messaging/messages', () => ({ getRecipients: jest.fn(async () => ({ Data: [] })) }));
@@ -17,7 +18,12 @@ const mockGetCallRecommendation = jest.fn<(...args: any[]) => Promise<any>>();
 jest.mock('@/api/runcards/runcards', () => ({ getCallRecommendation: (...args: any[]) => mockGetCallRecommendation(...args) }));
 
 let mockRunCardsEnabled = true;
-jest.mock('@/stores/feature-flags/store', () => ({ useIsRunCardsEnabled: () => mockRunCardsEnabled }));
+jest.mock('@/stores/feature-flags/store', () => ({
+  useIsRunCardsEnabled: () => mockRunCardsEnabled,
+  // Conditional run cards (decision, response codes) stay off here; they have their own tests.
+  useIsRunCardConditionsEnabled: () => false,
+  isRunCardConditionsEnabled: () => false,
+}));
 
 jest.mock('@/lib/logging', () => ({ logger: { error: jest.fn(), warn: jest.fn(), info: jest.fn(), debug: jest.fn() } }));
 

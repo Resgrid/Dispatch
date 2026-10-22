@@ -4,6 +4,7 @@ import React, { useCallback } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
+import { TypeIcon } from '@/components/common/type-icon';
 import { MAP_ICONS } from '@/constants/map-icons';
 import { isPoiMarker } from '@/lib/destination-helpers';
 import { getMapMarkerColor, getPoiMarkerIconChar, getPoiMarkerShapePath, resolveMapMarkerIconKey } from '@/lib/map-markers';
@@ -85,20 +86,26 @@ const PinMarker = React.memo<PinMarkerProps>(({ pin, size = 32, onPress }) => {
     textAlignVertical: 'center' as const,
   };
 
+  // A pin whose type has an uploaded icon (unit, call or POI type) shows it in the marker's footprint, falling back to
+  // the built-in rendering below when it is absent or fails to load.
   if (isPoiMapPin) {
+    const poiShape = (
+      <View style={[styles.poiShapeWrapper, { width: svgWidth, height: svgHeight }, shadowStyle]}>
+        {/* SVG background shape */}
+        <Svg viewBox="-24 -48 48 48" width={svgWidth} height={svgHeight}>
+          <Path d={poiShapePath} fill={poiColor} />
+        </Svg>
+
+        {/* White font icon overlay */}
+        <Text style={poiIconTextStyle} numberOfLines={1} allowFontScaling={false}>
+          {poiIconChar}
+        </Text>
+      </View>
+    );
+
     return (
       <TouchableOpacity style={styles.poiContainer} onPress={handlePress} activeOpacity={0.7}>
-        <View style={[styles.poiShapeWrapper, { width: svgWidth, height: svgHeight }, shadowStyle]}>
-          {/* SVG background shape */}
-          <Svg viewBox="-24 -48 48 48" width={svgWidth} height={svgHeight}>
-            <Path d={poiShapePath} fill={poiColor} />
-          </Svg>
-
-          {/* White font icon overlay */}
-          <Text style={poiIconTextStyle} numberOfLines={1} allowFontScaling={false}>
-            {poiIconChar}
-          </Text>
-        </View>
+        <TypeIcon iconUrl={pin.IconUrl} size={POI_MARKER_WIDTH} fallback={poiShape} />
 
         <Text style={StyleSheet.flatten([styles.title, { color: colorScheme === 'dark' ? '#FFFFFF' : '#000000' }])} numberOfLines={2}>
           {pin.Title}
@@ -107,10 +114,12 @@ const PinMarker = React.memo<PinMarkerProps>(({ pin, size = 32, onPress }) => {
     );
   }
 
+  const bundledIcon = <Image fadeDuration={0} source={icon.uri} style={StyleSheet.flatten([styles.image, { width: size, height: size }])} />;
+
   // Non-POI legacy marker rendering
   return (
     <TouchableOpacity style={styles.container} onPress={handlePress} activeOpacity={0.7}>
-      <Image fadeDuration={0} source={icon.uri} style={StyleSheet.flatten([styles.image, { width: size, height: size }])} />
+      <TypeIcon iconUrl={pin.IconUrl} size={size} fallback={bundledIcon} />
       <Text style={StyleSheet.flatten([styles.title, { color: colorScheme === 'dark' ? '#FFFFFF' : '#000000' }])} numberOfLines={2}>
         {pin.Title}
       </Text>

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo } from 'react';
 
+import { type RecommendationConditionsProps } from '@/components/runcards/recommendation-panel';
 import { recommendedUnitIds, recommendedUserIds } from '@/lib/run-cards';
+import { useAwaitingResourcesStore } from '@/stores/awaiting-resources/store';
 import { type DispatchSelection } from '@/stores/dispatch/store';
-import { useIsRunCardsEnabled } from '@/stores/feature-flags/store';
+import { useIsRunCardConditionsEnabled, useIsRunCardsEnabled } from '@/stores/feature-flags/store';
 import { useRunCardsStore } from '@/stores/runcards/store';
 
 interface CallPriorityOption {
@@ -43,6 +45,10 @@ export const useCallRecommendation = ({ priorityName, typeName, latitude, longit
   const fetchRecommendation = useRunCardsStore((state) => state.fetchRecommendation);
   const markApplied = useRunCardsStore((state) => state.markApplied);
   const clear = useRunCardsStore((state) => state.clear);
+  const unitResponseCodes = useRunCardsStore((state) => state.unitResponseCodes);
+  const setUnitResponseCode = useRunCardsStore((state) => state.setUnitResponseCode);
+  const isRunCardConditionsEnabled = useIsRunCardConditionsEnabled();
+  const responseCodes = useAwaitingResourcesStore((state) => state.responseCodes);
 
   const priorityId = useMemo(() => {
     if (!priorityName) {
@@ -113,6 +119,18 @@ export const useCallRecommendation = ({ priorityName, typeName, latitude, longit
     [recommendation, markApplied]
   );
 
+  // Conditional run cards on the New Call panel: the decision, row labels and the per-unit code picker. No re-evaluate:
+  // a preview is always a fresh walk. The codes picked here are posted with the save (see run-card-save-fields).
+  const conditions = useMemo<RecommendationConditionsProps>(
+    () => ({
+      enabled: isRunCardConditionsEnabled,
+      responseCodes,
+      unitResponseCodes,
+      onUnitResponseCodeChange: setUnitResponseCode,
+    }),
+    [isRunCardConditionsEnabled, responseCodes, unitResponseCodes, setUnitResponseCode]
+  );
+
   return {
     /** False when the department has run cards off — callers should not render the panel at all. */
     isRunCardsEnabled,
@@ -123,5 +141,7 @@ export const useCallRecommendation = ({ priorityName, typeName, latitude, longit
     isApplied: !!recommendation?.MatchedRunCardId && appliedRunCardId === recommendation.MatchedRunCardId,
     refresh,
     applyToSelection,
+    /** Pass to the panel's `conditions` prop. */
+    conditions,
   };
 };

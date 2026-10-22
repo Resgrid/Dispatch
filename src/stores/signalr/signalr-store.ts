@@ -212,6 +212,8 @@ interface SignalRState {
   lastCheckInUpdateTimestamp: number;
   lastWeatherAlertTimestamp: number;
   lastIncidentCommandUpdateTimestamp: number;
+  /** When an `outstandingRequirementsUpdated` push last arrived (conditional run cards); 0 before the first. */
+  lastOutstandingRequirementsTimestamp: number;
   /** True only once the hub acknowledged the department-group join (`onGeolocationConnect`). */
   isGeolocationHubConnected: boolean;
   /** The most recent location push that was applied. Diagnostic only: maps read `liveLocations`. */
@@ -286,6 +288,8 @@ interface EventHandlers {
   weatherAlertUpdated: ((data: unknown) => void) | null;
   weatherAlertExpired: ((data: unknown) => void) | null;
   incidentCommandUpdated: ((data: unknown) => void) | null;
+  /** Conditional run cards: (call id or "0", payload JSON). Two positional arguments, unlike the rest. */
+  outstandingRequirementsUpdated: ((id: unknown, payload?: unknown) => void) | null;
   onConnected: ((data: unknown) => void) | null;
 }
 
@@ -302,6 +306,7 @@ let updateHubHandlers: EventHandlers = {
   weatherAlertUpdated: null,
   weatherAlertExpired: null,
   incidentCommandUpdated: null,
+  outstandingRequirementsUpdated: null,
   onConnected: null,
 };
 
@@ -378,6 +383,7 @@ function unregisterUpdateHubHandlers(): void {
     'weatherAlertUpdated',
     'weatherAlertExpired',
     'incidentCommandUpdated',
+    'outstandingRequirementsUpdated',
     'onConnected',
   ];
 
@@ -404,6 +410,7 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
   lastCheckInUpdateTimestamp: 0,
   lastWeatherAlertTimestamp: 0,
   lastIncidentCommandUpdateTimestamp: 0,
+  lastOutstandingRequirementsTimestamp: 0,
   isGeolocationHubConnected: false,
   lastGeolocationMessage: null,
   lastGeolocationTimestamp: 0,
@@ -503,6 +510,7 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
           'weatherAlertUpdated',
           'weatherAlertExpired',
           'incidentCommandUpdated',
+          'outstandingRequirementsUpdated',
           'onConnected',
         ],
       });
@@ -666,6 +674,23 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
         }
       };
       signalRService.on('incidentCommandUpdated', updateHubHandlers.incidentCommandUpdated);
+
+      // Conditional run cards: a call's outstanding requirements changed, a unit matching calls awaiting resources
+      // became available, or one was dispatched to such a call automatically. Arrives as (call id or "0", payload
+      // JSON); older servers send the id alone, which still refreshes the awaiting list.
+      updateHubHandlers.outstandingRequirementsUpdated = (id: unknown, payload?: unknown) => {
+        logger.info({
+          message: 'outstandingRequirementsUpdated',
+          context: { id, hasPayload: payload !== undefined && payload !== null },
+        });
+        // Only its own timestamp: the shared lastUpdateTimestamp would make every live map refetch its pins for a
+        // change that moves nothing on them.
+        set({ lastOutstandingRequirementsTimestamp: Date.now() });
+        // Lazy import to avoid circular dependency
+        const { useAwaitingResourcesStore } = require('../awaiting-resources/store');
+        useAwaitingResourcesStore.getState().handleOutstandingRequirementsUpdated(id, payload);
+      };
+      signalRService.on('outstandingRequirementsUpdated', updateHubHandlers.outstandingRequirementsUpdated);
 
       updateHubHandlers.onConnected = () => {
         logger.info({

@@ -397,6 +397,9 @@ jest.mock('@expo/html-elements', () => ({
   H6: ({ children, ...props }: any) => children,
 }));
 
+// Mock expo-image (unit type icons on the dispatched list); it does not load under this file's react-native mock
+jest.mock('expo-image', () => ({ Image: () => null }));
+
 // Mock Expo Navigation Bar
 jest.mock('expo-navigation-bar', () => ({
   setBackgroundColorAsync: jest.fn(),

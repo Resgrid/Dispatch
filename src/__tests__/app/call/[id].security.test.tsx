@@ -381,6 +381,8 @@ jest.mock('@/components/calls/call-site-info-tab-panel', () => ({
   CallSiteInfoTabPanel: () => <div data-testid="site-info-tab">Site Info</div>,
 }));
 jest.mock('@/components/calls/location-history-panel', () => ({ LocationHistoryPanel: () => null }));
+// expo-image (unit type icons on the dispatched list) does not load under the minimal expo-modules-core mock either.
+jest.mock('expo-image', () => ({ Image: () => null }));
 
 import CallDetail from '../../../app/call/[id]';
 

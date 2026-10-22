@@ -12,6 +12,8 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useCheckInTimerPolling } from '@/hooks/use-check-in-timer-polling';
+import { useReadableColor } from '@/hooks/use-readable-color';
+import { tintOf } from '@/lib/readable-color';
 import { type DispatchedEventResultData } from '@/models/v4/calls/dispatchedEventResultData';
 import { CheckInTimerStatus } from '@/models/v4/checkIn/checkInEnums';
 import { type PersonnelInfoResultData } from '@/models/v4/personnel/personnelInfoResultData';
@@ -22,11 +24,13 @@ import { selectCardCollapsed, useDashboardViewStore } from '@/stores/dispatch/da
 import { type RadioLogEntry } from '@/stores/dispatch/dispatch-console-store';
 import { usePersonnelActionsStore } from '@/stores/dispatch/personnel-actions-store';
 import { useUnitActionsStore } from '@/stores/dispatch/unit-actions-store';
+import { useUnitBulkActionsStore } from '@/stores/dispatch/unit-bulk-actions-store';
 import { useWeatherAlertsStore } from '@/stores/weatherAlerts/store';
 
 import { ActivityLinkLegend, ActivityLinkMarker } from '../calls/activity-link-marker';
 import { CheckInBottomSheet } from '../checkIn/check-in-bottom-sheet';
 import { CheckInTimerCard } from '../checkIn/check-in-timer-card';
+import { BulkUnitActionsPanel } from './bulk-unit-actions-panel';
 import { PanelHeader } from './panel-header';
 import { PersonnelActionsPanel } from './personnel-actions-panel';
 import { UnitActionsPanel } from './unit-actions-panel';
@@ -155,6 +159,8 @@ const ActivityLogItem: React.FC<{ entry: ActivityLogEntry }> = React.memo(({ ent
 ActivityLogItem.displayName = 'ActivityLogItem';
 
 const CallActivityItem: React.FC<{ activity: DispatchedEventResultData }> = React.memo(({ activity }) => {
+  // The status colour is the department's: adjusted so a black status reads in dark mode and a pale one in light mode
+  const readable = useReadableColor();
   const getActivityIcon = () => {
     if (activity.Type === 'Unit' || activity.Type === 'u') return Truck;
     if (activity.Type === 'Personnel' || activity.Type === 'p') return User;
@@ -169,11 +175,12 @@ const CallActivityItem: React.FC<{ activity: DispatchedEventResultData }> = Reac
   };
 
   const IconComponent = getActivityIcon();
-  const color = getActivityColor();
+  const color = readable.mark(getActivityColor());
+  const textColor = readable.text(getActivityColor());
 
   return (
     <HStack className="mb-2 items-start border-b border-gray-100 pb-2 dark:border-gray-800" space="sm">
-      <View style={StyleSheet.flatten([styles.iconContainer, { backgroundColor: `${color}20` }])}>
+      <View style={StyleSheet.flatten([styles.iconContainer, { backgroundColor: tintOf(color, '20') }])}>
         <Icon as={IconComponent} size="xs" color={color} />
       </View>
       <VStack className="flex-1">
@@ -183,8 +190,8 @@ const CallActivityItem: React.FC<{ activity: DispatchedEventResultData }> = Reac
         </HStack>
         <HStack className="items-center" space="xs">
           {activity.StatusText ? (
-            <Badge size="sm" style={{ backgroundColor: `${color}20` }}>
-              <Text style={{ color }} className="text-xs font-medium">
+            <Badge size="sm" style={{ backgroundColor: tintOf(color, '20') }}>
+              <Text style={{ color: textColor }} className="text-xs font-medium">
                 {activity.StatusText}
               </Text>
             </Badge>
@@ -325,6 +332,10 @@ const ActivityLogPanelComponent: React.FC<ActivityLogPanelProps> = ({
   const openUnitActions = useUnitActionsStore((s) => s.openActions);
   const closeUnitActions = useUnitActionsStore((s) => s.closeActions);
 
+  // Multi-unit selection: while it holds units, the actions tab shows the bulk status form
+  const bulkSelectedUnitCount = useUnitBulkActionsStore((s) => s.selectedUnitIds.length);
+  const prevBulkSelectedUnitCountRef = useRef(bulkSelectedUnitCount);
+
   // Track previous personnel selection to avoid unnecessary store updates
   const prevSelectedPersonnelIdRef = useRef<string | undefined>(undefined);
 
@@ -372,6 +383,10 @@ const ActivityLogPanelComponent: React.FC<ActivityLogPanelProps> = ({
       prevSelectedPersonnelIdRef.current = currentId;
 
       if (selectedPersonnel && currentId) {
+        // Selecting a person ends a multi-unit selection: the actions tab is theirs now
+        if (useUnitBulkActionsStore.getState().isSelectionMode) {
+          useUnitBulkActionsStore.getState().endSelection();
+        }
         // Don't re-open (and wipe) a panel already opened for this person, e.g. by "+" with a call context
         const personnelActions = usePersonnelActionsStore.getState();
         if (!personnelActions.isActionsOpen || personnelActions.selectedPersonnel?.UserId !== currentId) {
@@ -395,6 +410,10 @@ const ActivityLogPanelComponent: React.FC<ActivityLogPanelProps> = ({
       prevSelectedUnitIdRef.current = currentId;
 
       if (selectedUnit && currentId) {
+        // A single unit selected elsewhere (e.g. a "+" set-status-for-call) ends a multi-unit selection
+        if (useUnitBulkActionsStore.getState().isSelectionMode) {
+          useUnitBulkActionsStore.getState().endSelection();
+        }
         // Don't re-open (and wipe) a panel already opened for this unit, e.g. by "+" with a call context
         const unitActions = useUnitActionsStore.getState();
         if (!unitActions.isActionsOpen || unitActions.selectedUnit?.UnitId !== currentId) {
@@ -407,6 +426,18 @@ const ActivityLogPanelComponent: React.FC<ActivityLogPanelProps> = ({
       }
     }
   }, [selectedUnit, selectedUnitId, openUnitActions, closeUnitActions]);
+
+  // Surface the actions panel when a multi-unit selection gets its first unit
+  useEffect(() => {
+    const prevCount = prevBulkSelectedUnitCountRef.current;
+    prevBulkSelectedUnitCountRef.current = bulkSelectedUnitCount;
+    if (prevCount > 0 || bulkSelectedUnitCount === 0) return;
+
+    setActiveTab('actions');
+    if (isCollapsed) {
+      setCardCollapsed('activity-log', false);
+    }
+  }, [bulkSelectedUnitCount, isCollapsed, setCardCollapsed]);
 
   // Surface the actions panel when it is opened from an explicit call context ("+" set-status-for-call)
   useEffect(() => {
@@ -578,6 +609,11 @@ const ActivityLogPanelComponent: React.FC<ActivityLogPanelProps> = ({
   };
 
   const renderActionsContent = () => {
+    // A multi-unit selection gets one status form for all its units
+    if (bulkSelectedUnitCount > 0) {
+      return <BulkUnitActionsPanel onStatusUpdated={onUnitStatusUpdated} />;
+    }
+
     // If personnel is selected, show the personnel actions panel
     if (selectedPersonnel) {
       return <PersonnelActionsPanel personnel={selectedPersonnel} onStatusUpdated={onStatusUpdated} onStaffingUpdated={onStaffingUpdated} />;

@@ -24,6 +24,7 @@ import { Card } from '@/components/ui/card';
 import { Text } from '@/components/ui/text';
 import { useToast } from '@/components/ui/toast';
 import { useAnalytics } from '@/hooks/use-analytics';
+import { useDispatchMapOverlay } from '@/hooks/use-dispatch-map-overlay';
 import { useNewCallFieldPolicy } from '@/hooks/use-new-call-field-policy';
 import { describeCallFields, getEditCallMissingFields, getMissingCallFieldsFromError, keepHiddenEditFieldsUnchanged, toProtocolIds } from '@/lib/call-field-policy';
 import { getScheduledDispatchPrefill, isDispatchTimeTooSoon, toDispatchOnUtc } from '@/lib/call-schedule';
@@ -230,6 +231,8 @@ export default function EditCallWeb() {
     longitude: number;
     address?: string;
   } | null>(null);
+  // Units, personnel and group boundaries around the call, from the nearest-unit board the picker ranks with too.
+  const dispatchMapOverlay = useDispatchMapOverlay(selectedLocation);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [udfValues, setUdfValues] = useState<UdfFieldValueInput[]>([]);
   const [isAdditionalFieldsExpanded, setIsAdditionalFieldsExpanded] = useState(false);
@@ -1119,7 +1122,7 @@ export default function EditCallWeb() {
                       <View style={styles.mapContainer}>
                         {selectedLocation ? (
                           <View style={styles.mapWrapper}>
-                            <LocationPicker initialLocation={selectedLocation} onLocationSelected={handleLocationSelected} height={200} />
+                            <LocationPicker initialLocation={selectedLocation} onLocationSelected={handleLocationSelected} height={280} overlay={dispatchMapOverlay} />
                             <Pressable style={styles.expandMapButton} onPress={() => setShowLocationPicker(true)}>
                               <MapPinIcon size={16} color="#fff" />
                               <Text style={styles.expandMapText}>{t('calls.expand_map')}</Text>
@@ -1295,7 +1298,7 @@ export default function EditCallWeb() {
       ) : null}
 
       {/* Dispatch selection modal */}
-      <DispatchSelectionModal isVisible={showDispatchModal} onClose={() => setShowDispatchModal(false)} onConfirm={handleDispatchSelection} initialSelection={dispatchSelection} />
+      <DispatchSelectionModal isVisible={showDispatchModal} onClose={() => setShowDispatchModal(false)} onConfirm={handleDispatchSelection} initialSelection={dispatchSelection} callLocation={selectedLocation} />
 
       {/* Protocol Selector modal */}
       <ProtocolSelectorModal isVisible={showProtocolSelector} onClose={() => setShowProtocolSelector(false)} onConfirm={setSelectedProtocols} initialSelected={selectedProtocols} />

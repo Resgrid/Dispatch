@@ -10,6 +10,8 @@ import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Platform, StyleSheet, Text as RNText, TouchableOpacity, View as RNView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AwaitingResourcesBanner } from '@/components/awaiting-resources/awaiting-resources-banner';
+import { UnitAvailableAlertHost } from '@/components/awaiting-resources/unit-available-alert-host';
 import { StepUpPromptHost } from '@/components/data-protection/step-up-prompt-host';
 import { DashboardViewToggles } from '@/components/dispatch-console';
 import { RecoveryCodesModal } from '@/components/mfa/recovery-codes-modal';
@@ -24,6 +26,7 @@ import { Drawer, DrawerBackdrop, DrawerBody, DrawerContent, DrawerFooter } from 
 import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
 import { useAppLifecycle } from '@/hooks/use-app-lifecycle';
+import { useAwaitingResourcesSync } from '@/hooks/use-awaiting-resources-sync';
 import { useInactivityLock } from '@/hooks/use-inactivity-lock';
 import { useSharedSessionLifecycle } from '@/hooks/use-shared-session-lifecycle';
 import { useSignalRLifecycle } from '@/hooks/use-signalr-lifecycle';
@@ -39,6 +42,7 @@ import { pushNotificationService, usePushNotifications } from '@/services/push-n
 import { useAudioStreamStore } from '@/stores/app/audio-stream-store';
 import { useCoreStore } from '@/stores/app/core-store';
 import { useLiveKitStore } from '@/stores/app/livekit-store';
+import { useAwaitingResourcesStore } from '@/stores/awaiting-resources/store';
 import { useCallsStore } from '@/stores/calls/store';
 import { useChatStore } from '@/stores/chat/store';
 import { useCheckInStore } from '@/stores/checkIn/store';
@@ -84,6 +88,7 @@ async function teardownSignedInSession(): Promise<void> {
     ['audio service', () => audioService.cleanup()],
     ['check-in polling', () => useCheckInStore.getState().stopPolling()],
     ['chat store', () => useChatStore.getState().reset()],
+    ['calls awaiting resources', () => useAwaitingResourcesStore.getState().reset()],
     ['push notification listeners', () => pushNotificationService.cleanup()],
   ];
 
@@ -403,6 +408,10 @@ export default function TabLayout() {
     hasInitialized: hasInitialized.current,
   });
 
+  // Calls awaiting resources (conditional run cards) behind the banner, menu badge and unit-available alerts: loaded
+  // once the shell is up and the flags say so, and again on resume. Inert without Dispatch.RunCardConditions.
+  useAwaitingResourcesSync(status === 'signedIn' && coreIsInitialized && !sharedSession.locked);
+
   // WEB PLATFORM WORKAROUND: Call initialization directly during render
   // useEffect doesn't reliably fire on web platform due to React Native Web issues
   if (Platform.OS === 'web') {
@@ -593,6 +602,7 @@ export default function TabLayout() {
           {isDispatchScreen ? <DashboardViewToggles inHeader /> : null}
         </RNView>
         <SharedSessionBar />
+        <AwaitingResourcesBanner />
 
         <RNView style={{ flex: 1, flexDirection: 'row' }} ref={parentRef}>
           {/* Sidebar - simple show/hide */}
@@ -612,6 +622,8 @@ export default function TabLayout() {
             <Slot />
           </RNView>
         </RNView>
+        {/* Unit-available alerts for calls awaiting resources; they stay until acted on or closed. */}
+        <UnitAvailableAlertHost />
       </RNView>
     ) : (
       <View style={styles.container} onStartShouldSetResponderCapture={sharedSession.onTouchCapture}>
@@ -624,6 +636,7 @@ export default function TabLayout() {
           {isDispatchScreen ? <DashboardViewToggles inHeader onColoredBg /> : null}
         </View>
         <SharedSessionBar />
+        <AwaitingResourcesBanner />
 
         <View className="flex-1" ref={parentRef}>
           {/* Native drawer implementation */}
@@ -646,6 +659,8 @@ export default function TabLayout() {
             <Slot />
           </View>
         </View>
+        {/* Unit-available alerts for calls awaiting resources; they stay until acted on or closed. */}
+        <UnitAvailableAlertHost />
       </View>
     );
 

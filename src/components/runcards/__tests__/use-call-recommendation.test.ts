@@ -12,6 +12,8 @@ jest.mock('@/api/runcards/runcards', () => ({
 jest.mock('@/stores/feature-flags/store', () => ({
   isRunCardsEnabled: jest.fn(() => true),
   useIsRunCardsEnabled: jest.fn(() => true),
+  isRunCardConditionsEnabled: jest.fn(() => false),
+  useIsRunCardConditionsEnabled: jest.fn(() => false),
 }));
 
 jest.mock('@/lib/logging', () => ({

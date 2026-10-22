@@ -4,6 +4,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform, ScrollView, TouchableOpacity } from 'react-native';
 
+import { TypeIcon } from '@/components/common/type-icon';
 import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
 import { DestinationEntityType, type DestinationTab, getDefaultDestinationTab, getDestinationCapabilities, getEnabledDestinationTabs } from '@/lib/destination-helpers';
 import { getPoiSelectionLabel } from '@/lib/poi-display';
@@ -631,6 +632,7 @@ export const StatusBottomSheet = () => {
                             >
                               <HStack space="sm" className="items-center">
                                 <Check size={20} color={selectedCall?.CallId === call.CallId ? '#3b82f6' : 'transparent'} />
+                                <TypeIcon iconUrl={call.TypeIconUrl} mapIcon={call.TypeMapIcon} size={24} />
                                 <VStack className="flex-1">
                                   <Text className="font-bold">
                                     {call.Number} - {call.Name}
@@ -692,6 +694,7 @@ export const StatusBottomSheet = () => {
                             >
                               <HStack space="sm" className="items-center">
                                 <Check size={20} color={selectedPoi?.PoiId === poi.PoiId ? '#3b82f6' : 'transparent'} />
+                                <TypeIcon iconUrl={poi.IconUrl} size={24} />
                                 <VStack className="flex-1">
                                   <Text className="font-bold">{getPoiSelectionLabel(poi)}</Text>
                                   {poi.Note ? <Text className="text-sm text-gray-600 dark:text-gray-400">{poi.Note}</Text> : null}

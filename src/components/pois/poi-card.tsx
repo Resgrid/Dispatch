@@ -4,6 +4,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { TypeIcon } from '@/components/common/type-icon';
 import { Badge, BadgeText } from '@/components/ui/badge';
 import { getPoiPrimaryDisplayText, getPoiSecondaryDisplayText } from '@/lib/poi-display';
 import { type PoiResultData } from '@/models/v4/mapping/poiResultData';
@@ -31,7 +32,7 @@ export const PoiCard: React.FC<PoiCardProps> = ({ poi, onPress }) => {
     <Pressable style={cardStyle} onPress={() => onPress(poi)}>
       <View style={styles.cardHeader}>
         <View style={styles.titleContainer}>
-          <View style={accentStyle} />
+          <TypeIcon iconUrl={poi.IconUrl} size={28} containerStyle={styles.typeIcon} fallback={<View style={accentStyle} />} />
           <View style={styles.titleTextContainer}>
             <Text style={[styles.titleText, { color: titleColor }]}>{primaryText || t('pois.unnamed')}</Text>
             <Text style={[styles.typeText, { color: secondaryColor }]}>{poi.PoiTypeName || t('pois.unknown_type')}</Text>
@@ -103,6 +104,10 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     marginRight: 12,
     marginTop: 6,
+  },
+  // The POI type's uploaded icon, in place of the color dot
+  typeIcon: {
+    marginRight: 10,
   },
   titleText: {
     fontSize: 16,

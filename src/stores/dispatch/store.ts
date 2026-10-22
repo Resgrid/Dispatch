@@ -1,10 +1,12 @@
 import { create } from 'zustand';
 
+import { getNearestUnits } from '@/api/dispatch/dispatch';
 import { getAllGroups } from '@/api/groups/groups';
 import { getRecipients } from '@/api/messaging/messages';
 import { getAllPersonnelInfos } from '@/api/personnel/personnel';
-import { getUnits } from '@/api/units/units';
+import { getUnitsInfos } from '@/api/units/units';
 import { logger } from '@/lib/logging';
+import { type NearestUnitBoard } from '@/models/v4/dispatch/nearestUnitBoard';
 
 export interface DispatchSelection {
   everyone: boolean;
@@ -17,6 +19,33 @@ export interface DispatchSelection {
 export interface DispatchItem {
   Id: string;
   Name: string;
+  /**
+   * Shown beside the name in the picker: a unit's type icon (uploaded URL, with TypeMapIcon as the built-in fallback),
+   * a role's own map icon, or a person's role icon (the first role they hold, in the department's role order, with one).
+   */
+  TypeIconUrl?: string | null;
+  /** Units only: the built-in map icon the unit's type picked. */
+  TypeMapIcon?: string | null;
+  /** Users and units: the current status as the department named and coloured it. */
+  Status?: string | null;
+  StatusColor?: string | null;
+  /** What the status means (ActionBaseTypes); decides availability. Null/-1 when it has no meaning, undefined from older servers. */
+  StatusBaseType?: number | null;
+  /** Users only: staffing level. */
+  Staffing?: string | null;
+  StaffingColor?: string | null;
+  StaffingBaseType?: number | null;
+  /** Users: their group; units: their station. */
+  GroupName?: string | null;
+  /** Users only: the personnel roles they hold. */
+  Roles?: string[];
+  /** Units only: the unit's type name. */
+  TypeName?: string | null;
+  /** Units only: who is riding the unit, "Name (Seat)". */
+  Crew?: string[];
+  /** Groups only: boundary JSON (`[{"lat","lng"}]`) and its colour, for the dispatch map. */
+  Geofence?: string | null;
+  GeofenceColor?: string | null;
 }
 
 export interface DispatchData {
@@ -44,7 +73,19 @@ interface DispatchState {
    */
   loadFailures: DispatchLoadFailures;
   searchQuery: string;
+  /**
+   * The nearest-unit board for the call location (distance, ETA, crew, positions), or null before a location is known.
+   * Shared by the recipient picker and the New Call map so both show the same ranking.
+   */
+  board: NearestUnitBoard | null;
+  /** The location the board was built for, `lat,lon` rounded to ~1 m. */
+  boardKey: string | null;
+  isBoardLoading: boolean;
+  boardError: boolean;
   fetchDispatchData: (forceRefresh?: boolean) => Promise<void>;
+  /** Loads the board for a call location. Reuses a board for the same spot younger than BOARD_MAX_AGE_MS unless forced. */
+  fetchNearestBoard: (latitude: number, longitude: number, force?: boolean) => Promise<void>;
+  clearNearestBoard: () => void;
   setSelection: (selection: DispatchSelection) => void;
   toggleEveryone: () => void;
   toggleUser: (userId: string) => void;
@@ -75,6 +116,24 @@ export const filterDispatchData = (data: DispatchData, searchQuery: string): Dis
   };
 };
 
+/** Statuses and positions move; a board older than this is fetched again when the picker or map asks for it. */
+export const BOARD_MAX_AGE_MS = 30 * 1000;
+
+export const boardKeyFor = (latitude: number, longitude: number) => `${latitude.toFixed(5)},${longitude.toFixed(5)}`;
+
+let boardRequest: AbortController | null = null;
+let boardFetchedAt = 0;
+
+/** "Name (Seat)" for each filled seat on a unit, as the units endpoint lists them. */
+const crewFor = (roles: { Name?: string | null; RoleName?: string | null; UserId?: string | null }[] | null | undefined): string[] =>
+  (roles ?? [])
+    .filter((role) => !!role?.UserId && !!role.Name?.trim())
+    .map((role) => {
+      const name = (role.Name ?? '').trim();
+      const seat = (role.RoleName ?? '').trim();
+      return seat ? `${name} (${seat})` : name;
+    });
+
 const initialSelection: DispatchSelection = {
   everyone: false,
   users: [],
@@ -95,13 +154,17 @@ export const useDispatchStore = create<DispatchState>((set, get) => ({
   error: null,
   loadFailures: { users: false, groups: false, roles: false, units: false },
   searchQuery: '',
+  board: null,
+  boardKey: null,
+  isBoardLoading: false,
+  boardError: false,
 
   fetchDispatchData: async (forceRefresh = false) => {
     set({ isLoading: true, error: null });
 
     // allSettled, not all: personnel, groups, roles and units are independent lists, and a dispatcher
     // who can still see units must not lose them because the personnel call failed.
-    const [personnelSettled, groupsSettled, recipientsSettled, unitsSettled] = await Promise.allSettled([getAllPersonnelInfos(''), getAllGroups(), getRecipients(true, false), getUnits(forceRefresh)]);
+    const [personnelSettled, groupsSettled, recipientsSettled, unitsSettled] = await Promise.allSettled([getAllPersonnelInfos(''), getAllGroups(), getRecipients(true, false), getUnitsInfos('', forceRefresh)]);
 
     const personnelResult = personnelSettled.status === 'fulfilled' ? personnelSettled.value : null;
     const groupsResult = groupsSettled.status === 'fulfilled' ? groupsSettled.value : null;
@@ -131,16 +194,35 @@ export const useDispatchStore = create<DispatchState>((set, get) => ({
     const users: DispatchItem[] = (personnelResult?.Data ?? []).map((p) => ({
       Id: p.UserId,
       Name: `${p.FirstName} ${p.LastName}`.trim(),
+      TypeIconUrl: p.RoleIconUrl,
+      Status: p.Status,
+      StatusColor: p.StatusColor,
+      StatusBaseType: p.StatusBaseType,
+      Staffing: p.Staffing,
+      StaffingColor: p.StaffingColor,
+      StaffingBaseType: p.StaffingBaseType,
+      GroupName: p.GroupName,
+      Roles: p.Roles ?? [],
     }));
 
     const groups: DispatchItem[] = (groupsResult?.Data ?? []).map((g) => ({
       Id: g.GroupId,
       Name: g.Name,
+      Geofence: g.Geofence,
+      GeofenceColor: g.GeofenceColor,
     }));
 
     const units: DispatchItem[] = (unitsResult?.Data ?? []).map((u) => ({
       Id: u.UnitId,
       Name: u.Name,
+      TypeIconUrl: u.TypeIconUrl,
+      TypeMapIcon: u.TypeMapIcon,
+      Status: u.CurrentStatus,
+      StatusColor: u.CurrentStatusColor,
+      StatusBaseType: u.CurrentStatusBaseType,
+      GroupName: u.GroupName,
+      TypeName: u.Type,
+      Crew: crewFor(u.Roles),
     }));
 
     // Roles come from the recipients endpoint because it is the only one that carries the role id.
@@ -151,6 +233,7 @@ export const useDispatchStore = create<DispatchState>((set, get) => ({
       .map((recipient) => ({
         Id: recipient.Id.replace(/^R:/, ''),
         Name: recipient.Name,
+        TypeIconUrl: recipient.TypeIconUrl,
       }));
 
     set({
@@ -161,6 +244,42 @@ export const useDispatchStore = create<DispatchState>((set, get) => ({
       error: loadFailures.users && loadFailures.groups && loadFailures.roles && loadFailures.units ? 'Failed to fetch dispatch data' : null,
       isLoading: false,
     });
+  },
+
+  fetchNearestBoard: async (latitude: number, longitude: number, force = false) => {
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || (latitude === 0 && longitude === 0)) {
+      return;
+    }
+
+    const key = boardKeyFor(latitude, longitude);
+    const { boardKey, board, isBoardLoading } = get();
+    if (!force && key === boardKey && (isBoardLoading || (board && Date.now() - boardFetchedAt < BOARD_MAX_AGE_MS))) {
+      return;
+    }
+
+    // A newer location wins: the board for a spot the dispatcher has already moved away from is thrown away.
+    boardRequest?.abort();
+    const controller = new AbortController();
+    boardRequest = controller;
+    set({ boardKey: key, isBoardLoading: true, boardError: false, ...(key === boardKey ? {} : { board: null }) });
+
+    try {
+      const result = await getNearestUnits(latitude, longitude, controller.signal);
+      if (boardRequest !== controller) return;
+      boardFetchedAt = Date.now();
+      set({ board: result, isBoardLoading: false });
+    } catch (error) {
+      if (boardRequest !== controller || controller.signal.aborted) return;
+      logger.error({ message: 'Failed to load the nearest unit board', context: { error } });
+      set({ isBoardLoading: false, boardError: true });
+    }
+  },
+
+  clearNearestBoard: () => {
+    boardRequest?.abort();
+    boardRequest = null;
+    boardFetchedAt = 0;
+    set({ board: null, boardKey: null, isBoardLoading: false, boardError: false });
   },
 
   setSelection: (selection: DispatchSelection) => {

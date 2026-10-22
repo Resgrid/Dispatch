@@ -7,6 +7,7 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, T
 
 import { useCallDispatchNow } from '@/components/calls/use-call-dispatch-now';
 import { Loading } from '@/components/common/loading';
+import { TypeIcon } from '@/components/common/type-icon';
 import ZeroState from '@/components/common/zero-state';
 import { Box } from '@/components/ui/box';
 import { FlatList } from '@/components/ui/flat-list';
@@ -124,9 +125,12 @@ export default function ScheduledCalls() {
                     </RNText>
                   </View>
                   <View style={[styles.cellType, styles.cellContainer]}>
-                    <RNText style={[styles.cellTextSecondary, { color: themedStyles.textSecondary }]} numberOfLines={1}>
-                      {item.Type || '-'}
-                    </RNText>
+                    <View style={styles.typeBadge}>
+                      <TypeIcon iconUrl={item.TypeIconUrl} mapIcon={item.TypeMapIcon} size={16} />
+                      <RNText style={[styles.cellTextSecondary, styles.typeText, { color: themedStyles.textSecondary }]} numberOfLines={1}>
+                        {item.Type || '-'}
+                      </RNText>
+                    </View>
                   </View>
                   <View style={[styles.cellPriority, styles.cellContainer]}>
                     <View style={styles.priorityBadge}>
@@ -263,6 +267,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+  },
+  typeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  typeText: {
+    flexShrink: 1,
   },
   priorityDot: {
     width: 8,

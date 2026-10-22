@@ -1,11 +1,10 @@
-import { Building2, Check, ChevronDown, ChevronRight, ChevronUp, MapPinned, Phone, Send, Truck, X } from 'lucide-react-native';
+import { Building2, ChevronDown, ChevronRight, ChevronUp, MapPinned, Phone, Send, Truck, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { getSetUnitStatusData } from '@/api/dispatch/dispatch';
 import { UdfFieldsRenderer } from '@/components/calls/udf-fields-renderer';
-import { Actionsheet, ActionsheetBackdrop, ActionsheetContent, ActionsheetDragIndicator, ActionsheetDragIndicatorWrapper } from '@/components/ui/actionsheet';
 import { Box } from '@/components/ui/box';
 import { Button, ButtonSpinner, ButtonText } from '@/components/ui/button';
 import { HStack } from '@/components/ui/hstack';
@@ -13,10 +12,20 @@ import { Icon } from '@/components/ui/icon';
 import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
-import { DestinationEntityType, type DestinationTab, getDefaultDestinationTab, getEffectiveDestinationType, getStatusDestinationCapabilities, resolveDefaultDestinationCall } from '@/lib/destination-helpers';
+import { UnitTypeIcon } from '@/components/units/unit-type-icon';
+import {
+  DestinationEntityType,
+  type DestinationTab,
+  getDefaultDestinationTab,
+  getEffectiveDestinationType,
+  getStatusDestinationCapabilities,
+  isTransportStatus,
+  resolveDefaultDestinationCall,
+  resolveTransportDestinationPoi,
+} from '@/lib/destination-helpers';
 import { getPoiSelectionLabel } from '@/lib/poi-display';
 import { resolveUnitStatusOptions } from '@/lib/unit-status-helpers';
-import { invertColor, isCallActive } from '@/lib/utils';
+import { isCallActive } from '@/lib/utils';
 import { type CallResultData } from '@/models/v4/calls/callResultData';
 import { type GroupResultData } from '@/models/v4/groups/groupsResultData';
 import { type PoiResultData } from '@/models/v4/mapping/poiResultData';
@@ -25,94 +34,17 @@ import { type UnitInfoResultData } from '@/models/v4/units/unitInfoResultData';
 import { useCallsStore } from '@/stores/calls/store';
 import { useDispatchConsoleStore } from '@/stores/dispatch/dispatch-console-store';
 import { useUnitActionsStore } from '@/stores/dispatch/unit-actions-store';
-import { TermKeys, useTerm } from '@/stores/terminology/store';
 import { useUnitsStore } from '@/stores/units/store';
+
+import { UnitDestinationSheet, UnitStatusSheet } from './unit-status-sheets';
 
 interface UnitActionsPanelProps {
   unit?: UnitInfoResultData | null;
   onStatusUpdated?: () => void;
 }
 
-// Reusable status option for the action sheet
-const StatusSheetOption: React.FC<{
-  status: StatusesResultData;
-  isSelected: boolean;
-  onSelect: () => void;
-}> = ({ status, isSelected, onSelect }) => {
-  const bgColor = status.BColor || '#6b7280';
-  const textColor = invertColor(bgColor, true);
-
-  return (
-    <Pressable onPress={onSelect}>
-      <HStack
-        className={`mb-2 items-center justify-between rounded-lg border-2 px-3 py-2.5 ${
-          isSelected ? 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-900/20' : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800'
-        }`}
-      >
-        <HStack className="items-center" space="sm">
-          <View style={StyleSheet.flatten([styles.statusIndicator, { backgroundColor: bgColor }])}>
-            <Text style={{ color: textColor }} className="text-sm font-bold">
-              {status.Text.substring(0, 2).toUpperCase()}
-            </Text>
-          </View>
-          <VStack className="flex-1">
-            <Text className="text-sm font-medium text-gray-800 dark:text-gray-100">{status.Text}</Text>
-            {status.Detail > 0 ? (
-              <Text className="text-xs text-gray-500 dark:text-gray-400">{status.Detail === 1 ? 'Station destination' : status.Detail === 2 ? 'Call destination' : 'Call or Station destination'}</Text>
-            ) : null}
-          </VStack>
-        </HStack>
-        {isSelected ? (
-          <View style={StyleSheet.flatten([styles.checkIcon, { backgroundColor: '#3b82f6' }])}>
-            <Icon as={Check} size="sm" color="#fff" />
-          </View>
-        ) : null}
-      </HStack>
-    </Pressable>
-  );
-};
-
-// Destination option for the action sheet
-const DestinationSheetOption: React.FC<{
-  type: 'call' | 'station' | 'poi' | 'none';
-  item?: CallResultData | GroupResultData | PoiResultData;
-  isSelected: boolean;
-  onSelect: () => void;
-  label?: string;
-}> = ({ type, item, isSelected, onSelect, label }) => {
-  const isCall = type === 'call';
-  const isPoi = type === 'poi';
-  const isNone = type === 'none';
-  const call = isCall && item ? (item as CallResultData) : null;
-  const poi = isPoi && item ? (item as PoiResultData) : null;
-  const station = !isCall && !isPoi && !isNone && item ? (item as GroupResultData) : null;
-
-  return (
-    <Pressable onPress={onSelect}>
-      <HStack
-        className={`mb-2 items-center justify-between rounded-lg border px-3 py-2.5 ${
-          isSelected ? 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-900/20' : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800'
-        }`}
-      >
-        <HStack className="flex-1 items-center" space="sm">
-          {isNone ? (
-            <Icon as={X} size="sm" className={isSelected ? 'text-blue-500' : 'text-gray-400'} />
-          ) : (
-            <Icon as={isCall ? Phone : isPoi ? MapPinned : Building2} size="sm" className={isSelected ? 'text-blue-500' : 'text-gray-500'} />
-          )}
-          <Text className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-100" numberOfLines={1}>
-            {isNone ? label : isCall ? `#${call?.Number} - ${call?.Name}` : isPoi ? getPoiSelectionLabel(poi!) : station?.Name}
-          </Text>
-        </HStack>
-        {isSelected ? <Icon as={Check} size="sm" className="text-blue-500" /> : null}
-      </HStack>
-    </Pressable>
-  );
-};
-
 export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitProp, onStatusUpdated }) => {
   const { t } = useTranslation();
-  const callsLabel = useTerm(TermKeys.Calls, t('dispatch.calls'));
 
   // Get calls directly from calls store using selector
   const calls = useCallsStore((state) => state.calls);
@@ -368,6 +300,27 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
   // does not support is dropped), so the panel shows exactly what will be saved.
   const effectiveDestinationType = useMemo(() => getEffectiveDestinationType(destinationSelection, selectedStatus?.Detail, hasCallContext), [destinationSelection, selectedStatus, hasCallContext]);
 
+  // The call the unit is working: its destination call, the explicit context, or the call the server says it is on. It
+  // stays known once the destination moves on to the hospital, so its destination POI can be defaulted and compared.
+  const unitCall = useMemo(() => {
+    const callId = statusSelectedCall?.CallId ?? callContext?.CallId ?? selectedUnit?.ActiveCallId;
+    if (!callId) return null;
+    return activeCalls.find((call) => call.CallId === callId) ?? statusSelectedCall ?? callContext;
+  }, [statusSelectedCall, callContext, selectedUnit, activeCalls]);
+  const callDestinationPoiId = unitCall?.DestinationPoiId ?? null;
+
+  // The POI the unit is already taking the patient to (its destination while Transporting or At Hospital)
+  const transportPoiId = selectedUnit && isTransportStatus(selectedUnit.CurrentStatusBaseType) && selectedUnit.CurrentDestinationType === DestinationEntityType.Poi ? selectedUnit.CurrentDestinationId : null;
+
+  // A destination POI other than the one the call was logged with (the crew changed hospital): flagged so the
+  // dispatcher can check it with the crew and note why.
+  const isOffCallDestination = effectiveDestinationType === 'poi' && !!statusSelectedPoi && callDestinationPoiId !== null && statusSelectedPoi.PoiId !== callDestinationPoiId;
+  const callDestinationLabel = useMemo(() => {
+    if (callDestinationPoiId === null) return '';
+    const poi = availablePois.find((candidate) => candidate.PoiId === callDestinationPoiId);
+    return poi ? getPoiSelectionLabel(poi) : (unitCall?.DestinationName?.trim() ?? '');
+  }, [callDestinationPoiId, availablePois, unitCall]);
+
   // Get destination display text
   const getDestinationDisplay = useMemo(() => {
     if (effectiveDestinationType === 'call' && statusSelectedCall) {
@@ -417,11 +370,16 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
     return true;
   }, [selectedStatus, statusNote, isHeldForWorkingCall]);
 
+  // The destination sheet opens on the current destination's tab (e.g. the hospital of a transport status), else the
+  // status's first one
   useEffect(() => {
-    if (selectedStatus) {
-      setDestinationTab(hasCallContext ? 'calls' : getDefaultDestinationTab(selectedStatus.Detail));
+    if (!selectedStatus) return;
+    if (effectiveDestinationType !== 'none') {
+      setDestinationTab(effectiveDestinationType === 'call' ? 'calls' : effectiveDestinationType === 'station' ? 'stations' : 'pois');
+      return;
     }
-  }, [selectedStatus, hasCallContext]);
+    setDestinationTab(hasCallContext ? 'calls' : getDefaultDestinationTab(selectedStatus.Detail));
+  }, [selectedStatus, hasCallContext, effectiveDestinationType]);
 
   // Refresh calls when destination sheet opens
   useEffect(() => {
@@ -434,6 +392,15 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
   const handleStatusSelect = (status: StatusesResultData) => {
     setSelectedStatus(status);
     setIsStatusSheetOpen(false);
+    // A transport status goes to the hospital the call was logged with (or the one the unit is already taking the
+    // patient to), so the dispatcher checks it rather than picks it (Belgian EMS, 2026-10-21).
+    const transportPoi = resolveTransportDestinationPoi({ status, selection: destinationSelection, hasCallContext, callDestinationPoiId, transportPoiId, availablePois });
+    if (transportPoi) {
+      setStatusSelectedPoi(transportPoi);
+      // As with a dispatcher's pick, a working-call lookup landing later must not replace it
+      markDestinationInitialized(actionsSessionId);
+      return;
+    }
     // If the status takes a destination and none applies yet, open the destination sheet. A preset or
     // sticky destination the status supports (e.g. the call) is kept and shown instead.
     const supportsDestination = getStatusDestinationCapabilities(status.Detail, hasCallContext).supportsDestination;
@@ -476,7 +443,7 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
         <HStack className="items-center justify-between border-b border-gray-200 px-2 py-1.5 dark:border-gray-700">
           <HStack className="flex-1 items-center" space="xs">
             <View style={styles.avatar}>
-              <Icon as={Truck} size="xs" className="text-blue-500" />
+              <UnitTypeIcon iconUrl={selectedUnit.TypeIconUrl} mapIcon={selectedUnit.TypeMapIcon} size={18} fallback={<Icon as={Truck} size="xs" className="text-blue-500" />} />
             </View>
             <VStack className="flex-1">
               <Text className="text-sm font-semibold text-gray-800 dark:text-gray-100" numberOfLines={1}>
@@ -524,7 +491,9 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
             {/* Destination Button (only show if status is selected and supports destination) */}
             {selectedStatus && destinationConfig.supportsDestination ? (
               <Pressable onPress={() => setIsDestinationSheetOpen(true)}>
-                <HStack className="items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-800">
+                <HStack
+                  className={`items-center justify-between rounded-lg border bg-gray-50 px-3 py-2 dark:bg-gray-800 ${isOffCallDestination ? 'border-amber-400 dark:border-amber-600' : 'border-gray-200 dark:border-gray-700'}`}
+                >
                   <HStack className="flex-1 items-center" space="sm">
                     <Icon as={effectiveDestinationType === 'call' ? Phone : effectiveDestinationType === 'poi' ? MapPinned : Building2} size="sm" className="text-amber-500" />
                     <VStack className="flex-1">
@@ -532,6 +501,11 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
                       <Text className="text-sm font-medium text-gray-800 dark:text-gray-100" numberOfLines={1}>
                         {getDestinationDisplay}
                       </Text>
+                      {isOffCallDestination ? (
+                        <Text className="text-xs font-medium text-amber-600 dark:text-amber-400" numberOfLines={2}>
+                          {t('dispatch.unit_actions_panel.differs_from_call_destination', { name: callDestinationLabel })}
+                        </Text>
+                      ) : null}
                     </VStack>
                   </HStack>
                   <Icon as={ChevronRight} size="sm" className="text-gray-400" />
@@ -545,7 +519,7 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
               className={`rounded-lg border bg-white px-3 py-2 text-sm text-gray-800 dark:bg-gray-800 dark:text-gray-100 ${
                 statusNoteConfig.required && !statusNote.trim() ? 'border-red-300 dark:border-red-700' : 'border-gray-200 dark:border-gray-700'
               }`}
-              placeholder={`${t('dispatch.unit_actions_panel.note')}${statusNoteConfig.required ? ' *' : ` (${t('common.optional')})`}`}
+              placeholder={`${isOffCallDestination ? t('dispatch.unit_actions_panel.destination_change_reason') : t('dispatch.unit_actions_panel.note')}${statusNoteConfig.required ? ' *' : ` (${t('common.optional')})`}`}
               placeholderTextColor="#9ca3af"
               value={statusNote}
               onChangeText={setStatusNote}
@@ -577,131 +551,24 @@ export const UnitActionsPanel: React.FC<UnitActionsPanelProps> = ({ unit: unitPr
         )}
       </Box>
 
-      {/* Status Selection Action Sheet */}
-      <Actionsheet isOpen={isStatusSheetOpen} onClose={() => setIsStatusSheetOpen(false)} snapPoints={[50]}>
-        <ActionsheetBackdrop />
-        <ActionsheetContent className="rounded-t-2xl bg-white px-4 pb-6 dark:bg-gray-900">
-          <ActionsheetDragIndicatorWrapper>
-            <ActionsheetDragIndicator />
-          </ActionsheetDragIndicatorWrapper>
-          <VStack className="w-full" space="md">
-            <Text className="text-lg font-semibold text-gray-800 dark:text-gray-100">{t('dispatch.unit_actions_panel.select_status')}</Text>
-            <ScrollView style={styles.sheetList} showsVerticalScrollIndicator={false}>
-              {availableStatuses.length === 0 ? (
-                <Text className="py-4 text-center text-gray-500 dark:text-gray-400">{t('dispatch.unit_actions_panel.no_statuses_available')}</Text>
-              ) : (
-                availableStatuses.map((status) => <StatusSheetOption key={status.Id} status={status} isSelected={selectedStatus?.Id === status.Id} onSelect={() => handleStatusSelect(status)} />)
-              )}
-            </ScrollView>
-          </VStack>
-        </ActionsheetContent>
-      </Actionsheet>
+      <UnitStatusSheet isOpen={isStatusSheetOpen} onClose={() => setIsStatusSheetOpen(false)} statuses={availableStatuses} selectedStatusId={selectedStatus?.Id} onSelect={handleStatusSelect} />
 
-      {/* Destination Selection Action Sheet */}
-      <Actionsheet isOpen={isDestinationSheetOpen} onClose={() => setIsDestinationSheetOpen(false)} snapPoints={[90]}>
-        <ActionsheetBackdrop />
-        <ActionsheetContent className="flex-1 rounded-t-2xl bg-white px-4 pb-6 dark:bg-gray-900">
-          <ActionsheetDragIndicatorWrapper>
-            <ActionsheetDragIndicator />
-          </ActionsheetDragIndicatorWrapper>
-          <VStack className="w-full flex-1" space="sm">
-            <Text className="text-lg font-semibold text-gray-800 dark:text-gray-100">{t('dispatch.unit_actions_panel.destination')}</Text>
-
-            {/* No Destination Option */}
-            <DestinationSheetOption type="none" isSelected={effectiveDestinationType === 'none'} onSelect={() => handleDestinationSelect('none')} label={t('dispatch.unit_actions_panel.no_destination')} />
-
-            {/* Tabs for Calls and Stations */}
-            {destinationConfig.showCalls || destinationConfig.showStations || destinationConfig.showPois ? (
-              <>
-                <HStack className="rounded-lg bg-gray-100 p-1 dark:bg-gray-800" space="xs">
-                  {destinationConfig.showCalls ? (
-                    <Pressable onPress={() => setDestinationTab('calls')} className={`flex-1 rounded-md px-3 py-2 ${destinationTab === 'calls' ? 'bg-white shadow-xs dark:bg-gray-700' : ''}`}>
-                      <Text className={`text-center text-sm font-medium ${destinationTab === 'calls' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
-                        {callsLabel} ({activeCalls.length})
-                      </Text>
-                    </Pressable>
-                  ) : null}
-                  {destinationConfig.showStations ? (
-                    <Pressable onPress={() => setDestinationTab('stations')} className={`flex-1 rounded-md px-3 py-2 ${destinationTab === 'stations' ? 'bg-white shadow-xs dark:bg-gray-700' : ''}`}>
-                      <Text className={`text-center text-sm font-medium ${destinationTab === 'stations' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
-                        {t('dispatch.stations')} ({availableStations.length})
-                      </Text>
-                    </Pressable>
-                  ) : null}
-                  {destinationConfig.showPois ? (
-                    <Pressable onPress={() => setDestinationTab('pois')} className={`flex-1 rounded-md px-3 py-2 ${destinationTab === 'pois' ? 'bg-white shadow-xs dark:bg-gray-700' : ''}`}>
-                      <Text className={`text-center text-sm font-medium ${destinationTab === 'pois' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
-                        {t('menu.pois')} ({availablePois.length})
-                      </Text>
-                    </Pressable>
-                  ) : null}
-                </HStack>
-
-                {/* Tab Content */}
-                <ScrollView className="flex-1 pb-5" showsVerticalScrollIndicator>
-                  {/* Calls Tab Content */}
-                  {destinationTab === 'calls' && destinationConfig.showCalls ? (
-                    <VStack space="xs">
-                      {activeCalls.length > 0 ? (
-                        activeCalls.map((call) => (
-                          <DestinationSheetOption
-                            key={call.CallId}
-                            type="call"
-                            item={call}
-                            isSelected={effectiveDestinationType === 'call' && statusSelectedCall?.CallId === call.CallId}
-                            onSelect={() => handleDestinationSelect('call', call)}
-                          />
-                        ))
-                      ) : (
-                        <Text className="py-8 text-center text-sm text-gray-400">{t('dispatch.unit_actions_panel.no_active_calls')}</Text>
-                      )}
-                    </VStack>
-                  ) : null}
-
-                  {/* Stations Tab Content */}
-                  {destinationTab === 'stations' && destinationConfig.showStations ? (
-                    <VStack space="xs">
-                      {availableStations.length > 0 ? (
-                        availableStations.map((station) => (
-                          <DestinationSheetOption
-                            key={station.GroupId}
-                            type="station"
-                            item={station}
-                            isSelected={effectiveDestinationType === 'station' && statusSelectedStation?.GroupId === station.GroupId}
-                            onSelect={() => handleDestinationSelect('station', station)}
-                          />
-                        ))
-                      ) : (
-                        <Text className="py-8 text-center text-sm text-gray-400">{t('dispatch.unit_actions_panel.no_stations_available')}</Text>
-                      )}
-                    </VStack>
-                  ) : null}
-
-                  {destinationTab === 'pois' && destinationConfig.showPois ? (
-                    <VStack space="xs">
-                      {availablePois.length > 0 ? (
-                        availablePois.map((poi) => (
-                          <DestinationSheetOption
-                            key={poi.PoiId}
-                            type="poi"
-                            item={poi}
-                            isSelected={effectiveDestinationType === 'poi' && statusSelectedPoi?.PoiId === poi.PoiId}
-                            onSelect={() => handleDestinationSelect('poi', poi)}
-                          />
-                        ))
-                      ) : (
-                        <Text className="py-8 text-center text-sm text-gray-400">{t('status.no_pois_available')}</Text>
-                      )}
-                    </VStack>
-                  ) : null}
-                </ScrollView>
-              </>
-            ) : (
-              <Text className="py-4 text-center text-gray-500 dark:text-gray-400">{t('dispatch.unit_actions_panel.no_destinations_available')}</Text>
-            )}
-          </VStack>
-        </ActionsheetContent>
-      </Actionsheet>
+      <UnitDestinationSheet
+        isOpen={isDestinationSheetOpen}
+        onClose={() => setIsDestinationSheetOpen(false)}
+        capabilities={destinationConfig}
+        activeTab={destinationTab}
+        onTabChange={setDestinationTab}
+        calls={activeCalls}
+        stations={availableStations}
+        pois={availablePois}
+        effectiveDestinationType={effectiveDestinationType}
+        selectedCall={statusSelectedCall}
+        selectedStation={statusSelectedStation}
+        selectedPoi={statusSelectedPoi}
+        onSelect={handleDestinationSelect}
+        callDestinationPoiId={callDestinationPoiId}
+      />
     </>
   );
 };
@@ -722,27 +589,10 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: 'rgba(0, 0, 0, 0.05)',
   },
-  statusIndicator: {
-    width: 32,
-    height: 32,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   miniIndicator: {
     width: 8,
     height: 8,
     borderRadius: 4,
-  },
-  checkIcon: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sheetList: {
-    maxHeight: 300,
   },
   noteInput: {
     minHeight: 36,

@@ -40,6 +40,8 @@ const getServerMessage = (error: unknown): string | null => {
 interface PickerTarget {
   callId: string;
   initialSelection: DispatchSelection;
+  /** The call's location, so the picker ranks people and units by how close they are to it. */
+  callLocation: { latitude: number; longitude: number } | null;
   /** Recipients already stored on the call (its proposed dispatch); null when they could not be read. */
   proposedCount: number | null;
 }
@@ -88,7 +90,7 @@ export const useCallDispatchNow = ({ onDispatched, onCancelled }: UseCallDispatc
     [onDispatched, showToast, t]
   );
 
-  const openDispatchPicker = useCallback(async (callId: string, knownDispatches?: DispatchedEventResultData[] | null) => {
+  const openDispatchPicker = useCallback(async (callId: string, knownDispatches?: DispatchedEventResultData[] | null, callLocation?: { latitude: number; longitude: number } | null) => {
     let proposed: DispatchSelection | null = knownDispatches ? dispatchesToSelection(knownDispatches) : null;
 
     if (!proposed) {
@@ -105,7 +107,7 @@ export const useCallDispatchNow = ({ onDispatched, onCancelled }: UseCallDispatc
       }
     }
 
-    setPickerTarget({ callId, initialSelection: proposed ?? EMPTY_DISPATCH_SELECTION, proposedCount: proposed ? selectionSize(proposed) : null });
+    setPickerTarget({ callId, initialSelection: proposed ?? EMPTY_DISPATCH_SELECTION, proposedCount: proposed ? selectionSize(proposed) : null, callLocation: callLocation ?? null });
   }, []);
 
   const handlePickerConfirm = useCallback(
@@ -161,7 +163,13 @@ export const useCallDispatchNow = ({ onDispatched, onCancelled }: UseCallDispatc
   );
 
   const dispatchPicker = (
-    <DispatchSelectionModal isVisible={pickerTarget !== null} onClose={() => setPickerTarget(null)} onConfirm={handlePickerConfirm} initialSelection={pickerTarget?.initialSelection ?? EMPTY_DISPATCH_SELECTION} />
+    <DispatchSelectionModal
+      isVisible={pickerTarget !== null}
+      onClose={() => setPickerTarget(null)}
+      onConfirm={handlePickerConfirm}
+      initialSelection={pickerTarget?.initialSelection ?? EMPTY_DISPATCH_SELECTION}
+      callLocation={pickerTarget?.callLocation ?? null}
+    />
   );
 
   return { openDispatchPicker, confirmDispatchNow, confirmCancelPending, busyCallId, dispatchPicker };

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 import { escalateCall as escalateCallApi, type EscalateCallResultData, getDispatchRecommendation, type RecommendationRequest } from '@/api/runcards/runcards';
 import { logger } from '@/lib/logging';
+import { type UnitResponseCodeChoices } from '@/lib/run-card-conditions';
 import { type DispatchRecommendationResultData } from '@/models/v4/runcards/dispatchRecommendationResultData';
 
 import { isRunCardsEnabled } from '../feature-flags/store';
@@ -26,6 +27,11 @@ interface RunCardsState {
   hasFetched: boolean;
   /** Recommendation ids the dispatcher has already applied, so the panel can show it as applied. */
   appliedRunCardId: number | null;
+  /**
+   * Conditional run cards: the dispatcher's response code choices over the proposal (unit id to code id, null for no
+   * code), posted as UnitResponseCodes when the call is saved.
+   */
+  unitResponseCodes: UnitResponseCodeChoices;
 
   isEscalating: boolean;
   escalationError: string | null;
@@ -33,6 +39,7 @@ interface RunCardsState {
   fetchRecommendation: (request: RecommendationRequest) => Promise<void>;
   fetchRecommendationDebounced: (request: RecommendationRequest) => void;
   markApplied: (runCardId: number | null) => void;
+  setUnitResponseCode: (unitId: number, codeId: number | null) => void;
   clear: () => void;
   escalate: (callId: string) => Promise<EscalateCallResultData | null>;
 }
@@ -46,6 +53,7 @@ export const useRunCardsStore = create<RunCardsState>((set, get) => ({
   error: null,
   hasFetched: false,
   appliedRunCardId: null,
+  unitResponseCodes: {},
   isEscalating: false,
   escalationError: null,
 
@@ -79,7 +87,11 @@ export const useRunCardsStore = create<RunCardsState>((set, get) => ({
         return;
       }
 
-      set({ recommendation, isLoading: false, hasFetched: true, error: null });
+      // Code choices follow the units: one picked for a unit the new recommendation still proposes stays, the rest go.
+      const proposedUnitIds = new Set((recommendation?.Units ?? []).map((unit) => unit.UnitId));
+      const unitResponseCodes = Object.fromEntries(Object.entries(get().unitResponseCodes).filter(([unitId]) => proposedUnitIds.has(Number(unitId))));
+
+      set({ recommendation, isLoading: false, hasFetched: true, error: null, unitResponseCodes });
     } catch (error) {
       if (controller.signal.aborted || inFlightController !== controller) {
         return;
@@ -116,6 +128,10 @@ export const useRunCardsStore = create<RunCardsState>((set, get) => ({
     set({ appliedRunCardId: runCardId });
   },
 
+  setUnitResponseCode: (unitId: number, codeId: number | null) => {
+    set((state) => ({ unitResponseCodes: { ...state.unitResponseCodes, [unitId]: codeId } }));
+  },
+
   clear: () => {
     if (debounceTimer) {
       clearTimeout(debounceTimer);
@@ -130,6 +146,7 @@ export const useRunCardsStore = create<RunCardsState>((set, get) => ({
       error: null,
       hasFetched: false,
       appliedRunCardId: null,
+      unitResponseCodes: {},
       isEscalating: false,
       escalationError: null,
     });
