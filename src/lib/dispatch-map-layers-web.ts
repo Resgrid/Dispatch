@@ -66,9 +66,12 @@ export const applyDispatchOverlay = (map: mapboxgl.Map, overlay: DispatchMapOver
     (map.getSource(DISPATCH_POINTS_SOURCE) as mapboxgl.GeoJSONSource).setData(overlay?.points ?? EMPTY);
   };
 
-  if (map.isStyleLoaded()) {
+  // Not gated on isStyleLoaded(): it is also false while tiles load (a pan or zoom), and 'style.load' does not fire
+  // again until the next style switch, so the update would be dropped. Sources and layers can be added as soon as the
+  // style itself has loaded; before that addSource throws, and the overlay waits for the style.
+  try {
     apply();
-  } else {
+  } catch {
     map.once('style.load', apply);
   }
 };

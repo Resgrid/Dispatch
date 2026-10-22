@@ -8,9 +8,9 @@ import { useSignalRStore } from '@/stores/signalr/signalr-store';
 /**
  * Keeps the calls-awaiting-resources list (and the response code catalog) current for the whole signed-in shell, so the
  * banner and the menu badge are right on every screen: loaded once the app is ready, again whenever it comes back to
- * the foreground (pushes were missed while it was away), and after a calls push while anything is waiting (a call
- * closed elsewhere stops awaiting). The `outstandingRequirementsUpdated` push itself refreshes it through the SignalR
- * store.
+ * the foreground (pushes were missed while it was away), and after every calls push (a call closed elsewhere stops
+ * awaiting), which includes the nudge the update hub sends when it rejoins after an outage. The
+ * `outstandingRequirementsUpdated` push itself refreshes it through the SignalR store.
  *
  * Inert, and the list emptied, while the department does not have Dispatch.RunCardConditions.
  */
@@ -18,7 +18,6 @@ export const useAwaitingResourcesSync = (isReady: boolean) => {
   const isEnabled = useIsRunCardConditionsEnabled();
   const { isActive } = useAppLifecycle();
   const lastCallsUpdateTimestamp = useSignalRStore((state) => state.lastCallsUpdateTimestamp);
-  const hasAwaitingCalls = useAwaitingResourcesStore((state) => state.calls.length > 0);
   const shouldSync = isReady && isEnabled;
 
   useEffect(() => {
@@ -51,10 +50,11 @@ export const useAwaitingResourcesSync = (isReady: boolean) => {
     }
     lastSeenCallsUpdate.current = lastCallsUpdateTimestamp;
 
-    // A calls push can only take a call off the list (closed, or a unit added another way); new waiting calls arrive
-    // as outstandingRequirementsUpdated. With nothing waiting there is nothing to take off.
-    if (shouldSync && hasAwaitingCalls) {
+    // A calls push can take a call off the list (closed, or a unit added another way). The same timestamp is bumped
+    // when the update hub rejoins after an outage, which replays nothing: an outstandingRequirementsUpdated sent during
+    // the gap is lost, so refetch even while nothing is waiting.
+    if (shouldSync) {
       void useAwaitingResourcesStore.getState().fetchAwaitingCalls();
     }
-  }, [lastCallsUpdateTimestamp, shouldSync, hasAwaitingCalls]);
+  }, [lastCallsUpdateTimestamp, shouldSync]);
 };

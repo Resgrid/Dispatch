@@ -66,17 +66,22 @@ export const getUnitStatusKey = (status: Pick<StatusesResultData, 'Text'>): stri
  * The statuses a group of units can all be set to in one action. Units of different types can use different custom
  * status sets, where the "same" status (e.g. "At Hospital" for an ambulance and for an MUG) has a different id per
  * set, so statuses are matched by their text and each unit keeps its own status id. Ordered as the first unit's set.
+ *
+ * `fallbackByUnitId` holds per-unit status lists (see {@link resolveUnitStatusOptions}), keyed by the unit they were
+ * fetched for: one unit's list carries its own set's ids, so it is never used for another unit. A unit with neither a
+ * group nor its own list has no statuses, which leaves the selection without common options rather than sending it
+ * another set's ids.
  */
 export function resolveCommonUnitStatusOptions(
   units: Pick<UnitInfoResultData, 'UnitId' | 'CustomStatusSetId' | 'Type'>[],
   groups: UnitTypeStatusResultData[] | undefined,
-  fallback: StatusesResultData[] = []
+  fallbackByUnitId: Record<string, StatusesResultData[]> = {}
 ): CommonUnitStatusOption[] {
   if (units.length === 0) return [];
 
   const statusesByUnit = units.map((unit) => {
     const byKey = new Map<string, StatusesResultData>();
-    resolveUnitStatusOptions(unit, groups, fallback).forEach((status) => {
+    resolveUnitStatusOptions(unit, groups, fallbackByUnitId[unit.UnitId]).forEach((status) => {
       const key = getUnitStatusKey(status);
       if (key && !byKey.has(key)) byKey.set(key, status);
     });

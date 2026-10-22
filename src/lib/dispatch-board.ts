@@ -216,8 +216,9 @@ export const FRAME_MAX_DISTANCE_METERS = 50_000;
 
 const withinFrame = (distanceMeters: number | null | undefined) => typeof distanceMeters === 'number' && distanceMeters <= FRAME_MAX_DISTANCE_METERS;
 
+// The board comes off the network: an out-of-range position would reach fitBounds, which throws on an invalid latitude.
 const usable = (lat: number | null | undefined, lng: number | null | undefined): lat is number =>
-  typeof lat === 'number' && typeof lng === 'number' && Number.isFinite(lat) && Number.isFinite(lng) && !(lat === 0 && lng === 0);
+  typeof lat === 'number' && typeof lng === 'number' && Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && !(lat === 0 && lng === 0);
 
 /**
  * The units and responders the board placed (hidden positions carry no coordinates and are left off), plus every

@@ -104,4 +104,15 @@ describe('resolveCommonUnitStatusOptions', () => {
   it('returns nothing for no units', () => {
     expect(resolveCommonUnitStatusOptions([], [ambulanceGroup])).toEqual([]);
   });
+
+  it('uses a per-unit fallback list only for the unit it was fetched for', () => {
+    const ambulanceOwnList = ambulanceGroup.Statuses;
+
+    // Without the grouped statuses, the MUG has no list of its own: the ambulance's ids are never sent for it
+    expect(resolveCommonUnitStatusOptions([ambulance, mug], undefined, { zw: ambulanceOwnList })).toEqual([]);
+
+    const [onScene] = resolveCommonUnitStatusOptions([ambulance, mug], undefined, { zw: ambulanceOwnList, mug: mugGroup.Statuses });
+    expect(onScene.statusByUnitId.zw.Id).toBe(200);
+    expect(onScene.statusByUnitId.mug.Id).toBe(300);
+  });
 });

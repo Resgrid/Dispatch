@@ -32,7 +32,9 @@ interface BulkUnitActionsPanelProps {
 }
 
 interface DestinationOptions {
+  /** The per-unit status list of the unit the options were loaded for (see statusesUnitId). */
   statuses: StatusesResultData[];
+  statusesUnitId: string | null;
   stations: GroupResultData[];
   pois: PoiResultData[];
 }
@@ -81,9 +83,9 @@ export const BulkUnitActionsPanel: React.FC<BulkUnitActionsPanelProps> = ({ onSt
   const selectedUnits = useMemo(() => selectedUnitIds.map((id) => units.find((u) => u.UnitId === id)).filter((u): u is UnitInfoResultData => !!u), [selectedUnitIds, units]);
 
   // Stations and POIs are the department's, so one unit's options serve the whole selection; its status list is only
-  // the fallback for when the grouped unit statuses are missing.
+  // that unit's fallback for when the grouped unit statuses are missing.
   const optionsUnitId = selectedUnits[0]?.UnitId;
-  const [options, setOptions] = useState<DestinationOptions>({ statuses: [], stations: [], pois: [] });
+  const [options, setOptions] = useState<DestinationOptions>({ statuses: [], statusesUnitId: null, stations: [], pois: [] });
   const [isLoadingOptions, setIsLoadingOptions] = useState(false);
   const [hasLoadedOptions, setHasLoadedOptions] = useState(false);
 
@@ -98,6 +100,7 @@ export const BulkUnitActionsPanel: React.FC<BulkUnitActionsPanelProps> = ({ onSt
         if (cancelled) return;
         setOptions({
           statuses: (unitStatusData?.Data?.Statuses as unknown as StatusesResultData[]) || [],
+          statusesUnitId: optionsUnitId,
           stations: unitStatusData?.Data?.Stations || [],
           pois: unitStatusData?.Data?.DestinationPois || [],
         });
@@ -125,7 +128,8 @@ export const BulkUnitActionsPanel: React.FC<BulkUnitActionsPanelProps> = ({ onSt
     []
   );
 
-  const commonStatuses = useMemo(() => resolveCommonUnitStatusOptions(selectedUnits, unitStatusGroups, options.statuses), [selectedUnits, unitStatusGroups, options.statuses]);
+  const fallbackStatusesByUnitId = useMemo(() => (options.statusesUnitId ? { [options.statusesUnitId]: options.statuses } : {}), [options.statusesUnitId, options.statuses]);
+  const commonStatuses = useMemo(() => resolveCommonUnitStatusOptions(selectedUnits, unitStatusGroups, fallbackStatusesByUnitId), [selectedUnits, unitStatusGroups, fallbackStatusesByUnitId]);
   const selectedOption: CommonUnitStatusOption | null = useMemo(() => commonStatuses.find((option) => option.key === selectedStatusKey) ?? null, [commonStatuses, selectedStatusKey]);
   // The sheet lists each option as the first unit's status, with the destinations any unit's status accepts
   const sheetStatuses = useMemo(() => commonStatuses.map((option) => ({ ...option.status, Detail: option.detail })), [commonStatuses]);

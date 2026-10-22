@@ -134,6 +134,13 @@ describe('dispatch board helpers', () => {
     expect(overlay!.nearest).toEqual([[-119.79, 39.51]]);
   });
 
+  it('leaves off a resource whose position is out of range', () => {
+    const overlay = buildDispatchMapOverlay(board([unit({ UnitId: 1, Latitude: 139.5, Longitude: -119.79, DistanceMeters: 900 }), unit({ UnitId: 2, Latitude: 39.5, Longitude: -219.79, DistanceMeters: 900 }), unit({ UnitId: 3, Latitude: 39.51, Longitude: -119.79, DistanceMeters: 1400 })]), []);
+
+    expect(overlay!.unitCount).toBe(1);
+    expect(overlay!.nearest).toEqual([[-119.79, 39.51]]);
+  });
+
   it('has nothing to draw without positions or boundaries', () => {
     expect(buildDispatchMapOverlay(null, [])).toBeNull();
   });
