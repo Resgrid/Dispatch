@@ -148,12 +148,23 @@ jobs:
           sudo apt-get clean || true
           sudo rm -rf /var/lib/apt/lists/*
           
-          # Remove swap
+          # Replace the image's swap with a larger one. The native (CMake/clang) and Kotlin
+          # compiles run alongside 4 GB Gradle and Node heaps; with no swap the runner starves
+          # and GitHub drops it ("hosted runner lost communication"). Prefer the /mnt temp disk
+          # so swap doesn't eat into the root disk freed above.
           sudo swapoff -a || true
-          sudo rm -f /swapfile || true
-          
+          sudo rm -f /swapfile /mnt/swapfile || true
+          SWAP_FILE=/swapfile
+          if mountpoint -q /mnt; then SWAP_FILE=/mnt/swapfile; fi
+          if sudo fallocate -l 8G "$SWAP_FILE" && sudo chmod 600 "$SWAP_FILE" && sudo mkswap "$SWAP_FILE" && sudo swapon "$SWAP_FILE"; then
+            echo "Enabled 8G swap at $SWAP_FILE"
+          else
+            echo "::warning::Could not enable swap at $SWAP_FILE"
+          fi
+
           echo "Disk space after cleanup:"
           df -h
+          free -h
 
       # ubuntu-26.04 runners default to JDK 25, whose restricted-method warnings fail
       # the configureCMake tasks for react-native-worklets/react-native-screens.
@@ -267,6 +278,9 @@ jobs:
         run: |
           mkdir -p ~/.gradle/
           echo ${GRADLE_PROPERTIES} > ~/.gradle/gradle.properties
+          # Each Gradle worker can drive its own CMake/ninja native build, so cap workers to
+          # keep concurrent clang processes within the runner's memory.
+          echo "org.gradle.workers.max=2" >> ~/.gradle/gradle.properties
 
       - name: 🌐 Build Web Export
         if: (matrix.platform == 'web' && (github.event.inputs.buildType == 'all' || github.event_name == 'push' || github.event.inputs.platform == 'web' || github.event.inputs.platform == 'all'))
