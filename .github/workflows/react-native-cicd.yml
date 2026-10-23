@@ -180,6 +180,17 @@ jobs:
           echo "${JAVA_HOME_17_X64}/bin" >> "$GITHUB_PATH"
           "${JAVA_HOME_17_X64}/bin/java" -version
 
+      # ubuntu-26.04 mounts /tmp as an ~8 GB RAM-backed tmpfs, and eas build --local works
+      # under /tmp by default, so the Gradle/CMake output fills it ("Disk quota exceeded").
+      # Move EAS's working dir and the general temp dir onto the runner's disk.
+      - name: 📂 Move build temp dirs off tmpfs (Android)
+        if: matrix.platform == 'android'
+        run: |
+          mkdir -p "${RUNNER_TEMP}/tmp" "${RUNNER_TEMP}/eas-build"
+          echo "TMPDIR=${RUNNER_TEMP}/tmp" >> "$GITHUB_ENV"
+          echo "EAS_LOCAL_BUILD_WORKINGDIR=${RUNNER_TEMP}/eas-build" >> "$GITHUB_ENV"
+          df -h /tmp "${RUNNER_TEMP}"
+
       - name: 🏗 Setup Node.js
         uses: actions/setup-node@v4
         with:
