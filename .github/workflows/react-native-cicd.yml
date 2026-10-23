@@ -155,6 +155,20 @@ jobs:
           echo "Disk space after cleanup:"
           df -h
 
+      # ubuntu-26.04 runners default to JDK 25, whose restricted-method warnings fail
+      # the configureCMake tasks for react-native-worklets/react-native-screens.
+      # JDK 17 is preinstalled on the image, so point JAVA_HOME at it.
+      - name: ☕ Use JDK 17 (Android)
+        if: matrix.platform == 'android'
+        run: |
+          if [ -z "${JAVA_HOME_17_X64}" ]; then
+            echo "JAVA_HOME_17_X64 is not set on this runner image" >&2
+            exit 1
+          fi
+          echo "JAVA_HOME=${JAVA_HOME_17_X64}" >> "$GITHUB_ENV"
+          echo "${JAVA_HOME_17_X64}/bin" >> "$GITHUB_PATH"
+          "${JAVA_HOME_17_X64}/bin/java" -version
+
       - name: 🏗 Setup Node.js
         uses: actions/setup-node@v4
         with:

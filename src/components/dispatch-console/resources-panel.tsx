@@ -16,6 +16,7 @@ import { useReadableColor } from '@/hooks/use-readable-color';
 import { isPersonnelDispatch, isUnitDispatch } from '@/lib/dispatch-types';
 import { contentOnFill } from '@/lib/readable-color';
 import { isPersonnelAvailable, isUnitAvailable } from '@/lib/resource-availability';
+import { getUnitSubtitle } from '@/lib/unit-crew';
 import { type DispatchedEventResultData } from '@/models/v4/calls/dispatchedEventResultData';
 import { type PersonnelInfoResultData } from '@/models/v4/personnel/personnelInfoResultData';
 import { type UnitInfoResultData } from '@/models/v4/units/unitInfoResultData';
@@ -25,6 +26,7 @@ import { useUnitsStore } from '@/stores/units/store';
 
 import { AnimatedRefreshIcon } from './animated-refresh-icon';
 import { PanelHeader } from './panel-header';
+import { UnitCrewLine } from './unit-crew-line';
 import { UnitMultiSelectToggle, UnitSelectionBar, UnitSelectionCheckbox, useUnitMultiSelect } from './unit-multi-select';
 
 interface ResourcesPanelProps {
@@ -48,6 +50,12 @@ type ResourceRow = {
   subtitle: string;
   status: string;
   statusColor: string;
+  // Personnel only: staffing level and the roles they hold
+  staffing?: string;
+  staffingColor?: string;
+  roles?: string;
+  /** Text the search matches beyond name, subtitle and status: staffing and roles for a person, the crew for a unit. */
+  searchText: string;
   available: boolean;
   isOnCall: boolean;
   href: string;
@@ -149,9 +157,10 @@ const ResourcesPanelComponent: React.FC<ResourcesPanelProps> = ({
       kind: 'unit',
       entityId: u.UnitId,
       name: u.Name,
-      subtitle: u.Type || u.GroupName || t('dispatch.unassigned'),
+      subtitle: getUnitSubtitle(u, t('dispatch.unassigned')),
       status: u.CurrentStatus || t('dispatch.available'),
       statusColor: u.CurrentStatusColor || '#22c55e',
+      searchText: (u.Roles ?? []).map((r) => `${r.RoleName ?? ''} ${r.Name ?? ''}`).join(' '),
       available: isUnitAvailable(u),
       isOnCall: dispatchedUnitNames.has(u.Name.toLowerCase()) || Boolean(selectedCallId && u.CurrentDestinationId === selectedCallId),
       href: `/units/${u.UnitId}`,
@@ -159,6 +168,7 @@ const ResourcesPanelComponent: React.FC<ResourcesPanelProps> = ({
     }));
     const personnelRows: ResourceRow[] = personnelSource.map((p) => {
       const fullName = `${p.FirstName} ${p.LastName}`;
+      const roles = (p.Roles ?? []).filter(Boolean).join(', ');
       return {
         id: `person-${p.UserId}`,
         kind: 'personnel',
@@ -167,6 +177,10 @@ const ResourcesPanelComponent: React.FC<ResourcesPanelProps> = ({
         subtitle: p.GroupName || t('dispatch.unassigned'),
         status: p.Status || t('dispatch.unknown'),
         statusColor: p.StatusColor || '#6b7280',
+        staffing: p.Staffing || t('dispatch.unknown'),
+        staffingColor: p.StaffingColor || '#6b7280',
+        roles,
+        searchText: `${p.Staffing ?? ''} ${roles}`,
         available: isPersonnelAvailable(p),
         isOnCall: dispatchedPersonnelIds.has(p.UserId) || dispatchedPersonnelNames.has(fullName.toLowerCase()) || Boolean(selectedCallId && p.StatusDestinationId === selectedCallId),
         href: `/personnel/${p.UserId}`,
@@ -180,7 +194,7 @@ const ResourcesPanelComponent: React.FC<ResourcesPanelProps> = ({
     }
     const query = searchQuery.trim().toLowerCase();
     if (query) {
-      all = all.filter((r) => r.name.toLowerCase().includes(query) || r.subtitle.toLowerCase().includes(query) || r.status.toLowerCase().includes(query));
+      all = all.filter((r) => r.name.toLowerCase().includes(query) || r.subtitle.toLowerCase().includes(query) || r.status.toLowerCase().includes(query) || r.searchText.toLowerCase().includes(query));
     }
     return all;
   }, [units, personnel, availableOnly, searchQuery, isCallFilterActive, callDispatches, selectedCallId, dispatchedUnitNames, dispatchedPersonnelIds, dispatchedPersonnelNames, t]);
@@ -370,22 +384,38 @@ const ResourcesPanelComponent: React.FC<ResourcesPanelProps> = ({
                             <Text className="text-xs text-gray-500 dark:text-gray-400" numberOfLines={1}>
                               {r.subtitle}
                             </Text>
+                            {r.kind === 'unit' ? <UnitCrewLine unit={r.unit} /> : null}
+                            {r.roles ? (
+                              <Text className="text-xs text-indigo-500 dark:text-indigo-400" numberOfLines={1} testID={`resource-roles-${r.entityId}`}>
+                                {r.roles}
+                              </Text>
+                            ) : null}
                           </VStack>
                         </HStack>
-                        <HStack className="items-center" space="xs">
-                          <Pressable onPress={detailPressHandlers.get(r.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={styles.detailsButton}>
-                            <ExternalLink size={12} color="#6b7280" />
-                          </Pressable>
-                          <Circle size={8} fill={statusMark} color={statusMark} />
-                          <Text style={{ color: statusText }} className="text-xs font-medium" numberOfLines={1}>
-                            {r.status}
-                          </Text>
-                          {onSetStatus ? (
-                            <Pressable onPress={onSetStatus} style={styles.statusButton}>
-                              <Icon as={Plus} size="xs" className="text-indigo-500" />
+                        <VStack className="items-end" space="xs">
+                          <HStack className="items-center" space="xs">
+                            <Pressable onPress={detailPressHandlers.get(r.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={styles.detailsButton}>
+                              <ExternalLink size={12} color="#6b7280" />
                             </Pressable>
+                            <Circle size={8} fill={statusMark} color={statusMark} />
+                            <Text style={{ color: statusText }} className="text-xs font-medium" numberOfLines={1}>
+                              {r.status}
+                            </Text>
+                            {onSetStatus ? (
+                              <Pressable onPress={onSetStatus} style={styles.statusButton}>
+                                <Icon as={Plus} size="xs" className="text-indigo-500" />
+                              </Pressable>
+                            ) : null}
+                          </HStack>
+                          {r.staffing ? (
+                            <HStack className="items-center" space="xs" testID={`resource-staffing-${r.entityId}`}>
+                              <Circle size={6} fill={readable.mark(r.staffingColor)} color={readable.mark(r.staffingColor)} />
+                              <Text className="text-xs text-gray-500 dark:text-gray-400" numberOfLines={1}>
+                                {r.staffing}
+                              </Text>
+                            </HStack>
                           ) : null}
-                        </HStack>
+                        </VStack>
                       </HStack>
                     </Box>
                   </Pressable>

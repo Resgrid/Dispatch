@@ -15,6 +15,7 @@ import { useReadableColor } from '@/hooks/use-readable-color';
 import { isUnitDispatch } from '@/lib/dispatch-types';
 import { contentOnFill } from '@/lib/readable-color';
 import { isUnitAvailable } from '@/lib/resource-availability';
+import { getUnitSubtitle } from '@/lib/unit-crew';
 import { type DispatchedEventResultData } from '@/models/v4/calls/dispatchedEventResultData';
 import { type PersonnelInfoResultData } from '@/models/v4/personnel/personnelInfoResultData';
 import { type UnitInfoResultData } from '@/models/v4/units/unitInfoResultData';
@@ -24,6 +25,7 @@ import { TermKeys, useTerm } from '@/stores/terminology/store';
 import { AnimatedRefreshIcon } from './animated-refresh-icon';
 import { PanelHeader } from './panel-header';
 import { ResourcesPanel } from './resources-panel';
+import { UnitCrewLine } from './unit-crew-line';
 import { UnitMultiSelectToggle, UnitSelectionBar, UnitSelectionCheckbox, useUnitMultiSelect } from './unit-multi-select';
 
 interface UnitsPanelProps {
@@ -102,8 +104,9 @@ const UnitItem: React.FC<{
                 ) : null}
               </HStack>
               <Text className="text-xs text-gray-500 dark:text-gray-400" numberOfLines={1}>
-                {unit.Type || unit.GroupName || t('dispatch.unassigned')}
+                {getUnitSubtitle(unit, t('dispatch.unassigned'))}
               </Text>
+              <UnitCrewLine unit={unit} />
               {hasDestination ? (
                 <HStack className="mt-0.5 items-center" space="xs">
                   <Icon as={MapPin} size="xs" className="text-amber-500" />
@@ -201,7 +204,11 @@ const UnitsPanelComponent: React.FC<UnitsPanelProps> = ({
         const groupName = (u.GroupName || '').toLowerCase();
         const status = (u.CurrentStatus || '').toLowerCase();
         const note = (u.Note || '').toLowerCase();
-        return name.includes(query) || type.includes(query) || groupName.includes(query) || status.includes(query) || note.includes(query);
+        const roles = (u.Roles || [])
+          .map((r) => `${r.RoleName ?? ''} ${r.Name ?? ''}`)
+          .join(' ')
+          .toLowerCase();
+        return name.includes(query) || type.includes(query) || groupName.includes(query) || status.includes(query) || note.includes(query) || roles.includes(query);
       });
     }
 
