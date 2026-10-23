@@ -14,9 +14,28 @@ jest.mock('@/api/userDefinedFields/userDefinedFields', () => ({
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, fallback?: string) => fallback ?? key,
+    t: (key: string, fallback?: string | Record<string, unknown>) => (typeof fallback === 'string' ? fallback : key),
   }),
 }));
+
+// The platform picker (gluestack Select on native, <select> on web) stands in as one pressable row per choice.
+jest.mock('../udf-select', () => {
+  const { Pressable, Text, View } = require('react-native');
+  return {
+    UdfSelect: ({ options, value, onChange, placeholder, testID }: { options: { key: string; label: string }[]; value: string; onChange: (v: string) => void; placeholder: string; testID: string }) => (
+      <View testID={testID} accessibilityValue={{ text: value }}>
+        <Pressable testID={`${testID}-none`} onPress={() => onChange('')}>
+          <Text>{placeholder}</Text>
+        </Pressable>
+        {options.map((o) => (
+          <Pressable key={o.key} testID={`${testID}-${o.key}`} onPress={() => onChange(o.key)}>
+            <Text>{o.label}</Text>
+          </Pressable>
+        ))}
+      </View>
+    ),
+  };
+});
 
 const mockGetUdfDefinition = getUdfDefinition as jest.MockedFunction<typeof getUdfDefinition>;
 const mockGetUdfValues = getUdfValues as jest.MockedFunction<typeof getUdfValues>;
@@ -87,16 +106,93 @@ describe('UdfFieldsRenderer', () => {
     setValues([]);
   });
 
-  it('renders dropdown options by label and stores the key', async () => {
+  it('renders a dropdown as a picker of option labels that stores the key', async () => {
     setDefinition([disposition]);
     const onValuesChange = jest.fn();
     const { unmount } = render(<UdfFieldsRenderer entityType={0} onValuesChange={onValuesChange} />);
 
-    await waitFor(() => expect(screen.getByText('Priority 2')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('udf-select-disposition')).toBeTruthy());
+    expect(screen.getByText('Priority 2')).toBeTruthy();
     expect(screen.queryByText(/MinLength/)).toBeNull();
 
-    fireEvent.press(screen.getByText('Priority 2'));
+    fireEvent.press(screen.getByTestId('udf-select-disposition-p2'));
     expect(lastSubmitted(onValuesChange).disposition).toBe('p2');
+    expect(screen.getByTestId('udf-select-disposition').props.accessibilityValue).toEqual({ text: 'p2' });
+
+    fireEvent.press(screen.getByTestId('udf-select-disposition-none'));
+    expect(lastSubmitted(onValuesChange).disposition).toBe('');
+    unmount();
+  });
+
+  it('toggles multi-select options and stores the picked keys comma-joined', async () => {
+    setDefinition([makeField({ UdfFieldId: 'concerns', Label: 'Concerns', FieldDataType: 7, ValidationRules: rules([{ Key: 'weapons', Label: 'Weapons' }, { Key: 'substance', Label: 'Substance use' }]) })]);
+    const onValuesChange = jest.fn();
+    const { unmount } = render(<UdfFieldsRenderer entityType={0} onValuesChange={onValuesChange} />);
+
+    await waitFor(() => expect(screen.getByTestId('udf-option-concerns-weapons')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('udf-option-concerns-weapons'));
+    fireEvent.press(screen.getByTestId('udf-option-concerns-substance'));
+    expect(lastSubmitted(onValuesChange).concerns).toBe('weapons,substance');
+    expect(screen.getByTestId('udf-option-concerns-weapons').props.accessibilityState).toEqual(expect.objectContaining({ selected: true }));
+
+    fireEvent.press(screen.getByTestId('udf-option-concerns-weapons'));
+    expect(lastSubmitted(onValuesChange).concerns).toBe('substance');
+    unmount();
+  });
+
+  it('shows a yes/no question unanswered until one is picked', async () => {
+    setDefinition([makeField({ UdfFieldId: 'coresponse', Label: 'Co-response requested', FieldDataType: 3, IsRequired: true })]);
+    const onValuesChange = jest.fn();
+    const { unmount } = render(<UdfFieldsRenderer entityType={0} onValuesChange={onValuesChange} />);
+
+    await waitFor(() => expect(screen.getByTestId('udf-boolean-coresponse-yes')).toBeTruthy());
+    expect(screen.getByTestId('udf-boolean-coresponse-yes').props.accessibilityState).toEqual(expect.objectContaining({ selected: false }));
+    expect(screen.getByTestId('udf-boolean-coresponse-no').props.accessibilityState).toEqual(expect.objectContaining({ selected: false }));
+    expect(lastSubmitted(onValuesChange).coresponse).toBe('');
+
+    fireEvent.press(screen.getByTestId('udf-boolean-coresponse-no'));
+    expect(lastSubmitted(onValuesChange).coresponse).toBe('false');
+    fireEvent.press(screen.getByTestId('udf-boolean-coresponse-yes'));
+    expect(lastSubmitted(onValuesChange).coresponse).toBe('true');
+    unmount();
+  });
+
+  it('reports the fields it shows, a required one hidden from the apps included', async () => {
+    const requiredHidden = makeField({ UdfFieldId: 'mrn', Label: 'Client MRN', IsRequired: true, IsVisibleOnMobile: false });
+    const optionalHidden = makeField({ UdfFieldId: 'notes', Label: 'Office notes', IsVisibleOnMobile: false });
+    const disabled = makeField({ UdfFieldId: 'old', Label: 'Retired', IsRequired: true, IsEnabled: false });
+    setDefinition([disposition, requiredHidden, optionalHidden, disabled]);
+    const onFieldsLoaded = jest.fn();
+    const { unmount } = render(<UdfFieldsRenderer entityType={0} onValuesChange={jest.fn()} onFieldsLoaded={onFieldsLoaded} />);
+
+    await waitFor(() => expect(onFieldsLoaded).toHaveBeenCalledTimes(1));
+    expect((onFieldsLoaded.mock.calls[0][0] as UdfFieldResultData[]).map((f) => f.UdfFieldId)).toEqual(['disposition', 'mrn']);
+    expect(screen.getByText(/Client MRN/)).toBeTruthy();
+    expect(screen.queryByText(/Office notes/)).toBeNull();
+    unmount();
+  });
+
+  it('shows and sends nothing when the stored values cannot be read, so a save cannot overwrite them', async () => {
+    setDefinition([disposition]);
+    mockGetUdfValues.mockRejectedValue(new Error('offline'));
+    const onValuesChange = jest.fn();
+    const onFieldsLoaded = jest.fn();
+    const { toJSON, unmount } = render(<UdfFieldsRenderer entityType={0} entityId="call-1" onValuesChange={onValuesChange} onFieldsLoaded={onFieldsLoaded} />);
+
+    await waitFor(() => expect(mockGetUdfValues).toHaveBeenCalled());
+    await waitFor(() => expect(toJSON()).toBeNull());
+    expect(onValuesChange).not.toHaveBeenCalled();
+    expect(onFieldsLoaded).not.toHaveBeenCalled();
+    unmount();
+  });
+
+  it('does not report fields when the definition fails to load', async () => {
+    mockGetUdfDefinition.mockRejectedValue(new Error('offline'));
+    const onFieldsLoaded = jest.fn();
+    const { toJSON, unmount } = render(<UdfFieldsRenderer entityType={0} onValuesChange={jest.fn()} onFieldsLoaded={onFieldsLoaded} />);
+
+    await waitFor(() => expect(toJSON()).toBeNull());
+    expect(onFieldsLoaded).not.toHaveBeenCalled();
     unmount();
   });
 

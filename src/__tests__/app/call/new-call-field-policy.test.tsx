@@ -9,6 +9,7 @@ import NewCall from '../../../app/call/new';
 
 const mockToastError = jest.fn();
 let mockTemplatesModalProps: { onSelect: (template: { name?: string; nature?: string; type?: string; priority?: number }) => void } | null = null;
+let mockUdfProps: { onValuesChange: (values: { UdfFieldId: string; Value: string }[]) => void; onFieldsLoaded?: (fields: unknown[]) => void } | null = null;
 let mockDispatchModalProps: { onConfirm: (selection: { everyone: boolean; users: string[]; groups: string[]; roles: string[]; units: string[] }) => void } | null = null;
 
 jest.mock('@/api/calls/calls', () => ({ createCall: jest.fn() }));
@@ -65,7 +66,12 @@ jest.mock('@/components/calls/dispatch-selection-modal', () => ({
 jest.mock('@/components/calls/contact-picker-modal', () => ({ ContactPickerModal: () => null }));
 jest.mock('@/components/calls/linked-calls-modal', () => ({ LinkedCallsModal: () => null }));
 jest.mock('@/components/calls/protocol-selector-modal', () => ({ ProtocolSelectorModal: () => null }));
-jest.mock('@/components/calls/udf-fields-renderer', () => ({ UdfFieldsRenderer: () => null }));
+jest.mock('@/components/calls/udf-fields-renderer', () => ({
+  UdfFieldsRenderer: (props: unknown) => {
+    mockUdfProps = props as typeof mockUdfProps;
+    return null;
+  },
+}));
 jest.mock('@/components/common/loading', () => ({ Loading: () => null }));
 jest.mock('@/components/common/date-time-field', () => {
   const { TextInput } = require('react-native');
@@ -179,7 +185,57 @@ describe('New call screen and the call field policy', () => {
     jest.clearAllMocks();
     mockTemplatesModalProps = null;
     mockDispatchModalProps = null;
+    mockUdfProps = null;
     mockedCreateCall.mockResolvedValue({ Id: '101' });
+  });
+
+  it('opens a card holding a field the department requires', async () => {
+    const { getByPlaceholderText } = await renderNewCall([{ Key: NewCallFieldKeys.ContactInfo, Visible: true, Required: true }]);
+
+    // The contact card is folded by default; a required field in it opens it without a tap.
+    await waitFor(() => expect(getByPlaceholderText('calls.contact_info_placeholder')).toBeTruthy());
+  });
+
+  it('holds the call until a required custom field is filled in, then saves the values with the call', async () => {
+    const { getByText } = await renderNewCall([]);
+    const referral = { UdfFieldId: 'referral', Name: 'referral', Label: 'Referral Source', IsRequired: true };
+    const language = { UdfFieldId: 'language', Name: 'language', Label: 'Primary Language', IsRequired: false };
+    act(() => {
+      mockUdfProps?.onFieldsLoaded?.([referral, language]);
+      mockUdfProps?.onValuesChange([
+        { UdfFieldId: 'referral', Value: '' },
+        { UdfFieldId: 'language', Value: '' },
+      ]);
+    });
+    pickUnit();
+
+    fireEvent.press(getByText('calls.create'));
+    await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('calls.required_fields_missing|Referral Source'));
+    expect(mockedCreateCall).not.toHaveBeenCalled();
+
+    act(() => {
+      mockUdfProps?.onValuesChange([
+        { UdfFieldId: 'referral', Value: '988' },
+        { UdfFieldId: 'language', Value: '' },
+      ]);
+    });
+    fireEvent.press(getByText('calls.create'));
+
+    await waitFor(() => expect(mockedCreateCall).toHaveBeenCalledTimes(1));
+    expect(mockedCreateCall.mock.calls[0][0].udfValues).toEqual([
+      { UdfFieldId: 'referral', Value: '988' },
+      { UdfFieldId: 'language', Value: '' },
+    ]);
+  });
+
+  it('leaves custom field values out when their definition never loaded', async () => {
+    const { getByText } = await renderNewCall([]);
+    pickUnit();
+
+    fireEvent.press(getByText('calls.create'));
+
+    await waitFor(() => expect(mockedCreateCall).toHaveBeenCalledTimes(1));
+    expect(mockedCreateCall.mock.calls[0][0].udfValues).toBeUndefined();
   });
 
   it('offers the identifiers, gated by the policy', async () => {

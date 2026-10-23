@@ -16,11 +16,14 @@ interface LocationPickerProps {
     latitude: number;
     longitude: number;
   };
+  /** Called with every pin move: a tap on the map is the new call location, with no confirm step to forget. */
   onLocationSelected: (location: { latitude: number; longitude: number; address?: string }) => void;
   height?: number;
   /** Units, personnel and group boundaries to show around the call (dispatching). */
   overlay?: DispatchMapOverlay | null;
 }
+
+const spotKey = (location: { latitude: number; longitude: number }) => `${location.latitude.toFixed(5)},${location.longitude.toFixed(5)}`;
 
 const LocationPicker: React.FC<LocationPickerProps> = ({ initialLocation, onLocationSelected, height = 200, overlay }) => {
   const { t } = useTranslation();
@@ -93,10 +96,15 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ initialLocation, onLoca
 
   const handleMapPress = (event: any) => {
     const { coordinates } = event.geometry;
-    setCurrentLocation({
+    const newLocation = {
       latitude: coordinates[1],
       longitude: coordinates[0],
-    });
+    };
+    setCurrentLocation(newLocation);
+    // The dispatcher is already looking at the spot they tapped, so the board for it does not reframe the map.
+    framedForRef.current = spotKey(newLocation);
+    // The pin is the call location: the form, and the recipient picker's distances and ETAs, follow it at once.
+    onLocationSelected(newLocation);
   };
 
   const handleConfirmLocation = () => {
@@ -158,11 +166,14 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ initialLocation, onLoca
 
       {overlay && currentLocation ? <DispatchMapLegend overlay={overlay} /> : null}
 
-      <Box className="absolute inset-x-4 bottom-4">
-        <Button onPress={handleConfirmLocation} disabled={!currentLocation}>
-          <ButtonText>{t('common.confirm_location')}</ButtonText>
-        </Button>
-      </Box>
+      {/* Taps commit as they happen; only a pin the map placed itself (the dispatcher's own position) waits for this. */}
+      {currentLocation && (!initialLocation || spotKey(currentLocation) !== spotKey(initialLocation)) ? (
+        <Box className="absolute inset-x-4 bottom-4">
+          <Button onPress={handleConfirmLocation}>
+            <ButtonText>{t('common.confirm_location')}</ButtonText>
+          </Button>
+        </Box>
+      ) : null}
     </Box>
   );
 };

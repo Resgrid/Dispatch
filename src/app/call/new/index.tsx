@@ -11,8 +11,7 @@ import * as z from 'zod';
 
 import { createCall } from '@/api/calls/calls';
 import { getNewCallData } from '@/api/dispatch/dispatch';
-import { forwardGeocode, plusCodeLookup, reverseGeocode, what3WordsLookup } from '@/api/geocoding/geocoding';
-import { saveUdfValues } from '@/api/userDefinedFields/userDefinedFields';
+import { forwardGeocode, plusCodeLookup, what3WordsLookup } from '@/api/geocoding/geocoding';
 import { CallTemplatesModal, type TemplateSelection } from '@/components/calls/call-templates-modal';
 import { ContactPickerModal } from '@/components/calls/contact-picker-modal';
 import { DispatchSelectionModal } from '@/components/calls/dispatch-selection-modal';
@@ -39,17 +38,21 @@ import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
 import { Textarea, TextareaInput } from '@/components/ui/textarea';
 import { useAnalytics } from '@/hooks/use-analytics';
+import { useCoordinateEntry } from '@/hooks/use-coordinate-entry';
 import { useDispatchMapOverlay } from '@/hooks/use-dispatch-map-overlay';
 import { useNewCallFieldPolicy } from '@/hooks/use-new-call-field-policy';
 import { useToast } from '@/hooks/use-toast';
-import { describeCallFields, getMissingCallFieldsFromError, hasDispatchRecipients, toProtocolIds } from '@/lib/call-field-policy';
+import { type CallPoint, formatCoordinate } from '@/lib/call-coordinates';
+import { describeCallFields, getMissingCallFieldsFromError, hasDispatchRecipients, sectionsHolding, toProtocolIds } from '@/lib/call-field-policy';
 import { formatGeolocation } from '@/lib/call-geolocation';
 import { isDispatchTimeTooSoon, toDispatchOnUtc } from '@/lib/call-schedule';
 import { getPoiDestinationOptionLabel } from '@/lib/poi-display';
+import { missingRequiredUdfFields } from '@/lib/udf/options';
 import { type CallResultData } from '@/models/v4/calls/callResultData';
 import { type NewCallFieldKey, NewCallFieldKeys } from '@/models/v4/calls/newCallFieldPolicyResultData';
 import { type ContactResultData } from '@/models/v4/contacts/contactResultData';
 import { type PoiResultData } from '@/models/v4/mapping/poiResultData';
+import { type UdfFieldResultData } from '@/models/v4/userDefinedFields/udfFieldResultData';
 import { type UdfFieldValueInput } from '@/models/v4/userDefinedFields/udfFieldValueInput';
 import { useCoreStore } from '@/stores/app/core-store';
 import { useCallsStore } from '@/stores/calls/store';
@@ -62,7 +65,9 @@ const formSchema = z.object({
   note: z.string().optional(),
   destinationPoiId: z.string().optional(),
   address: z.string().optional(),
-  coordinates: z.string().optional(),
+  // As typed; checked and applied by useCoordinateEntry, which keeps latitude/longitude below in step.
+  latitudeText: z.string().optional(),
+  longitudeText: z.string().optional(),
   what3words: z.string().optional(),
   plusCode: z.string().optional(),
   latitude: z.number().optional(),
@@ -90,6 +95,18 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 const NO_DESTINATION_VALUE = '__none__';
+
+// The collapsible cards that hold a policy-controlled field, so a card with a required one opens by default.
+const NEW_CALL_SECTION_FIELDS = {
+  note: [NewCallFieldKeys.Note],
+  location: [NewCallFieldKeys.Address, NewCallFieldKeys.Geolocation, NewCallFieldKeys.What3Words, NewCallFieldKeys.PlusCode, NewCallFieldKeys.DestinationPoi],
+  contact: [NewCallFieldKeys.ContactName, NewCallFieldKeys.ContactInfo, NewCallFieldKeys.ExternalId, NewCallFieldKeys.IncidentId, NewCallFieldKeys.ReferenceId],
+  protocols: [NewCallFieldKeys.Protocols],
+  linkedCall: [NewCallFieldKeys.LinkedCall],
+  dispatch: [NewCallFieldKeys.DispatchList],
+};
+
+type NewCallSection = keyof typeof NEW_CALL_SECTION_FIELDS | 'additionalFields';
 
 // Google Maps Geocoding API response types
 interface GeocodingResult {
@@ -179,7 +196,6 @@ export default function NewCall() {
 
   const [isGeocodingAddress, setIsGeocodingAddress] = useState(false);
   const [isGeocodingPlusCode, setIsGeocodingPlusCode] = useState(false);
-  const [isGeocodingCoordinates, setIsGeocodingCoordinates] = useState(false);
   const [isGeocodingWhat3Words, setIsGeocodingWhat3Words] = useState(false);
   const [addressResults, setAddressResults] = useState<GeocodingResult[]>([]);
   const [dispatchSelection, setDispatchSelection] = useState<DispatchSelection>({
@@ -193,6 +209,25 @@ export default function NewCall() {
   // The department's new-call field policy: hides fields it does not use and blocks submission
   // until the ones it marked required have values. Unconfigured departments see the stock form.
   const fieldPolicy = useNewCallFieldPolicy();
+  // The custom fields the form shows, once their definition has loaded; null until then.
+  const [udfFields, setUdfFields] = useState<UdfFieldResultData[] | null>(null);
+
+  const openSections = (sections: readonly NewCallSection[]) => {
+    if (sections.length === 0) return;
+    setSectionsExpanded((prev) => sections.reduce((next, section) => ({ ...next, [section]: true }), prev));
+  };
+
+  // A card holding a field the department requires opens by default, so nothing the call cannot be saved without is
+  // tucked away. Once per policy or field list, so the dispatcher can still fold a card away afterwards.
+  const requiredSectionsKey = fieldPolicy.isLoaded ? sectionsHolding(NEW_CALL_SECTION_FIELDS, fieldPolicy.isRequired).join(',') : '';
+  const hasRequiredUdfField = !!udfFields?.some((f) => f.IsRequired);
+  useEffect(() => {
+    const sections = (requiredSectionsKey ? requiredSectionsKey.split(',') : []) as NewCallSection[];
+    const toOpen = hasRequiredUdfField ? [...sections, 'additionalFields' as const] : sections;
+    if (toOpen.length === 0) return;
+    setSectionsExpanded((prev) => toOpen.reduce((next, section) => ({ ...next, [section]: true }), prev));
+  }, [requiredSectionsKey, hasRequiredUdfField]);
+
   const [selectedLocation, setSelectedLocation] = useState<{
     latitude: number;
     longitude: number;
@@ -215,7 +250,8 @@ export default function NewCall() {
       note: '',
       destinationPoiId: '',
       address: '',
-      coordinates: '',
+      latitudeText: '',
+      longitudeText: '',
       what3words: '',
       plusCode: '',
       latitude: undefined,
@@ -235,6 +271,28 @@ export default function NewCall() {
         roles: [],
         units: [],
       },
+    },
+  });
+
+  // Latitude and longitude typed in separately: once both are valid and the dispatcher pauses, the pin moves
+  // there and a blank address is filled in for it.
+  const coordinateEntry = useCoordinateEntry({
+    latitudeText: watch('latitudeText'),
+    longitudeText: watch('longitudeText'),
+    setText: (axis, text) => setValue(axis === 'latitude' ? 'latitudeText' : 'longitudeText', text),
+    location: selectedLocation,
+    address: watch('address'),
+    onLocationEntered: (location) => {
+      setSelectedLocation(location);
+      setValue('latitude', location.latitude);
+      setValue('longitude', location.longitude);
+    },
+    setAddress: (address) => setValue('address', address),
+    // Emptying both inputs takes the location off the call.
+    onCleared: () => {
+      setSelectedLocation(null);
+      setValue('latitude', undefined);
+      setValue('longitude', undefined);
     },
   });
 
@@ -285,6 +343,16 @@ export default function NewCall() {
         return;
       }
 
+      // Typed coordinates count as they stand, without waiting out the pause that moves the pin.
+      const typedLocation = coordinateEntry.commit();
+      if (typedLocation.status === 'invalid' || typedLocation.status === 'incomplete') {
+        openSections(['location']);
+        toast.error(t('calls.coordinates_invalid'));
+        return;
+      }
+      data.latitude = typedLocation.status === 'valid' ? typedLocation.latitude : undefined;
+      data.longitude = typedLocation.status === 'valid' ? typedLocation.longitude : undefined;
+
       // The same value createCall sends, so "required" here and on the server agree on what counts
       // as a location (a single zero coordinate does; a blank pair or 0,0 does not).
       const geolocation = formatGeolocation(data.latitude, data.longitude);
@@ -315,9 +383,13 @@ export default function NewCall() {
           [NewCallFieldKeys.DispatchList]: hasDispatchRecipients(dispatchSelection),
         })
         .filter((key) => key !== NewCallFieldKeys.IndoorLocation && !(isPending && (key === NewCallFieldKeys.DispatchOn || key === NewCallFieldKeys.DispatchList)));
+      // Custom fields the department requires, checked on the server too before the call is created.
+      const missingUdfFields = udfFields ? missingRequiredUdfFields(udfFields, udfValues) : [];
 
-      if (missingFields.length > 0) {
-        toast.error(t('calls.required_fields_missing', { fields: describeCallFields(missingFields, t) }));
+      if (missingFields.length > 0 || missingUdfFields.length > 0) {
+        // Open the cards holding what is missing, so the dispatcher lands on it.
+        openSections([...sectionsHolding(NEW_CALL_SECTION_FIELDS, (key) => missingFields.includes(key)), ...(missingUdfFields.length > 0 ? (['additionalFields'] as const) : [])]);
+        toast.error(t('calls.required_fields_missing', { fields: describeCallFields([...missingFields, ...missingUdfFields.map((f) => f.Label || f.Name)], t) }));
         return;
       }
 
@@ -325,12 +397,6 @@ export default function NewCall() {
       if (!isPending && isDispatchTimeTooSoon(data.dispatchOn)) {
         toast.error(t('calls.scheduled_on_too_soon'));
         return;
-      }
-
-      // If we have latitude and longitude, add them to the data
-      if (selectedLocation?.latitude && selectedLocation?.longitude) {
-        data.latitude = selectedLocation.latitude;
-        data.longitude = selectedLocation.longitude;
       }
 
       // Validate priority and type before proceeding
@@ -349,7 +415,7 @@ export default function NewCall() {
 
       console.log('Creating new call with data:', data);
 
-      const response = await createCall({
+      await createCall({
         name: data.name,
         nature: data.nature,
         priority: priority.Id,
@@ -380,15 +446,9 @@ export default function NewCall() {
         isPending,
         // Conditional run cards: the response codes and decision outcome the dispatcher reviewed (nothing otherwise).
         ...newCallRunCardSaveFields(data.dispatchSelection?.units),
+        // Saved with the call, so the server can refuse a call missing a required one before creating it.
+        udfValues: udfFields ? udfValues : undefined,
       });
-
-      if (udfValues.length > 0 && response?.Id) {
-        try {
-          await saveUdfValues(0, response.Id, udfValues);
-        } catch (udfError) {
-          console.warn('Failed to save UDF values:', udfError);
-        }
-      }
 
       if (isPending) {
         // Saved for later: show the queue it now waits in.
@@ -412,21 +472,28 @@ export default function NewCall() {
     }
   };
 
-  // Handle location selection from the full-screen picker
-  const handleLocationSelected = (location: { latitude: number; longitude: number; address?: string }) => {
+  // Moves the call location, and shows it in the latitude and longitude inputs.
+  const applyLocation = (location: CallPoint) => {
     setSelectedLocation(location);
     setShowLocationPicker(false);
-
-    // Update form values
     setValue('latitude', location.latitude);
     setValue('longitude', location.longitude);
+    setValue('latitudeText', formatCoordinate(location.latitude));
+    setValue('longitudeText', formatCoordinate(location.longitude));
+  };
 
+  // An address, what3words or plus code lookup: the place it found replaces the address, as the dispatcher asked.
+  const handleLocationSelected = (location: CallPoint & { address?: string }) => {
+    applyLocation(location);
     if (location.address) {
       setValue('address', location.address);
     }
+  };
 
-    // Format coordinates as string
-    setValue('coordinates', `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`);
+  // A spot picked on the map: the address it found only fills a blank one, never one the dispatcher supplied.
+  const handleMapLocationSelected = (location: CallPoint & { address?: string }) => {
+    applyLocation(location);
+    void coordinateEntry.fillAddress(location, location.address);
   };
 
   // Handle dispatch selection
@@ -668,92 +735,6 @@ export default function NewCall() {
       toast.error(t('calls.plus_code_geocoding_error'));
     } finally {
       setIsGeocodingPlusCode(false);
-    }
-  };
-
-  /**
-   * Handles coordinates search using Google Maps Reverse Geocoding API
-   *
-   * Features:
-   * - Validates and parses coordinates string (lat,lng format)
-   * - Uses Google Maps API key from CoreStore configuration
-   * - Handles API errors gracefully with user-friendly messages
-   * - Shows loading state during API call
-   * - Updates address field and map location
-   * - Supports various coordinate formats (decimal degrees)
-   *
-   * @param coordinates - The coordinates string to reverse geocode (e.g., "40.7128, -74.0060")
-   */
-  const handleCoordinatesSearch = async (coordinates: string) => {
-    if (!coordinates.trim()) {
-      toast.warning(t('calls.coordinates_required'));
-      return;
-    }
-
-    // Parse coordinates - expect format like "40.7128, -74.0060" or "40.7128,-74.0060"
-    const coordRegex = /^(-?\d+\.?\d*),?\s*(-?\d+\.?\d*)$/;
-    const match = coordinates.trim().match(coordRegex);
-
-    if (!match) {
-      toast.warning(t('calls.coordinates_invalid_format'));
-      return;
-    }
-
-    const latitude = parseFloat(match[1]);
-    const longitude = parseFloat(match[2]);
-
-    // Validate coordinate ranges
-    if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
-      toast.warning(t('calls.coordinates_out_of_range'));
-      return;
-    }
-
-    setIsGeocodingCoordinates(true);
-    try {
-      // Proxied through the Resgrid API — see src/api/geocoding/geocoding.ts for why.
-      const lookup = await reverseGeocode(latitude, longitude);
-
-      if (lookup.address) {
-        const newLocation = {
-          latitude,
-          longitude,
-          address: lookup.address,
-        };
-
-        // Update the selected location and form values
-        handleLocationSelected(newLocation);
-
-        // Show success toast
-        toast.success(t('calls.coordinates_found'));
-      } else {
-        // Even if no address found, still set the location on the map
-        const newLocation = {
-          latitude,
-          longitude,
-          address: undefined,
-        };
-
-        handleLocationSelected(newLocation);
-
-        // Show info toast
-        toast.info(t('calls.coordinates_no_address'));
-      }
-    } catch (error) {
-      console.error('Error reverse geocoding coordinates:', error);
-
-      // Even if geocoding fails, still set the location on the map
-      const newLocation = {
-        latitude,
-        longitude,
-        address: undefined,
-      };
-
-      handleLocationSelected(newLocation);
-
-      // Show warning toast
-      toast.warning(t('calls.coordinates_geocoding_error'));
-    } finally {
-      setIsGeocodingCoordinates(false);
     }
   };
 
@@ -1025,36 +1006,67 @@ export default function NewCall() {
                       </FormControl>
                     ) : null}
 
-                    {/* GPS Coordinates Field */}
+                    {/* Latitude and longitude, typed in separately */}
                     {showGeolocation ? (
-                      <FormControl className="mb-4" isRequired={fieldPolicy.isRequired(NewCallFieldKeys.Geolocation)}>
-                        <FormControlLabel>
-                          <FormControlLabelText>{t('calls.coordinates')}</FormControlLabelText>
-                        </FormControlLabel>
-                        <Controller
-                          control={control}
-                          name="coordinates"
-                          render={({ field: { onChange, onBlur, value } }) => (
-                            <Box className="flex-row items-center space-x-2">
-                              <Box className="flex-1">
+                      <Box className="mb-4">
+                        <Box className="flex-row gap-2">
+                          <FormControl className="flex-1" isRequired={fieldPolicy.isRequired(NewCallFieldKeys.Geolocation)} isInvalid={!!coordinateEntry.latitudeError}>
+                            <FormControlLabel>
+                              <FormControlLabelText>{t('calls.latitude')}</FormControlLabelText>
+                            </FormControlLabel>
+                            <Controller
+                              control={control}
+                              name="latitudeText"
+                              render={({ field: { onBlur, value } }) => (
                                 <Input>
-                                  <InputField testID="coordinates-input" placeholder={t('calls.coordinates_placeholder')} value={value} onChangeText={onChange} onBlur={onBlur} />
+                                  <InputField
+                                    testID="latitude-input"
+                                    placeholder={t('calls.latitude_placeholder')}
+                                    value={value}
+                                    onChangeText={(text) => coordinateEntry.changeText('latitude', text)}
+                                    onBlur={onBlur}
+                                    onSubmitEditing={() => coordinateEntry.commit()}
+                                    keyboardType="numbers-and-punctuation"
+                                  />
                                 </Input>
-                              </Box>
-                              <Button
-                                testID="coordinates-search-button"
-                                size="sm"
-                                variant="outline"
-                                className="ml-2"
-                                onPress={() => handleCoordinatesSearch(value || '')}
-                                disabled={isGeocodingCoordinates || !value?.trim()}
-                              >
-                                {isGeocodingCoordinates ? <Text>...</Text> : <SearchIcon size={16} color={colorScheme === 'dark' ? '#ffffff' : '#000000'} />}
-                              </Button>
-                            </Box>
-                          )}
-                        />
-                      </FormControl>
+                              )}
+                            />
+                            {coordinateEntry.latitudeError ? (
+                              <FormControlError>
+                                <Text className="text-red-500">{coordinateEntry.latitudeError}</Text>
+                              </FormControlError>
+                            ) : null}
+                          </FormControl>
+                          <FormControl className="flex-1" isRequired={fieldPolicy.isRequired(NewCallFieldKeys.Geolocation)} isInvalid={!!coordinateEntry.longitudeError}>
+                            <FormControlLabel>
+                              <FormControlLabelText>{t('calls.longitude')}</FormControlLabelText>
+                            </FormControlLabel>
+                            <Controller
+                              control={control}
+                              name="longitudeText"
+                              render={({ field: { onBlur, value } }) => (
+                                <Input>
+                                  <InputField
+                                    testID="longitude-input"
+                                    placeholder={t('calls.longitude_placeholder')}
+                                    value={value}
+                                    onChangeText={(text) => coordinateEntry.changeText('longitude', text)}
+                                    onBlur={onBlur}
+                                    onSubmitEditing={() => coordinateEntry.commit()}
+                                    keyboardType="numbers-and-punctuation"
+                                  />
+                                </Input>
+                              )}
+                            />
+                            {coordinateEntry.longitudeError ? (
+                              <FormControlError>
+                                <Text className="text-red-500">{coordinateEntry.longitudeError}</Text>
+                              </FormControlError>
+                            ) : null}
+                          </FormControl>
+                        </Box>
+                        {coordinateEntry.isLookingUpAddress ? <Text className="mt-1 text-sm text-gray-500">{t('calls.looking_up_address')}</Text> : null}
+                      </Box>
                     ) : null}
 
                     {/* what3words Field */}
@@ -1111,7 +1123,7 @@ export default function NewCall() {
                     {showGeolocation ? (
                       <Box className="mb-4">
                         {selectedLocation ? (
-                          <LocationPicker initialLocation={selectedLocation} onLocationSelected={handleLocationSelected} height={240} overlay={dispatchMapOverlay} />
+                          <LocationPicker initialLocation={selectedLocation} onLocationSelected={handleMapLocationSelected} height={240} overlay={dispatchMapOverlay} />
                         ) : (
                           <Button onPress={() => setShowLocationPicker(true)} className="w-full">
                             <ButtonText>{t('calls.select_location')}</ButtonText>
@@ -1295,11 +1307,10 @@ export default function NewCall() {
                   <ChevronDownIcon size={16} color={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'} />
                 )}
               </TouchableOpacity>
-              {sectionsExpanded.additionalFields ? (
-                <View className="px-4 pb-4">
-                  <UdfFieldsRenderer entityType={0} onValuesChange={setUdfValues} isDark={colorScheme === 'dark'} />
-                </View>
-              ) : null}
+              {/* Kept mounted while folded: the field list decides whether the card opens, and what was entered survives folding it. */}
+              <View className={sectionsExpanded.additionalFields ? 'px-4 pb-4' : 'hidden'}>
+                <UdfFieldsRenderer entityType={0} onValuesChange={setUdfValues} onFieldsLoaded={setUdfFields} isDark={colorScheme === 'dark'} />
+              </View>
             </Card>
 
             {/* Save as Pending: always offered, whatever the field policy shows, because it is what lets a
@@ -1392,7 +1403,7 @@ export default function NewCall() {
           <FullScreenLocationPicker
             key={showLocationPicker ? 'location-picker-open' : 'location-picker-closed'}
             initialLocation={selectedLocation || undefined}
-            onLocationSelected={handleLocationSelected}
+            onLocationSelected={handleMapLocationSelected}
             onClose={() => setShowLocationPicker(false)}
           />
         </View>

@@ -138,4 +138,25 @@ describe('Call Detail Menu Integration Test', () => {
 
     expect(mockOnCloseCall).toHaveBeenCalledTimes(1);
   });
+
+  it('offers no close for a call that is already closed', async () => {
+    // An archived call: the detail screen passes no onCloseCall.
+    const ClosedCallMenu = () => {
+      const { HeaderRightMenu, CallDetailActionSheet } = useCallDetailMenu({ onEditCall: mockOnEditCall, canUserCreateCalls: true });
+      return (
+        <>
+          <HeaderRightMenu />
+          <CallDetailActionSheet />
+        </>
+      );
+    };
+    render(<ClosedCallMenu />);
+
+    fireEvent.press(screen.getByTestId('kebab-menu-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-call-button')).toBeTruthy();
+    });
+    expect(screen.queryByTestId('close-call-button')).toBeNull();
+  });
 });

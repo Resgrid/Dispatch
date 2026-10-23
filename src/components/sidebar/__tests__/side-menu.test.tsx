@@ -140,6 +140,22 @@ describe('SideMenu', () => {
     });
   });
 
+  it('should navigate to Archived Calls from the Calls menu', async () => {
+    render(<SideMenu />);
+
+    fireEvent.press(screen.getByText('Calls'));
+
+    await waitFor(() => {
+      expect(screen.getByText('menu.archived_calls')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByText('menu.archived_calls'));
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/archived-calls');
+    });
+  });
+
   it('should work without onNavigate prop', async () => {
     render(<SideMenu />);
 

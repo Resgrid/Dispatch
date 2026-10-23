@@ -1,14 +1,15 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, type StyleProp, StyleSheet, TextInput, type TextStyle, View } from 'react-native';
+import { ActivityIndicator, Pressable, type StyleProp, StyleSheet, TextInput, type TextStyle, View } from 'react-native';
 
 import { getUdfDefinition, getUdfValues } from '@/api/userDefinedFields/userDefinedFields';
-import { comboDisplayText, filterComboSuggestions, findComboOption, parseUdfOptions, selectedOptionKeys, UDF_FIELD_TYPE, type UdfOption } from '@/lib/udf/options';
+import { comboDisplayText, filterComboSuggestions, findComboOption, isUdfFieldShown, parseUdfOptions, selectedOptionKeys, UDF_FIELD_TYPE, type UdfOption } from '@/lib/udf/options';
 import { type UdfFieldResultData } from '@/models/v4/userDefinedFields/udfFieldResultData';
 import { type UdfFieldValueInput } from '@/models/v4/userDefinedFields/udfFieldValueInput';
 import { type UdfFieldValueResultData } from '@/models/v4/userDefinedFields/udfFieldValueResultData';
 
 import { Text } from '../ui/text';
+import { UdfSelect } from './udf-select';
 
 const EMPTY_OPTIONS: UdfOption[] = [];
 
@@ -16,16 +17,25 @@ interface UdfFieldsRendererProps {
   entityType: number;
   entityId?: string;
   onValuesChange: (values: UdfFieldValueInput[]) => void;
+  /**
+   * The fields the form shows, once the definition has loaded (not called if it fails to load), so the screen can
+   * open the card when one is required and hold the save until required ones are filled in.
+   */
+  onFieldsLoaded?: (fields: UdfFieldResultData[]) => void;
   initialValues?: UdfFieldValueResultData[];
   isDark?: boolean;
   readOnly?: boolean;
 }
 
-export const UdfFieldsRenderer: React.FC<UdfFieldsRendererProps> = ({ entityType, entityId, onValuesChange, initialValues, isDark = false, readOnly = false }) => {
+export const UdfFieldsRenderer: React.FC<UdfFieldsRendererProps> = ({ entityType, entityId, onValuesChange, onFieldsLoaded, initialValues, isDark = false, readOnly = false }) => {
+  const { t } = useTranslation();
   const [fields, setFields] = useState<UdfFieldResultData[]>([]);
   const [values, setValues] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [hasFields, setHasFields] = useState(false);
+  // Read when the definition lands, so a new callback identity does not load it again.
+  const onFieldsLoadedRef = useRef(onFieldsLoaded);
+  onFieldsLoadedRef.current = onFieldsLoaded;
 
   const notifyChange = useCallback(
     (fieldList: UdfFieldResultData[], valueMap: Record<string, string>) => {
@@ -47,7 +57,7 @@ export const UdfFieldsRenderer: React.FC<UdfFieldsRendererProps> = ({ entityType
         if (!isMounted) return;
 
         const fieldList = defResult?.Data?.Fields ?? [];
-        const enabledFields = fieldList.filter((f) => f.IsEnabled && f.IsVisibleOnMobile);
+        const enabledFields = fieldList.filter(isUdfFieldShown);
         setFields(enabledFields);
         setHasFields(enabledFields.length > 0);
 
@@ -65,7 +75,12 @@ export const UdfFieldsRenderer: React.FC<UdfFieldsRendererProps> = ({ entityType
               initialMap[v.UdfFieldId] = v.Value ?? '';
             });
           } catch {
-            // Silently fall back to defaults/initialValues
+            // Without the stored values (or ones handed in), the form would show defaults and a save would write
+            // them over what the record holds; show nothing instead, so nothing is sent.
+            if (!initialValues) {
+              if (isMounted) setHasFields(false);
+              return;
+            }
           }
         }
 
@@ -79,6 +94,7 @@ export const UdfFieldsRenderer: React.FC<UdfFieldsRendererProps> = ({ entityType
         if (isMounted) {
           setValues(initialMap);
           notifyChange(enabledFields, initialMap);
+          onFieldsLoadedRef.current?.(enabledFields);
         }
       } catch {
         if (isMounted) setHasFields(false);
@@ -143,15 +159,34 @@ export const UdfFieldsRenderer: React.FC<UdfFieldsRendererProps> = ({ entityType
                 {label}
                 {field.IsRequired ? <Text style={styles.required}> *</Text> : null}
               </Text>
-              <BooleanToggle value={val === 'true'} onChange={(v) => handleValueChange(field.UdfFieldId, v ? 'true' : 'false')} disabled={isFieldReadOnly} isDark={isDark} />
+              <BooleanToggle fieldId={field.UdfFieldId} value={val} onChange={(v) => handleValueChange(field.UdfFieldId, v)} disabled={isFieldReadOnly} isDark={isDark} />
             </View>
             {field.Description ? <Text style={descStyle}>{field.Description}</Text> : null}
           </View>
         );
 
       case UDF_FIELD_TYPE.Dropdown:
-      case UDF_FIELD_TYPE.MultiSelect: {
-        const opts = optionsByField[field.UdfFieldId] ?? EMPTY_OPTIONS;
+        return (
+          <View key={field.UdfFieldId} style={styles.fieldRow}>
+            <Text style={labelStyle}>
+              {label}
+              {field.IsRequired ? <Text style={styles.required}> *</Text> : null}
+            </Text>
+            {field.Description ? <Text style={descStyle}>{field.Description}</Text> : null}
+            <UdfSelect
+              options={optionsByField[field.UdfFieldId] ?? EMPTY_OPTIONS}
+              value={val}
+              onChange={(v) => handleValueChange(field.UdfFieldId, v)}
+              disabled={isFieldReadOnly}
+              isDark={isDark}
+              placeholder={field.Placeholder || t('calls.udf_select_placeholder', { field: label })}
+              label={label}
+              testID={`udf-select-${field.UdfFieldId}`}
+            />
+          </View>
+        );
+
+      case UDF_FIELD_TYPE.MultiSelect:
         return (
           <View key={field.UdfFieldId} style={styles.fieldRow}>
             <Text style={labelStyle}>
@@ -160,17 +195,15 @@ export const UdfFieldsRenderer: React.FC<UdfFieldsRendererProps> = ({ entityType
             </Text>
             {field.Description ? <Text style={descStyle}>{field.Description}</Text> : null}
             <OptionSelector
-              options={opts}
+              fieldId={field.UdfFieldId}
+              options={optionsByField[field.UdfFieldId] ?? EMPTY_OPTIONS}
               value={val}
-              multiSelect={field.FieldDataType === UDF_FIELD_TYPE.MultiSelect}
               onChange={(v) => handleValueChange(field.UdfFieldId, v)}
               disabled={isFieldReadOnly}
               isDark={isDark}
-              placeholder={placeholder}
             />
           </View>
         );
-      }
 
       case UDF_FIELD_TYPE.ComboBox:
         return (
@@ -327,82 +360,79 @@ export const UdfFieldsRenderer: React.FC<UdfFieldsRendererProps> = ({ entityType
 
 // --- Sub-components ---
 
+interface OptionChipProps {
+  label: string;
+  isSelected: boolean;
+  onPress: () => void;
+  disabled?: boolean;
+  isDark: boolean;
+  testID?: string;
+}
+
+// A Pressable around the text, not a pressable Text: on web Text is a plain span that never sees the press, and
+// padding and borders belong on the box.
+const OptionChip: React.FC<OptionChipProps> = ({ label, isSelected, onPress, disabled = false, isDark, testID }) => (
+  <Pressable
+    onPress={onPress}
+    disabled={disabled}
+    testID={testID}
+    accessibilityRole="button"
+    accessibilityLabel={label}
+    accessibilityState={{ selected: isSelected, disabled }}
+    style={StyleSheet.flatten([
+      styles.optionItem,
+      isDark ? styles.optionItemDark : styles.optionItemLight,
+      isSelected ? (isDark ? styles.optionSelectedDark : styles.optionSelectedLight) : {},
+      disabled ? styles.optionDisabled : {},
+    ])}
+  >
+    <Text style={StyleSheet.flatten([styles.optionText, isSelected ? (isDark ? styles.optionTextSelectedDark : styles.optionTextSelectedLight) : isDark ? styles.optionTextDark : styles.optionTextLight])}>{label}</Text>
+  </Pressable>
+);
+
 interface BooleanToggleProps {
-  value: boolean;
-  onChange: (v: boolean) => void;
+  fieldId: string;
+  /** 'true', 'false', or '' when not answered yet. */
+  value: string;
+  onChange: (v: string) => void;
   disabled?: boolean;
   isDark?: boolean;
 }
 
-const BooleanToggle: React.FC<BooleanToggleProps> = ({ value, onChange, disabled = false, isDark = false }) => {
+// Neither side is lit until one is picked, so an unanswered required question does not look answered "No".
+const BooleanToggle: React.FC<BooleanToggleProps> = ({ fieldId, value, onChange, disabled = false, isDark = false }) => {
   const { t } = useTranslation();
   return (
     <View style={styles.toggleRow}>
-      <Text
-        style={StyleSheet.flatten([styles.toggleOption, value ? (isDark ? styles.toggleActiveDark : styles.toggleActiveLight) : isDark ? styles.toggleInactiveDark : styles.toggleInactiveLight])}
-        onPress={() => !disabled && onChange(true)}
-        accessibilityRole="button"
-        accessibilityLabel={t('common.yes', 'Yes')}
-      >
-        {t('common.yes', 'Yes')}
-      </Text>
-      <Text
-        style={StyleSheet.flatten([styles.toggleOption, !value ? (isDark ? styles.toggleActiveDark : styles.toggleActiveLight) : isDark ? styles.toggleInactiveDark : styles.toggleInactiveLight])}
-        onPress={() => !disabled && onChange(false)}
-        accessibilityRole="button"
-        accessibilityLabel={t('common.no', 'No')}
-      >
-        {t('common.no', 'No')}
-      </Text>
+      <OptionChip label={t('common.yes', 'Yes')} isSelected={value === 'true'} onPress={() => onChange('true')} disabled={disabled} isDark={isDark} testID={`udf-boolean-${fieldId}-yes`} />
+      <OptionChip label={t('common.no', 'No')} isSelected={value === 'false'} onPress={() => onChange('false')} disabled={disabled} isDark={isDark} testID={`udf-boolean-${fieldId}-no`} />
     </View>
   );
 };
 
 interface OptionSelectorProps {
+  fieldId: string;
   options: UdfOption[];
   value: string;
-  multiSelect: boolean;
   onChange: (v: string) => void;
   disabled?: boolean;
   isDark?: boolean;
-  placeholder?: string;
 }
 
-// Chips show each option's label and store its key, the way the server stores a dropdown/multi-select value.
-const OptionSelector: React.FC<OptionSelectorProps> = ({ options, value, multiSelect, onChange, disabled = false, isDark = false }) => {
-  const selectedKeys = selectedOptionKeys(multiSelect ? UDF_FIELD_TYPE.MultiSelect : UDF_FIELD_TYPE.Dropdown, value);
+// Multi-select chips show each option's label and store the picked keys comma-joined, the way the server stores them.
+const OptionSelector: React.FC<OptionSelectorProps> = ({ fieldId, options, value, onChange, disabled = false, isDark = false }) => {
+  const selectedKeys = selectedOptionKeys(UDF_FIELD_TYPE.MultiSelect, value);
 
   const toggle = (key: string) => {
-    if (disabled) return;
-    if (multiSelect) {
-      const next = selectedKeys.includes(key) ? selectedKeys.filter((k) => k !== key) : [...selectedKeys, key];
-      onChange(next.join(','));
-    } else {
-      onChange(selectedKeys.includes(key) ? '' : key);
-    }
+    const next = selectedKeys.includes(key) ? selectedKeys.filter((k) => k !== key) : [...selectedKeys, key];
+    onChange(next.join(','));
   };
 
   return (
     <View style={styles.optionContainer}>
-      {options.map((opt) => {
-        const isSelected = selectedKeys.includes(opt.key);
-        return (
-          <Text
-            key={opt.key}
-            style={StyleSheet.flatten([
-              styles.optionItem,
-              isDark ? styles.optionItemDark : styles.optionItemLight,
-              isSelected ? (isDark ? styles.optionSelectedDark : styles.optionSelectedLight) : {},
-              disabled ? styles.optionDisabled : {},
-            ])}
-            onPress={() => toggle(opt.key)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: isSelected, disabled }}
-          >
-            {opt.label}
-          </Text>
-        );
-      })}
+      {options.map((opt) => (
+        <OptionChip key={opt.key} label={opt.label} isSelected={selectedKeys.includes(opt.key)} onPress={() => toggle(opt.key)} disabled={disabled} isDark={isDark} testID={`udf-option-${fieldId}-${opt.key}`} />
+      ))}
     </View>
   );
 };
@@ -482,16 +512,7 @@ interface ComboSuggestionProps {
 
 const ComboSuggestion: React.FC<ComboSuggestionProps> = React.memo(({ option, isSelected, onSelect, isDark }) => {
   const handlePress = useCallback(() => onSelect(option), [onSelect, option]);
-  return (
-    <Text
-      style={StyleSheet.flatten([styles.optionItem, isDark ? styles.optionItemDark : styles.optionItemLight, isSelected ? (isDark ? styles.optionSelectedDark : styles.optionSelectedLight) : {}])}
-      onPress={handlePress}
-      accessibilityRole="button"
-      accessibilityState={{ selected: isSelected }}
-    >
-      {option.label}
-    </Text>
-  );
+  return <OptionChip label={option.label} isSelected={isSelected} onPress={handlePress} isDark={isDark} />;
 });
 
 ComboSuggestion.displayName = 'ComboSuggestion';
@@ -572,73 +593,54 @@ const styles = StyleSheet.create({
   },
   toggleRow: {
     flexDirection: 'row',
-  },
-  toggleOption: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderWidth: 1,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  toggleActiveDark: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
-    color: '#ffffff',
-    borderRadius: 6,
-  },
-  toggleActiveLight: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
-    color: '#ffffff',
-    borderRadius: 6,
-  },
-  toggleInactiveDark: {
-    backgroundColor: '#262626',
-    borderColor: '#404040',
-    color: '#9ca3af',
-    borderRadius: 6,
-  },
-  toggleInactiveLight: {
-    backgroundColor: '#f9fafb',
-    borderColor: '#d1d5db',
-    color: '#6b7280',
-    borderRadius: 6,
+    marginLeft: 12,
   },
   optionContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
   optionItem: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderWidth: 1,
     borderRadius: 6,
     marginRight: 8,
     marginBottom: 8,
-    fontSize: 14,
   },
   optionItemDark: {
     backgroundColor: '#262626',
     borderColor: '#404040',
-    color: '#d1d5db',
   },
   optionItemLight: {
     backgroundColor: '#ffffff',
     borderColor: '#d1d5db',
-    color: '#374151',
   },
   optionSelectedDark: {
     backgroundColor: '#1d4ed8',
     borderColor: '#2563eb',
-    color: '#ffffff',
   },
   optionSelectedLight: {
     backgroundColor: '#eff6ff',
     borderColor: '#2563eb',
-    color: '#1d4ed8',
   },
   optionDisabled: {
     opacity: 0.5,
+  },
+  optionText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  optionTextDark: {
+    color: '#d1d5db',
+  },
+  optionTextLight: {
+    color: '#374151',
+  },
+  optionTextSelectedDark: {
+    color: '#ffffff',
+  },
+  optionTextSelectedLight: {
+    color: '#1d4ed8',
   },
   suggestionsBlock: {
     marginTop: 8,

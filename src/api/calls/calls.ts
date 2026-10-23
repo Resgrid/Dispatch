@@ -1,11 +1,14 @@
 import { formatGeolocation } from '@/lib/call-geolocation';
 import { type ActiveCallsResult } from '@/models/v4/calls/activeCallsResult';
+import { type ArchivedCallsResult } from '@/models/v4/calls/archivedCallsResult';
 import { type CallExtraDataResult } from '@/models/v4/calls/callExtraDataResult';
 import { type CallResult } from '@/models/v4/calls/callResult';
+import { type CallYearsResult } from '@/models/v4/calls/callYearsResult';
 import { type DispatchCallNowResult } from '@/models/v4/calls/dispatchCallNowResult';
 import { type PendingCallsResult } from '@/models/v4/calls/pendingCallsResult';
 import { type SaveCallResult } from '@/models/v4/calls/saveCallResult';
 import { type ScheduledCallsResult } from '@/models/v4/calls/scheduledCallsResult';
+import { type UdfFieldValueInput } from '@/models/v4/userDefinedFields/udfFieldValueInput';
 
 import { createApiEndpoint } from '../common/client';
 
@@ -20,6 +23,9 @@ const updateCallApi = createApiEndpoint('/Calls/EditCall');
 const closeCallApi = createApiEndpoint('/Calls/CloseCall');
 const deleteCallApi = createApiEndpoint('/Calls/DeleteCall');
 const updateScheduledDispatchTimeApi = createApiEndpoint('/Calls/UpdateScheduledDispatchTime');
+const callYearsApi = createApiEndpoint('/Calls/GetCallYears');
+const archivedCallsApi = createApiEndpoint('/Calls/GetArchivedCalls');
+const saveArchivedCallApi = createApiEndpoint('/Calls/SaveArchivedCall');
 
 export const getCalls = async () => {
   // Add timestamp to prevent any caching
@@ -138,6 +144,12 @@ export interface CreateCallRequest {
    * keeps that proposal instead of walking the decision graph again. Sent only when set.
    */
   runCardOutcomeNodeKey?: string;
+  /**
+   * The call's custom field values, saved with the call. Sent whenever the form showed the fields (an empty list
+   * included), so the server checks the department's required fields before the call is created; undefined omits
+   * the property (no fields shown) and the server does not check them.
+   */
+  udfValues?: UdfFieldValueInput[];
 }
 
 export interface UpdateCallRequest {
@@ -192,6 +204,8 @@ export interface UpdateCallRequest {
   notifyCancelledEntities?: boolean;
   /** Conditional run cards: per-unit response codes, as on {@link CreateCallRequest.unitResponseCodes}. Sent only when set. */
   unitResponseCodes?: string;
+  /** The call's custom field values, replacing the stored ones; as on {@link CreateCallRequest.udfValues}. */
+  udfValues?: UdfFieldValueInput[];
 }
 
 export interface CloseCallRequest {
@@ -260,6 +274,10 @@ const linkAndProtocolsFor = (callData: CreateCallRequest | UpdateCallRequest): {
   ...(Array.isArray(callData.protocolIds) ? { ProtocolIds: callData.protocolIds } : {}),
 });
 
+/** UdfValues only when the caller set it, for the same reason: a missing property is not checked. */
+const udfValuesFor = (callData: CreateCallRequest | UpdateCallRequest): { UdfValues?: UdfFieldValueInput[] } =>
+  Array.isArray(callData.udfValues) ? { UdfValues: callData.udfValues.map((v) => ({ UdfFieldId: v.UdfFieldId, Value: v.Value })) } : {};
+
 export const createCall = async (callData: CreateCallRequest) => {
   const dispatchList = dispatchListFor(callData);
 
@@ -292,6 +310,7 @@ export const createCall = async (callData: CreateCallRequest) => {
     // Conditional run cards only; left out otherwise so older servers see the request they always did.
     ...(callData.unitResponseCodes ? { UnitResponseCodes: callData.unitResponseCodes } : {}),
     ...(callData.runCardOutcomeNodeKey ? { RunCardOutcomeNodeKey: callData.runCardOutcomeNodeKey } : {}),
+    ...udfValuesFor(callData),
   };
 
   const response = await createCallApi.post<SaveCallResult>(data);
@@ -328,6 +347,7 @@ export const updateCall = async (callData: UpdateCallRequest) => {
     RebroadcastCall: callData.rebroadcastCall ?? false,
     NotifyCancelledEntities: callData.notifyCancelledEntities ?? false,
     ...(callData.unitResponseCodes ? { UnitResponseCodes: callData.unitResponseCodes } : {}),
+    ...udfValuesFor(callData),
   };
 
   const response = await updateCallApi.put<SaveCallResult>(data);
@@ -368,5 +388,86 @@ export const updateScheduledDispatchTime = async (request: UpdateScheduledDispat
   };
 
   const response = await updateScheduledDispatchTimeApi.put<SaveCallResult>(data);
+  return response.data;
+};
+
+/** The years the department has calls in, newest first. The server answers Status "NotFound" with an empty list when there are none. */
+export const getCallYears = async () => {
+  const response = await callYearsApi.get<CallYearsResult>({ _t: Date.now() });
+  return response.data;
+};
+
+/**
+ * Archived calls: the closed calls (Closed through False Alarm, States 1-7) logged in `year`, newest first,
+ * trimmed by group-scoped dispatch like the active list. "NotFound" with an empty list when there are none.
+ */
+export const getArchivedCalls = async (year: number | string) => {
+  const response = await archivedCallsApi.get<ArchivedCallsResult>({ year, _t: Date.now() });
+  return response.data;
+};
+
+/**
+ * A call that already happened, entered after the fact: saved closed, with the time it was logged. Who it went
+ * to is recorded on the call only; nobody is notified.
+ */
+export interface CreateArchivedCallRequest {
+  name: string;
+  nature: string;
+  note?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  priority: number;
+  type?: string;
+  contactName?: string;
+  contactInfo?: string;
+  incidentId?: string;
+  externalId?: string;
+  referenceId?: string;
+  dispatchUsers?: string[];
+  dispatchGroups?: string[];
+  dispatchRoles?: string[];
+  dispatchUnits?: string[];
+  dispatchEveryone?: boolean;
+  /** When the call happened, as an ISO 8601 UTC instant. Not in the future. */
+  loggedOnUtc: string;
+  /** When it was closed, as an ISO 8601 UTC instant; undefined lets the server use now. Not before loggedOnUtc. */
+  closedOnUtc?: string;
+  /** How it was closed: a CallState from Closed (1) to False Alarm (7). */
+  state: number;
+  closedNotes?: string;
+  /** Renumber the year's calls by time logged, so the archived call takes its place in the sequence. */
+  recalculateCallNumbers?: boolean;
+}
+
+export const createArchivedCall = async (callData: CreateArchivedCallRequest) => {
+  const data = {
+    Name: callData.name,
+    Nature: callData.nature,
+    Note: callData.note || '',
+    Address: callData.address || '',
+    Geolocation: formatGeolocation(callData.latitude, callData.longitude),
+    Priority: callData.priority,
+    Type: callData.type || '',
+    ContactName: callData.contactName || '',
+    ContactInfo: callData.contactInfo || '',
+    IncidentId: callData.incidentId || '',
+    ExternalId: callData.externalId || '',
+    ReferenceId: callData.referenceId || '',
+    DispatchList: buildDispatchList({
+      everyone: callData.dispatchEveryone,
+      users: callData.dispatchUsers,
+      groups: callData.dispatchGroups,
+      roles: callData.dispatchRoles,
+      units: callData.dispatchUnits,
+    }),
+    LoggedOnUtc: callData.loggedOnUtc,
+    ...(callData.closedOnUtc ? { ClosedOnUtc: callData.closedOnUtc } : {}),
+    State: callData.state,
+    ClosedNotes: callData.closedNotes || '',
+    RecalculateCallNumbers: callData.recalculateCallNumbers === true,
+  };
+
+  const response = await saveArchivedCallApi.post<SaveCallResult>(data);
   return response.data;
 };

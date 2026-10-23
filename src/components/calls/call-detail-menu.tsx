@@ -10,7 +10,8 @@ import { useAnalytics } from '@/hooks/use-analytics';
 
 interface CallDetailMenuProps {
   onEditCall: () => void;
-  onCloseCall: () => void;
+  /** Left out for a call that is already closed (an archived call), which has nothing to close. */
+  onCloseCall?: () => void;
   onDeleteCall?: () => void;
   onRescheduleCall?: () => void;
   onDispatchMore?: () => void;
@@ -33,10 +34,10 @@ export const useCallDetailMenu = ({ onEditCall, onCloseCall, onDeleteCall, onRes
     if (isKebabMenuOpen) {
       trackEvent('call_detail_menu_opened', {
         hasEditAction: canUserCreateCalls,
-        hasCloseAction: canUserCreateCalls,
+        hasCloseAction: canUserCreateCalls && !!onCloseCall,
       });
     }
-  }, [isKebabMenuOpen, trackEvent, canUserCreateCalls]);
+  }, [isKebabMenuOpen, trackEvent, canUserCreateCalls, onCloseCall]);
 
   const openMenu = () => {
     setIsKebabMenuOpen(true);
@@ -113,18 +114,20 @@ export const useCallDetailMenu = ({ onEditCall, onCloseCall, onDeleteCall, onRes
             </ActionsheetItem>
           ) : null}
 
-          <ActionsheetItem
-            onPress={() => {
-              closeMenu();
-              onCloseCall();
-            }}
-            testID="close-call-button"
-          >
-            <HStack className="items-center">
-              <XIcon size={16} color={menuIconColor} className="mr-3" />
-              <ActionsheetItemText>{t('call_detail.close_call')}</ActionsheetItemText>
-            </HStack>
-          </ActionsheetItem>
+          {onCloseCall ? (
+            <ActionsheetItem
+              onPress={() => {
+                closeMenu();
+                onCloseCall();
+              }}
+              testID="close-call-button"
+            >
+              <HStack className="items-center">
+                <XIcon size={16} color={menuIconColor} className="mr-3" />
+                <ActionsheetItemText>{t('call_detail.close_call')}</ActionsheetItemText>
+              </HStack>
+            </ActionsheetItem>
+          ) : null}
 
           {onDeleteCall ? (
             <ActionsheetItem

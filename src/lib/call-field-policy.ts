@@ -53,6 +53,14 @@ export const describeCallFields = (keys: readonly string[], t: (key: string) => 
     })
     .join(', ');
 
+/**
+ * The collapsible cards on a call form that hold one of the given fields: the ones the department requires, so
+ * those cards open by default instead of tucking away something the call cannot be saved without, or the ones a
+ * save was refused for, so the dispatcher lands on them.
+ */
+export const sectionsHolding = <S extends string>(sectionFields: Record<S, readonly NewCallFieldKey[]>, holds: (key: NewCallFieldKey) => boolean): S[] =>
+  (Object.keys(sectionFields) as S[]).filter((section) => sectionFields[section].some(holds));
+
 /** True when a dispatch selection names anyone: everyone, or at least one person, group, role or unit. */
 export const hasDispatchRecipients = (selection: DispatchListSelection | null | undefined): boolean =>
   !!selection && (!!selection.everyone || (selection.users?.length ?? 0) > 0 || (selection.groups?.length ?? 0) > 0 || (selection.roles?.length ?? 0) > 0 || (selection.units?.length ?? 0) > 0);

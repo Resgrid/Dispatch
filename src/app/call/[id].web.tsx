@@ -57,7 +57,7 @@ import { buildAddResourcesUpdateRequest, EMPTY_DISPATCH_SELECTION } from '@/lib/
 import { logger } from '@/lib/logging';
 import { openMapsWithDirections } from '@/lib/navigation';
 import { tintOf } from '@/lib/readable-color';
-import { formatDateForDisplay, getCallScheduledDispatchTime, isCallActive, isCallAwaitingScheduledDispatch, isCallPending, parseDateISOString } from '@/lib/utils';
+import { formatDateForDisplay, getCallScheduledDispatchTime, isCallActive, isCallAwaitingScheduledDispatch, isCallClosed, isCallPending, parseDateISOString } from '@/lib/utils';
 import { CheckInTimerStatus } from '@/models/v4/checkIn/checkInEnums';
 import { useCoreStore } from '@/stores/app/core-store';
 import { useLocationStore } from '@/stores/app/location-store';
@@ -191,7 +191,8 @@ export default function CallDetailWeb() {
 
   const { HeaderRightMenu, CallDetailActionSheet } = useCallDetailMenu({
     onEditCall: handleEditCall,
-    onCloseCall: handleCloseCall,
+    // An archived (closed) call has nothing to close.
+    onCloseCall: call && isCallClosed(call.State) ? undefined : handleCloseCall,
     onDeleteCall: handleDeleteCall,
     onRescheduleCall: isScheduledPending ? handleRescheduleCall : undefined,
     onDispatchMore: call && isCallActive(call.State) ? () => setIsDispatchModalOpen(true) : undefined,
@@ -615,7 +616,7 @@ export default function CallDetailWeb() {
                 <ActionButton icon={ImageIcon} label={t('call_detail.images')} badge={call.ImgagesCount} onPress={() => setIsImagesModalOpen(true)} isDark={isDark} />
                 <ActionButton icon={PaperclipIcon} label={t('call_detail.files.button')} badge={call.FileCount} onPress={() => setIsFilesModalOpen(true)} isDark={isDark} />
                 <ActionButton icon={Volume2Icon} label={t('call_detail.audio')} badge={call.AudioCount} onPress={openAudioModal} isDark={isDark} />
-                <ActionButton icon={XCircleIcon} label={t('call_detail.close_call')} onPress={handleCloseCall} isDark={isDark} variant="danger" />
+                {!isCallClosed(call.State) ? <ActionButton icon={XCircleIcon} label={t('call_detail.close_call')} onPress={handleCloseCall} isDark={isDark} variant="danger" /> : null}
               </View>
             </View>
 

@@ -101,9 +101,11 @@ export const DispatchSelectionModal: React.FC<DispatchSelectionModalProps> = ({ 
   const [sort, setSort] = useState<RecipientSort>('closest');
   const [availableOnly, setAvailableOnly] = useState(false);
 
+  // Fetched fresh every time the picker opens or the call moves, never served from the board cache: distances and
+  // ETAs must be for where the call is now, and units move and change status between opens.
   useEffect(() => {
     if (isVisible && typeof locationLatitude === 'number' && typeof locationLongitude === 'number') {
-      void fetchNearestBoard?.(locationLatitude, locationLongitude);
+      void fetchNearestBoard?.(locationLatitude, locationLongitude, true);
     }
   }, [isVisible, locationLatitude, locationLongitude, fetchNearestBoard]);
 

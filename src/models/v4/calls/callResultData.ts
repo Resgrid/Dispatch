@@ -47,6 +47,12 @@ export class CallResultData {
   /** The run card driving this call's dispatch, or null when no card matched. */
   public ActiveRunCardId: number | null = null;
   public LoggedOnUtc: string = '';
+  /** When the call was closed, in the department's time; null while it is open, undefined from older servers. */
+  public ClosedOn?: string | null;
+  /** When the call was closed, UTC; null while it is open, undefined from older servers. */
+  public ClosedOnUtc?: string | null;
+  /** Who closed the call; null while it is open, undefined from older servers. */
+  public ClosedByUserId?: string | null;
   public DispatchedOn: string = '';
   public DispatchedOnUtc: string = '';
   public ScheduledOn: string = '';
