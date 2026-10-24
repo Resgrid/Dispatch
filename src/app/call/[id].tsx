@@ -62,7 +62,7 @@ import { callLocationOf } from '@/lib/dispatch-board';
 import { buildAddResourcesUpdateRequest, EMPTY_DISPATCH_SELECTION } from '@/lib/dispatch-helpers';
 import { logger } from '@/lib/logging';
 import { openMapsWithDirections } from '@/lib/navigation';
-import { formatDateForDisplay, getCallScheduledDispatchTime, isCallActive, isCallAwaitingScheduledDispatch, isCallPending, parseDateISOString } from '@/lib/utils';
+import { formatDateForDisplay, getCallScheduledDispatchTime, isCallActive, isCallAwaitingScheduledDispatch, isCallClosed, isCallPending, parseDateISOString } from '@/lib/utils';
 import { CheckInTimerStatus } from '@/models/v4/checkIn/checkInEnums';
 import { useCoreStore } from '@/stores/app/core-store';
 import { useLocationStore } from '@/stores/app/location-store';
@@ -238,7 +238,8 @@ export default function CallDetail() {
   // Initialize the call detail menu hook
   const { HeaderRightMenu, CallDetailActionSheet } = useCallDetailMenu({
     onEditCall: handleEditCall,
-    onCloseCall: handleCloseCall,
+    // An archived (closed) call has nothing to close.
+    onCloseCall: call && isCallClosed(call.State) ? undefined : handleCloseCall,
     onDeleteCall: handleDeleteCall,
     onRescheduleCall: isScheduledPending ? handleRescheduleCall : undefined,
     onDispatchMore: call && isCallActive(call.State) ? () => setIsDispatchModalOpen(true) : undefined,

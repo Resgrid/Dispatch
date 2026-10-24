@@ -7,6 +7,7 @@ import {
   getMissingCallFieldsFromError,
   hasDispatchRecipients,
   keepHiddenEditFieldsUnchanged,
+  sectionsHolding,
   toNewCallFieldKey,
   toProtocolIds,
 } from '@/lib/call-field-policy';
@@ -47,6 +48,23 @@ describe('call field labels', () => {
     expect(toNewCallFieldKey(' DispatchList ')).toBe(NewCallFieldKeys.DispatchList);
     expect(toNewCallFieldKey('nope')).toBeUndefined();
     expect(toNewCallFieldKey(undefined)).toBeUndefined();
+  });
+});
+
+describe('sectionsHolding', () => {
+  const sections = {
+    contact: [NewCallFieldKeys.ContactName, NewCallFieldKeys.ContactInfo],
+    protocols: [NewCallFieldKeys.Protocols],
+    location: [NewCallFieldKeys.Address],
+  };
+
+  it('names the cards holding a matching field', () => {
+    const required = new Set<NewCallFieldKey>([NewCallFieldKeys.ContactInfo, NewCallFieldKeys.Address]);
+    expect(sectionsHolding(sections, (key) => required.has(key))).toEqual(['contact', 'location']);
+  });
+
+  it('names none when nothing matches', () => {
+    expect(sectionsHolding(sections, () => false)).toEqual([]);
   });
 });
 

@@ -20,6 +20,7 @@ interface LocationPickerProps {
     latitude: number;
     longitude: number;
   };
+  /** Called with every pin move: a click on the map is the new call location, with no confirm step to forget. */
   onLocationSelected: (location: { latitude: number; longitude: number; address?: string }) => void;
   height?: number;
   /**
@@ -28,6 +29,8 @@ interface LocationPickerProps {
    */
   overlay?: DispatchMapOverlay | null;
 }
+
+const spotKey = (location: { latitude: number; longitude: number }) => `${location.latitude.toFixed(5)},${location.longitude.toFixed(5)}`;
 
 const LocationPicker: React.FC<LocationPickerProps> = ({ initialLocation, onLocationSelected, height = 200, overlay }) => {
   const { t } = useTranslation();
@@ -54,6 +57,13 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ initialLocation, onLoca
   const popupRef = useRef<mapboxgl.Popup | null>(null);
   // The call location the map was last framed for, so a refreshed board does not yank the view the dispatcher moved.
   const framedForRef = useRef<string | null>(null);
+  // The spot the pin is on, so the form handing back a location the pin already shows does not move the map.
+  const pinKeyRef = useRef<string | null>(initialLocation ? spotKey(initialLocation) : null);
+  // Read by the map's click handler, which is registered once when the map is built.
+  const onLocationSelectedRef = useRef(onLocationSelected);
+  useEffect(() => {
+    onLocationSelectedRef.current = onLocationSelected;
+  }, [onLocationSelected]);
 
   // Inject Mapbox GL CSS
   useEffect(() => {
@@ -179,6 +189,12 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ initialLocation, onLoca
       } else if (map.current) {
         marker.current = new mapboxgl.Marker({ color: '#FF0000' }).setLngLat([e.lngLat.lng, e.lngLat.lat]).addTo(map.current);
       }
+
+      // The dispatcher is already looking at the spot they clicked, so the board for it does not reframe the map.
+      pinKeyRef.current = spotKey(newLocation);
+      framedForRef.current = spotKey(newLocation);
+      // The pin is the call location: the form, and the recipient picker's distances and ETAs, follow it at once.
+      onLocationSelectedRef.current(newLocation);
     });
 
     // If no initial location, get user location
@@ -196,6 +212,26 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ initialLocation, onLoca
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // The call location set elsewhere (an address or coordinate search, the full-screen map) moves the pin here too.
+  const initialLatitude = initialLocation?.latitude;
+  const initialLongitude = initialLocation?.longitude;
+  useEffect(() => {
+    if (typeof initialLatitude !== 'number' || typeof initialLongitude !== 'number') return;
+    const next = { latitude: initialLatitude, longitude: initialLongitude };
+    // Where the pin already is: the location the map was built with, or a click here coming back from the form.
+    if (pinKeyRef.current === spotKey(next)) return;
+    pinKeyRef.current = spotKey(next);
+    setCurrentLocation(next);
+
+    if (!map.current) return;
+    if (marker.current) {
+      marker.current.setLngLat([initialLongitude, initialLatitude]);
+    } else {
+      marker.current = new mapboxgl.Marker({ color: '#FF0000' }).setLngLat([initialLongitude, initialLatitude]).addTo(map.current);
+    }
+    map.current.flyTo({ center: [initialLongitude, initialLatitude] });
+  }, [initialLatitude, initialLongitude]);
 
   // Switch the base map when the department style changes; the DOM marker survives setStyle.
   useEffect(() => {
@@ -254,11 +290,14 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ initialLocation, onLoca
           </Pressable>
         </View>
       ) : null}
-      <View style={styles.buttonContainer}>
-        <Button onPress={handleConfirmLocation} disabled={!currentLocation}>
-          <ButtonText>{t('common.confirm_location')}</ButtonText>
-        </Button>
-      </View>
+      {/* Clicks commit as they happen; only a pin the map placed itself (the dispatcher's own position) waits for this. */}
+      {currentLocation && (!initialLocation || spotKey(currentLocation) !== spotKey(initialLocation)) ? (
+        <View style={styles.buttonContainer}>
+          <Button onPress={handleConfirmLocation}>
+            <ButtonText>{t('common.confirm_location')}</ButtonText>
+          </Button>
+        </View>
+      ) : null}
     </View>
   );
 };

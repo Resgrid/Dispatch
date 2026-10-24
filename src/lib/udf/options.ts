@@ -103,6 +103,18 @@ export const filterComboSuggestions = (options: UdfOption[], text: string | null
   return options.filter((o) => o.label.toLowerCase().includes(query));
 };
 
+/**
+ * The fields a form shows: enabled ones meant for the apps, plus any the department requires wherever it is hidden,
+ * since a call cannot be saved without them.
+ */
+export const isUdfFieldShown = (field: { IsEnabled: boolean; IsVisibleOnMobile: boolean; IsRequired: boolean }): boolean => field.IsEnabled && (field.IsVisibleOnMobile || field.IsRequired);
+
+/** Required fields left blank. Whitespace is blank, as on the server, which refuses the save the same way. */
+export const missingRequiredUdfFields = <T extends { UdfFieldId: string; IsRequired: boolean }>(fields: readonly T[], values: readonly { UdfFieldId: string; Value: string }[]): T[] => {
+  const valueById = new Map(values.map((v) => [v.UdfFieldId, v.Value]));
+  return fields.filter((f) => f.IsRequired && !(valueById.get(f.UdfFieldId) ?? '').trim());
+};
+
 /** The keys a stored dropdown or multi-select value selects. */
 export const selectedOptionKeys = (fieldDataType: number, value: string | null | undefined): string[] => {
   const text = (value ?? '').trim();

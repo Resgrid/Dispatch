@@ -191,6 +191,7 @@ export type SignalREventType =
   | 'personnelStatusUpdated'
   | 'personnelStaffingUpdated'
   | 'unitStatusUpdated'
+  | 'unitActiveRolesUpdated'
   | 'callsUpdated'
   | 'callAdded'
   | 'callClosed'
@@ -280,6 +281,8 @@ interface EventHandlers {
   personnelStatusUpdated: ((data: unknown) => void) | null;
   personnelStaffingUpdated: ((data: unknown) => void) | null;
   unitStatusUpdated: ((data: unknown) => void) | null;
+  /** A unit's seated crew changed: (unit id, or "0" when several units changed at once). */
+  unitActiveRolesUpdated: ((data: unknown) => void) | null;
   callsUpdated: ((data: unknown) => void) | null;
   callAdded: ((data: unknown) => void) | null;
   callClosed: ((data: unknown) => void) | null;
@@ -298,6 +301,7 @@ let updateHubHandlers: EventHandlers = {
   personnelStatusUpdated: null,
   personnelStaffingUpdated: null,
   unitStatusUpdated: null,
+  unitActiveRolesUpdated: null,
   callsUpdated: null,
   callAdded: null,
   callClosed: null,
@@ -375,6 +379,7 @@ function unregisterUpdateHubHandlers(): void {
     'personnelStatusUpdated',
     'personnelStaffingUpdated',
     'unitStatusUpdated',
+    'unitActiveRolesUpdated',
     'callsUpdated',
     'callAdded',
     'callClosed',
@@ -502,6 +507,7 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
           'personnelStatusUpdated',
           'personnelStaffingUpdated',
           'unitStatusUpdated',
+          'unitActiveRolesUpdated',
           'callsUpdated',
           'callAdded',
           'callClosed',
@@ -556,6 +562,18 @@ export const useSignalRStore = create<SignalRState>((set, get) => ({
         set({ lastUpdateMessage: JSON.stringify(message), lastUpdateTimestamp: Date.now(), lastEventType: 'unitStatusUpdated', lastUnitsUpdateTimestamp: Date.now() });
       };
       signalRService.on('unitStatusUpdated', updateHubHandlers.unitStatusUpdated);
+
+      // Who rides a unit changed (seats saved from the Unit app, the web staffing page, or a unit deleted). The units
+      // refetch brings the new Roles, so the console map re-frames a selected unit on its new crew; the pin refetch
+      // brings the "Name (Unit)" labels.
+      updateHubHandlers.unitActiveRolesUpdated = (message: unknown) => {
+        logger.info({
+          message: 'unitActiveRolesUpdated',
+          context: { message },
+        });
+        set({ lastUpdateMessage: null, lastUpdateTimestamp: Date.now(), lastEventType: 'unitActiveRolesUpdated', lastUnitsUpdateTimestamp: Date.now() });
+      };
+      signalRService.on('unitActiveRolesUpdated', updateHubHandlers.unitActiveRolesUpdated);
 
       updateHubHandlers.callsUpdated = (message: unknown) => {
         const now = Date.now();

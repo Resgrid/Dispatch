@@ -1,4 +1,4 @@
-import { comboDisplayText, filterComboSuggestions, findComboOption, parseUdfOptions, selectedOptionKeys, UDF_FIELD_TYPE, type UdfOption } from '../options';
+import { comboDisplayText, filterComboSuggestions, findComboOption, isUdfFieldShown, missingRequiredUdfFields, parseUdfOptions, selectedOptionKeys, UDF_FIELD_TYPE, type UdfOption } from '../options';
 
 // What the server stores in UdfField.ValidationRules (Newtonsoft, PascalCase).
 const serverRules = JSON.stringify({
@@ -93,5 +93,42 @@ describe('selectedOptionKeys', () => {
     expect(selectedOptionKeys(UDF_FIELD_TYPE.MultiSelect, 'a, b,,c')).toEqual(['a', 'b', 'c']);
     expect(selectedOptionKeys(UDF_FIELD_TYPE.Dropdown, 'Transported, ALS')).toEqual(['Transported, ALS']);
     expect(selectedOptionKeys(UDF_FIELD_TYPE.Dropdown, '')).toEqual([]);
+  });
+});
+
+describe('isUdfFieldShown', () => {
+  it('shows enabled app fields, and required ones wherever they are hidden', () => {
+    expect(isUdfFieldShown({ IsEnabled: true, IsVisibleOnMobile: true, IsRequired: false })).toBe(true);
+    expect(isUdfFieldShown({ IsEnabled: true, IsVisibleOnMobile: false, IsRequired: true })).toBe(true);
+    expect(isUdfFieldShown({ IsEnabled: true, IsVisibleOnMobile: false, IsRequired: false })).toBe(false);
+    expect(isUdfFieldShown({ IsEnabled: false, IsVisibleOnMobile: true, IsRequired: true })).toBe(false);
+  });
+});
+
+describe('missingRequiredUdfFields', () => {
+  const fields = [
+    { UdfFieldId: 'referral', IsRequired: true },
+    { UdfFieldId: 'language', IsRequired: false },
+    { UdfFieldId: 'coresponse', IsRequired: true },
+    { UdfFieldId: 'mrn', IsRequired: true },
+  ];
+
+  it('names the required fields left blank, whitespace counting as blank', () => {
+    const missing = missingRequiredUdfFields(fields, [
+      { UdfFieldId: 'referral', Value: '  ' },
+      { UdfFieldId: 'language', Value: '' },
+      { UdfFieldId: 'coresponse', Value: 'false' },
+    ]);
+    expect(missing.map((f) => f.UdfFieldId)).toEqual(['referral', 'mrn']);
+  });
+
+  it('is satisfied once every required field has a value', () => {
+    expect(
+      missingRequiredUdfFields(fields, [
+        { UdfFieldId: 'referral', Value: '988' },
+        { UdfFieldId: 'coresponse', Value: 'true' },
+        { UdfFieldId: 'mrn', Value: 'A-1' },
+      ])
+    ).toEqual([]);
   });
 });

@@ -10,6 +10,7 @@ import { HStack } from '@/components/ui/hstack';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { MapLayerType, useMapLayers } from '@/hooks/use-map-layers';
+import { useSelectedUnitMapFocus } from '@/hooks/use-selected-unit-map-focus';
 import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersData';
 import { selectCardCollapsed, useDashboardViewStore } from '@/stores/dispatch/dashboard-view-store';
 import { TermKeys, useTerm } from '@/stores/terminology/store';
@@ -40,6 +41,8 @@ const MapWidgetComponent: React.FC<MapWidgetProps> = ({ pins, onExpandMap, onRef
   const isCollapsed = useDashboardViewStore(selectCardCollapsed('map'));
   const setCardCollapsed = useDashboardViewStore((s) => s.setCardCollapsed);
   const [isLayersPanelOpen, setIsLayersPanelOpen] = useState(false);
+  // The selected unit and its crew: the map frames them and keeps them in view as they move.
+  const unitFocus = useSelectedUnitMapFocus();
 
   // Map layers hook
   const { layers, visibleLayers, isLoading: isLayersLoading, toggleLayer, showAllLayers, hideAllLayers, visibleLayerData } = useMapLayers({ initialLayerType: MapLayerType.ALL, autoFetch: true });
@@ -134,7 +137,7 @@ const MapWidgetComponent: React.FC<MapWidgetProps> = ({ pins, onExpandMap, onRef
             {children ? (
               children
             ) : (
-              <UnifiedMapView pins={pins} visibleLayers={visibleLayerData} autoFetchPins={autoFetchPins} onPinPress={onPinPress} showUserLocation={true} interactive={true} testID="map-widget-view" />
+              <UnifiedMapView pins={pins} visibleLayers={visibleLayerData} autoFetchPins={autoFetchPins} onPinPress={onPinPress} showUserLocation={true} interactive={true} focus={unitFocus} testID="map-widget-view" />
             )}
           </View>
         ) : null}

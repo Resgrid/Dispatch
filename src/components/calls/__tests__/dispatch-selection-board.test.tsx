@@ -196,8 +196,28 @@ describe('DispatchSelectionModal with a call location', () => {
   it('loads the nearest-unit board for the call location', () => {
     render(<DispatchSelectionModal isVisible onClose={jest.fn()} onConfirm={jest.fn()} callLocation={CALL} />);
 
-    expect(mockFetchNearestBoard).toHaveBeenCalledWith(CALL.latitude, CALL.longitude);
+    expect(mockFetchNearestBoard).toHaveBeenCalledWith(CALL.latitude, CALL.longitude, true);
     expect(screen.getByText('calls.dispatch_board.ranked_from_location')).toBeTruthy();
+  });
+
+  it('fetches the board again, for where the call is now, each time the picker opens', () => {
+    const props = { onClose: jest.fn(), onConfirm: jest.fn() };
+    const { rerender } = render(<DispatchSelectionModal {...props} isVisible callLocation={CALL} />);
+    rerender(<DispatchSelectionModal {...props} isVisible={false} callLocation={CALL} />);
+
+    // The call is moved while the picker is closed, then the picker is opened again.
+    const moved = { latitude: 39.55, longitude: -119.85 };
+    rerender(<DispatchSelectionModal {...props} isVisible={false} callLocation={moved} />);
+    expect(mockFetchNearestBoard).toHaveBeenCalledTimes(1);
+
+    rerender(<DispatchSelectionModal {...props} isVisible callLocation={moved} />);
+    expect(mockFetchNearestBoard).toHaveBeenLastCalledWith(moved.latitude, moved.longitude, true);
+
+    // Reopened without moving: still fetched again, never served from the cached board.
+    rerender(<DispatchSelectionModal {...props} isVisible={false} callLocation={moved} />);
+    rerender(<DispatchSelectionModal {...props} isVisible callLocation={moved} />);
+    expect(mockFetchNearestBoard).toHaveBeenCalledTimes(3);
+    expect(mockFetchNearestBoard).toHaveBeenLastCalledWith(moved.latitude, moved.longitude, true);
   });
 
   it('ranks personnel and units closest first, with the ones the board does not list after, by name', () => {

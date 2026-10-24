@@ -1,5 +1,6 @@
 import { type Href, useRouter } from 'expo-router';
 import {
+  Archive,
   Briefcase,
   CalendarClock,
   CloudLightning,
@@ -64,6 +65,7 @@ const getMenuItems = (t: (key: string) => string, pendingCallsCount: number, ter
         ? [{ id: 'awaiting-resources', label: t('menu.awaiting_resources'), icon: ListChecks, route: '/awaiting-resources', badgeCount: awaitingResourcesCount, badgeColor: '#ea580c' }]
         : []),
       { id: 'scheduled-calls', label: t('menu.scheduled_calls'), icon: CalendarClock, route: '/scheduled-calls' },
+      { id: 'archived-calls', label: t('menu.archived_calls'), icon: Archive, route: '/archived-calls' },
       { id: 'new-call', label: t('menu.new_call'), icon: Plus, route: '/call/new' },
       { id: 'incident-command', label: t('menu.incident_command'), icon: Network, route: '/incident-command' },
     ],
