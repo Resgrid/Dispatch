@@ -199,6 +199,32 @@ describe('useCoordinateEntry', () => {
     expect(props().onLocationEntered).toHaveBeenCalled();
   });
 
+  it('drops a lookup still running when both inputs are emptied', async () => {
+    let resolveLookup: (value: { succeeded: boolean; address: string }) => void = () => undefined;
+    mockedReverseGeocode.mockReturnValue(new Promise((resolve) => (resolveLookup = resolve)));
+    const { hook, update, props } = setup();
+
+    update({ latitudeText: '39.122639', longitudeText: '-119.758773' });
+    await act(async () => {
+      jest.advanceTimersByTime(COORDINATE_ENTRY_DELAY_MS);
+    });
+    expect(hook.result.current.isLookingUpAddress).toBe(true);
+
+    update({ location: { latitude: 39.122639, longitude: -119.758773 }, latitudeText: '', longitudeText: '' });
+    await act(async () => {
+      jest.advanceTimersByTime(COORDINATE_ENTRY_DELAY_MS);
+    });
+    expect(props().onCleared).toHaveBeenCalled();
+    expect(hook.result.current.isLookingUpAddress).toBe(false);
+
+    await act(async () => {
+      resolveLookup({ succeeded: true, address: '4924 Ponderosa Drive' });
+      for (let tick = 0; tick < 5; tick++) await Promise.resolve();
+    });
+
+    expect(props().setAddress).not.toHaveBeenCalled();
+  });
+
   it('fills a blank address from a map pick with the address the picker found, without a lookup', async () => {
     const { hook, props } = setup();
 

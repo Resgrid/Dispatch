@@ -80,8 +80,9 @@ export const useArchivedCallsStore = create<ArchivedCallsState>((set, get) => ({
   },
 
   showYear: (year: string) => {
-    if (year === get().selectedYear) return;
-    set((state) => ({ selectedYear: year, years: withYear(state.years, year), archivedCalls: [], lastFetched: 0 }));
+    // Stale even when it is the year already showing: those rows are from before the call just added. Another
+    // year's rows would read as this year's until the load.
+    set((state) => ({ selectedYear: year, years: withYear(state.years, year), archivedCalls: year === state.selectedYear ? state.archivedCalls : [], lastFetched: 0 }));
   },
 
   fetchArchivedCalls: async () => {

@@ -8,11 +8,13 @@ import { useMapLiveLocations } from '@/hooks/use-map-live-locations';
 import { logger } from '@/lib/logging';
 import { getDepartmentMapCenter } from '@/lib/map-center';
 import { useDepartmentMapStyle } from '@/lib/map-style';
+import { boundsForFocusPoints, focusFrameKey, hasPointLeftView, type MapFocus, resolveMapFocusPoints, visibleBoundsFromCorners } from '@/lib/unit-map-focus';
 import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersData';
 import { type GetMapLayersData } from '@/models/v4/mapping/getMapLayersResultData';
 import { useLocationStore } from '@/stores/app/location-store';
 import { useSignalRStore } from '@/stores/signalr/signalr-store';
 
+import { MapFocusBanner } from './map-focus-banner';
 import MapPins from './map-pins';
 
 interface UnifiedMapViewProps {
@@ -34,6 +36,11 @@ interface UnifiedMapViewProps {
   style?: any;
   /** Test ID for testing */
   testID?: string;
+  /**
+   * A unit and its crew to keep framed (the dispatcher's selected unit). The view frames them when the focus or the
+   * set of them with a position changes, and again when one on screen moves off it; null leaves the camera alone.
+   */
+  focus?: MapFocus | null;
 }
 
 /**
@@ -50,6 +57,7 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
   interactive = true,
   style,
   testID = 'unified-map-view',
+  focus = null,
 }) => {
   const mapRef = useRef<Mapbox.MapView>(null);
   const cameraRef = useRef<Mapbox.Camera>(null);
@@ -65,6 +73,12 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
 
   // Use external pins if provided, otherwise use internal pins
   const mapPins = externalPins ?? internalPins;
+
+  // Read by the initial centering, which must not override a selected unit's frame.
+  const focusRef = useRef(focus);
+  useEffect(() => {
+    focusRef.current = focus;
+  }, [focus]);
 
   // Realtime unit/personnel positions from the geolocation hub move the pins this view fetched itself; a parent
   // that passes `pins` owns them. Refetch requests reuse refreshPins below.
@@ -103,6 +117,11 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
         if (mapDataAndMarkers?.Data) {
           const markers = mapDataAndMarkers.Data.MapMakerInfos;
           setInternalPins(applyToFetchedPins(markers, fetchStartedAt));
+
+          // A unit selected before the pins arrived owns the camera: the focus effect frames it on these pins.
+          if (focusRef.current) {
+            return;
+          }
 
           // Center map on the data center if provided
           if (mapDataAndMarkers.Data.CenterLat && mapDataAndMarkers.Data.CenterLon && cameraRef.current) {
@@ -280,6 +299,55 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
     });
   }, [visibleLayers]);
 
+  // Where the focused unit and its crew are now: the pins already carry the live positions.
+  const focusPoints = useMemo(() => (focus ? resolveMapFocusPoints(mapPins, focus) : null), [focus, mapPins]);
+  const framedKeyRef = useRef<string | null>(null);
+  const framedPositionsRef = useRef<Map<string, [number, number]>>(new Map());
+  const [recenterCount, setRecenterCount] = useState(0);
+  const handleRecenter = useCallback(() => setRecenterCount((count) => count + 1), []);
+
+  // Frame the selected unit and its crew. A new unit, a crew change, someone starting or stopping reporting, or
+  // "re-center" frames again; a position moving only does when it takes someone who was on screen off it.
+  useEffect(() => {
+    if (!focus || !focusPoints) {
+      framedKeyRef.current = null;
+      framedPositionsRef.current = new Map();
+      return;
+    }
+
+    if (!isMapReady || !cameraRef.current) return;
+
+    const bounds = boundsForFocusPoints(focusPoints.points.map((point) => point.coordinate));
+    // Nobody has a position: the camera stays where it is and the banner says so.
+    if (!bounds) return;
+
+    const frameKey = `${focusFrameKey(focus, focusPoints)}#${recenterCount}`;
+    const previous = framedPositionsRef.current;
+    framedPositionsRef.current = new Map(focusPoints.points.map((point) => [point.pinId, point.coordinate]));
+
+    const frame = () => {
+      framedKeyRef.current = frameKey;
+      cameraRef.current?.fitBounds(bounds.ne, bounds.sw, [48, 48, 48, 48], 600);
+    };
+
+    if (framedKeyRef.current !== frameKey) {
+      frame();
+      return;
+    }
+
+    // Same crew, same people reporting: only follow someone who just left the screen. Not cancelled by the next
+    // update, which compares against these positions and so could never see the move off screen; a frame taken (or
+    // the focus cleared) in the meantime makes this one stand down.
+    void (async () => {
+      try {
+        const visible = visibleBoundsFromCorners(await mapRef.current?.getVisibleBounds());
+        if (visible && framedKeyRef.current === frameKey && hasPointLeftView(previous, focusPoints.points, visible)) frame();
+      } catch (error) {
+        logger.debug({ message: 'Unable to read the visible map bounds', context: { error } });
+      }
+    })();
+  }, [focus, focusPoints, isMapReady, recenterCount]);
+
   const handleMapReady = useCallback(() => {
     setIsMapReady(true);
     onMapReady?.();
@@ -314,6 +382,7 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
         {/* Map pins */}
         <MapPins pins={mapPins} onPinPress={onPinPress} />
       </Mapbox.MapView>
+      {focus && focusPoints ? <MapFocusBanner focus={focus} located={focusPoints} onRecenter={handleRecenter} /> : null}
     </View>
   );
 };

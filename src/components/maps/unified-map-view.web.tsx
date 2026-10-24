@@ -12,9 +12,12 @@ import { hasValidMapCoordinates } from '@/lib/map-markers';
 import { buildMapPinPopupHtml, createMapMarkerElement, getMapMarkerPopupOffset, MAP_MARKER_ANCHOR } from '@/lib/map-markers-web';
 import { useDepartmentMapStyle } from '@/lib/map-style';
 import { applyMapboxGlAccessToken } from '@/lib/mapbox-gl-token-web';
+import { boundsForFocusPoints, FOCUS_MAX_ZOOM, focusFrameKey, hasPointLeftView, type MapFocus, resolveMapFocusPoints } from '@/lib/unit-map-focus';
 import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersData';
 import { type GetMapLayersData } from '@/models/v4/mapping/getMapLayersResultData';
 import { useLocationStore } from '@/stores/app/location-store';
+
+import { MapFocusBanner } from './map-focus-banner';
 
 // Mapbox GL CSS needs to be injected for web
 const MAPBOX_GL_CSS_URL = 'https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.css';
@@ -47,6 +50,11 @@ interface UnifiedMapViewProps {
   style?: any;
   /** Test ID for testing */
   testID?: string;
+  /**
+   * A unit and its crew to keep framed (the dispatcher's selected unit). The view frames them when the focus or the
+   * set of them with a position changes, and again when one on screen moves off it; null leaves the camera alone.
+   */
+  focus?: MapFocus | null;
 }
 
 // Helper function to calculate center from markers
@@ -77,6 +85,7 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
   interactive = true,
   style,
   testID = 'unified-map-view',
+  focus = null,
 }) => {
   const { colorScheme } = useColorScheme();
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -92,6 +101,12 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
 
   // Use external pins if provided, otherwise use internal pins
   const mapPins = externalPins ?? internalPins;
+
+  // Read by the first-load centering, which must not override a selected unit's frame.
+  const focusRef = useRef(focus);
+  useEffect(() => {
+    focusRef.current = focus;
+  }, [focus]);
 
   // Realtime unit/personnel positions from the geolocation hub move the pins this view fetched itself; a parent
   // that passes `pins` owns them. Refetch requests reuse fetchPins below.
@@ -216,6 +231,11 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
       if (mapDataAndMarkers?.Data) {
         const markers = mapDataAndMarkers.Data.MapMakerInfos;
         setInternalPins(applyToFetchedPins(markers, fetchStartedAt));
+
+        // A unit selected before the pins arrived owns the camera: the focus effect frames it on these pins.
+        if (!hasCenteredOnDataRef.current && focusRef.current) {
+          hasCenteredOnDataRef.current = true;
+        }
 
         if (!hasCenteredOnDataRef.current) {
           hasCenteredOnDataRef.current = true;
@@ -357,6 +377,43 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
     });
   }, [mapPins, isMapReady, colorScheme]);
 
+  // Where the focused unit and its crew are now: the pins already carry the live positions.
+  const focusPoints = useMemo(() => (focus ? resolveMapFocusPoints(mapPins, focus) : null), [focus, mapPins]);
+  const framedKeyRef = useRef<string | null>(null);
+  const framedPositionsRef = useRef<Map<string, [number, number]>>(new Map());
+  const [recenterCount, setRecenterCount] = useState(0);
+  const handleRecenter = useCallback(() => setRecenterCount((count) => count + 1), []);
+
+  // Frame the selected unit and its crew. A new unit, a crew change, someone starting or stopping reporting, or
+  // "re-center" frames again; a position moving only does when it takes someone who was on screen off it.
+  useEffect(() => {
+    const instance = map.current;
+
+    if (!focus || !focusPoints) {
+      framedKeyRef.current = null;
+      framedPositionsRef.current = new Map();
+      return;
+    }
+
+    if (!instance || !isMapReady) return;
+
+    const bounds = boundsForFocusPoints(focusPoints.points.map((point) => point.coordinate));
+    // Nobody has a position: the camera stays where it is and the banner says so.
+    if (!bounds) return;
+
+    const frameKey = `${focusFrameKey(focus, focusPoints)}#${recenterCount}`;
+    const previous = framedPositionsRef.current;
+    framedPositionsRef.current = new Map(focusPoints.points.map((point) => [point.pinId, point.coordinate]));
+
+    if (framedKeyRef.current === frameKey) {
+      const visible = instance.getBounds();
+      if (!visible || !hasPointLeftView(previous, focusPoints.points, { contains: (coordinate) => visible.contains(coordinate) })) return;
+    }
+
+    framedKeyRef.current = frameKey;
+    instance.fitBounds([bounds.sw, bounds.ne], { padding: 48, maxZoom: FOCUS_MAX_ZOOM, duration: 600 });
+  }, [focus, focusPoints, isMapReady, recenterCount]);
+
   // Flattened once per `visibleLayers` change and reused by both the signature and the effect
   // below, so serializing for the comparison costs no work the upload did not already do.
   const preparedLayers = useMemo<PreparedLayer[]>(() => {
@@ -472,6 +529,7 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
   return (
     <View style={StyleSheet.flatten([styles.container, style])} testID={testID}>
       <div ref={mapContainer} style={{ height: '100%', width: '100%' }} />
+      {focus && focusPoints ? <MapFocusBanner focus={focus} located={focusPoints} onRecenter={handleRecenter} /> : null}
     </View>
   );
 };

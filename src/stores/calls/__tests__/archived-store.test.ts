@@ -86,6 +86,30 @@ describe('useArchivedCallsStore', () => {
     expect(useArchivedCallsStore.getState().archivedCalls.map((c) => c.CallId)).toEqual(['7']);
   });
 
+  it('marks the year already showing for a reload when a call is added to it', () => {
+    useArchivedCallsStore.setState({ selectedYear: '2026', years: ['2026', '2025'], archivedCalls: [archivedCall('1')], lastFetched: Date.now() });
+
+    useArchivedCallsStore.getState().showYear('2026');
+
+    const state = useArchivedCallsStore.getState();
+    expect(state.selectedYear).toBe('2026');
+    expect(state.lastFetched).toBe(0);
+    // Its rows stay up until the reload replaces them.
+    expect(state.archivedCalls.map((c) => c.CallId)).toEqual(['1']);
+  });
+
+  it("drops another year's rows when showYear moves to a different year", () => {
+    useArchivedCallsStore.setState({ selectedYear: '2026', years: ['2026', '2025'], archivedCalls: [archivedCall('1')], lastFetched: Date.now() });
+
+    useArchivedCallsStore.getState().showYear('2019');
+
+    const state = useArchivedCallsStore.getState();
+    expect(state.selectedYear).toBe('2019');
+    expect(state.years).toEqual(['2026', '2025', '2019']);
+    expect(state.archivedCalls).toEqual([]);
+    expect(state.lastFetched).toBe(0);
+  });
+
   it('reports a failed year lookup without loading calls', async () => {
     mockGetCallYears.mockRejectedValueOnce(new Error('Network down'));
 

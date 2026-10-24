@@ -2,6 +2,7 @@ import { type CreateArchivedCallRequest } from '@/api/calls/calls';
 import { type CallResultData } from '@/models/v4/calls/callResultData';
 import { type DispatchSelection } from '@/stores/dispatch/store';
 
+import { parseCoordinateEntry } from './call-coordinates';
 import { CallState } from './utils';
 
 /** The close types an archived call can have, Closed (1) through False Alarm (7), with the close sheet's labels. */
@@ -109,12 +110,6 @@ export interface ArchivedCallForm {
 /** How far ahead of this device's clock a time may be and still count as now (clocks drift). */
 const CLOCK_SKEW_MS = 5 * 60 * 1000;
 
-/** A coordinate as typed, or null when it is not a number in range. */
-const parseCoordinate = (text: string, limit: number): number | null => {
-  const value = Number(text.trim());
-  return text.trim() !== '' && Number.isFinite(value) && Math.abs(value) <= limit ? value : null;
-};
-
 /**
  * The save request for the form, or the translation key of the first thing wrong with it. Mirrors the server's
  * checks so a dispatcher hears about a time in the future or a close before the call before anything is sent.
@@ -140,16 +135,11 @@ export const buildArchivedCallRequest = (form: ArchivedCallForm, now: number = D
     if (closedOn > now + CLOCK_SKEW_MS) return { errorKey: 'archived_calls.closed_on_future' };
   }
 
-  // Both or neither: one coordinate alone is not a place.
-  let latitude: number | undefined;
-  let longitude: number | undefined;
-  if (form.latitude.trim() || form.longitude.trim()) {
-    const lat = parseCoordinate(form.latitude, 90);
-    const lon = parseCoordinate(form.longitude, 180);
-    if (lat === null || lon === null) return { errorKey: 'archived_calls.coordinates_invalid' };
-    latitude = lat;
-    longitude = lon;
-  }
+  // Both or neither, in decimal degrees as the new and edit call screens take them: one coordinate alone is not a place.
+  const coordinates = parseCoordinateEntry(form.latitude, form.longitude);
+  if (coordinates.status === 'invalid' || coordinates.status === 'incomplete') return { errorKey: 'archived_calls.coordinates_invalid' };
+  const latitude = coordinates.status === 'valid' ? coordinates.latitude : undefined;
+  const longitude = coordinates.status === 'valid' ? coordinates.longitude : undefined;
 
   return {
     request: {

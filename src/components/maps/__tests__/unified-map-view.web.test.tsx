@@ -1,4 +1,4 @@
-import { act, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import React from 'react';
 
 import { getMapDataAndMarkers } from '@/api/mapping/mapping';
@@ -20,9 +20,12 @@ interface MockMarker {
 interface MockMap {
   handlers: Record<string, () => void>;
   flyTo: jest.Mock;
+  fitBounds: jest.Mock;
 }
 const mockMarkers: MockMarker[] = [];
 const mockMaps: MockMap[] = [];
+// What getBounds reports as on screen; the whole world unless a test narrows it.
+const mockVisibleBox = { west: -180, south: -90, east: 180, north: 90 };
 
 jest.mock('mapbox-gl', () => {
   class Popup {
@@ -61,6 +64,10 @@ jest.mock('mapbox-gl', () => {
   class MapboxMap {
     handlers: Record<string, () => void> = {};
     flyTo = jest.fn();
+    fitBounds = jest.fn();
+    getBounds = jest.fn(() => ({
+      contains: ([lng, lat]: [number, number]) => lng >= mockVisibleBox.west && lng <= mockVisibleBox.east && lat >= mockVisibleBox.south && lat <= mockVisibleBox.north,
+    }));
     constructor() {
       mockMaps.push(this as unknown as MockMap);
     }
@@ -102,6 +109,11 @@ jest.mock('@/lib/env', () => ({ Env: { MAPBOX_PUBKEY: 'pk.test' } }));
 jest.mock('@/lib/logging', () => ({ logger: { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() } }));
 jest.mock('@/stores/app/location-store', () => ({ useLocationStore: { getState: () => ({ latitude: null, longitude: null }) } }));
 jest.mock('nativewind', () => ({ useColorScheme: () => ({ colorScheme: 'light' }) }));
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string, options?: Record<string, unknown>) => (options ? `${key}:${JSON.stringify(options)}` : key) }),
+}));
+jest.mock('@/components/ui/icon', () => ({ Icon: () => null }));
+jest.mock('lucide-react-native', () => ({ LocateFixed: () => null }));
 
 const mockGetMapDataAndMarkers = getMapDataAndMarkers as jest.MockedFunction<typeof getMapDataAndMarkers>;
 
@@ -202,5 +214,131 @@ describe('UnifiedMapView (web) realtime locations', () => {
     // The push arrived before the refetch started, so the fresh REST position stands.
     expect(markerAt(38, -118)).toBeDefined();
     expect(mockMaps[0].flyTo).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('UnifiedMapView (web) selected unit focus', () => {
+  const originalDocument = (global as any).document;
+  // A unit with two of its three seated members reporting; DEF has a pin, GHI does not.
+  const FOCUS_PINS = [makePin('c1', 0, 39.1, -119.1), makePin('u12', 1, 39.2, -119.2), makePin('pABC', 3, 39.21, -119.21), makePin('pDEF', 3, 39.22, -119.22), makePin('pXYZ', 3, 39.9, -119.9)];
+  const focusFor = (crewPinIds: string[], unitId = '12') => ({ key: `unit:${unitId}`, label: `Engine ${unitId}`, unitPinId: `u${unitId}`, crewPinIds });
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    mockMarkers.length = 0;
+    mockMaps.length = 0;
+    Object.assign(mockVisibleBox, { west: -180, south: -90, east: 180, north: 90 });
+    mockGetMapDataAndMarkers.mockReset();
+    mockGetMapDataAndMarkers.mockResolvedValue(mapResponse(FOCUS_PINS));
+    useSignalRStore.setState({ liveLocations: {}, lastGeolocationJoinTimestamp: 0 });
+    (global as any).document = { getElementById: () => ({}) };
+  });
+
+  afterEach(() => {
+    (global as any).document = originalDocument;
+    jest.useRealTimers();
+  });
+
+  const renderFocusedMap = async (focus: ReturnType<typeof focusFor> | null) => {
+    const view = render(<UnifiedMapView autoFetchPins focus={focus} />, { createNodeMock: () => ({}) });
+    act(() => mockMaps[0].handlers.load());
+    await waitFor(() => expect(mockMarkers).toHaveLength(FOCUS_PINS.length));
+    return view;
+  };
+
+  const pushLocation = (pinId: string, latitude: number, longitude: number) =>
+    act(() => {
+      useSignalRStore.setState({ liveLocations: { [pinId]: { pinId, latitude, longitude, timestamp: null, receivedAt: Date.now() } } });
+    });
+
+  it('frames the unit and its located crew instead of flying to the department center', async () => {
+    const view = await renderFocusedMap(focusFor(['pabc', 'pdef', 'pghi']));
+
+    expect(mockMaps[0].flyTo).not.toHaveBeenCalled();
+    expect(mockMaps[0].fitBounds).toHaveBeenCalledTimes(1);
+    const [[sw, ne]] = mockMaps[0].fitBounds.mock.calls[0];
+    // Every framed position is inside the bounds, and the member far away who is not on the unit is not framed.
+    [
+      [-119.2, 39.2],
+      [-119.21, 39.21],
+      [-119.22, 39.22],
+    ].forEach(([lng, lat]) => {
+      expect(lng).toBeGreaterThanOrEqual(sw[0]);
+      expect(lng).toBeLessThanOrEqual(ne[0]);
+      expect(lat).toBeGreaterThanOrEqual(sw[1]);
+      expect(lat).toBeLessThanOrEqual(ne[1]);
+    });
+    expect(ne[1]).toBeLessThan(39.9);
+    expect(view.getByTestId('map-focus-banner-detail').props.children).toBe('dispatch.unit_map_focus_crew_located:{"located":2,"total":3}');
+  });
+
+  it('frames the crew alone, as close as it allows, when the unit has no position', async () => {
+    const view = await renderFocusedMap(focusFor(['pabc'], '77'));
+
+    expect(mockMaps[0].fitBounds).toHaveBeenCalledTimes(1);
+    const [[sw, ne], options] = mockMaps[0].fitBounds.mock.calls[0];
+    expect(ne[0] - sw[0]).toBeCloseTo(0.0025, 6);
+    expect(ne[1] - sw[1]).toBeCloseTo(0.0025, 6);
+    expect((sw[1] + ne[1]) / 2).toBeCloseTo(39.21, 6);
+    expect(options).toEqual(expect.objectContaining({ maxZoom: 17 }));
+    expect(view.getByTestId('map-focus-banner-detail').props.children).toBe('dispatch.unit_map_focus_no_unit_position · dispatch.unit_map_focus_crew_located:{"located":1,"total":1}');
+  });
+
+  it('leaves the camera alone and says so when nobody on the unit has a position', async () => {
+    const view = await renderFocusedMap(focusFor(['pghi'], '77'));
+
+    expect(mockMaps[0].fitBounds).not.toHaveBeenCalled();
+    expect(view.getByTestId('map-focus-banner-detail').props.children).toBe('dispatch.unit_map_focus_no_positions');
+    expect(view.queryByTestId('map-focus-recenter')).toBeNull();
+  });
+
+  it('keeps the frame while the crew moves on screen, and follows a member who moves off it', async () => {
+    await renderFocusedMap(focusFor(['pabc', 'pdef']));
+    Object.assign(mockVisibleBox, { west: -119.3, south: 39.1, east: -119.1, north: 39.3 });
+
+    pushLocation('pabc', 39.25, -119.25);
+    expect(mockMaps[0].fitBounds).toHaveBeenCalledTimes(1);
+
+    pushLocation('pabc', 39.6, -119.6);
+    expect(mockMaps[0].fitBounds).toHaveBeenCalledTimes(2);
+    const [[sw, ne]] = mockMaps[0].fitBounds.mock.calls[1];
+    expect(ne[1]).toBeGreaterThanOrEqual(39.6);
+    expect(sw[0]).toBeLessThanOrEqual(-119.6);
+  });
+
+  it('does not pull the camera back to a member the dispatcher panned away from', async () => {
+    await renderFocusedMap(focusFor(['pabc', 'pdef']));
+    // The dispatcher has moved the map somewhere else entirely.
+    Object.assign(mockVisibleBox, { west: -100, south: 30, east: -99, north: 31 });
+
+    pushLocation('pabc', 39.25, -119.25);
+
+    expect(mockMaps[0].fitBounds).toHaveBeenCalledTimes(1);
+  });
+
+  it('frames again when the crew changes, but not when the same crew is refetched', async () => {
+    const view = await renderFocusedMap(focusFor(['pabc']));
+    expect(mockMaps[0].fitBounds).toHaveBeenCalledTimes(1);
+
+    view.rerender(<UnifiedMapView autoFetchPins focus={focusFor(['pabc'])} />);
+    expect(mockMaps[0].fitBounds).toHaveBeenCalledTimes(1);
+
+    view.rerender(<UnifiedMapView autoFetchPins focus={focusFor(['pabc', 'pdef'])} />);
+    expect(mockMaps[0].fitBounds).toHaveBeenCalledTimes(2);
+  });
+
+  it('re-centers on request and leaves the camera where it is once the unit is deselected', async () => {
+    const view = await renderFocusedMap(focusFor(['pabc']));
+
+    fireEvent.press(view.getByTestId('map-focus-recenter'));
+    expect(mockMaps[0].fitBounds).toHaveBeenCalledTimes(2);
+    const framedCount = 2;
+
+    view.rerender(<UnifiedMapView autoFetchPins focus={null} />);
+    pushLocation('pabc', 39.6, -119.6);
+
+    expect(mockMaps[0].fitBounds).toHaveBeenCalledTimes(framedCount);
+    expect(mockMaps[0].flyTo).not.toHaveBeenCalled();
+    expect(view.queryByTestId('map-focus-banner')).toBeNull();
   });
 });

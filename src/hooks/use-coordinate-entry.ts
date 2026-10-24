@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { reverseGeocode } from '@/api/geocoding/geocoding';
 import { type CallPoint, type CoordinateAxis, type CoordinateEntry, isSameCoordinateSpot, parseCoordinate, parseCoordinateEntry, splitCoordinatePair } from '@/lib/call-coordinates';
+import { logger } from '@/lib/logging';
 
 /** How long the latitude and longitude inputs sit still before what they hold moves the pin. */
 export const COORDINATE_ENTRY_DELAY_MS = 2000;
@@ -91,7 +92,7 @@ export const useCoordinateEntry = (options: UseCoordinateEntryOptions) => {
     try {
       address = (await reverseGeocode(point.latitude, point.longitude)).address;
     } catch (error) {
-      console.error('Error reverse geocoding call coordinates:', error);
+      logger.error({ message: 'Failed to reverse geocode the call coordinates', context: { error, latitude: point.latitude, longitude: point.longitude } });
     }
 
     // A newer point took over, or the dispatcher typed an address while this ran.
@@ -135,6 +136,9 @@ export const useCoordinateEntry = (options: UseCoordinateEntryOptions) => {
         onLocationEntered(point);
         void fillAddress(point);
       } else if (entry.status === 'empty' && location) {
+        // A lookup still running for the point being removed would put its address back.
+        lookupIdRef.current += 1;
+        setIsLookingUpAddress(false);
         onCleared?.();
       }
 

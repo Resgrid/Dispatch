@@ -169,6 +169,10 @@ describe('buildArchivedCallRequest', () => {
     expect(errorOf({ latitude: '39.12' })).toBe('archived_calls.coordinates_invalid');
     expect(errorOf({ latitude: '91', longitude: '10' })).toBe('archived_calls.coordinates_invalid');
     expect(errorOf({ latitude: 'abc', longitude: '10' })).toBe('archived_calls.coordinates_invalid');
+    // Decimal degrees only: no exponents, hex or decimal commas.
+    expect(errorOf({ latitude: '1e1', longitude: '10' })).toBe('archived_calls.coordinates_invalid');
+    expect(errorOf({ latitude: '39.12', longitude: '0x10' })).toBe('archived_calls.coordinates_invalid');
+    expect(errorOf({ latitude: '39,12', longitude: '10' })).toBe('archived_calls.coordinates_invalid');
 
     const result = buildArchivedCallRequest(form({ latitude: ' 39.122639 ', longitude: '-119.758773' }), now);
     expect('request' in result && [result.request.latitude, result.request.longitude]).toEqual([39.122639, -119.758773]);
