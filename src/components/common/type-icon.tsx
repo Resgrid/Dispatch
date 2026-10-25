@@ -17,6 +17,11 @@ export interface TypeIconProps {
   style?: StyleProp<ImageStyle>;
   /** Applied to the box around the rendered image (not the fallback), e.g. spacing that the fallback carries itself. */
   containerStyle?: StyleProp<ViewStyle>;
+  /**
+   * How the image at `iconUrl` is fitted into the square: "contain" (the default) for an uploaded square icon, "cover" for
+   * a remote copy of a bundled pin that must sit exactly where the bundled image (drawn with resizeMode "cover") would.
+   */
+  contentFit?: 'contain' | 'cover';
   testID?: string;
 }
 
@@ -26,7 +31,7 @@ export interface TypeIconProps {
  * icon the type picked, then `fallback` (nothing by default). An image that fails to load falls through to the next
  * option. Decorative: the name and type are always shown as text next to it, so it is hidden from screen readers.
  */
-export const TypeIcon: React.FC<TypeIconProps> = React.memo(({ iconUrl, mapIcon, size = 24, fallback = null, style, containerStyle, testID }) => {
+export const TypeIcon: React.FC<TypeIconProps> = React.memo(({ iconUrl, mapIcon, size = 24, fallback = null, style, containerStyle, contentFit = 'contain', testID }) => {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const [failedMapIcon, setFailedMapIcon] = useState<string | null>(null);
 
@@ -40,7 +45,7 @@ export const TypeIcon: React.FC<TypeIconProps> = React.memo(({ iconUrl, mapIcon,
         <ExpoImage
           source={{ uri: url }}
           style={StyleSheet.flatten([box, style])}
-          contentFit="contain"
+          contentFit={contentFit}
           cachePolicy="memory-disk"
           recyclingKey={url}
           accessible={false}

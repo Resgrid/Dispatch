@@ -116,10 +116,15 @@ const PinMarker = React.memo<PinMarkerProps>(({ pin, size = 32, onPress }) => {
 
   const bundledIcon = <Image fadeDuration={0} source={icon.uri} style={StyleSheet.flatten([styles.image, { width: size, height: size }])} />;
 
-  // Non-POI legacy marker rendering
+  // The built-in pin recoloured to the call's priority or the unit's / person's status: the same 32x37 image as the
+  // bundled pin, so it is drawn in the same box with the same fit and no tint, and falls back to the bundled pin when it
+  // is absent or fails to load.
+  const statusPin = <TypeIcon iconUrl={pin.PinIconUrl} size={size} contentFit="cover" style={styles.pinImage} fallback={bundledIcon} testID="pin-status-icon" />;
+
+  // Non-POI legacy marker rendering: the uploaded icon, else the status/priority pin, else the bundled pin.
   return (
     <TouchableOpacity style={styles.container} onPress={handlePress} activeOpacity={0.7}>
-      <TypeIcon iconUrl={pin.IconUrl} size={size} fallback={bundledIcon} />
+      <TypeIcon iconUrl={pin.IconUrl} size={size} fallback={statusPin} />
       <Text style={StyleSheet.flatten([styles.title, { color: colorScheme === 'dark' ? '#FFFFFF' : '#000000' }])} numberOfLines={2}>
         {pin.Title}
       </Text>
@@ -145,6 +150,10 @@ const styles = StyleSheet.create({
   image: {
     overflow: 'visible',
     resizeMode: 'cover',
+  },
+  // The remote status/priority pin, fitted like `image` (its fit is the TypeIcon's contentFit).
+  pinImage: {
+    overflow: 'visible',
   },
   title: {
     marginTop: 2,

@@ -191,6 +191,15 @@ export const getMapMarkerPopupOffset = (pin: MapMakerInfoData): Record<PopupAnch
 };
 
 /**
+ * Everything a marker element from `createMapMarkerElement` and its popup are built from, prefixed with the theme
+ * ("dark:" / "light:"). A map keeps a live marker while this is unchanged and rebuilds it when it changes, so it must
+ * include every field the element reads: an uploaded icon, and the status/priority pin and its style, whose URL changes
+ * when a unit's or person's status or a call's priority does.
+ */
+export const getMapMarkerSignature = (pin: MapMakerInfoData, colorScheme: 'dark' | 'light'): string =>
+  `${colorScheme}:${pin.Title}:${pin.Type}:${pin.PoiTypeId}:${pin.LayerId}:${pin.ImagePath}:${pin.PoiImage}:${pin.Marker}:${pin.Color}:${pin.Address}:${pin.Note}:${pin.PoiTypeName}:${pin.InfoWindowContent}:${pin.IconUrl ?? ''}:${pin.PinIconUrl ?? ''}:${pin.IconStyle ?? ''}`;
+
+/**
  * Creates a marker DOM element that can be used with Mapbox GL JS.
  * Handles both POI markers (SVG shape + map-icons font) and
  * non-POI legacy markers (PNG images).
@@ -245,13 +254,16 @@ export const createMapMarkerElement = (pin: MapMakerInfoData, colorScheme: 'dark
     const iconKey = resolveMapMarkerIconKey(pin) as MapIconKey;
     const iconData = MAP_ICONS[iconKey] || MAP_ICONS['flag'];
     const img = document.createElement('img');
-    // The uploaded type icon (when there is one) shows first; each failed load steps down to the bundled icon, then
-    // the flag, and stops there rather than retrying a broken image forever.
-    const sources = [uploadedIconUrl, getMapIconWebUrl(iconData), getMapIconWebUrl(MAP_ICONS['flag'])].filter((src, index, all): src is string => !!src && all.indexOf(src) === index);
+    // The built-in pin recoloured to the call's priority or the unit's / person's status: the same 32x37 image as the
+    // bundled pin, so it takes the bundled pin's place in the same box and fit, with no tint.
+    const statusPinUrl = getTypeIconUrl(pin.PinIconUrl);
+    // The uploaded type icon (when there is one) shows first, then the status/priority pin; each failed load steps down
+    // to the bundled icon, then the flag, and stops there rather than retrying a broken image forever.
+    const sources = [uploadedIconUrl, statusPinUrl, getMapIconWebUrl(iconData), getMapIconWebUrl(MAP_ICONS['flag'])].filter((src, index, all): src is string => !!src && all.indexOf(src) === index);
     let sourceIndex = 0;
     img.src = sources[sourceIndex];
-    // Fitted, not cropped: a bundled 32x37 pin scales into the box with its tip on the box's bottom edge, and an
-    // uploaded square icon fills it.
+    // Fitted, not cropped: a bundled 32x37 pin (or its status/priority copy) scales into the box with its tip on the
+    // box's bottom edge, and an uploaded square icon fills it.
     img.style.width = `${PIN_ICON_SIZE}px`;
     img.style.height = `${PIN_ICON_SIZE}px`;
     img.style.objectFit = 'contain';

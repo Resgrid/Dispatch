@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import { buildMapPinPopupHtml, createMapMarkerElement, getMapMarkerPopupOffset, MAP_MARKER_ANCHOR } from '@/lib/map-markers-web';
+import { buildMapPinPopupHtml, createMapMarkerElement, getMapMarkerPopupOffset, getMapMarkerSignature, MAP_MARKER_ANCHOR } from '@/lib/map-markers-web';
 import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersData';
 
 const pin = (patch: Partial<MapMakerInfoData> = {}): MapMakerInfoData =>
@@ -114,6 +114,74 @@ describe('createMapMarkerElement type icons', () => {
       expect(iconSrc(createMapMarkerElement(person()))).toBe('/assets/mapping/person_respondingcall.png');
       expect(iconSrc(createMapMarkerElement(person({ ImagePath: '' })))).toBe('/assets/mapping/person.png');
     });
+  });
+});
+
+describe('createMapMarkerElement status / priority pins', () => {
+  const ICON_URL = 'https://api.resgrid.dev/api/v4/TypeIcons/u12.png?s=responding&v=1';
+  const PIN_ICON_URL = 'https://api.resgrid.dev/api/v4/TypeIcons/Pins/engine-responding?v=1';
+  const iconSrc = (el: HTMLElement) => el.querySelector('img')?.getAttribute('src');
+  const failImage = (el: HTMLElement) => el.querySelector('img')?.dispatchEvent(new Event('error'));
+
+  it('draws the status pin where the bundled pin goes, stepping down to the bundled pin and then the flag when loads fail', () => {
+    const el = createMapMarkerElement(pin({ Type: 1, ImagePath: 'Engine_Responding', PinIconUrl: PIN_ICON_URL, IconStyle: 'responding' }));
+    const img = el.querySelector('img')!;
+
+    expect(iconSrc(el)).toBe(PIN_ICON_URL);
+    // Same box, fit and bottom anchor as the bundled pin, with no tint.
+    expect(img.style.width).toBe('32px');
+    expect(img.style.height).toBe('32px');
+    expect(img.style.objectFit).toBe('contain');
+    expect(img.style.objectPosition).toBe('center bottom');
+    expect(img.style.filter).toBe('');
+
+    failImage(el);
+    expect(iconSrc(el)).toBe('/assets/mapping/engine_responding.png');
+    failImage(el);
+    expect(iconSrc(el)).toBe('/assets/mapping/flag.png');
+  });
+
+  it('prefers the uploaded icon over the status pin, and the status pin over the bundled pin when the upload fails', () => {
+    const el = createMapMarkerElement(pin({ Type: 0, ImagePath: 'Call', IconUrl: ICON_URL, PinIconUrl: PIN_ICON_URL, IconStyle: 'high' }));
+
+    expect(iconSrc(el)).toBe(ICON_URL);
+    failImage(el);
+    expect(iconSrc(el)).toBe(PIN_ICON_URL);
+    failImage(el);
+    expect(iconSrc(el)).toBe('/assets/mapping/call.png');
+  });
+
+  it('keeps the bundled pin without a usable status pin (older servers, stations, or a non-http URL)', () => {
+    expect(iconSrc(createMapMarkerElement(pin({ Type: 3, ImagePath: 'Person_RespondingCall', PinIconUrl: null })))).toBe('/assets/mapping/person_respondingcall.png');
+    expect(iconSrc(createMapMarkerElement(pin({ Type: 3, ImagePath: 'Person_RespondingCall', PinIconUrl: '/api/v4/TypeIcons/Pins/person-responding' })))).toBe('/assets/mapping/person_respondingcall.png');
+    expect(iconSrc(createMapMarkerElement(pin({ Type: 2, ImagePath: 'Station' })))).toBe('/assets/mapping/station.png');
+  });
+
+  it('never draws a status pin on a POI marker', () => {
+    const el = createMapMarkerElement(pin({ Type: 4, PoiTypeId: 5, PoiImage: 'map-icon-hospital', Marker: 'MAP_PIN', PinIconUrl: PIN_ICON_URL }));
+
+    expect(el.querySelector('img')).toBeNull();
+    expect(el.querySelector('.rg-map__poi-marker')).not.toBeNull();
+  });
+});
+
+describe('getMapMarkerSignature', () => {
+  const base = pin({ Type: 1, ImagePath: 'Engine_Available', PinIconUrl: 'https://api.resgrid.dev/api/v4/TypeIcons/Pins/engine-available?v=1', IconStyle: 'available' });
+
+  it('changes when only the status pin or its style changes, so the marker is rebuilt', () => {
+    const signature = getMapMarkerSignature(base, 'light');
+
+    expect(getMapMarkerSignature({ ...base, PinIconUrl: 'https://api.resgrid.dev/api/v4/TypeIcons/Pins/engine-responding?v=1' } as MapMakerInfoData, 'light')).not.toBe(signature);
+    expect(getMapMarkerSignature({ ...base, IconStyle: 'responding' } as MapMakerInfoData, 'light')).not.toBe(signature);
+    expect(getMapMarkerSignature({ ...base, IconUrl: 'https://api.resgrid.dev/api/v4/TypeIcons/u12.png?s=available&v=1' } as MapMakerInfoData, 'light')).not.toBe(signature);
+  });
+
+  it('ignores a move, which repositions the marker in place, and is prefixed with the theme', () => {
+    const signature = getMapMarkerSignature(base, 'dark');
+
+    expect(getMapMarkerSignature({ ...base, Latitude: 40, Longitude: -120 } as MapMakerInfoData, 'dark')).toBe(signature);
+    expect(signature.startsWith('dark:')).toBe(true);
+    expect(getMapMarkerSignature(base, 'light')).not.toBe(signature);
   });
 });
 

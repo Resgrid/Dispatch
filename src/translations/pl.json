@@ -425,8 +425,8 @@
       "crew": "Załoga: {{names}}",
       "no_crew": "Brak przypisanej załogi",
       "on_unit": "Na {{unit}}",
-      "map_units": "Jednostki",
-      "map_personnel": "Personel",
+      "map_units": "Dostępne jednostki",
+      "map_personnel": "Dostępny personel",
       "map_boundaries": "Granice rejonów",
       "run_card_pick": "Plan zadysponowania"
     }

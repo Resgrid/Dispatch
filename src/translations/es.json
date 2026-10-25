@@ -425,8 +425,8 @@
       "crew": "Dotación: {{names}}",
       "no_crew": "Sin dotación asignada",
       "on_unit": "En {{unit}}",
-      "map_units": "Unidades",
-      "map_personnel": "Personal",
+      "map_units": "Unidades disponibles",
+      "map_personnel": "Personal disponible",
       "map_boundaries": "Límites de estaciones",
       "run_card_pick": "Plan de respuesta"
     }

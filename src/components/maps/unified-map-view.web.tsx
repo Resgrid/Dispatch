@@ -6,10 +6,11 @@ import { StyleSheet, View } from 'react-native';
 
 import { getMapDataAndMarkers } from '@/api/mapping/mapping';
 import { useMapLiveLocations } from '@/hooks/use-map-live-locations';
+import { useMapSignalRRefetch } from '@/hooks/use-map-signalr-updates';
 import { logger } from '@/lib/logging';
 import { getDepartmentMapCenter } from '@/lib/map-center';
 import { hasValidMapCoordinates } from '@/lib/map-markers';
-import { buildMapPinPopupHtml, createMapMarkerElement, getMapMarkerPopupOffset, MAP_MARKER_ANCHOR } from '@/lib/map-markers-web';
+import { buildMapPinPopupHtml, createMapMarkerElement, getMapMarkerPopupOffset, getMapMarkerSignature, MAP_MARKER_ANCHOR } from '@/lib/map-markers-web';
 import { useDepartmentMapStyle } from '@/lib/map-style';
 import { applyMapboxGlAccessToken } from '@/lib/mapbox-gl-token-web';
 import { boundsForFocusPoints, FOCUS_MAX_ZOOM, focusFrameKey, hasPointLeftView, type MapFocus, resolveMapFocusPoints } from '@/lib/unit-map-focus';
@@ -212,7 +213,8 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
   }, [mapStyle, isMapReady]);
 
   // Fetches the pins this view shows when auto-fetching: once on mount, and again in the background when the
-  // realtime location feed asks for it. Only the first successful load may move the camera.
+  // realtime location feed asks for it or the update hub reports a change. Only the first successful load may move
+  // the camera.
   const fetchAbortRef = useRef<AbortController | null>(null);
   const hasCenteredOnDataRef = useRef(false);
   const fetchPins = useCallback(async () => {
@@ -291,6 +293,11 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
       : null;
   }, [autoFetchPins, fetchPins]);
 
+  // Status and call changes from the update hub restyle pins (their pin images follow the status or priority), so the
+  // pins this view fetched itself are refetched in the background as on native; fetchPins only moves the camera on the
+  // first load. A parent that passes `pins` owns their refresh.
+  useMapSignalRRefetch(requestPinsRefresh, autoFetchPins && externalPins === undefined);
+
   // Auto-fetch pins if enabled
   useEffect(() => {
     if (!autoFetchPins) return;
@@ -326,9 +333,9 @@ const UnifiedMapViewComponent: React.FC<UnifiedMapViewProps> = ({
       // instead of re-deriving its signature on every realtime update.
       if (existing && currentMeta && currentMeta.pin === pin && currentMeta.signature.startsWith(`${theme}:`)) return;
 
-      // Everything the marker element or its popup is built from, so a change to any of it (an uploaded icon included)
-      // rebuilds the marker instead of keeping the old element.
-      const signature = `${theme}:${pin.Title}:${pin.Type}:${pin.PoiTypeId}:${pin.LayerId}:${pin.ImagePath}:${pin.PoiImage}:${pin.Marker}:${pin.Color}:${pin.Address}:${pin.Note}:${pin.PoiTypeName}:${pin.InfoWindowContent}:${pin.IconUrl ?? ''}`;
+      // Everything the marker element or its popup is built from, so a change to any of it (an uploaded icon, or the
+      // status/priority pin after a status change, included) rebuilds the marker instead of keeping the old element.
+      const signature = getMapMarkerSignature(pin, theme);
 
       if (existing) {
         const meta = currentMeta;

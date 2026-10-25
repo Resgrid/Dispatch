@@ -4,9 +4,10 @@ import { buildDispatchMapOverlay, type DispatchMapOverlay } from '@/lib/dispatch
 import { boardKeyFor, useDispatchStore } from '@/stores/dispatch/store';
 
 /**
- * What to draw on a call's location map while dispatching: the units and personnel the nearest-unit board placed for
- * that location, and every group boundary. Loads the board (shared with the recipient picker, so both rank alike) and
- * the dispatch lists once. Null until there is something to draw.
+ * What to draw on a call's location map while dispatching: the available units and personnel the nearest-unit board
+ * placed for that location (unavailable ones stay in the recipient picker, with their status, but not on the map), and
+ * every group boundary. Loads the board (shared with the recipient picker, so both rank alike) and the dispatch lists
+ * once. Null until there is something to draw.
  */
 export const useDispatchMapOverlay = (location?: { latitude: number; longitude: number } | null): DispatchMapOverlay | null => {
   const board = useDispatchStore((state) => state.board);

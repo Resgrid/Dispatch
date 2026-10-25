@@ -425,8 +425,8 @@
       "crew": "Besatzung: {{names}}",
       "no_crew": "Keine Besatzung zugewiesen",
       "on_unit": "Auf {{unit}}",
-      "map_units": "Einheiten",
-      "map_personnel": "Personal",
+      "map_units": "Verfügbare Einheiten",
+      "map_personnel": "Verfügbares Personal",
       "map_boundaries": "Wachbereiche",
       "run_card_pick": "Alarmierungsplan"
     }

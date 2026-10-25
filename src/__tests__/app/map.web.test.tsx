@@ -3,6 +3,7 @@ import React from 'react';
 
 import { getMapDataAndMarkers } from '@/api/mapping/mapping';
 import { LIVE_LOCATION_REFRESH_DELAY_MS } from '@/hooks/use-map-live-locations';
+import { MAP_SIGNALR_REFETCH_DELAY_MS } from '@/hooks/use-map-signalr-updates';
 import { clearMapboxToken, useMapboxTokenStore } from '@/lib/mapbox-token';
 import { type GetConfigResultData } from '@/models/v4/configs/getConfigResultData';
 import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersData';
@@ -94,7 +95,7 @@ jest.mock('mapbox-gl', () => {
 
 jest.mock('@/stores/signalr/signalr-store', () => {
   const { create } = jest.requireActual('zustand');
-  return { useSignalRStore: create(() => ({ liveLocations: {}, lastGeolocationJoinTimestamp: 0 })) };
+  return { useSignalRStore: create(() => ({ liveLocations: {}, lastGeolocationJoinTimestamp: 0, lastUpdateTimestamp: 0 })) };
 });
 
 jest.mock('@/api/mapping/mapping', () => ({ getMapDataAndMarkers: jest.fn() }));
@@ -102,6 +103,8 @@ jest.mock('@/lib/map-markers-web', () => ({
   buildMapPinPopupHtml: jest.fn(() => '<div></div>'),
   createMapMarkerElement: jest.fn((pin: { Id: string }) => ({ pinId: pin.Id })),
   getMapMarkerPopupOffset: jest.fn(() => ({ bottom: [0, -36] })),
+  // The real signature, so the test sees exactly which pin changes rebuild a marker.
+  getMapMarkerSignature: jest.requireActual('@/lib/map-markers-web').getMapMarkerSignature,
   MAP_MARKER_ANCHOR: 'bottom',
 }));
 jest.mock('@/lib/map-center', () => ({ getDepartmentMapCenter: () => ({ latitude: 39, longitude: -119, zoomLevel: 9 }) }));
@@ -150,7 +153,7 @@ describe('Map screen (web) realtime locations', () => {
     mockMaps.length = 0;
     mockGetMapDataAndMarkers.mockReset();
     mockGetMapDataAndMarkers.mockResolvedValue(mapResponse(REST_PINS));
-    useSignalRStore.setState({ liveLocations: {}, lastGeolocationJoinTimestamp: 0 });
+    useSignalRStore.setState({ liveLocations: {}, lastGeolocationJoinTimestamp: 0, lastUpdateTimestamp: 0 });
     // Only the stylesheet injection touches document; report it as already present.
     (global as any).document = { getElementById: () => ({}) };
   });
@@ -224,6 +227,32 @@ describe('Map screen (web) realtime locations', () => {
     // The pins that did not change keep their markers.
     expect(liveMarker('u12')).toEqual([unitMarker]);
     expect(mockMarkers).toHaveLength(REST_PINS.length + 1);
+  });
+
+  it('refetches after an update hub change and rebuilds only the marker whose status pin changed, without moving the camera', async () => {
+    const RESPONDING_PIN = 'https://api.resgrid.dev/api/v4/TypeIcons/Pins/person-responding?v=1';
+    const { createMapMarkerElement } = jest.requireMock('@/lib/map-markers-web') as { createMapMarkerElement: jest.Mock };
+    await renderLoadedMap();
+    const [personMarker] = liveMarker('pABC');
+    const [unitMarker] = liveMarker('u12');
+
+    // The person went responding: same pin, same place, only the status pin (and its style) changed.
+    mockGetMapDataAndMarkers.mockResolvedValue(mapResponse(REST_PINS.map((pin) => (pin.Id === 'pABC' ? ({ ...pin, PinIconUrl: RESPONDING_PIN, IconStyle: 'responding' } as MapMakerInfoData) : pin))));
+    act(() => {
+      useSignalRStore.setState({ lastUpdateTimestamp: 1000 });
+    });
+    expect(mockGetMapDataAndMarkers).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      jest.advanceTimersByTime(MAP_SIGNALR_REFETCH_DELAY_MS);
+    });
+    await waitFor(() => expect(personMarker.remove).toHaveBeenCalled());
+
+    expect(mockGetMapDataAndMarkers).toHaveBeenCalledTimes(2);
+    expect(createMapMarkerElement).toHaveBeenLastCalledWith(expect.objectContaining({ Id: 'pABC', PinIconUrl: RESPONDING_PIN, IconStyle: 'responding' }), 'light');
+    expect(liveMarker('pABC')).toHaveLength(1);
+    expect(liveMarker('u12')).toEqual([unitMarker]);
+    expect(mockMaps[0].flyTo).toHaveBeenCalledTimes(1);
   });
 
   it("keeps the user's POI layer toggles across a background refetch", async () => {

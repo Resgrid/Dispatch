@@ -140,7 +140,6 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ initialLocation, onLoca
                     circleColor: ['get', 'color'],
                     circleStrokeColor: '#ffffff',
                     circleStrokeWidth: ['case', ['==', ['get', 'kind'], 'unit'], 2.5, 1.5],
-                    circleOpacity: ['case', ['get', 'available'], 1, 0.5],
                   }}
                 />
                 <Mapbox.SymbolLayer

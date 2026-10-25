@@ -187,3 +187,39 @@ export const useMapSignalRUpdates = (onMarkersUpdate: (markers: MapMakerInfoData
 
   return { requestRefresh };
 };
+
+/** How long the update hub must stay quiet before `useMapSignalRRefetch` refetches. */
+export const MAP_SIGNALR_REFETCH_DELAY_MS = DEBOUNCE_DELAY;
+
+/**
+ * Runs `refetch` (debounced) whenever the update hub reports a change (a unit or person status, a call added, updated
+ * or closed) after the map mounted, for a map that already owns its marker fetch. Status and priority changes reach the
+ * pins only through such a refetch: the pin images (`PinIconUrl`, `IconUrl`) change with them. `refetch` must be a
+ * background refresh that leaves the camera where the user put it; the change already recorded when the map mounted is
+ * covered by the map's own first load and is skipped.
+ */
+export const useMapSignalRRefetch = (refetch: () => void, enabled: boolean = true) => {
+  const lastUpdateTimestamp = useSignalRStore((state) => state.lastUpdateTimestamp);
+  const handledTimestampRef = useRef(lastUpdateTimestamp);
+
+  // The latest refetch, so a new callback identity neither cancels a pending refresh nor schedules an extra one.
+  const refetchRef = useRef(refetch);
+  useEffect(() => {
+    refetchRef.current = refetch;
+  }, [refetch]);
+
+  useEffect(() => {
+    if (!enabled || !(lastUpdateTimestamp > 0) || lastUpdateTimestamp === handledTimestampRef.current) return;
+
+    const timer = setTimeout(() => {
+      handledTimestampRef.current = lastUpdateTimestamp;
+      logger.debug({
+        message: 'Refetching map markers after an update hub change',
+        context: { timestamp: lastUpdateTimestamp },
+      });
+      refetchRef.current();
+    }, DEBOUNCE_DELAY);
+
+    return () => clearTimeout(timer);
+  }, [enabled, lastUpdateTimestamp]);
+};

@@ -425,8 +425,8 @@
       "crew": "Equipaggio: {{names}}",
       "no_crew": "Nessun equipaggio assegnato",
       "on_unit": "Su {{unit}}",
-      "map_units": "Unità",
-      "map_personnel": "Personale",
+      "map_units": "Unità disponibili",
+      "map_personnel": "Personale disponibile",
       "map_boundaries": "Confini delle sedi",
       "run_card_pick": "Piano di risposta"
     }

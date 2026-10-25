@@ -425,8 +425,8 @@
       "crew": "Besättning: {{names}}",
       "no_crew": "Ingen besättning tilldelad",
       "on_unit": "På {{unit}}",
-      "map_units": "Enheter",
-      "map_personnel": "Personal",
+      "map_units": "Tillgängliga enheter",
+      "map_personnel": "Tillgänglig personal",
       "map_boundaries": "Stationsområden",
       "run_card_pick": "Insatsplan"
     }
