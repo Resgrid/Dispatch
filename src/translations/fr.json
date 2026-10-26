@@ -425,8 +425,8 @@
       "crew": "Équipage : {{names}}",
       "no_crew": "Aucun équipage affecté",
       "on_unit": "Sur {{unit}}",
-      "map_units": "Unités",
-      "map_personnel": "Personnel",
+      "map_units": "Unités disponibles",
+      "map_personnel": "Personnel disponible",
       "map_boundaries": "Secteurs des casernes",
       "run_card_pick": "Plan de réponse"
     }

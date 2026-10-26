@@ -13,10 +13,11 @@ import { useActiveMapLayers } from '@/hooks/use-active-map-layers';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { MapLayerType, useMapLayers } from '@/hooks/use-map-layers';
 import { useMapLiveLocations } from '@/hooks/use-map-live-locations';
+import { useMapSignalRRefetch } from '@/hooks/use-map-signalr-updates';
 import { logger } from '@/lib/logging';
 import { getDepartmentMapCenter } from '@/lib/map-center';
 import { hasValidMapCoordinates } from '@/lib/map-markers';
-import { buildMapPinPopupHtml, createMapMarkerElement, getMapMarkerPopupOffset, MAP_MARKER_ANCHOR } from '@/lib/map-markers-web';
+import { buildMapPinPopupHtml, createMapMarkerElement, getMapMarkerPopupOffset, getMapMarkerSignature, MAP_MARKER_ANCHOR } from '@/lib/map-markers-web';
 import { useDepartmentMapStyle } from '@/lib/map-style';
 import { applyMapboxGlAccessToken } from '@/lib/mapbox-gl-token-web';
 import { createDefaultVisiblePoiLayerIds, filterMapPinsByPoiLayers, getPoiMapLayerId, mergeVisiblePoiLayerIds } from '@/lib/poi-map-layers';
@@ -217,7 +218,8 @@ export default function MapWeb() {
   );
 
   // Fetches map data and markers: once on mount, and again in the background when the realtime location feed
-  // asks for it. Only the first successful load may move the camera; a refresh never touches the user's view.
+  // asks for it or the update hub reports a change. Only the first successful load may move the camera; a refresh
+  // never touches the user's view.
   const fetchAbortRef = useRef<AbortController | null>(null);
   const hasCenteredOnDataRef = useRef(false);
   const fetchMapData = useCallback(async () => {
@@ -282,6 +284,10 @@ export default function MapWeb() {
     };
   }, [fetchMapData]);
 
+  // Status and call changes from the update hub restyle pins (their pin images follow the status or priority), so they
+  // refetch the markers in the background as the native map does; fetchMapData only moves the camera on the first load.
+  useMapSignalRRefetch(requestPinsRefresh);
+
   // Fetch map data and markers on mount
   useEffect(() => {
     void fetchMapData();
@@ -311,9 +317,9 @@ export default function MapWeb() {
       // Pins that did not change keep their object identity, so most markers are skipped outright.
       if (existing && meta && meta.pin === pin && meta.signature.startsWith(`${theme}:`)) return;
 
-      // Everything the marker element or its popup is built from, so a change to any of it (an uploaded icon included)
-      // rebuilds the marker instead of keeping the old element.
-      const signature = `${theme}:${pin.Title}:${pin.Type}:${pin.PoiTypeId}:${pin.LayerId}:${pin.ImagePath}:${pin.PoiImage}:${pin.Marker}:${pin.Color}:${pin.Address}:${pin.Note}:${pin.PoiTypeName}:${pin.InfoWindowContent}:${pin.IconUrl ?? ''}`;
+      // Everything the marker element or its popup is built from, so a change to any of it (an uploaded icon, or the
+      // status/priority pin after a status change, included) rebuilds the marker instead of keeping the old element.
+      const signature = getMapMarkerSignature(pin, theme);
 
       if (existing && meta && meta.signature === signature) {
         if (meta.pin.Latitude !== pin.Latitude || meta.pin.Longitude !== pin.Longitude) {

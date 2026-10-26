@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 
 import { boundsAround, buildDispatchMapOverlay, callLocationOf, formatAge, formatDistanceEta, orderRecipients, parseGeofenceRing, positionNote, rankBoardUnits } from '@/lib/dispatch-board';
-import { EtaSource, type NearestUnitBoard, type NearestUnitResult, UnitPositionSource } from '@/models/v4/dispatch/nearestUnitBoard';
+import { EtaSource, type NearestPersonnelResult, type NearestUnitBoard, type NearestUnitResult, UnitPositionSource } from '@/models/v4/dispatch/nearestUnitBoard';
 
 const unit = (overrides: Partial<NearestUnitResult>): NearestUnitResult => ({
   UnitId: 1,
@@ -118,7 +118,7 @@ describe('dispatch board helpers', () => {
     expect(overlay).not.toBeNull();
     expect(overlay!.unitCount).toBe(1);
     expect(overlay!.personCount).toBe(1);
-    expect(overlay!.points.features[0].properties).toMatchObject({ id: 'u1', kind: 'unit', color: '#2f9e44', available: true });
+    expect(overlay!.points.features[0].properties).toMatchObject({ id: 'u1', kind: 'unit', color: '#2f9e44' });
     expect(overlay!.points.features[0].properties.detail).toBe('Available · 1.4 km');
     expect(overlay!.boundaries.features[0].properties.color).toBe('#0ea5e9');
     expect(overlay!.nearest).toEqual([
@@ -139,6 +139,47 @@ describe('dispatch board helpers', () => {
 
     expect(overlay!.unitCount).toBe(1);
     expect(overlay!.nearest).toEqual([[-119.79, 39.51]]);
+  });
+
+  it('maps only the available units and personnel, while the picker still ranks everyone', () => {
+    const person = (overrides: Partial<NearestPersonnelResult>): NearestPersonnelResult => ({
+      UserId: 'u1',
+      Name: 'Person',
+      IsAvailable: true,
+      IsOnShift: true,
+      Roles: [],
+      Latitude: 39.52,
+      Longitude: -119.78,
+      LocationIsStale: false,
+      LocationHidden: false,
+      DistanceMeters: 2000,
+      EtaSource: EtaSource.Estimated,
+      ...overrides,
+    });
+    const nearestBoard: NearestUnitBoard = {
+      // The closest unit and person are busy: they must not be drawn, counted or used to frame the call.
+      ...board([
+        unit({ UnitId: 1, Name: 'Busy', IsAvailable: false, Latitude: 39.5, Longitude: -119.8, DistanceMeters: 100 }),
+        unit({ UnitId: 2, Name: 'Free', Latitude: 39.51, Longitude: -119.79, DistanceMeters: 1400 }),
+      ]),
+      Personnel: [person({ UserId: 'busy', IsAvailable: false, Latitude: 39.501, Longitude: -119.801, DistanceMeters: 150 }), person({ UserId: 'free' })],
+    };
+
+    const overlay = buildDispatchMapOverlay(nearestBoard, []);
+
+    expect(overlay!.points.features.map((feature) => feature.properties.id)).toEqual(['u2', 'pfree']);
+    expect(overlay!.unitCount).toBe(1);
+    expect(overlay!.personCount).toBe(1);
+    expect(overlay!.nearest).toEqual([
+      [-119.79, 39.51],
+      [-119.78, 39.52],
+    ]);
+    // The recipient picker keeps the busy unit, with its status, for reassignment.
+    expect(rankBoardUnits(nearestBoard).get('1')).toMatchObject({ index: 0, nearestRank: null });
+  });
+
+  it('has nothing to draw when nobody placed is available and there are no boundaries', () => {
+    expect(buildDispatchMapOverlay(board([unit({ IsAvailable: false, Latitude: 39.51, Longitude: -119.79, DistanceMeters: 1400 })]), [])).toBeNull();
   });
 
   it('has nothing to draw without positions or boundaries', () => {

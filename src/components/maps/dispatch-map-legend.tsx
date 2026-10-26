@@ -5,9 +5,10 @@ import { StyleSheet, Text, View } from 'react-native';
 import { BOUNDARY_COLOR, type DispatchMapOverlay, PERSON_MARKER_COLOR, UNIT_MARKER_COLOR } from '@/lib/dispatch-board';
 
 /**
- * Key for the dispatch overlay on the location picker: units are the larger circles, personnel the smaller ones (each
- * filled with its status colour), boundaries are the groups' geofences. Plain RN styles so it renders the same over the
- * native and web maps.
+ * Key for the dispatch overlay on the location picker: available units are the larger circles, available personnel the
+ * smaller ones (each filled with its status colour; the overlay leaves unavailable resources off, so the counts are of
+ * who can be sent), boundaries are the groups' geofences. Plain RN styles so it renders the same over the native and web
+ * maps.
  */
 export const DispatchMapLegend: React.FC<{ overlay: DispatchMapOverlay }> = ({ overlay }) => {
   const { t } = useTranslation();

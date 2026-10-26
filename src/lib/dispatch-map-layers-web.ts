@@ -3,9 +3,9 @@ import type mapboxgl from 'mapbox-gl';
 import { type DispatchMapOverlay } from '@/lib/dispatch-board';
 
 /*
- * The dispatch overlay (units, personnel, group boundaries) as Mapbox GL sources and layers, for the web location
- * picker. Sources live in the style, so a style switch (day/night) drops them: call `applyDispatchOverlay` again on
- * 'style.load'.
+ * The dispatch overlay (available units and personnel, group boundaries) as Mapbox GL sources and layers, for the web
+ * location picker. Sources live in the style, so a style switch (day/night) drops them: call `applyDispatchOverlay`
+ * again on 'style.load'.
  */
 
 export const DISPATCH_POINTS_SOURCE = 'dispatch-resources';
@@ -37,9 +37,7 @@ const ensureLayers = (map: mapboxgl.Map) => {
         'circle-color': ['get', 'color'],
         'circle-stroke-color': '#ffffff',
         'circle-stroke-width': ['case', isUnit, 2.5, 1.5],
-        // Unavailable resources stay on the map, fainter.
-        'circle-opacity': ['case', ['get', 'available'], 1, 0.5],
-        'circle-stroke-opacity': ['case', ['get', 'available'], 1, 0.5],
+        // Only available resources are in the overlay (buildDispatchMapOverlay leaves the rest off), so all draw solid.
       },
     });
     map.addLayer({

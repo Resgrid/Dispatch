@@ -425,8 +425,8 @@
       "crew": "الطاقم: {{names}}",
       "no_crew": "لا يوجد طاقم معيّن",
       "on_unit": "على {{unit}}",
-      "map_units": "الوحدات",
-      "map_personnel": "الأفراد",
+      "map_units": "الوحدات المتاحة",
+      "map_personnel": "الأفراد المتاحون",
       "map_boundaries": "حدود المحطات",
       "run_card_pick": "خطة الاستجابة"
     }

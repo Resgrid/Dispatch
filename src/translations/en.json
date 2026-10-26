@@ -425,8 +425,8 @@
       "crew": "Crew: {{names}}",
       "no_crew": "No crew assigned",
       "on_unit": "On {{unit}}",
-      "map_units": "Units",
-      "map_personnel": "Personnel",
+      "map_units": "Available units",
+      "map_personnel": "Available personnel",
       "map_boundaries": "Station boundaries",
       "run_card_pick": "Run card"
     }

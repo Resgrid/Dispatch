@@ -4,10 +4,10 @@ import { EtaSource, type NearestPersonnelResult, type NearestUnitBoard, type Nea
 import { type DispatchItem } from '@/stores/dispatch/store';
 
 /*
- * The nearest-unit board (/Dispatch/GetNearestUnits) joined onto the dispatch picker's rows and drawn on the New Call
- * map. The board ranks every unit and responder the viewer may dispatch for the call location: available first, then
- * response time, then distance. Rows the board does not list (out of the viewer's dispatch scope, or no call location
- * yet) keep their place after the ranked ones, by name.
+ * The nearest-unit board (/Dispatch/GetNearestUnits) joined onto the dispatch picker's rows, and its available entries
+ * drawn on the New Call / Edit Call map. The board ranks every unit and responder the viewer may dispatch for the call
+ * location: available first, then response time, then distance. Rows the board does not list (out of the viewer's
+ * dispatch scope, or no call location yet) keep their place after the ranked ones, by name.
  */
 
 /** How many of the closest available units or personnel get a "Nearest" badge. */
@@ -193,7 +193,6 @@ export interface DispatchMapPointProperties {
   color: string;
   /** Status, distance and ETA, for the popup. */
   detail: string;
-  available: boolean;
 }
 
 export interface DispatchMapBoundaryProperties {
@@ -207,7 +206,9 @@ export interface DispatchMapOverlay {
   boundaries: GeoJSON.FeatureCollection<GeoJSON.Polygon, DispatchMapBoundaryProperties>;
   /** [lng, lat] of the closest few resources with a position, to frame the call with them. */
   nearest: [number, number][];
+  /** Available units on the map. */
   unitCount: number;
+  /** Available personnel on the map. */
   personCount: number;
 }
 
@@ -221,15 +222,19 @@ const usable = (lat: number | null | undefined, lng: number | null | undefined):
   typeof lat === 'number' && typeof lng === 'number' && Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && !(lat === 0 && lng === 0);
 
 /**
- * The units and responders the board placed (hidden positions carry no coordinates and are left off), plus every
- * group boundary, as GeoJSON for the location picker. Null when there is nothing to draw.
+ * The available units and responders the board placed (hidden positions carry no coordinates and are left off), plus
+ * every group boundary, as GeoJSON for the location picker. Null when there is nothing to draw.
+ *
+ * The call maps (New Call, Edit Call) show only who can be sent: a unit or person the board marks unavailable is left
+ * off, by the same `IsAvailable` answer the recipient picker uses for the rows the board lists (`isDispatchUnitAvailable`
+ * / `isDispatchUserAvailable`). The picker itself still lists everyone with their status, for reassignment.
  */
 export const buildDispatchMapOverlay = (board: NearestUnitBoard | null | undefined, groups: { Id: string; Name: string; Geofence?: string | null; GeofenceColor?: string | null }[]): DispatchMapOverlay | null => {
   const points: GeoJSON.Feature<GeoJSON.Point, DispatchMapPointProperties>[] = [];
   const nearest: [number, number][] = [];
 
   for (const unit of board?.Units ?? []) {
-    if (!usable(unit.Latitude, unit.Longitude)) continue;
+    if (!unit.IsAvailable || !usable(unit.Latitude, unit.Longitude)) continue;
     const coordinates: [number, number] = [unit.Longitude as number, unit.Latitude as number];
     points.push({
       type: 'Feature',
@@ -240,15 +245,14 @@ export const buildDispatchMapOverlay = (board: NearestUnitBoard | null | undefin
         name: unit.Name,
         color: hexOr(unit.StatusColor, UNIT_MARKER_COLOR),
         detail: [unit.StatusText, formatDistanceEta(unit.DistanceMeters, unit.EtaSeconds, unit.EtaSource)].filter(Boolean).join(' · '),
-        available: unit.IsAvailable,
       },
     });
-    if (unit.IsAvailable && withinFrame(unit.DistanceMeters) && nearest.length < NEAREST_BADGE_COUNT) nearest.push(coordinates);
+    if (withinFrame(unit.DistanceMeters) && nearest.length < NEAREST_BADGE_COUNT) nearest.push(coordinates);
   }
 
   let nearestPeople = 0;
   for (const person of board?.Personnel ?? []) {
-    if (!usable(person.Latitude, person.Longitude)) continue;
+    if (!person.IsAvailable || !usable(person.Latitude, person.Longitude)) continue;
     const coordinates: [number, number] = [person.Longitude as number, person.Latitude as number];
     points.push({
       type: 'Feature',
@@ -259,10 +263,9 @@ export const buildDispatchMapOverlay = (board: NearestUnitBoard | null | undefin
         name: person.Name,
         color: hexOr(person.StatusColor, PERSON_MARKER_COLOR),
         detail: [person.StatusText, formatDistanceEta(person.DistanceMeters, person.EtaSeconds, person.EtaSource)].filter(Boolean).join(' · '),
-        available: person.IsAvailable,
       },
     });
-    if (person.IsAvailable && withinFrame(person.DistanceMeters) && nearestPeople < NEAREST_BADGE_COUNT) {
+    if (withinFrame(person.DistanceMeters) && nearestPeople < NEAREST_BADGE_COUNT) {
       nearest.push(coordinates);
       nearestPeople++;
     }

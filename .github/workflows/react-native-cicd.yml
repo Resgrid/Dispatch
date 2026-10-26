@@ -197,6 +197,16 @@ jobs:
           node-version: '24'
           cache: 'yarn'
 
+      # Pin the JDK instead of taking the runner default: ubuntu-latest (26.04) defaults to JDK 25,
+      # where AGP's prefab step emits "A restricted method in java.lang.System has been called" and
+      # fails configureCMake (react-native-worklets).
+      - name: ☕ Setup Java
+        if: matrix.platform == 'android'
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
       - name: 🔎 Verify Xcode toolchain
         if: matrix.platform == 'ios'
         run: |

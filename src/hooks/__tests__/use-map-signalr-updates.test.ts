@@ -6,7 +6,7 @@ import { type MapMakerInfoData } from '@/models/v4/mapping/getMapDataAndMarkersD
 import { type GetMapDataAndMarkersResult } from '@/models/v4/mapping/getMapDataAndMarkersResult';
 import { useSignalRStore } from '@/stores/signalr/signalr-store';
 
-import { useMapSignalRUpdates } from '../use-map-signalr-updates';
+import { MAP_SIGNALR_REFETCH_DELAY_MS, useMapSignalRRefetch, useMapSignalRUpdates } from '../use-map-signalr-updates';
 
 // Mock dependencies
 jest.mock('@/api/mapping/mapping');
@@ -543,5 +543,73 @@ describe('useMapSignalRUpdates', () => {
       expect(mockOnMarkersUpdate).toHaveBeenCalledWith(mockMapData.Data.MapMakerInfos, expect.any(Number));
     });
     expect(mockOnMarkersUpdate.mock.calls[0][1]).toBeGreaterThanOrEqual(startedNoEarlierThan);
+  });
+});
+
+describe('useMapSignalRRefetch', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.clearAllTimers();
+  });
+
+  afterEach(() => {
+    jest.clearAllTimers();
+  });
+
+  const renderRefetch = (refetch: () => void, initialTimestamp: number, enabled = true) => {
+    mockUseSignalRStore.mockReturnValue(initialTimestamp);
+    return renderHook(({ callback, isEnabled }: { callback: () => void; isEnabled: boolean }) => useMapSignalRRefetch(callback, isEnabled), { initialProps: { callback: refetch, isEnabled: enabled } });
+  };
+
+  it('skips the change recorded when the map mounted (its own first load covers it) and refetches once, debounced, for later ones', () => {
+    const refetch = jest.fn();
+    const { rerender } = renderRefetch(refetch, 500);
+
+    jest.advanceTimersByTime(MAP_SIGNALR_REFETCH_DELAY_MS * 2);
+    expect(refetch).not.toHaveBeenCalled();
+
+    // A burst of hub events (a status change, then a call update) costs one refetch.
+    mockUseSignalRStore.mockReturnValue(600);
+    rerender({ callback: refetch, isEnabled: true });
+    jest.advanceTimersByTime(MAP_SIGNALR_REFETCH_DELAY_MS / 2);
+    mockUseSignalRStore.mockReturnValue(700);
+    rerender({ callback: refetch, isEnabled: true });
+    expect(refetch).not.toHaveBeenCalled();
+
+    jest.advanceTimersByTime(MAP_SIGNALR_REFETCH_DELAY_MS);
+    expect(refetch).toHaveBeenCalledTimes(1);
+    // It refetches through the map's own fetch, not one of its own.
+    expect(mockGetMapDataAndMarkers).not.toHaveBeenCalled();
+  });
+
+  it('does not refetch while disabled (a map whose parent owns the pins)', () => {
+    const refetch = jest.fn();
+    const { rerender } = renderRefetch(refetch, 0, false);
+
+    mockUseSignalRStore.mockReturnValue(900);
+    rerender({ callback: refetch, isEnabled: false });
+    jest.advanceTimersByTime(MAP_SIGNALR_REFETCH_DELAY_MS * 2);
+
+    expect(refetch).not.toHaveBeenCalled();
+  });
+
+  it('keeps a pending refetch when the callback identity changes, and runs the latest callback', () => {
+    const first = jest.fn();
+    const latest = jest.fn();
+    const { rerender } = renderRefetch(first, 0);
+
+    mockUseSignalRStore.mockReturnValue(1000);
+    rerender({ callback: first, isEnabled: true });
+    jest.advanceTimersByTime(MAP_SIGNALR_REFETCH_DELAY_MS / 2);
+    rerender({ callback: latest, isEnabled: true });
+    jest.advanceTimersByTime(MAP_SIGNALR_REFETCH_DELAY_MS / 2);
+
+    expect(first).not.toHaveBeenCalled();
+    expect(latest).toHaveBeenCalledTimes(1);
+
+    // The same change is not refetched again.
+    rerender({ callback: latest, isEnabled: true });
+    jest.advanceTimersByTime(MAP_SIGNALR_REFETCH_DELAY_MS * 2);
+    expect(latest).toHaveBeenCalledTimes(1);
   });
 });

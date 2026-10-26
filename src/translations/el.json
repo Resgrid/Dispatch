@@ -425,8 +425,8 @@
       "crew": "Πλήρωμα: {{names}}",
       "no_crew": "Δεν έχει οριστεί πλήρωμα",
       "on_unit": "Στο {{unit}}",
-      "map_units": "Μονάδες",
-      "map_personnel": "Προσωπικό",
+      "map_units": "Διαθέσιμες μονάδες",
+      "map_personnel": "Διαθέσιμο προσωπικό",
       "map_boundaries": "Όρια σταθμών",
       "run_card_pick": "Σχέδιο απόκρισης"
     }

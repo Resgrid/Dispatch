@@ -425,8 +425,8 @@
       "crew": "Екіпаж: {{names}}",
       "no_crew": "Екіпаж не призначено",
       "on_unit": "На {{unit}}",
-      "map_units": "Підрозділи",
-      "map_personnel": "Персонал",
+      "map_units": "Доступні підрозділи",
+      "map_personnel": "Доступний персонал",
       "map_boundaries": "Межі станцій",
       "run_card_pick": "План реагування"
     }

@@ -33,4 +33,16 @@ export class MapMakerInfoData {
    * otherwise or from older servers.
    */
   public IconUrl?: string | null = null;
+  /**
+   * The built-in pin recoloured to the call's priority or the unit's / person's status (absolute URL of a 32x37 PNG with
+   * the same shape, size and bottom-tip anchor as the bundled pins). Drawn where and how the bundled `ImagePath` pin is
+   * drawn when there is no `IconUrl`; null when the priority/status has no meaning, for stations, POIs and hydrants, and
+   * from older servers.
+   */
+  public PinIconUrl?: string | null = null;
+  /**
+   * The style key `PinIconUrl` was drawn in: a status (`available`, `dispatched`, `responding`, `onscene`, `transporting`,
+   * `returning`, `staging`, `delayed`, `unavailable`) or a priority (`low`, `medium`, `high`, `emergency`). Null as above.
+   */
+  public IconStyle?: string | null = null;
 }
