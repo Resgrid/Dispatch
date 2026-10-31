@@ -116,6 +116,7 @@ const useAuthStore = create<AuthState>()(
       refreshTokenExpiresOn: null,
       status: 'idle',
       error: null,
+      loginFailure: null,
       profile: null,
       userId: null,
       isFirstTime: true,
@@ -124,7 +125,7 @@ const useAuthStore = create<AuthState>()(
       login: async (credentials: LoginCredentials) => {
         try {
           pendingPasswordVerification = null;
-          set({ status: 'loading', error: null });
+          set({ status: 'loading', error: null, loginFailure: null });
           logger.info({
             message: 'Login: Calling loginRequest API',
             context: { username: credentials.username, platform: Platform.OS },
@@ -221,9 +222,11 @@ const useAuthStore = create<AuthState>()(
               message: 'Login: API returned unsuccessful response',
               context: { message: response.message },
             });
+            const failure = response.failure ?? { code: 'login_failed' };
             set({
               status: 'error',
-              error: response.message || 'Login failed',
+              error: failure.code,
+              loginFailure: failure,
             });
           }
         } catch (error) {
@@ -231,9 +234,11 @@ const useAuthStore = create<AuthState>()(
             message: 'Login: Exception caught',
             context: { error: error instanceof Error ? error.message : String(error) },
           });
+          // An unreadable token response is the server's fault, not the member's; the detail stays in the log.
           set({
             status: 'error',
-            error: error instanceof Error ? error.message : 'Login failed',
+            error: 'login_failed',
+            loginFailure: { code: 'login_failed' },
           });
         }
       },
@@ -285,6 +290,7 @@ const useAuthStore = create<AuthState>()(
           status: 'signedOut',
           // Why the session ended, when the screen should say (a shared shift that ran out); otherwise nothing.
           error: typeof reason === 'string' ? reason : null,
+          loginFailure: null,
           profile: null,
           userId: null,
           isFirstTime: true,
@@ -409,8 +415,9 @@ const useAuthStore = create<AuthState>()(
         refreshTokenExpiresOn: state.refreshTokenExpiresOn,
         profile: state.profile,
         userId: state.userId,
-        // A pending second factor dies with the process (its secret lives in memory only), so it restarts signed out.
-        status: state.status === 'mfaRequired' ? 'signedOut' : state.status,
+        // A pending second factor dies with the process (its secret lives in memory only), so it restarts signed out. So
+        // does a failed sign-in: its reason is not kept, and a restart must not reopen the failure with nothing to explain.
+        status: state.status === 'mfaRequired' || state.status === 'error' ? 'signedOut' : state.status,
         isFirstTime: state.isFirstTime,
       }),
     }

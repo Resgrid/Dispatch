@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react-nativ
 
 import LoginWeb from '../../../app/login/index.web';
 import { useAuth } from '@/lib/auth';
+import useAuthStore from '@/stores/auth/store';
 
 // Mock hooks and dependencies
 const mockLogin = jest.fn();
@@ -28,8 +29,12 @@ jest.mock('expo-router', () => ({
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, fallback?: string) => {
+    t: (key: string, fallbackOrOptions?: string | Record<string, unknown>) => {
       const translations: Record<string, string> = {
+        'login.server.label': 'Server:',
+        'login.server.custom_host': 'Custom ({{host}})',
+        'login.errors.account_locked_out.title': 'Account temporarily locked',
+        'login.errors.account_locked_out.message': 'Wait {{minutes}} min and try again.',
         'login.page_subtitle': 'Enter the information below to Sign in to the Resgrid Dispatch application.',
         'login.username_placeholder': 'Enter your username',
         'login.password_placeholder': 'Enter your password',
@@ -46,7 +51,11 @@ jest.mock('react-i18next', () => ({
         'common.save': 'Save',
         'sso.sso_button': 'SSO Login',
       };
-      return translations[key] || fallback || key;
+      if (translations[key]) {
+        const options = typeof fallbackOrOptions === 'object' ? fallbackOrOptions : {};
+        return translations[key].replace(/\{\{(\w+)\}\}/g, (_, name: string) => String(options[name]));
+      }
+      return (typeof fallbackOrOptions === 'string' && fallbackOrOptions) || key;
     },
   }),
 }));
@@ -86,12 +95,14 @@ jest.mock('@/lib/env', () => ({
   },
 }));
 
-jest.mock('@/stores/app/server-url-store', () => ({
-  useServerUrlStore: () => ({
+jest.mock('@/stores/app/server-url-store', () => {
+  const state = {
+    url: 'https://api.example.com/api/v4',
     setUrl: jest.fn(),
     getUrl: jest.fn().mockResolvedValue('https://api.example.com/api/v4'),
-  }),
-}));
+  };
+  return { useServerUrlStore: (selector?: (s: typeof state) => unknown) => (selector ? selector(state) : state) };
+});
 
 jest.mock('nativewind', () => ({
   styled: jest.fn((Component: any) => Component),
@@ -228,6 +239,30 @@ describe('LoginWeb', () => {
       expect(screen.getByText('Login Failed')).toBeTruthy();
       expect(screen.getByText('Please check your username and password and try again.')).toBeTruthy();
     });
+  });
+
+  it('says which server the form signs in to, and opens the server selector from it', () => {
+    render(<LoginWeb />);
+    expect(screen.getByText('Custom (api.example.com)')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('login-server-badge'));
+    expect(screen.getByText('Cancel')).toBeTruthy();
+  });
+
+  it('explains a known sign-in failure instead of the generic message', async () => {
+    useAuthStore.setState({ loginFailure: { code: 'account_locked_out', lockoutMinutes: 12 } });
+    (useAuth as jest.Mock).mockReturnValue({
+      login: mockLogin,
+      status: 'error',
+      error: 'account_locked_out',
+      isAuthenticated: false,
+    });
+    render(<LoginWeb />);
+    await waitFor(() => {
+      expect(screen.getByText('Account temporarily locked')).toBeTruthy();
+    });
+    expect(screen.getByTestId('login-error-message').props.children).toBe('Wait 12 min and try again.');
+    expect(screen.queryByText('Login Failed')).toBeNull();
+    useAuthStore.setState({ loginFailure: null });
   });
 
   it('closes error modal when OK is pressed', async () => {

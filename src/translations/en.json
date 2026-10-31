@@ -1154,7 +1154,73 @@
     "title": "Login",
     "username": "Username",
     "username_placeholder": "Enter your username",
-    "welcome_title": "Welcome Back"
+    "welcome_title": "Welcome Back",
+    "server": {
+      "label": "Server:",
+      "us_west": "US West",
+      "eu_central": "EU Central",
+      "custom_host": "Custom ({{host}})",
+      "signing_in_to": "Signing in to {{server}}",
+      "change_hint": "Opens the server selection"
+    },
+    "errors": {
+      "invalid_credentials": {
+        "title": "Incorrect username or password",
+        "message": "The username or password you entered is incorrect. Passwords are case-sensitive, so check that Caps Lock is off. If you forgot your password, reset it from the Resgrid website. Too many failed attempts will temporarily lock your account."
+      },
+      "account_locked_out": {
+        "title": "Account temporarily locked",
+        "message": "Your account was locked after too many failed sign-in attempts. Wait {{minutes}} min and try again. If you forgot your password, reset it from the Resgrid website before trying again."
+      },
+      "account_locked": {
+        "title": "Account locked",
+        "message": "Your account is locked. Contact your department administrator to have it unlocked."
+      },
+      "account_disabled": {
+        "title": "Account disabled",
+        "message": "Your account has been disabled by your department. Contact your department administrator to have it re-enabled."
+      },
+      "account_not_activated": {
+        "title": "Account not activated",
+        "message": "Your account hasn't been activated yet. Use the invitation email from your department to finish setting it up, or ask your department administrator to send a new invitation."
+      },
+      "no_department": {
+        "title": "No active department",
+        "message": "Your account isn't a member of an active department. Ask your department administrator to add you, then try again."
+      },
+      "sso_required": {
+        "title": "Single sign-on required",
+        "message": "Your department requires single sign-on. Use the SSO button to sign in with your organization's account instead of a password."
+      },
+      "maximum_sessions": {
+        "title": "Too many active sessions",
+        "message": "Your department has reached its limit of signed-in sessions. Sign out on another device, or ask your department administrator to end an unused session, then try again."
+      },
+      "department_access_denied": {
+        "title": "Sign-in not allowed",
+        "message": "Your account is no longer allowed to sign in to this department. Contact your department administrator."
+      },
+      "server_unreachable": {
+        "title": "Can't reach the server",
+        "message": "Couldn't connect to {{server}}. Check your internet connection and that the right server is selected, then try again."
+      },
+      "server_not_resgrid": {
+        "title": "Server not recognized",
+        "message": "{{server}} didn't respond like a Resgrid server. Check the server address and try again."
+      },
+      "rate_limited": {
+        "title": "Too many attempts",
+        "message": "Too many sign-in attempts were made in a short time. Wait a minute and try again."
+      },
+      "server_error": {
+        "title": "Server problem",
+        "message": "{{server}} couldn't complete the sign-in right now. Wait a few minutes and try again. If it keeps happening, contact Resgrid support or your server administrator."
+      },
+      "login_failed": {
+        "title": "Sign-in failed",
+        "message": "Something went wrong while signing in. Try again. If it keeps happening, contact your department administrator or Resgrid support."
+      }
+    }
   },
   "maintenance": {
     "downtime_message": "We are working hard to complete the maintenance as quickly as possible. Please check back soon.",

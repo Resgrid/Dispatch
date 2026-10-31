@@ -11,7 +11,9 @@ import { Button, ButtonText } from '@/components/ui/button';
 import { Modal, ModalBackdrop, ModalBody, ModalContent, ModalFooter, ModalHeader } from '@/components/ui/modal';
 import { Text } from '@/components/ui/text';
 import { useAnalytics } from '@/hooks/use-analytics';
+import { useLoginServer } from '@/hooks/use-login-server';
 import { useAuth } from '@/lib/auth';
+import { describeLoginFailure, isLoginErrorCode } from '@/lib/auth/login-errors';
 import { logger } from '@/lib/logging';
 import { isMfaErrorCode, mfaErrorKey } from '@/lib/mfa/messages';
 import { useSharedInstallation } from '@/lib/mfa/shared-installation';
@@ -31,7 +33,11 @@ export default function Login() {
   const router = useRouter();
   const { login, status, error, isAuthenticated } = useAuth();
   const mfaChallenge = useAuthStore((s) => s.mfaChallenge);
+  const loginFailure = useAuthStore((s) => s.loginFailure);
   const installation = useSharedInstallation();
+  const { name: serverName } = useLoginServer();
+  // A failed password sign-in says why and what to do next.
+  const loginError = isLoginErrorCode(error) ? describeLoginFailure(t, loginFailure?.code === error ? loginFailure : { code: error }, serverName) : null;
   // A sign-in that ended (expired, too many attempts, policy changed) or a shared shift that ran out says why in the
   // member's language.
   const displayError = error === 'shift_ended' ? t('shared_session.shift_ended') : isMfaErrorCode(error) ? t(mfaErrorKey(error)) : error;
@@ -117,7 +123,7 @@ export default function Login() {
       <LoginForm
         onSubmit={onSubmit}
         isLoading={status === 'loading'}
-        error={displayError ?? undefined}
+        error={loginError?.message ?? displayError ?? undefined}
         onServerUrlPress={() => setShowServerUrl(true)}
         onSsoPress={() => router.push('/login/sso' as any)}
         onSharedDevicePress={() => router.push('/login/shared-device' as unknown as Href)}
@@ -135,11 +141,17 @@ export default function Login() {
         <ModalBackdrop />
         <ModalContent className="m-4 w-full max-w-3xl rounded-2xl">
           <ModalHeader>
-            <Text className="text-xl font-semibold">{t('login.errorModal.title')}</Text>
+            <Text className="text-xl font-semibold">{loginError?.title ?? t('login.errorModal.title')}</Text>
           </ModalHeader>
           <ModalBody>
-            <Text>{t('login.errorModal.message')}</Text>
-            {displayError ? <Text className="mt-2 text-sm text-gray-500">{displayError}</Text> : null}
+            {loginError ? (
+              <Text testID="login-error-message">{loginError.message}</Text>
+            ) : (
+              <>
+                <Text>{t('login.errorModal.message')}</Text>
+                {displayError ? <Text className="mt-2 text-sm text-gray-500">{displayError}</Text> : null}
+              </>
+            )}
           </ModalBody>
           <ModalFooter>
             <Button

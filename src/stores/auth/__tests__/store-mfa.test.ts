@@ -189,6 +189,20 @@ describe('Dispatch auth store: login transaction and shared workstations', () =>
     expect(saved.accessToken).toBe('a');
   });
 
+  it('never restores a failed sign-in, whose reason is not kept', () => {
+    useAuthStore.setState({ status: 'error', error: 'account_locked_out', loginFailure: { code: 'account_locked_out', lockoutMinutes: 9 } });
+    const saved = useAuthStore.persist.getOptions().partialize!(useAuthStore.getState()) as Record<string, unknown>;
+    expect(saved.status).toBe('signedOut');
+    expect(saved).not.toHaveProperty('error');
+    expect(saved).not.toHaveProperty('loginFailure');
+  });
+
+  it('drops the last failed sign-in on sign-out', async () => {
+    useAuthStore.setState({ loginFailure: { code: 'account_locked_out', lockoutMinutes: 9 } });
+    await useAuthStore.getState().logout();
+    expect(useAuthStore.getState().loginFailure).toBeNull();
+  });
+
   it('conceals a session restored on a shared installation before the server is asked, and not on a personal one', async () => {
     const stored = { state: { status: 'signedIn', accessToken: 'a', refreshToken: 'r', refreshTokenExpiresOn: String(Date.now() + 3600000) }, version: 0 };
     const storage = new MMKV({ id: 'auth-storage' });
