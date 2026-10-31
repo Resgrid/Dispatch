@@ -1154,7 +1154,73 @@
     "title": "Logowanie",
     "username": "Nazwa użytkownika",
     "username_placeholder": "Wprowadź swoją nazwę użytkownika",
-    "welcome_title": "Witaj ponownie"
+    "welcome_title": "Witaj ponownie",
+    "server": {
+      "label": "Serwer:",
+      "us_west": "USA Zachód",
+      "eu_central": "UE Centrum",
+      "custom_host": "Niestandardowy ({{host}})",
+      "signing_in_to": "Logowanie do {{server}}",
+      "change_hint": "Otwiera wybór serwera"
+    },
+    "errors": {
+      "invalid_credentials": {
+        "title": "Nieprawidłowa nazwa użytkownika lub hasło",
+        "message": "Wprowadzona nazwa użytkownika lub hasło są nieprawidłowe. W hasłach rozróżniana jest wielkość liter, więc sprawdź, czy Caps Lock jest wyłączony. Jeśli nie pamiętasz hasła, zresetuj je na stronie Resgrid. Zbyt wiele nieudanych prób tymczasowo zablokuje konto."
+      },
+      "account_locked_out": {
+        "title": "Konto tymczasowo zablokowane",
+        "message": "Twoje konto zostało zablokowane po zbyt wielu nieudanych próbach logowania. Odczekaj {{minutes}} min i spróbuj ponownie. Jeśli nie pamiętasz hasła, zresetuj je na stronie Resgrid przed kolejną próbą."
+      },
+      "account_locked": {
+        "title": "Konto zablokowane",
+        "message": "Twoje konto jest zablokowane. Skontaktuj się z administratorem swojej jednostki, aby je odblokować."
+      },
+      "account_disabled": {
+        "title": "Konto wyłączone",
+        "message": "Twoje konto zostało wyłączone przez Twoją jednostkę. Skontaktuj się z administratorem swojej jednostki, aby je ponownie włączyć."
+      },
+      "account_not_activated": {
+        "title": "Konto nieaktywowane",
+        "message": "Twoje konto nie zostało jeszcze aktywowane. Użyj e-maila z zaproszeniem od swojej jednostki, aby dokończyć konfigurację, lub poproś administratora jednostki o wysłanie nowego zaproszenia."
+      },
+      "no_department": {
+        "title": "Brak aktywnej jednostki",
+        "message": "Twoje konto nie należy do żadnej aktywnej jednostki. Poproś administratora swojej jednostki o dodanie Cię, a następnie spróbuj ponownie."
+      },
+      "sso_required": {
+        "title": "Wymagane logowanie jednokrotne",
+        "message": "Twoja jednostka wymaga logowania jednokrotnego. Użyj przycisku SSO, aby zalogować się kontem swojej organizacji zamiast hasłem."
+      },
+      "maximum_sessions": {
+        "title": "Zbyt wiele aktywnych sesji",
+        "message": "Twoja jednostka osiągnęła limit zalogowanych sesji. Wyloguj się na innym urządzeniu lub poproś administratora jednostki o zakończenie nieużywanej sesji, a następnie spróbuj ponownie."
+      },
+      "department_access_denied": {
+        "title": "Logowanie niedozwolone",
+        "message": "Twoje konto nie może już logować się do tej jednostki. Skontaktuj się z administratorem swojej jednostki."
+      },
+      "server_unreachable": {
+        "title": "Brak połączenia z serwerem",
+        "message": "Nie można połączyć się z {{server}}. Sprawdź połączenie z internetem i czy wybrano właściwy serwer, a następnie spróbuj ponownie."
+      },
+      "server_not_resgrid": {
+        "title": "Nierozpoznany serwer",
+        "message": "{{server}} nie odpowiedział jak serwer Resgrid. Sprawdź adres serwera i spróbuj ponownie."
+      },
+      "rate_limited": {
+        "title": "Zbyt wiele prób",
+        "message": "W krótkim czasie podjęto zbyt wiele prób logowania. Odczekaj minutę i spróbuj ponownie."
+      },
+      "server_error": {
+        "title": "Problem z serwerem",
+        "message": "{{server}} nie mógł teraz dokończyć logowania. Odczekaj kilka minut i spróbuj ponownie. Jeśli problem się powtarza, skontaktuj się z pomocą techniczną Resgrid lub administratorem serwera."
+      },
+      "login_failed": {
+        "title": "Logowanie nie powiodło się",
+        "message": "Podczas logowania wystąpił błąd. Spróbuj ponownie. Jeśli problem się powtarza, skontaktuj się z administratorem swojej jednostki lub pomocą techniczną Resgrid."
+      }
+    }
   },
   "maintenance": {
     "downtime_message": "Pracujemy nad jak najszybszym zakończeniem konserwacji. Proszę sprawdzić ponownie wkrótce.",

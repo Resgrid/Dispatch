@@ -1154,7 +1154,73 @@
     "title": "Anmeldung",
     "username": "Benutzername",
     "username_placeholder": "Benutzernamen eingeben",
-    "welcome_title": "Willkommen zurück"
+    "welcome_title": "Willkommen zurück",
+    "server": {
+      "label": "Server:",
+      "us_west": "USA West",
+      "eu_central": "EU Zentral",
+      "custom_host": "Benutzerdefiniert ({{host}})",
+      "signing_in_to": "Anmeldung bei {{server}}",
+      "change_hint": "Öffnet die Serverauswahl"
+    },
+    "errors": {
+      "invalid_credentials": {
+        "title": "Falscher Benutzername oder falsches Passwort",
+        "message": "Der eingegebene Benutzername oder das Passwort ist falsch. Bei Passwörtern wird zwischen Groß- und Kleinschreibung unterschieden, prüfen Sie daher, ob die Feststelltaste deaktiviert ist. Wenn Sie Ihr Passwort vergessen haben, setzen Sie es auf der Resgrid-Website zurück. Nach zu vielen Fehlversuchen wird Ihr Konto vorübergehend gesperrt."
+      },
+      "account_locked_out": {
+        "title": "Konto vorübergehend gesperrt",
+        "message": "Ihr Konto wurde nach zu vielen fehlgeschlagenen Anmeldeversuchen gesperrt. Warten Sie {{minutes}} Min. und versuchen Sie es erneut. Wenn Sie Ihr Passwort vergessen haben, setzen Sie es vorher auf der Resgrid-Website zurück."
+      },
+      "account_locked": {
+        "title": "Konto gesperrt",
+        "message": "Ihr Konto ist gesperrt. Wenden Sie sich an den Administrator Ihrer Organisation, um es entsperren zu lassen."
+      },
+      "account_disabled": {
+        "title": "Konto deaktiviert",
+        "message": "Ihr Konto wurde von Ihrer Organisation deaktiviert. Wenden Sie sich an den Administrator Ihrer Organisation, um es wieder aktivieren zu lassen."
+      },
+      "account_not_activated": {
+        "title": "Konto nicht aktiviert",
+        "message": "Ihr Konto wurde noch nicht aktiviert. Verwenden Sie die Einladungs-E-Mail Ihrer Organisation, um die Einrichtung abzuschließen, oder bitten Sie den Administrator Ihrer Organisation um eine neue Einladung."
+      },
+      "no_department": {
+        "title": "Keine aktive Organisation",
+        "message": "Ihr Konto ist kein Mitglied einer aktiven Organisation. Bitten Sie den Administrator Ihrer Organisation, Sie hinzuzufügen, und versuchen Sie es dann erneut."
+      },
+      "sso_required": {
+        "title": "Single Sign-On erforderlich",
+        "message": "Ihre Organisation verlangt Single Sign-On. Verwenden Sie die SSO-Schaltfläche, um sich mit dem Konto Ihrer Organisation statt mit einem Passwort anzumelden."
+      },
+      "maximum_sessions": {
+        "title": "Zu viele aktive Sitzungen",
+        "message": "Ihre Organisation hat die maximale Anzahl angemeldeter Sitzungen erreicht. Melden Sie sich auf einem anderen Gerät ab oder bitten Sie den Administrator Ihrer Organisation, eine ungenutzte Sitzung zu beenden, und versuchen Sie es dann erneut."
+      },
+      "department_access_denied": {
+        "title": "Anmeldung nicht erlaubt",
+        "message": "Ihr Konto darf sich nicht mehr bei dieser Organisation anmelden. Wenden Sie sich an den Administrator Ihrer Organisation."
+      },
+      "server_unreachable": {
+        "title": "Server nicht erreichbar",
+        "message": "Keine Verbindung zu {{server}} möglich. Prüfen Sie Ihre Internetverbindung und ob der richtige Server ausgewählt ist, und versuchen Sie es dann erneut."
+      },
+      "server_not_resgrid": {
+        "title": "Server nicht erkannt",
+        "message": "{{server}} hat nicht wie ein Resgrid-Server geantwortet. Prüfen Sie die Serveradresse und versuchen Sie es erneut."
+      },
+      "rate_limited": {
+        "title": "Zu viele Versuche",
+        "message": "In kurzer Zeit wurden zu viele Anmeldeversuche unternommen. Warten Sie eine Minute und versuchen Sie es erneut."
+      },
+      "server_error": {
+        "title": "Serverproblem",
+        "message": "{{server}} konnte die Anmeldung gerade nicht abschließen. Warten Sie einige Minuten und versuchen Sie es erneut. Wenn das Problem weiterhin besteht, wenden Sie sich an den Resgrid-Support oder Ihren Serveradministrator."
+      },
+      "login_failed": {
+        "title": "Anmeldung fehlgeschlagen",
+        "message": "Bei der Anmeldung ist ein Fehler aufgetreten. Versuchen Sie es erneut. Wenn das Problem weiterhin besteht, wenden Sie sich an den Administrator Ihrer Organisation oder den Resgrid-Support."
+      }
+    }
   },
   "maintenance": {
     "downtime_message": "Wir arbeiten daran, die Wartung so schnell wie möglich abzuschließen. Bitte schauen Sie bald wieder vorbei.",

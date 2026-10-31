@@ -1154,7 +1154,73 @@
     "title": "Logga in",
     "username": "Användarnamn",
     "username_placeholder": "Ange ditt användarnamn",
-    "welcome_title": "Välkommen tillbaka"
+    "welcome_title": "Välkommen tillbaka",
+    "server": {
+      "label": "Server:",
+      "us_west": "USA Väst",
+      "eu_central": "EU Central",
+      "custom_host": "Anpassad ({{host}})",
+      "signing_in_to": "Loggar in på {{server}}",
+      "change_hint": "Öppnar serverval"
+    },
+    "errors": {
+      "invalid_credentials": {
+        "title": "Fel användarnamn eller lösenord",
+        "message": "Användarnamnet eller lösenordet du angav är fel. Lösenord är skiftlägeskänsliga, så kontrollera att Caps Lock är avstängt. Om du har glömt ditt lösenord kan du återställa det på Resgrids webbplats. För många misslyckade försök låser ditt konto tillfälligt."
+      },
+      "account_locked_out": {
+        "title": "Kontot är tillfälligt låst",
+        "message": "Ditt konto låstes efter för många misslyckade inloggningsförsök. Vänta {{minutes}} min och försök igen. Om du har glömt ditt lösenord, återställ det på Resgrids webbplats innan du försöker igen."
+      },
+      "account_locked": {
+        "title": "Kontot är låst",
+        "message": "Ditt konto är låst. Kontakta din organisations administratör för att få det upplåst."
+      },
+      "account_disabled": {
+        "title": "Kontot är inaktiverat",
+        "message": "Ditt konto har inaktiverats av din organisation. Kontakta din organisations administratör för att få det aktiverat igen."
+      },
+      "account_not_activated": {
+        "title": "Kontot är inte aktiverat",
+        "message": "Ditt konto har inte aktiverats än. Använd inbjudningsmejlet från din organisation för att slutföra konfigurationen, eller be din organisations administratör att skicka en ny inbjudan."
+      },
+      "no_department": {
+        "title": "Ingen aktiv organisation",
+        "message": "Ditt konto är inte medlem i någon aktiv organisation. Be din organisations administratör att lägga till dig och försök sedan igen."
+      },
+      "sso_required": {
+        "title": "Enkel inloggning krävs",
+        "message": "Din organisation kräver enkel inloggning. Använd SSO-knappen för att logga in med din organisations konto i stället för ett lösenord."
+      },
+      "maximum_sessions": {
+        "title": "För många aktiva sessioner",
+        "message": "Din organisation har nått sin gräns för inloggade sessioner. Logga ut på en annan enhet, eller be din organisations administratör att avsluta en oanvänd session, och försök sedan igen."
+      },
+      "department_access_denied": {
+        "title": "Inloggning inte tillåten",
+        "message": "Ditt konto får inte längre logga in i den här organisationen. Kontakta din organisations administratör."
+      },
+      "server_unreachable": {
+        "title": "Servern kan inte nås",
+        "message": "Det gick inte att ansluta till {{server}}. Kontrollera din internetanslutning och att rätt server är vald, och försök sedan igen."
+      },
+      "server_not_resgrid": {
+        "title": "Servern känns inte igen",
+        "message": "{{server}} svarade inte som en Resgrid-server. Kontrollera serveradressen och försök igen."
+      },
+      "rate_limited": {
+        "title": "För många försök",
+        "message": "För många inloggningsförsök gjordes på kort tid. Vänta en minut och försök igen."
+      },
+      "server_error": {
+        "title": "Serverproblem",
+        "message": "{{server}} kunde inte slutföra inloggningen just nu. Vänta några minuter och försök igen. Om det fortsätter, kontakta Resgrids support eller din serveradministratör."
+      },
+      "login_failed": {
+        "title": "Inloggningen misslyckades",
+        "message": "Något gick fel vid inloggningen. Försök igen. Om det fortsätter, kontakta din organisations administratör eller Resgrids support."
+      }
+    }
   },
   "maintenance": {
     "downtime_message": "Vi arbetar hårt för att slutföra underhållet så snabbt som möjligt. Vänligen kontrollera igen snart.",

@@ -1154,7 +1154,73 @@
     "title": "Connexion",
     "username": "Nom d'utilisateur",
     "username_placeholder": "Saisissez votre nom d'utilisateur",
-    "welcome_title": "Bon retour"
+    "welcome_title": "Bon retour",
+    "server": {
+      "label": "Serveur :",
+      "us_west": "États-Unis Ouest",
+      "eu_central": "UE Centre",
+      "custom_host": "Personnalisé ({{host}})",
+      "signing_in_to": "Connexion à {{server}}",
+      "change_hint": "Ouvre la sélection du serveur"
+    },
+    "errors": {
+      "invalid_credentials": {
+        "title": "Nom d'utilisateur ou mot de passe incorrect",
+        "message": "Le nom d'utilisateur ou le mot de passe saisi est incorrect. Les mots de passe sont sensibles à la casse : vérifiez que le verrouillage des majuscules est désactivé. Si vous avez oublié votre mot de passe, réinitialisez-le depuis le site web de Resgrid. Trop de tentatives échouées verrouilleront temporairement votre compte."
+      },
+      "account_locked_out": {
+        "title": "Compte temporairement verrouillé",
+        "message": "Votre compte a été verrouillé après trop de tentatives de connexion échouées. Patientez {{minutes}} min puis réessayez. Si vous avez oublié votre mot de passe, réinitialisez-le depuis le site web de Resgrid avant de réessayer."
+      },
+      "account_locked": {
+        "title": "Compte verrouillé",
+        "message": "Votre compte est verrouillé. Contactez l'administrateur de votre service pour le faire déverrouiller."
+      },
+      "account_disabled": {
+        "title": "Compte désactivé",
+        "message": "Votre compte a été désactivé par votre service. Contactez l'administrateur de votre service pour le faire réactiver."
+      },
+      "account_not_activated": {
+        "title": "Compte non activé",
+        "message": "Votre compte n'a pas encore été activé. Utilisez l'e-mail d'invitation de votre service pour terminer sa configuration, ou demandez à l'administrateur de votre service de vous envoyer une nouvelle invitation."
+      },
+      "no_department": {
+        "title": "Aucun service actif",
+        "message": "Votre compte n'est membre d'aucun service actif. Demandez à l'administrateur de votre service de vous ajouter, puis réessayez."
+      },
+      "sso_required": {
+        "title": "Authentification unique requise",
+        "message": "Votre service exige l'authentification unique. Utilisez le bouton SSO pour vous connecter avec le compte de votre organisation au lieu d'un mot de passe."
+      },
+      "maximum_sessions": {
+        "title": "Trop de sessions actives",
+        "message": "Votre service a atteint sa limite de sessions connectées. Déconnectez-vous sur un autre appareil, ou demandez à l'administrateur de votre service de fermer une session inutilisée, puis réessayez."
+      },
+      "department_access_denied": {
+        "title": "Connexion non autorisée",
+        "message": "Votre compte n'est plus autorisé à se connecter à ce service. Contactez l'administrateur de votre service."
+      },
+      "server_unreachable": {
+        "title": "Serveur injoignable",
+        "message": "Impossible de se connecter à {{server}}. Vérifiez votre connexion internet et que le bon serveur est sélectionné, puis réessayez."
+      },
+      "server_not_resgrid": {
+        "title": "Serveur non reconnu",
+        "message": "{{server}} n'a pas répondu comme un serveur Resgrid. Vérifiez l'adresse du serveur et réessayez."
+      },
+      "rate_limited": {
+        "title": "Trop de tentatives",
+        "message": "Trop de tentatives de connexion ont été faites en peu de temps. Patientez une minute et réessayez."
+      },
+      "server_error": {
+        "title": "Problème de serveur",
+        "message": "{{server}} n'a pas pu terminer la connexion pour le moment. Patientez quelques minutes et réessayez. Si le problème persiste, contactez le support Resgrid ou l'administrateur de votre serveur."
+      },
+      "login_failed": {
+        "title": "Échec de la connexion",
+        "message": "Un problème est survenu lors de la connexion. Réessayez. Si le problème persiste, contactez l'administrateur de votre service ou le support Resgrid."
+      }
+    }
   },
   "maintenance": {
     "downtime_message": "Nous travaillons activement pour terminer la maintenance le plus rapidement possible. Veuillez revenir bientôt.",

@@ -1154,7 +1154,73 @@
     "title": "Iniciar sesión",
     "username": "Nombre de usuario",
     "username_placeholder": "Introduce tu nombre de usuario",
-    "welcome_title": "Bienvenido de Nuevo"
+    "welcome_title": "Bienvenido de Nuevo",
+    "server": {
+      "label": "Servidor:",
+      "us_west": "EE. UU. Oeste",
+      "eu_central": "UE Central",
+      "custom_host": "Personalizado ({{host}})",
+      "signing_in_to": "Iniciando sesión en {{server}}",
+      "change_hint": "Abre la selección de servidor"
+    },
+    "errors": {
+      "invalid_credentials": {
+        "title": "Usuario o contraseña incorrectos",
+        "message": "El usuario o la contraseña que introdujo no son correctos. Las contraseñas distinguen entre mayúsculas y minúsculas, así que compruebe que Bloq Mayús esté desactivado. Si olvidó su contraseña, restablézcala desde el sitio web de Resgrid. Demasiados intentos fallidos bloquearán su cuenta temporalmente."
+      },
+      "account_locked_out": {
+        "title": "Cuenta bloqueada temporalmente",
+        "message": "Su cuenta se bloqueó tras demasiados intentos de inicio de sesión fallidos. Espere {{minutes}} min y vuelva a intentarlo. Si olvidó su contraseña, restablézcala desde el sitio web de Resgrid antes de volver a intentarlo."
+      },
+      "account_locked": {
+        "title": "Cuenta bloqueada",
+        "message": "Su cuenta está bloqueada. Contacte con el administrador de su departamento para que la desbloquee."
+      },
+      "account_disabled": {
+        "title": "Cuenta deshabilitada",
+        "message": "Su departamento ha deshabilitado su cuenta. Contacte con el administrador de su departamento para que la vuelva a habilitar."
+      },
+      "account_not_activated": {
+        "title": "Cuenta no activada",
+        "message": "Su cuenta aún no se ha activado. Use el correo de invitación de su departamento para terminar de configurarla, o pida al administrador de su departamento que le envíe una nueva invitación."
+      },
+      "no_department": {
+        "title": "Sin departamento activo",
+        "message": "Su cuenta no pertenece a ningún departamento activo. Pida al administrador de su departamento que le añada y vuelva a intentarlo."
+      },
+      "sso_required": {
+        "title": "Se requiere inicio de sesión único",
+        "message": "Su departamento requiere inicio de sesión único. Use el botón SSO para iniciar sesión con la cuenta de su organización en lugar de una contraseña."
+      },
+      "maximum_sessions": {
+        "title": "Demasiadas sesiones activas",
+        "message": "Su departamento ha alcanzado su límite de sesiones iniciadas. Cierre sesión en otro dispositivo, o pida al administrador de su departamento que finalice una sesión sin uso, y vuelva a intentarlo."
+      },
+      "department_access_denied": {
+        "title": "Inicio de sesión no permitido",
+        "message": "Su cuenta ya no puede iniciar sesión en este departamento. Contacte con el administrador de su departamento."
+      },
+      "server_unreachable": {
+        "title": "No se puede contactar con el servidor",
+        "message": "No se pudo conectar con {{server}}. Compruebe su conexión a internet y que esté seleccionado el servidor correcto, y vuelva a intentarlo."
+      },
+      "server_not_resgrid": {
+        "title": "Servidor no reconocido",
+        "message": "{{server}} no respondió como un servidor de Resgrid. Compruebe la dirección del servidor y vuelva a intentarlo."
+      },
+      "rate_limited": {
+        "title": "Demasiados intentos",
+        "message": "Se hicieron demasiados intentos de inicio de sesión en poco tiempo. Espere un minuto y vuelva a intentarlo."
+      },
+      "server_error": {
+        "title": "Problema del servidor",
+        "message": "{{server}} no pudo completar el inicio de sesión en este momento. Espere unos minutos y vuelva a intentarlo. Si sigue ocurriendo, contacte con el soporte de Resgrid o con el administrador de su servidor."
+      },
+      "login_failed": {
+        "title": "Error al iniciar sesión",
+        "message": "Algo salió mal al iniciar sesión. Vuelva a intentarlo. Si sigue ocurriendo, contacte con el administrador de su departamento o con el soporte de Resgrid."
+      }
+    }
   },
   "maintenance": {
     "downtime_message": "Estamos trabajando arduamente para completar el mantenimiento lo antes posible. Por favor, vuelva pronto.",

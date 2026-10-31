@@ -9,6 +9,7 @@ import { type MfaChallenge, parseMethods } from '@/lib/mfa/types';
 
 import { getItem, removeItem, setItem } from '../storage';
 import { getBaseApiUrl } from '../storage/app';
+import { classifyLoginFailure } from './login-errors';
 import type { AuthResponse, LoginCredentials, LoginResponse } from './types';
 
 // Strip any query string from a URL so tokens/credentials in params are never logged.
@@ -29,6 +30,8 @@ const sanitizeAuthError = (error: unknown): Record<string, unknown> => {
       'The user is no longer allowed to sign in.': 'user_sign_in_not_allowed',
     };
     const rejectionReason = typeof data?.error_description === 'string' && Object.hasOwn(knownDescriptions, data.error_description) ? knownDescriptions[data.error_description] : undefined;
+    // The server's login_error is a fixed set of reason codes, never free text.
+    const loginError = typeof data?.login_error === 'string' && /^[a-z_]{1,40}$/.test(data.login_error) ? data.login_error : undefined;
     return {
       message: error.message,
       status: error.response?.status,
@@ -36,6 +39,7 @@ const sanitizeAuthError = (error: unknown): Record<string, unknown> => {
       ...(oauthError ? { oauthError } : {}),
       ...(oauthErrorId ? { oauthErrorId } : {}),
       ...(rejectionReason ? { rejectionReason } : {}),
+      ...(loginError ? { loginError } : {}),
     };
   }
   return { message: error instanceof Error ? error.message : String(error) };
@@ -209,8 +213,9 @@ export const loginRequest = async (credentials: LoginCredentials): Promise<Login
 
       return {
         successful: false,
-        message: 'Login failed',
+        message: 'login_failed',
         authResponse: null,
+        failure: { code: 'login_failed' },
       };
     }
   } catch (error) {
@@ -245,16 +250,18 @@ export const loginRequest = async (credentials: LoginCredentials): Promise<Login
       };
     }
 
+    const failure = classifyLoginFailure(error);
     logger.error({
       message: 'Login API call failed with exception',
-      context: { ...sanitizeAuthError(error), username: credentials.username },
+      context: { ...sanitizeAuthError(error), loginFailure: failure.code, username: credentials.username },
     });
 
-    // Return a failed response instead of throwing
+    // Return a failed response instead of throwing; the code carries the reason the login screen explains.
     return {
       successful: false,
-      message: error instanceof Error ? error.message : 'Login failed',
+      message: failure.code,
       authResponse: null,
+      failure,
     };
   }
 };

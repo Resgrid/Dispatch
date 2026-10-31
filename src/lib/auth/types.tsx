@@ -1,3 +1,4 @@
+import type { LoginFailure } from '@/lib/auth/login-errors';
 import type { ApprovalWaitResult } from '@/lib/mfa/approval-wait';
 import type { ApprovalRequestData, MfaChallenge, TotpSetupData } from '@/lib/mfa/types';
 import type { BrokeredSsoResult, LoginMfaResult, LoginMfaStep, RecoveryStart, SsoDepartment } from '@/stores/auth/login-mfa';
@@ -38,6 +39,8 @@ export interface LoginResponse {
   mfaTransaction?: { secret: string; challenge: MfaChallenge };
   /** The department requires MFA the account does not have, and this server cannot set it up in the app. */
   enrollmentRequired?: boolean;
+  /** Why an unsuccessful sign-in failed, for the login screen's guidance. */
+  failure?: LoginFailure;
 }
 export interface ProfileModel {
   sub: string;
@@ -84,6 +87,8 @@ export interface AuthState {
   refreshTokenExpiresOn: string | null;
   status: AuthStatus;
   error: string | null;
+  /** The last failed password sign-in, with what the guidance needs beyond its code (a lockout's minutes). Never persisted. */
+  loginFailure: LoginFailure | null;
   profile: ProfileModel | null;
   userId: string | null;
   /**

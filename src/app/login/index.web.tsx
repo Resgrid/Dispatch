@@ -11,9 +11,12 @@ import * as z from 'zod';
 
 import { LoginMfaSheet } from '@/components/auth/login-mfa-sheet';
 import { LoginOtpModal } from '@/components/auth/login-otp-modal';
+import { LoginServerBadge } from '@/components/auth/login-server-badge';
 import { Text } from '@/components/ui/text';
 import { useAnalytics } from '@/hooks/use-analytics';
+import { useLoginServer } from '@/hooks/use-login-server';
 import { useAuth } from '@/lib/auth';
+import { describeLoginFailure, isLoginErrorCode } from '@/lib/auth/login-errors';
 import { logger } from '@/lib/logging';
 import { isMfaErrorCode, mfaErrorKey } from '@/lib/mfa/messages';
 import { useSharedInstallation } from '@/lib/mfa/shared-installation';
@@ -137,7 +140,11 @@ export default function LoginWeb() {
   const router = useRouter();
   const { login, status, error, isAuthenticated } = useAuth();
   const mfaChallenge = useAuthStore((s) => s.mfaChallenge);
+  const loginFailure = useAuthStore((s) => s.loginFailure);
   const installation = useSharedInstallation();
+  const { name: serverName } = useLoginServer();
+  // A failed password sign-in says why and what to do next.
+  const loginError = isLoginErrorCode(error) ? describeLoginFailure(t, loginFailure?.code === error ? loginFailure : { code: error }, serverName) : null;
   // Held only to resubmit with the code when an older server answers mfa_required without a login transaction;
   // memory-only, dropped on success, dismissal or unmount. Never logged.
   const [pendingCredentials, setPendingCredentials] = useState<{ username: string; password: string } | null>(null);
@@ -428,6 +435,9 @@ export default function LoginWeb() {
             <Animated.View entering={FadeInDown.delay(200).duration(500)} style={styles.loginHeader}>
               <Text style={StyleSheet.flatten([styles.loginTitle, isDark ? styles.loginTitleDark : styles.loginTitleLight])}>{t('login.welcome_title', 'Welcome Back')}</Text>
               <Text style={StyleSheet.flatten([styles.loginSubtitle, isDark ? styles.loginSubtitleDark : styles.loginSubtitleLight])}>{t('login.page_subtitle')}</Text>
+              <View style={styles.serverBadgeContainer}>
+                <LoginServerBadge onPress={() => setShowServerUrlModal(true)} />
+              </View>
             </Animated.View>
 
             {/* Login Form */}
@@ -552,9 +562,17 @@ export default function LoginWeb() {
             <View style={styles.modalIconContainer}>
               <AlertCircle size={48} color="#ef4444" />
             </View>
-            <Text style={StyleSheet.flatten([styles.modalTitle, isDark ? styles.modalTitleDark : styles.modalTitleLight])}>{t('login.errorModal.title')}</Text>
-            <Text style={StyleSheet.flatten([styles.modalMessage, isDark ? styles.modalMessageDark : styles.modalMessageLight])}>{t('login.errorModal.message')}</Text>
-            {displayError ? <Text style={StyleSheet.flatten([styles.modalMessage, isDark ? styles.modalMessageDark : styles.modalMessageLight])}>{displayError}</Text> : null}
+            <Text style={StyleSheet.flatten([styles.modalTitle, isDark ? styles.modalTitleDark : styles.modalTitleLight])}>{loginError?.title ?? t('login.errorModal.title')}</Text>
+            {loginError ? (
+              <Text style={StyleSheet.flatten([styles.modalMessage, isDark ? styles.modalMessageDark : styles.modalMessageLight])} testID="login-error-message">
+                {loginError.message}
+              </Text>
+            ) : (
+              <>
+                <Text style={StyleSheet.flatten([styles.modalMessage, isDark ? styles.modalMessageDark : styles.modalMessageLight])}>{t('login.errorModal.message')}</Text>
+                {displayError ? <Text style={StyleSheet.flatten([styles.modalMessage, isDark ? styles.modalMessageDark : styles.modalMessageLight])}>{displayError}</Text> : null}
+              </>
+            )}
             <Pressable style={styles.modalButton} onPress={() => setShowErrorModal(false)}>
               <Text style={styles.modalButtonText}>{t('login.errorModal.confirmButton')}</Text>
             </Pressable>
@@ -976,6 +994,9 @@ const styles = StyleSheet.create({
   },
   loginSubtitleLight: {
     color: '#6b7280',
+  },
+  serverBadgeContainer: {
+    marginTop: 12,
   },
   formContainer: {
     gap: 12,

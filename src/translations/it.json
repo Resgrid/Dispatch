@@ -1154,7 +1154,73 @@
     "title": "Accesso",
     "username": "Nome utente",
     "username_placeholder": "Inserisci il tuo nome utente",
-    "welcome_title": "Bentornato"
+    "welcome_title": "Bentornato",
+    "server": {
+      "label": "Server:",
+      "us_west": "USA Ovest",
+      "eu_central": "UE Centrale",
+      "custom_host": "Personalizzato ({{host}})",
+      "signing_in_to": "Accesso a {{server}}",
+      "change_hint": "Apre la selezione del server"
+    },
+    "errors": {
+      "invalid_credentials": {
+        "title": "Nome utente o password errati",
+        "message": "Il nome utente o la password inseriti non sono corretti. Le password distinguono tra maiuscole e minuscole, quindi verifica che il blocco maiuscole sia disattivato. Se hai dimenticato la password, reimpostala dal sito web di Resgrid. Troppi tentativi non riusciti bloccheranno temporaneamente l'account."
+      },
+      "account_locked_out": {
+        "title": "Account temporaneamente bloccato",
+        "message": "Il tuo account è stato bloccato dopo troppi tentativi di accesso non riusciti. Attendi {{minutes}} min e riprova. Se hai dimenticato la password, reimpostala dal sito web di Resgrid prima di riprovare."
+      },
+      "account_locked": {
+        "title": "Account bloccato",
+        "message": "Il tuo account è bloccato. Contatta l'amministratore del tuo dipartimento per farlo sbloccare."
+      },
+      "account_disabled": {
+        "title": "Account disattivato",
+        "message": "Il tuo account è stato disattivato dal tuo dipartimento. Contatta l'amministratore del tuo dipartimento per farlo riattivare."
+      },
+      "account_not_activated": {
+        "title": "Account non attivato",
+        "message": "Il tuo account non è ancora stato attivato. Usa l'email di invito del tuo dipartimento per completarne la configurazione, oppure chiedi all'amministratore del tuo dipartimento di inviarti un nuovo invito."
+      },
+      "no_department": {
+        "title": "Nessun dipartimento attivo",
+        "message": "Il tuo account non è membro di alcun dipartimento attivo. Chiedi all'amministratore del tuo dipartimento di aggiungerti, poi riprova."
+      },
+      "sso_required": {
+        "title": "Accesso Single Sign-On richiesto",
+        "message": "Il tuo dipartimento richiede il Single Sign-On. Usa il pulsante SSO per accedere con l'account della tua organizzazione invece che con una password."
+      },
+      "maximum_sessions": {
+        "title": "Troppe sessioni attive",
+        "message": "Il tuo dipartimento ha raggiunto il limite di sessioni connesse. Esci da un altro dispositivo, oppure chiedi all'amministratore del tuo dipartimento di chiudere una sessione inutilizzata, poi riprova."
+      },
+      "department_access_denied": {
+        "title": "Accesso non consentito",
+        "message": "Il tuo account non può più accedere a questo dipartimento. Contatta l'amministratore del tuo dipartimento."
+      },
+      "server_unreachable": {
+        "title": "Server non raggiungibile",
+        "message": "Impossibile connettersi a {{server}}. Verifica la connessione a internet e che sia selezionato il server corretto, poi riprova."
+      },
+      "server_not_resgrid": {
+        "title": "Server non riconosciuto",
+        "message": "{{server}} non ha risposto come un server Resgrid. Verifica l'indirizzo del server e riprova."
+      },
+      "rate_limited": {
+        "title": "Troppi tentativi",
+        "message": "Sono stati effettuati troppi tentativi di accesso in poco tempo. Attendi un minuto e riprova."
+      },
+      "server_error": {
+        "title": "Problema del server",
+        "message": "{{server}} non è riuscito a completare l'accesso in questo momento. Attendi qualche minuto e riprova. Se il problema persiste, contatta il supporto Resgrid o l'amministratore del server."
+      },
+      "login_failed": {
+        "title": "Accesso non riuscito",
+        "message": "Si è verificato un problema durante l'accesso. Riprova. Se il problema persiste, contatta l'amministratore del tuo dipartimento o il supporto Resgrid."
+      }
+    }
   },
   "maintenance": {
     "downtime_message": "Stiamo lavorando per completare la manutenzione il prima possibile. Ricontrolla presto.",
