@@ -9,7 +9,7 @@ import { type MfaChallenge, parseMethods } from '@/lib/mfa/types';
 
 import { getItem, removeItem, setItem } from '../storage';
 import { getBaseApiUrl } from '../storage/app';
-import { classifyLoginFailure } from './login-errors';
+import { classifyLoginFailure, isServerLoginReason } from './login-errors';
 import type { AuthResponse, LoginCredentials, LoginResponse } from './types';
 
 // Strip any query string from a URL so tokens/credentials in params are never logged.
@@ -30,8 +30,8 @@ const sanitizeAuthError = (error: unknown): Record<string, unknown> => {
       'The user is no longer allowed to sign in.': 'user_sign_in_not_allowed',
     };
     const rejectionReason = typeof data?.error_description === 'string' && Object.hasOwn(knownDescriptions, data.error_description) ? knownDescriptions[data.error_description] : undefined;
-    // The server's login_error is a fixed set of reason codes, never free text.
-    const loginError = typeof data?.login_error === 'string' && /^[a-z_]{1,40}$/.test(data.login_error) ? data.login_error : undefined;
+    // Only a login_error the server is known to send; anything else is response text and is never logged.
+    const loginError = isServerLoginReason(data?.login_error) ? data.login_error : undefined;
     return {
       message: error.message,
       status: error.response?.status,

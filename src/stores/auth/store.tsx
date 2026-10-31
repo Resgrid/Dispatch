@@ -290,6 +290,7 @@ const useAuthStore = create<AuthState>()(
           status: 'signedOut',
           // Why the session ended, when the screen should say (a shared shift that ran out); otherwise nothing.
           error: typeof reason === 'string' ? reason : null,
+          loginFailure: null,
           profile: null,
           userId: null,
           isFirstTime: true,
@@ -414,8 +415,9 @@ const useAuthStore = create<AuthState>()(
         refreshTokenExpiresOn: state.refreshTokenExpiresOn,
         profile: state.profile,
         userId: state.userId,
-        // A pending second factor dies with the process (its secret lives in memory only), so it restarts signed out.
-        status: state.status === 'mfaRequired' ? 'signedOut' : state.status,
+        // A pending second factor dies with the process (its secret lives in memory only), so it restarts signed out. So
+        // does a failed sign-in: its reason is not kept, and a restart must not reopen the failure with nothing to explain.
+        status: state.status === 'mfaRequired' || state.status === 'error' ? 'signedOut' : state.status,
         isFirstTime: state.isFirstTime,
       }),
     }

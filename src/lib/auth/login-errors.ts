@@ -34,6 +34,9 @@ const LOGIN_ERROR_CODES = new Set<string>([...SERVER_REASONS, 'server_unreachabl
 /** Whether an auth-store error is one of these codes (shown with its guidance) rather than a code or text from elsewhere. */
 export const isLoginErrorCode = (value: string | null | undefined): value is LoginErrorCode => !!value && LOGIN_ERROR_CODES.has(value);
 
+/** Whether a response's login_error is one of the reasons the server sends; anything else is response text, never logged. */
+export const isServerLoginReason = (value: unknown): value is LoginErrorCode => typeof value === 'string' && SERVER_REASONS.has(value);
+
 interface TokenErrorBody {
   error?: unknown;
   error_description?: unknown;
@@ -60,16 +63,18 @@ export const classifyLoginFailure = (error: unknown): LoginFailure => {
   const status = response.status ?? 0;
   const body: TokenErrorBody | null = typeof response.data === 'object' && response.data !== null ? (response.data as TokenErrorBody) : null;
 
-  if (body && typeof body.login_error === 'string' && SERVER_REASONS.has(body.login_error)) {
-    const minutes = body.lockout_minutes_remaining;
-    return {
-      code: body.login_error as LoginErrorCode,
-      ...(typeof minutes === 'number' && Number.isFinite(minutes) && minutes > 0 ? { lockoutMinutes: Math.ceil(minutes) } : {}),
-    };
-  }
-
+  // Throttling comes first: whatever else the body says, waiting is what helps.
   if (status === 429) {
     return { code: 'rate_limited' };
+  }
+
+  // The server sends its reason only beside invalid_grant.
+  if (body?.error === 'invalid_grant' && isServerLoginReason(body.login_error)) {
+    const minutes = body.lockout_minutes_remaining;
+    return {
+      code: body.login_error,
+      ...(typeof minutes === 'number' && Number.isFinite(minutes) && minutes > 0 ? { lockoutMinutes: Math.ceil(minutes) } : {}),
+    };
   }
 
   if (body?.error === 'invalid_grant') {

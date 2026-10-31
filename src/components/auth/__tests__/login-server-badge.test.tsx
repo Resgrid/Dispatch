@@ -53,4 +53,13 @@ describe('LoginServerBadge', () => {
     fireEvent.press(screen.getByTestId('login-server-badge'));
     expect(onPress).toHaveBeenCalled();
   });
+
+  it('is a button only when it opens something', () => {
+    const { rerender } = render(<LoginServerBadge onPress={jest.fn()} />);
+    expect(screen.getByTestId('login-server-badge').props.accessibilityRole).toBe('button');
+
+    rerender(<LoginServerBadge />);
+    expect(screen.getByTestId('login-server-badge').props.accessibilityRole).toBeUndefined();
+    expect(screen.queryByRole('button')).toBeNull();
+  });
 });

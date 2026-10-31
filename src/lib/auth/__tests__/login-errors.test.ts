@@ -11,7 +11,7 @@ import pl from '@/translations/pl.json';
 import sv from '@/translations/sv.json';
 import uk from '@/translations/uk.json';
 
-import { classifyLoginFailure, describeLoginFailure, isLoginErrorCode, type LoginErrorCode } from '../login-errors';
+import { classifyLoginFailure, describeLoginFailure, isLoginErrorCode, isServerLoginReason, type LoginErrorCode } from '../login-errors';
 
 const axiosError = (status?: number, data?: unknown) => ({
   isAxiosError: true,
@@ -55,6 +55,15 @@ describe('classifyLoginFailure', () => {
     expect(classifyLoginFailure(axiosError(400, { error: 'invalid_grant', login_error: 'something_new' }))).toEqual({ code: 'invalid_credentials' });
   });
 
+  it('reads login_error only beside invalid_grant', () => {
+    expect(classifyLoginFailure(axiosError(400, { error: 'invalid_client', login_error: 'account_disabled' }))).toEqual({ code: 'login_failed' });
+    expect(classifyLoginFailure(axiosError(500, { login_error: 'account_disabled' }))).toEqual({ code: 'server_error' });
+  });
+
+  it('tells a throttled member to wait whatever reason the body gives', () => {
+    expect(classifyLoginFailure(axiosError(429, { error: 'invalid_grant', login_error: 'account_locked_out', lockout_minutes_remaining: 5 }))).toEqual({ code: 'rate_limited' });
+  });
+
   it('treats a bare invalid_grant from an older server as wrong credentials', () => {
     expect(classifyLoginFailure(axiosError(400, { error: 'invalid_grant', error_description: 'The username or password is invalid.' }))).toEqual({ code: 'invalid_credentials' });
   });
@@ -92,6 +101,15 @@ describe('isLoginErrorCode', () => {
     expect(isLoginErrorCode('invalid_totp')).toBe(false);
     expect(isLoginErrorCode('Request failed with status code 400')).toBe(false);
     expect(isLoginErrorCode(null)).toBe(false);
+  });
+});
+
+describe('isServerLoginReason', () => {
+  it('accepts only the reasons a server sends', () => {
+    expect(isServerLoginReason('account_locked_out')).toBe(true);
+    expect(isServerLoginReason('server_unreachable')).toBe(false);
+    expect(isServerLoginReason('mysecretpassword')).toBe(false);
+    expect(isServerLoginReason(42)).toBe(false);
   });
 });
 
