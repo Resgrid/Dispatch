@@ -10,7 +10,6 @@ const getTimerStatusesApi = createApiEndpoint('/CheckInTimers/GetTimerStatuses')
 const getTimersForCallApi = createApiEndpoint('/CheckInTimers/GetTimersForCall');
 const performCheckInApi = createApiEndpoint('/CheckInTimers/PerformCheckIn');
 const getCheckInHistoryApi = createApiEndpoint('/CheckInTimers/GetCheckInHistory');
-const toggleCallTimersApi = createApiEndpoint('/CheckInTimers/ToggleCallTimers');
 const getCallPersonnelCheckInStatusesApi = createApiEndpoint('/CheckInTimers/GetCallPersonnelCheckInStatuses');
 
 export const getTimerStatuses = async (callId: number) => {
@@ -85,8 +84,10 @@ export const getCheckInHistory = async (callId: number) => {
   return response.data;
 };
 
+// The server binds callId and enabled from the query string, not the body.
 export const toggleCallTimers = async (callId: number, enabled: boolean) => {
-  const response = await toggleCallTimersApi.put<PerformCheckInResult>({ callId, enabled });
+  const endpoint = createApiEndpoint(`/CheckInTimers/ToggleCallTimers?callId=${encodeURIComponent(callId)}&enabled=${encodeURIComponent(enabled)}`);
+  const response = await endpoint.put<PerformCheckInResult>({});
   return response.data;
 };
 

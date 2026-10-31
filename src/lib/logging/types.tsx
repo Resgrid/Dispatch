@@ -6,6 +6,8 @@ export interface LogContext {
 
 export interface LogEntry {
   message: string;
+  operation?: string;
+  trace_id?: string;
   context?: LogContext;
 }
 

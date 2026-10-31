@@ -227,36 +227,25 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-location',
       {
+        // Foreground-only: nothing in src/ requests background location or registers a location task, so every
+        // background flag stays off. isIosBackgroundLocationEnabled would add `location` to UIBackgroundModes and
+        // isAndroidBackgroundLocationEnabled would declare ACCESS_BACKGROUND_LOCATION / FOREGROUND_SERVICE_LOCATION;
+        // App Review (Guideline 2.5.4) and Play reject both when no persistent-location feature exists.
         locationWhenInUsePermission:
           'Resgrid Dispatch uses your location while you use the app to center the department map on you and to attach your coordinates when you dispatch or update a call. For example, when you create a call from the field, your location can be used as the incident address.',
+        // The "Always" keys must exist anyway: expo-location's background requester references
+        // requestAlwaysAuthorization, and App Store static analysis rejects the binary with
+        // ITMS-90683 when they are absent. The app never shows these prompts, so they state the
+        // same foreground-only use.
         locationAlwaysAndWhenInUsePermission:
-          'Resgrid Dispatch uses your location, including in the background, to keep the department map updated with your position. For example, while you are working a call away from the console, your location is periodically sent so other dispatchers and responders can see where you are, even when the app is not on screen.',
+          'Resgrid Dispatch uses your location only while the app is open and never tracks it in the background. It centers the department map on you and attaches your coordinates when you dispatch or update a call. For example, when you create a call from the field, your location can be used as the incident address.',
         locationAlwaysPermission:
-          'Resgrid Dispatch uses your location in the background to keep the department map updated with your position. For example, while you are working a call away from the console, your location is periodically sent so other dispatchers and responders can see where you are, even when the app is not on screen.',
+          'Resgrid Dispatch uses your location only while the app is open and never tracks it in the background. It centers the department map on you and attaches your coordinates when you dispatch or update a call. For example, when you create a call from the field, your location can be used as the incident address.',
         // Required even though getMotionActivityAsync() is never called: expo-location links
         // CoreMotion (MotionActivityPermissionRequester), and App Store static analysis rejects
         // the binary with ITMS-90683 whenever the framework is referenced and the string is absent.
         motionUsagePermission:
           'Resgrid Dispatch uses motion data to improve the accuracy of the location shown on the department map. For example, while you are driving to an incident, motion data helps distinguish travel from a stop so other dispatchers and responders see an accurate position.',
-        isIosBackgroundLocationEnabled: true,
-        isAndroidBackgroundLocationEnabled: true,
-        isAndroidForegroundServiceEnabled: true,
-        taskManager: {
-          locationTaskName: 'location-updates',
-          locationTaskOptions: {
-            accuracy: 'balanced',
-            distanceInterval: 10,
-            timeInterval: 5000,
-          },
-        },
-      },
-    ],
-    [
-      'expo-task-manager',
-      {
-        taskManager: {
-          taskName: 'location-updates',
-        },
       },
     ],
     [
@@ -313,7 +302,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       '@sentry/react-native/expo',
       {
         organization: 'sentry',
-        project: 'unit',
+        project: 'dispatch',
         url: 'https://sentry.resgrid.net/',
       },
     ],

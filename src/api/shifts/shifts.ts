@@ -7,14 +7,20 @@ import { type ShiftDayResult } from '@/models/v4/shifts/shiftDayResult';
 import { type ShiftDaysResult } from '@/models/v4/shifts/shiftDaysResult';
 import { type ShiftResult } from '@/models/v4/shifts/shiftResult';
 import { type ShiftsResult } from '@/models/v4/shifts/shiftsResult';
+import { type SignupShiftDayResult } from '@/models/v4/shifts/signupShiftDayResult';
 
 import { createApiEndpoint } from '../common/client';
 
-const getAllShiftsApi = createApiEndpoint('/Shifts/GetAllShifts');
+const getAllShiftsApi = createApiEndpoint('/Shifts/GetShifts');
 const getShiftApi = createApiEndpoint('/Shifts/GetShift');
 const getShiftDayApi = createApiEndpoint('/Shifts/GetShiftDay');
 const getTodaysShiftsApi = createApiEndpoint('/Shifts/GetTodaysShifts');
 const signupForShiftDayApi = createApiEndpoint('/Shifts/SignupForShiftDay');
+
+/**
+ * Result ids are strings, but the POST inputs bind numeric ids.
+ */
+const toNumericId = (id: string | number): number => (typeof id === 'number' ? id : Number.parseInt(id, 10));
 
 /**
  * Get all shifts
@@ -28,7 +34,7 @@ export const getAllShifts = async (): Promise<ShiftsResult> => {
  * Get a specific shift by ID
  */
 export const getShift = async (shiftId: string): Promise<ShiftResult> => {
-  const response = await getShiftApi.get<ShiftResult>({ shiftId });
+  const response = await getShiftApi.get<ShiftResult>({ id: shiftId });
   return response.data;
 };
 
@@ -36,7 +42,7 @@ export const getShift = async (shiftId: string): Promise<ShiftResult> => {
  * Get shift day information
  */
 export const getShiftDay = async (shiftDayId: string): Promise<ShiftDayResult> => {
-  const response = await getShiftDayApi.get<ShiftDayResult>({ shiftDayId });
+  const response = await getShiftDayApi.get<ShiftDayResult>({ id: shiftDayId });
   return response.data;
 };
 
@@ -49,8 +55,12 @@ export const getTodaysShifts = async (): Promise<ShiftDaysResult> => {
 };
 
 /**
- * Sign up for a shift day
+ * Sign the current user up for a shift day; the server requires the group (team) the signup is under.
  */
-export const signupForShiftDay = async (shiftDayId: string, userId?: string): Promise<void> => {
-  await signupForShiftDayApi.post({ shiftDayId, userId });
+export const signupForShiftDay = async (shiftDayId: string, groupId: string): Promise<SignupShiftDayResult> => {
+  const response = await signupForShiftDayApi.post<SignupShiftDayResult>({
+    ShiftDayId: toNumericId(shiftDayId),
+    GroupId: toNumericId(groupId),
+  });
+  return response.data;
 };

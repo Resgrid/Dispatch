@@ -4,17 +4,17 @@
  */
 
 import { type CalendarItemResult } from '@/models/v4/calendar/calendarItemResult';
-import { type CalendarItemResultData } from '@/models/v4/calendar/calendarItemResultData';
 import { type CalendarItemsResult } from '@/models/v4/calendar/calendarItemsResult';
 import { type CalendarItemTypesResult } from '@/models/v4/calendar/calendarItemTypesResult';
+import { type SetCalendarAttendingResult } from '@/models/v4/calendar/setCalendarAttendingResult';
 
 import { createApiEndpoint } from '../common/client';
 
-const calendarApi = createApiEndpoint('/Calendar/GetCalendarItems');
+const calendarApi = createApiEndpoint('/Calendar/GetDepartmentCalendarItems');
 const calendarItemApi = createApiEndpoint('/Calendar/GetCalendarItem');
-const calendarItemTypesApi = createApiEndpoint('/Calendar/GetCalendarItemTypes');
-const calendarItemsForDateRangeApi = createApiEndpoint('/Calendar/GetCalendarItemsForDateRange');
-const setCalendarAttendingApi = createApiEndpoint('/Calendar/SetCalendarAttending');
+const calendarItemTypesApi = createApiEndpoint('/Calendar/GetDepartmentCalendarItemTypes');
+const calendarItemsForDateRangeApi = createApiEndpoint('/Calendar/GetDepartmentCalendarItemsInRange');
+const setCalendarAttendingApi = createApiEndpoint('/Calendar/SetCalendarAttendingStatus');
 
 /**
  * Get all calendar items
@@ -28,7 +28,7 @@ export const getCalendarItems = async (): Promise<CalendarItemsResult> => {
  * Get a specific calendar item by ID
  */
 export const getCalendarItem = async (itemId: string): Promise<CalendarItemResult> => {
-  const response = await calendarItemApi.get<CalendarItemResult>({ itemId });
+  const response = await calendarItemApi.get<CalendarItemResult>({ id: itemId });
   return response.data;
 };
 
@@ -45,15 +45,19 @@ export const getCalendarItemTypes = async (): Promise<CalendarItemTypesResult> =
  */
 export const getCalendarItemsForDateRange = async (startDate: string, endDate: string): Promise<CalendarItemsResult> => {
   const response = await calendarItemsForDateRangeApi.get<CalendarItemsResult>({
-    startDate,
-    endDate,
+    start: startDate,
+    end: endDate,
   });
   return response.data;
 };
 
 /**
- * Set calendar attendance
+ * Set calendar attendance (Type 1 = attending, 4 = not attending)
  */
 export const setCalendarAttending = async ({ calendarItemId, attending, note }: { calendarItemId: string; attending: boolean; note?: string }): Promise<void> => {
-  await setCalendarAttendingApi.post({ itemId: calendarItemId, attending, note });
+  await setCalendarAttendingApi.post<SetCalendarAttendingResult>({
+    CalendarEventId: calendarItemId,
+    Type: attending === true ? 1 : 4,
+    Note: note || '',
+  });
 };

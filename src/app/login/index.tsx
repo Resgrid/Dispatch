@@ -79,10 +79,7 @@ export default function Login() {
   }, [status, error]);
 
   const onSubmit: LoginFormProps['onSubmit'] = async (data) => {
-    logger.info({
-      message: 'Starting Login (button press)',
-      context: { username: data.username },
-    });
+    logger.info({ message: 'Starting Login (button press)' });
     setPendingCredentials({ username: data.username, password: data.password });
     setOtpDismissed(false);
     try {

@@ -44,7 +44,7 @@ interface ShiftsState {
   //fetchShiftDaysForDateRange: (shiftId: string, startDate: string, endDate: string) => Promise<void>;
 
   // Actions - User interactions
-  signupForShift: (shiftDayId: string, userId: string) => Promise<void>;
+  signupForShift: (shiftDayId: string, groupId: string) => Promise<void>;
   //withdrawFromShift: (shiftDayId: string, userId: string) => Promise<void>;
 
   // Actions - UI state
@@ -210,10 +210,10 @@ export const useShiftsStore = create<ShiftsState>((set, get) => ({
   },
 
   // User interaction actions
-  signupForShift: async (shiftDayId: string, userId: string) => {
+  signupForShift: async (shiftDayId: string, groupId: string) => {
     set({ isSignupLoading: true, signupError: null });
     try {
-      await signupForShiftDay(shiftDayId, userId);
+      await signupForShiftDay(shiftDayId, groupId);
 
       // Refresh data after successful signup
       await Promise.all([get().fetchTodaysShifts(), get().fetchShiftDay(shiftDayId)]);
@@ -221,7 +221,7 @@ export const useShiftsStore = create<ShiftsState>((set, get) => ({
       set({ isSignupLoading: false });
       logger.info({
         message: 'Successfully signed up for shift',
-        context: { shiftDayId, userId },
+        context: { shiftDayId, groupId },
       });
     } catch (error) {
       set({
@@ -230,7 +230,7 @@ export const useShiftsStore = create<ShiftsState>((set, get) => ({
       });
       logger.error({
         message: 'Failed to sign up for shift',
-        context: { error, shiftDayId, userId },
+        context: { error, shiftDayId, groupId },
       });
     }
   },
