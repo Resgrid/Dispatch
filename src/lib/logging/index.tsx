@@ -55,7 +55,11 @@ const sanitizeValue = (key: string, value: unknown, depth: number): unknown => {
   if (value instanceof Error) {
     return { name: value.name, message: value.message, stack: value.stack };
   }
-  if (depth > 0 && value !== null && typeof value === 'object' && !Array.isArray(value)) {
+  if (value !== null && typeof value === 'object' && !(value instanceof Date)) {
+    // Past the depth limit the keys go unchecked, so a nested credential would pass through: drop the value instead.
+    if (depth <= 0) return Array.isArray(value) ? '[Array]' : '[Object]';
+    // Array elements are checked like object values, so { items: [{ accessToken }] } is redacted too.
+    if (Array.isArray(value)) return value.map((item) => sanitizeValue('', item, depth - 1));
     return sanitizeObject(value as Record<string, unknown>, depth - 1);
   }
   if (typeof value === 'function' || typeof value === 'symbol') return String(value);

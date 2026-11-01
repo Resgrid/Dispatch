@@ -13,7 +13,7 @@ const MIN_REFRESH_DELAY_MS = 5000;
 // than treated as the end of the session: a dispatcher who loses signal for a minute must not be
 // signed out by it. The delay doubles from the first value up to the cap and stays there; the
 // refresh token's own lifetime is what bounds the retries, because once it lapses the server
-// answers 400 and the session ends the normal way.
+// answers 400 invalid_grant and the session ends the normal way.
 const TRANSIENT_RETRY_BASE_MS = 5000;
 const TRANSIENT_RETRY_MAX_MS = 60000;
 
@@ -57,11 +57,34 @@ const scheduleTransientRetry = (): void => {
 };
 
 /**
- * Whether a failed token request says anything about the token. The endpoint answering 400/401 is
- * the server's verdict on the refresh token itself; a network error, a timeout or a 5xx is the
- * endpoint not being reachable, which says nothing about the token.
+ * Whether the token endpoint rejected the refresh token itself: a 400 or 401 whose OAuth body says
+ * `invalid_grant`, which is how the Resgrid token endpoint (OpenIddict) answers a refresh token it no
+ * longer honours (expired, revoked, already rotated). Only this ends the session.
+ *
+ * Any other 400/401 says nothing about the token: `invalid_request`, `invalid_client` and the other
+ * OAuth errors are about the request or the client, and a 400/401 with no OAuth body at all is a
+ * proxy's or load balancer's error page. Those are retried like an outage; a refresh token that
+ * really is dead still ends the session once it expires, because then the server answers
+ * invalid_grant.
  */
-const isTransientFailure = (status: number | undefined): boolean => status === undefined || status >= 500 || status === 408 || status === 429;
+export const isRefreshCredentialRejection = (error: unknown): boolean => {
+  if (!axios.isAxiosError(error)) {
+    return false;
+  }
+  const status = error.response?.status;
+  if (status !== 400 && status !== 401) {
+    return false;
+  }
+  const data: unknown = error.response?.data;
+  return typeof data === 'object' && data !== null && (data as { error?: unknown }).error === 'invalid_grant';
+};
+
+/**
+ * Whether a failed token request is worth retrying, checked after `isRefreshCredentialRejection`. A
+ * network error, a timeout, a 5xx or rate limiting is the endpoint not being reachable, which says
+ * nothing about the token; so does a 400/401 that is not invalid_grant (see above).
+ */
+const isTransientFailure = (status: number | undefined): boolean => status === undefined || status === 400 || status === 401 || status >= 500 || status === 408 || status === 429;
 // Only an Axios error qualifies: a throw from our own handlers (applyAuthResponse refusing a
 // response that raced sign-out) has no status either, but it is a verdict, not an outage.
 
@@ -134,13 +157,13 @@ export function performTokenRefresh(): Promise<boolean> {
         return false;
       }
       // A refresh token the server no longer honours is how a session ends: the token
-      // endpoint answers 400/401, the user goes back to the login screen, and nothing is
-      // broken. Only the shapes that mean something is actually wrong - network loss,
-      // server faults - are worth reporting as errors.
+      // endpoint answers 400/401 invalid_grant, the user goes back to the login screen, and
+      // nothing is broken. Only the shapes that mean something is actually wrong - network
+      // loss, server faults, a 400/401 that is not about the token - are worth reporting as errors.
       const status = axios.isAxiosError(error) ? error.response?.status : undefined;
       const context = { status, error: error instanceof Error ? error.message : String(error) };
 
-      if (status === 400 || status === 401) {
+      if (isRefreshCredentialRejection(error)) {
         logger.warn({ message: 'Token refresh rejected, ending session', context });
       } else if (axios.isAxiosError(error) && isTransientFailure(status)) {
         // The token is still good as far as anyone knows; keep it and try again shortly. Callers

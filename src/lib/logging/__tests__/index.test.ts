@@ -226,4 +226,17 @@ describe('sanitizeLogContext', () => {
       error: { name: 'Error', message: 'boom', stack: 'Error: boom\n    at somewhere' },
     });
   });
+
+  it('redacts sensitive keys inside array elements', () => {
+    expect(sanitizeLogContext({ items: [{ accessToken: 'a', unitId: 'u1' }, 'plain'] })).toEqual({ items: [{ accessToken: '[REDACTED]', unitId: 'u1' }, 'plain'] });
+  });
+
+  it('replaces objects and arrays past the depth limit instead of passing their keys through unchecked', () => {
+    expect(sanitizeLogContext({ a: { b: { c: { password: 'x' }, list: [{ password: 'x' }] } } })).toEqual({ a: { b: { c: '[Object]', list: '[Array]' } } });
+  });
+
+  it('keeps Date values intact', () => {
+    const at = new Date('2026-10-31T12:00:00Z');
+    expect(sanitizeLogContext({ at, nested: { at } })).toEqual({ at, nested: { at } });
+  });
 });

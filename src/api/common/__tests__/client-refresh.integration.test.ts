@@ -69,7 +69,7 @@ describe('API requests using the shared token refresh engine', () => {
 
   it('ends a rejected restored session once and stops all protected requests', async () => {
     useAuthStore.setState({ refreshTokenExpiresOn: String(Date.now() - 1000) });
-    (refreshTokenRequest as jest.Mock).mockRejectedValue(new AxiosError('Rejected', 'ERR_BAD_REQUEST', undefined, undefined, { status: 400 } as AxiosResponse));
+    (refreshTokenRequest as jest.Mock).mockRejectedValue(new AxiosError('Rejected', 'ERR_BAD_REQUEST', undefined, undefined, { status: 400, data: { error: 'invalid_grant' } } as AxiosResponse));
 
     const results = await Promise.allSettled([api.get('/Calls/GetActiveCalls'), api.get('/Units/GetAllUnitsInfos')]);
 
@@ -80,5 +80,20 @@ describe('API requests using the shared token refresh engine', () => {
       expect(result).toMatchObject({ status: 'rejected', reason: expect.any(NoActiveSessionError) });
     }
     expect(jest.getTimerCount()).toBe(0);
+  });
+
+  it('keeps a restored session and retries when the token endpoint answers a 400 that is not invalid_grant', async () => {
+    useAuthStore.setState({ refreshTokenExpiresOn: String(Date.now() - 1000) });
+    (refreshTokenRequest as jest.Mock).mockRejectedValue(new AxiosError('Bad Request', 'ERR_BAD_REQUEST', undefined, undefined, { status: 400, data: { error: 'invalid_request' } } as AxiosResponse));
+
+    const results = await Promise.allSettled([api.get('/Calls/GetActiveCalls'), api.get('/Units/GetAllUnitsInfos')]);
+
+    expect(refreshTokenRequest).toHaveBeenCalledTimes(1);
+    expect(adapter).not.toHaveBeenCalled();
+    expect(useAuthStore.getState()).toMatchObject({ status: 'signedIn', accessToken: 'old-access', refreshToken: 'old-refresh' });
+    for (const result of results) {
+      expect(result).toMatchObject({ status: 'rejected' });
+    }
+    expect(jest.getTimerCount()).toBe(1);
   });
 });

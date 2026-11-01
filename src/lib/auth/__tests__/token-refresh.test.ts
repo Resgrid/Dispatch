@@ -3,7 +3,7 @@ import { AxiosError, type AxiosResponse } from 'axios';
 import { logger } from '@/lib/logging';
 
 import { refreshTokenRequest } from '../api';
-import { cancelScheduledTokenRefresh, initTokenRefresh, performTokenRefresh, scheduleTokenRefresh, transientRetryDelayMs } from '../token-refresh';
+import { cancelScheduledTokenRefresh, initTokenRefresh, isRefreshCredentialRejection, performTokenRefresh, scheduleTokenRefresh, transientRetryDelayMs } from '../token-refresh';
 
 jest.mock('@/lib/logging', () => ({
   logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
@@ -15,6 +15,43 @@ jest.mock('../api', () => ({
 
 const mockRefreshTokenRequest = refreshTokenRequest as jest.MockedFunction<typeof refreshTokenRequest>;
 const mockLogger = logger as jest.Mocked<typeof logger>;
+
+const axiosErrorWithStatus = (status: number, data?: unknown): AxiosError => new AxiosError('Request failed with status code ' + status, 'ERR_BAD_REQUEST', undefined, undefined, { status, data } as AxiosResponse);
+
+// How the token endpoint (OpenIddict) answers a refresh token it no longer honours.
+const INVALID_GRANT = { error: 'invalid_grant', error_description: 'The refresh token is no longer valid.' };
+
+describe('isRefreshCredentialRejection', () => {
+  it.each([400, 401])('returns true for a %i invalid_grant from the token endpoint', (status) => {
+    expect(isRefreshCredentialRejection(axiosErrorWithStatus(status, INVALID_GRANT))).toBe(true);
+    expect(isRefreshCredentialRejection(axiosErrorWithStatus(status, { error: 'invalid_grant' }))).toBe(true);
+  });
+
+  it.each(['invalid_request', 'invalid_client', 'unauthorized_client', 'unsupported_grant_type', 'invalid_scope'])('returns false for a 400 %s (says nothing about the refresh token)', (oauthError) => {
+    expect(isRefreshCredentialRejection(axiosErrorWithStatus(400, { error: oauthError }))).toBe(false);
+  });
+
+  it('returns false for a 401 invalid_client (client authentication, not the refresh token)', () => {
+    expect(isRefreshCredentialRejection(axiosErrorWithStatus(401, { error: 'invalid_client' }))).toBe(false);
+  });
+
+  it.each([400, 401])('returns false for a %i with no OAuth error body (e.g. a proxy error page)', (status) => {
+    expect(isRefreshCredentialRejection(axiosErrorWithStatus(status))).toBe(false);
+    expect(isRefreshCredentialRejection(axiosErrorWithStatus(status, {}))).toBe(false);
+    expect(isRefreshCredentialRejection(axiosErrorWithStatus(status, '<html>Bad Request</html>'))).toBe(false);
+  });
+
+  it.each([403, 404, 408, 429, 500, 502, 503])('returns false for invalid_grant on a %i', (status) => {
+    expect(isRefreshCredentialRejection(axiosErrorWithStatus(status, { error: 'invalid_grant' }))).toBe(false);
+  });
+
+  it('returns false for a network error and for non-Axios errors', () => {
+    expect(isRefreshCredentialRejection(new AxiosError('Network Error', 'ERR_NETWORK'))).toBe(false);
+    expect(isRefreshCredentialRejection(new Error('boom'))).toBe(false);
+    expect(isRefreshCredentialRejection({ response: { status: 400, data: { error: 'invalid_grant' } } })).toBe(false);
+    expect(isRefreshCredentialRejection(null)).toBe(false);
+  });
+});
 
 describe('scheduleTokenRefresh', () => {
   let setTimeoutSpy: jest.SpyInstance;
@@ -66,8 +103,6 @@ describe('performTokenRefresh failure reporting', () => {
     onRefreshFailed: jest.fn(),
   };
 
-  const axiosErrorWithStatus = (status: number): AxiosError => new AxiosError('Request failed with status code ' + status, 'ERR_BAD_REQUEST', undefined, undefined, { status } as AxiosResponse);
-
   beforeEach(() => {
     jest.clearAllMocks();
     handlers.getRefreshToken.mockReturnValue('refresh-token');
@@ -81,13 +116,48 @@ describe('performTokenRefresh failure reporting', () => {
     cancelScheduledTokenRefresh();
   });
 
-  it.each([400, 401])('treats a %i from the token endpoint as an expired session, not an error', async (status) => {
-    mockRefreshTokenRequest.mockRejectedValue(axiosErrorWithStatus(status));
+  it.each([400, 401])('treats a %i invalid_grant from the token endpoint as an expired session, not an error', async (status) => {
+    mockRefreshTokenRequest.mockRejectedValue(axiosErrorWithStatus(status, INVALID_GRANT));
 
     await expect(performTokenRefresh()).resolves.toBe(false);
 
     expect(mockLogger.warn).toHaveBeenCalledWith(expect.objectContaining({ message: 'Token refresh rejected, ending session' }));
     expect(mockLogger.error).not.toHaveBeenCalled();
+    expect(handlers.onRefreshFailed).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['a 400 invalid_request', 400, { error: 'invalid_request' }],
+    ['a 401 invalid_client', 401, { error: 'invalid_client' }],
+    ['a 400 with no body', 400, undefined],
+    ['a 401 with no body', 401, undefined],
+    ['a 400 proxy error page', 400, '<html><body>Bad Request</body></html>'],
+  ])('keeps the session and schedules a retry for %s, which says nothing about the refresh token', async (_label, status, data) => {
+    jest.useFakeTimers();
+    const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
+    try {
+      mockRefreshTokenRequest.mockRejectedValue(axiosErrorWithStatus(status, data));
+
+      await expect(performTokenRefresh()).resolves.toBe(false);
+
+      expect(mockLogger.warn).not.toHaveBeenCalledWith(expect.objectContaining({ message: 'Token refresh rejected, ending session' }));
+      expect(mockLogger.error).toHaveBeenCalledWith(expect.objectContaining({ message: 'Token refresh failed; will retry', context: expect.objectContaining({ status }) }));
+      expect(handlers.onRefreshFailed).not.toHaveBeenCalled();
+      expect(jest.getTimerCount()).toBe(1);
+      expect(setTimeoutSpy.mock.calls[setTimeoutSpy.mock.calls.length - 1][1]).toBe(transientRetryDelayMs(1));
+    } finally {
+      cancelScheduledTokenRefresh();
+      jest.useRealTimers();
+      setTimeoutSpy.mockRestore();
+    }
+  });
+
+  it.each([403, 404])('still ends the session for a non-transient %i', async (status) => {
+    mockRefreshTokenRequest.mockRejectedValue(axiosErrorWithStatus(status));
+
+    await expect(performTokenRefresh()).resolves.toBe(false);
+
+    expect(mockLogger.error).toHaveBeenCalledWith(expect.objectContaining({ message: 'Token refresh failed' }));
     expect(handlers.onRefreshFailed).toHaveBeenCalledTimes(1);
   });
 
@@ -139,7 +209,7 @@ describe('performTokenRefresh failure reporting', () => {
   it('retries on the timer and ends the session once the server actually rejects the token', async () => {
     jest.useFakeTimers();
     try {
-      mockRefreshTokenRequest.mockRejectedValueOnce(new AxiosError('Network Error', 'ERR_NETWORK')).mockRejectedValueOnce(axiosErrorWithStatus(400));
+      mockRefreshTokenRequest.mockRejectedValueOnce(new AxiosError('Network Error', 'ERR_NETWORK')).mockRejectedValueOnce(axiosErrorWithStatus(400, INVALID_GRANT));
 
       await expect(performTokenRefresh()).resolves.toBe(false);
       expect(handlers.onRefreshFailed).not.toHaveBeenCalled();
