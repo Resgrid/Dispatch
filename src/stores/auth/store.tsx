@@ -128,7 +128,7 @@ const useAuthStore = create<AuthState>()(
           set({ status: 'loading', error: null, loginFailure: null });
           logger.info({
             message: 'Login: Calling loginRequest API',
-            context: { username: credentials.username, platform: Platform.OS },
+            context: { platform: Platform.OS },
           });
 
           const response = await loginRequest(credentials);

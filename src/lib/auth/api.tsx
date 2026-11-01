@@ -184,7 +184,7 @@ export const loginRequest = async (credentials: LoginCredentials): Promise<Login
 
     logger.info({
       message: 'API: Sending login request',
-      context: { username: credentials.username, baseURL: authApi.defaults.baseURL },
+      context: { baseURL: authApi.defaults.baseURL },
     });
 
     const response = await authApi.post<AuthResponse>('/connect/token', data);
@@ -197,7 +197,6 @@ export const loginRequest = async (credentials: LoginCredentials): Promise<Login
     if (response.status === 200) {
       logger.info({
         message: 'Login successful',
-        context: { username: credentials.username },
       });
 
       return {
@@ -208,7 +207,7 @@ export const loginRequest = async (credentials: LoginCredentials): Promise<Login
     } else {
       logger.error({
         message: 'Login failed',
-        context: { status: response.status, username: credentials.username },
+        context: { status: response.status },
       });
 
       return {
@@ -253,7 +252,7 @@ export const loginRequest = async (credentials: LoginCredentials): Promise<Login
     const failure = classifyLoginFailure(error);
     logger.error({
       message: 'Login API call failed with exception',
-      context: { ...sanitizeAuthError(error), loginFailure: failure.code, username: credentials.username },
+      context: { ...sanitizeAuthError(error), loginFailure: failure.code },
     });
 
     // Return a failed response instead of throwing; the code carries the reason the login screen explains.
